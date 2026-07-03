@@ -1,0 +1,710 @@
+GLOBAL SUMMARY TXT
+Generated at: 2026-07-03T14:49:31
+Run dir: C:\Users\tleczycki\Desktop\git\momentum-invest\ideas_out\best17_3m_vglt_u10c\runs\20260703_144846
+Idea: n/a
+Frequency: n/a
+US benchmark: n/a
+UK benchmark: n/a
+
+Cel raportu:
+- opisać jedną strategię zdefiniowaną w idea_config.json,
+- pokazać US base,
+- pokazać US selected hedge vs base,
+- zrobić UK replay dokładnie tego selected US wariantu,
+- zmierzyć, czy mapping UK odtwarza zachowanie US.
+
+Raport NIE wybiera automatycznie najlepszego wariantu.
+
+====================================================================================================
+TESTED STRATEGY FROM CONFIG
+====================================================================================================
+To jest wariant strategii, który testujemy. Raport nie wybiera automatycznie zwycięzcy.
+
+- Base strategy: AUTO
+- Hedge enabled: n/a
+- Hedge asset US: n/a
+- Hedge weight: n/a
+- Rule: n/a
+- Lookback: n/a
+- EMA span: n/a
+- Min hedge return: n/a
+- Min spread vs A: n/a
+
+Export selected hedge metadata:
+- Selected monthly rows: 213
+- Hedge active months: 157
+- Hedge active % months: 73.71%
+- Matched variant CAGR: 19.83%
+- Matched variant MaxDD daily: -20.24%
+- Matched variant Calmar: 0.98
+- Matched variant final equity daily: 18.96
+- Matched variant delta CAGR: -1.37 pp
+- Matched variant delta MaxDD daily: +6.85 pp
+- Matched variant delta Calmar: 0.20
+
+====================================================================================================
+DATA QUALITY
+====================================================================================================
+
+US data quality
+----------------------------------------------------------------------------------------------------
+- Tickery łącznie: 117
+- Znalezione: 115
+- Brakujące: 2
+- Błędy: 0
+- Najwcześniejszy start: 1999-03-10
+- Najpóźniejszy start: 2022-04-01
+- Najwcześniejszy koniec: 2026-04-22
+- Najpóźniejszy koniec: 2026-04-23
+
+Najkrótsze historie:
+ ticker status  date_from    date_to  rows                                                                      file_path
+semi.us  FOUND 2022-04-01 2026-04-22  1017 C:\Users\tleczycki\Desktop\git\momentum-invest\data\us\nyse etfs\1\semi.us.txt
+ cta.us  FOUND 2022-03-09 2026-04-22  1034  C:\Users\tleczycki\Desktop\git\momentum-invest\data\us\nyse etfs\1\cta.us.txt
+kmlm.us  FOUND 2020-12-08 2026-04-22  1343 C:\Users\tleczycki\Desktop\git\momentum-invest\data\us\nyse etfs\1\kmlm.us.txt
+dbmf.us  FOUND 2019-05-10 2026-04-22  1746 C:\Users\tleczycki\Desktop\git\momentum-invest\data\us\nyse etfs\1\dbmf.us.txt
+ xlc.us  FOUND 2018-06-21 2026-04-22  1969  C:\Users\tleczycki\Desktop\git\momentum-invest\data\us\nyse etfs\2\xlc.us.txt
+xlre.us  FOUND 2015-10-08 2026-04-22  2645 C:\Users\tleczycki\Desktop\git\momentum-invest\data\us\nyse etfs\2\xlre.us.txt
+nobl.us  FOUND 2013-10-16 2026-04-22  3144 C:\Users\tleczycki\Desktop\git\momentum-invest\data\us\nyse etfs\1\nobl.us.txt
+inda.us  FOUND 2012-05-30 2026-04-22  3472 C:\Users\tleczycki\Desktop\git\momentum-invest\data\us\nyse etfs\1\inda.us.txt
+inda.us  FOUND 2012-05-30 2026-04-22  3472 C:\Users\tleczycki\Desktop\git\momentum-invest\data\us\nyse etfs\1\inda.us.txt
+govt.us  FOUND 2012-03-07 2026-04-22  3550 C:\Users\tleczycki\Desktop\git\momentum-invest\data\us\nyse etfs\1\govt.us.txt
+govt.us  FOUND 2012-03-07 2026-04-22  3550 C:\Users\tleczycki\Desktop\git\momentum-invest\data\us\nyse etfs\1\govt.us.txt
+grek.us  FOUND 2011-12-13 2026-04-22  3605 C:\Users\tleczycki\Desktop\git\momentum-invest\data\us\nyse etfs\1\grek.us.txt
+
+Problematyczne tickery:
+ ticker  status date_from date_to  rows          error
+ismf.us MISSING       NaN     NaN     0 file not found
+ dbv.us MISSING       NaN     NaN     0 file not found
+
+UK data quality
+----------------------------------------------------------------------------------------------------
+- Tickery łącznie: 14
+- Znalezione: 13
+- Brakujące: 1
+- Błędy: 0
+- Najwcześniejszy start: 2015-03-04
+- Najpóźniejszy start: 2021-10-11
+- Najwcześniejszy koniec: 2026-04-20
+- Najpóźniejszy koniec: 2026-04-20
+
+Najkrótsze historie:
+ ticker status  date_from    date_to  rows                                                                     file_path
+u10c.uk  FOUND 2021-10-11 2026-04-20  1132 C:\Users\tleczycki\Desktop\git\momentum-invest\data\uk\lse etfs\3\u10c.uk.txt
+speq.uk  FOUND 2021-05-10 2026-04-20  1249 C:\Users\tleczycki\Desktop\git\momentum-invest\data\uk\lse etfs\2\speq.uk.txt
+vwra.uk  FOUND 2019-07-26 2026-04-20  1702 C:\Users\tleczycki\Desktop\git\momentum-invest\data\uk\lse etfs\3\vwra.uk.txt
+dtla.uk  FOUND 2018-05-15 2026-04-20  2012 C:\Users\tleczycki\Desktop\git\momentum-invest\data\uk\lse etfs\1\dtla.uk.txt
+cmod.uk  FOUND 2017-01-13 2026-04-20  2341 C:\Users\tleczycki\Desktop\git\momentum-invest\data\uk\lse etfs\1\cmod.uk.txt
+iuit.uk  FOUND 2015-12-04 2026-04-20  2618 C:\Users\tleczycki\Desktop\git\momentum-invest\data\uk\lse etfs\2\iuit.uk.txt
+sxli.uk  FOUND 2015-07-20 2026-04-20  2624 C:\Users\tleczycki\Desktop\git\momentum-invest\data\uk\lse etfs\2\sxli.uk.txt
+sxlp.uk  FOUND 2015-07-20 2026-04-20  2628 C:\Users\tleczycki\Desktop\git\momentum-invest\data\uk\lse etfs\2\sxlp.uk.txt
+sxlv.uk  FOUND 2015-07-20 2026-04-20  2629 C:\Users\tleczycki\Desktop\git\momentum-invest\data\uk\lse etfs\2\sxlv.uk.txt
+sxlf.uk  FOUND 2015-07-09 2026-04-20  2680 C:\Users\tleczycki\Desktop\git\momentum-invest\data\uk\lse etfs\2\sxlf.uk.txt
+sxle.uk  FOUND 2015-07-20 2026-04-20  2683 C:\Users\tleczycki\Desktop\git\momentum-invest\data\uk\lse etfs\2\sxle.uk.txt
+igln.uk  FOUND 2015-03-30 2026-04-20  2792 C:\Users\tleczycki\Desktop\git\momentum-invest\data\uk\lse etfs\2\igln.uk.txt
+
+Problematyczne tickery:
+ticker  status date_from date_to  rows          error
+ _CASH MISSING       NaN     NaN     0 file not found
+
+====================================================================================================
+US BASE STRATEGY
+====================================================================================================
+
+US base monthly metrics
+----------------------------------------------------------------------------------------------------
+- Źródło: 03_us_backtest/summary_full_period.csv
+- Okres: 2008-07-01 -> 2026-03-01
+- Miesięcy: 213
+- Final equity: 14.44
+- Total return: n/a
+- CAGR: 16.23%
+- Ann. vol: 16.41%
+- Sharpe: 1.00
+- MaxDD: -17.19%
+- Calmar: n/a
+
+Benchmark:
+- Benchmark final equity: 3.69
+- Benchmark total return: n/a
+- Benchmark CAGR: 7.64%
+- Benchmark MaxDD: -48.60%
+
+Różnica vs benchmark:
+- Total return vs benchmark: n/a
+- CAGR vs benchmark: +8.59 pp
+- MaxDD vs benchmark: +31.40 pp
+- Hit rate excess: 61.03%
+
+Obrót / operacje:
+- Turnover: 20.72
+- Operations: 122
+
+US base daily metrics
+----------------------------------------------------------------------------------------------------
+- Źródło: 04_us_daily_base/summary_daily_maxdd.csv
+- Okres: 2008-07-01 -> 2026-03-02
+- Final equity: 29.89
+- Total return: n/a
+- CAGR: n/a
+- Ann. vol: n/a
+- Sharpe: n/a
+- MaxDD: -27.09%
+- Calmar: n/a
+
+Benchmark:
+- Benchmark final equity: 3.89
+- Benchmark total return: n/a
+- Benchmark CAGR: n/a
+- Benchmark MaxDD: -50.10%
+
+Różnica vs benchmark:
+- Total return vs benchmark: +669.23 pp
+- CAGR vs benchmark: n/a
+- MaxDD vs benchmark: +23.01 pp
+- Hit rate excess: n/a
+
+US base daily vs monthly reconstruction check
+----------------------------------------------------------------------------------------------------
+- US daily final equity: 29.89
+- US monthly final equity: 14.44
+- US daily/US monthly final equity ratio: 2.0701
+- US daily CAGR: n/a
+- US monthly CAGR: 16.23%
+- US daily MaxDD: -27.09%
+- US monthly MaxDD: -17.19%
+- US daily - US monthly MaxDD: -9.89 pp
+- US daily Calmar: n/a
+- US monthly Calmar: n/a
+
+US base rolling robustness
+----------------------------------------------------------------------------------------------------
+Podsumowanie okresów / rolling:
+                                                                                                     strategy benchmark
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us
+
+Najgorsze rolling windows wg CAGR vs benchmark:
+                                                                                                     strategy  window_months window_start window_end  strategy_cagr  benchmark_cagr  cagr_vs_benchmark  strategy_max_drawdown  benchmark_max_drawdown  maxdd_vs_benchmark  strategy_final_equity  benchmark_final_equity
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3             12   2009-03-01 2010-02-01       0.329269        0.668426          -0.339157              -0.105121               -0.053978           -0.051143               1.329269                1.668426
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3             12   2009-04-01 2010-03-01       0.391753        0.524606          -0.132853              -0.105121               -0.053978           -0.051143               1.391753                1.524606
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3             12   2010-07-01 2011-06-01       0.183989        0.303342          -0.119353              -0.053234               -0.040488           -0.012746               1.183989                1.303342
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3             12   2009-02-01 2010-01-01       0.309224        0.421537          -0.112313              -0.105121               -0.140043            0.034922               1.309224                1.421537
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3             24   2009-03-01 2011-02-01       0.287614        0.396454          -0.108840              -0.105121               -0.136225            0.031104               1.657949                1.950083
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3             12   2011-10-01 2012-09-01       0.168066        0.262018          -0.093952              -0.106700               -0.129582            0.022882               1.168066                1.262018
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3             12   2012-02-01 2013-01-01       0.050457        0.137094          -0.086637              -0.106700               -0.129582            0.022882               1.050457                1.137094
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3             12   2020-06-01 2021-05-01       0.341248        0.424555          -0.083306              -0.101092               -0.044602           -0.056491               1.341248                1.424555
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3             12   2012-01-01 2012-12-01       0.078448        0.161738          -0.083290              -0.106700               -0.129582            0.022882               1.078448                1.161738
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3             12   2011-12-01 2012-11-01       0.043228        0.126485          -0.083258              -0.106700               -0.129582            0.022882               1.043228                1.126485
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3             12   2020-09-01 2021-08-01       0.217701        0.297249          -0.079549              -0.101092               -0.044602           -0.056491               1.217701                1.297249
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3             24   2011-10-01 2013-09-01       0.144531        0.219657          -0.075126              -0.106700               -0.129582            0.022882               1.309952                1.487564
+
+US base underwater
+----------------------------------------------------------------------------------------------------
+Najgorsze underwater periods:
+                                                                                                     strategy benchmark series_type underwater_start underwater_bottom underwater_recovery  duration_months  months_to_bottom  max_drawdown  is_recovered
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us   benchmark       2008-08-01        2009-02-01          2010-12-01               28                 6     -0.473395             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us   benchmark       2020-01-01        2020-03-01          2020-08-01                7                 2     -0.263315             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us   benchmark       2022-01-01        2022-09-01          2024-02-01               25                 8     -0.241060             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us   benchmark       2011-05-01        2011-09-01          2012-12-01               19                 4     -0.236043             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us    strategy       2020-02-01        2020-03-01          2020-05-01                3                 1     -0.171922             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us    strategy       2018-10-01        2018-12-01          2019-04-01                6                 2     -0.170135             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us   benchmark       2018-02-01        2018-12-01          2019-06-01               16                10     -0.144927             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us   benchmark       2015-05-01        2016-01-01          2016-12-01               19                 8     -0.132567             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us    strategy       2012-04-01        2012-05-01          2012-08-01                4                 1     -0.106700             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us    strategy       2011-09-01        2011-09-01          2012-03-01                6                 0     -0.105901             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us    strategy       2009-12-01        2010-01-01          2010-05-01                5                 1     -0.105121             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us    strategy       2020-09-01        2020-10-01          2020-11-01                2                 1     -0.101092             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us    strategy       2015-06-01        2015-08-01          2015-10-01                4                 2     -0.098447             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us    strategy       2015-12-01        2016-04-01          2016-09-01                9                 4     -0.096620             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us    strategy       2026-03-01        2026-03-01                 NaN                0                 0     -0.095674             0
+
+Niezrecoverowane okresy:
+                                                                                                     strategy benchmark series_type underwater_start underwater_bottom underwater_recovery  duration_months  months_to_bottom  months_to_recovery  max_drawdown  start_equity  bottom_equity  recovery_equity  is_recovered
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us    strategy       2026-03-01        2026-03-01                 NaN                0                 0                 NaN     -0.095674     15.967826      14.440113              NaN             0
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3     vt.us   benchmark       2026-03-01        2026-03-01                 NaN                0                 0                 NaN     -0.049405      3.886034       3.694047              NaN             0
+
+====================================================================================================
+US HEDGE CONTEXT - OTHER VARIANTS
+====================================================================================================
+
+Top variants by delta MaxDD daily
+----------------------------------------------------------------------------------------------------
+ delta_cagr  delta_maxdd_daily  delta_calmar  delta_final_equity_daily
+  -0.013745           0.068488      0.197011                -10.928886
+  -0.016210           0.056419      0.130370                 -6.328418
+   0.000000           0.000000      0.000000                  0.000000
+   0.000000           0.000000      0.000000                  0.000000
+
+Top ranked hedge variants
+----------------------------------------------------------------------------------------------------
+  hedge  hedge_weight              rule  lookback  ema_span     cagr  delta_cagr  maxdd_daily  delta_maxdd_daily   calmar  delta_calmar  final_equity_daily
+vglt.us           0.2 hedge_lb_positive       1.0       0.0 0.198301   -0.013745    -0.202378           0.068488 0.979856      0.197011           18.963588
+ uup.us           0.2 hedge_lb_positive       1.0       0.0 0.195836   -0.016210    -0.214447           0.056419 0.913214      0.130370           23.564056
+    NaN           NaN               NaN       NaN       NaN 0.212046    0.000000    -0.270866           0.000000 0.782845      0.000000           29.892474
+    NaN           NaN               NaN       NaN       NaN 0.212046    0.000000    -0.270866           0.000000 0.782845      0.000000           29.892474
+
+====================================================================================================
+US SELECTED HEDGE VS PURE BASE A
+====================================================================================================
+
+Relative selected hedge vs base
+----------------------------------------------------------------------------------------------------
+ delta_cagr  delta_maxdd  delta_calmar  delta_final_equity
+  -0.036109     0.068488      0.086505          -15.934006
+   0.000000     0.000000      0.000000            0.000000
+   0.000000     0.000000      0.000000            0.000000
+
+Summary selected hedge / tested hedge candidates
+----------------------------------------------------------------------------------------------------
+    cagr     maxdd   calmar  final_equity  total_return  vol_annualized
+0.212046 -0.270866 0.782845     29.892474     28.892474        0.175221
+0.212046 -0.270866 0.782845     29.892474     28.892474        0.175221
+0.175937 -0.202378 0.869350     13.958468     12.958468        0.139597
+
+====================================================================================================
+SELECTED US MONTHLY WEIGHTS
+====================================================================================================
+
+Selected US monthly exposure summary
+----------------------------------------------------------------------------------------------------
+Ekspozycje wg wag monthly:
+  asset  months_present  avg_weight  max_weight
+ xlk.us             178    0.510057    0.819807
+vglt.us             157    0.200000    0.200000
+ ivv.us             127    0.242700    0.813193
+ iau.us              59    0.584668    1.000000
+  _CASH              16    0.837500    1.000000
+ dbc.us              14    0.392255    0.833821
+  vt.us               7    0.942857    1.000000
+
+====================================================================================================
+UK REPLAY OF SELECTED US STRATEGY
+====================================================================================================
+
+UK selected monthly replay metrics
+----------------------------------------------------------------------------------------------------
+- Źródło: 11_uk_replay_selected_hedge/summary_full_period.csv
+- Okres: 2021-06-01 -> 2026-03-01
+- Miesięcy: 58
+- Final equity: 2.08
+- Total return: 107.63%
+- CAGR: 16.32%
+- Ann. vol: 15.70%
+- Sharpe: 1.04
+- MaxDD: -17.61%
+- Calmar: n/a
+
+Benchmark:
+- Benchmark final equity: 1.51
+- Benchmark total return: 51.00%
+- Benchmark CAGR: 8.90%
+- Benchmark MaxDD: -24.44%
+
+Różnica vs benchmark:
+- Total return vs benchmark: +56.63 pp
+- CAGR vs benchmark: +7.42 pp
+- MaxDD vs benchmark: +6.83 pp
+- Hit rate excess: 56.90%
+
+Obrót / operacje:
+- Turnover: 8.26
+- Operations: 59
+
+UK selected daily replay metrics
+----------------------------------------------------------------------------------------------------
+- Źródło: 12_uk_selected_daily_maxdd/summary_daily_maxdd.csv
+- Okres: 2021-06-01 -> 2026-03-02
+- Final equity: 2.68
+- Total return: n/a
+- CAGR: n/a
+- Ann. vol: n/a
+- Sharpe: n/a
+- MaxDD: -16.96%
+- Calmar: n/a
+
+Benchmark:
+- Benchmark final equity: 1.57
+- Benchmark total return: n/a
+- Benchmark CAGR: n/a
+- Benchmark MaxDD: -26.06%
+
+Różnica vs benchmark:
+- Total return vs benchmark: +70.63 pp
+- CAGR vs benchmark: n/a
+- MaxDD vs benchmark: +9.10 pp
+- Hit rate excess: n/a
+
+UK selected daily vs monthly reconstruction check
+----------------------------------------------------------------------------------------------------
+- UK daily final equity: 2.68
+- UK monthly final equity: 2.08
+- UK daily/UK monthly final equity ratio: 1.2924
+- UK daily CAGR: n/a
+- UK monthly CAGR: 16.32%
+- UK daily MaxDD: -16.96%
+- UK monthly MaxDD: -17.61%
+- UK daily - UK monthly MaxDD: +0.66 pp
+- UK daily Calmar: n/a
+- UK monthly Calmar: n/a
+
+UK selected rolling robustness
+----------------------------------------------------------------------------------------------------
+Podsumowanie okresów / rolling:
+                                                                                                                                                         strategy benchmark
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk
+
+Najgorsze rolling windows wg CAGR vs benchmark:
+                                                                                                                                                         strategy  window_months window_start window_end  strategy_cagr  benchmark_cagr  cagr_vs_benchmark  strategy_max_drawdown  benchmark_max_drawdown  maxdd_vs_benchmark  strategy_final_equity  benchmark_final_equity
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay             12   2022-10-01 2023-09-01       0.076311        0.182892          -0.106581              -0.067178               -0.063657           -0.003521               1.076311                1.182892
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay             12   2022-07-01 2023-06-01       0.092559        0.167670          -0.075111              -0.036255               -0.115468            0.079213               1.092559                1.167670
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay             12   2022-06-01 2023-05-01      -0.035681        0.030914          -0.066595              -0.036255               -0.115468            0.079213               0.964319                1.030914
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay             12   2021-12-01 2022-11-01      -0.165467       -0.124028          -0.041439              -0.155220               -0.244403            0.089183               0.834533                0.875972
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay             12   2022-11-01 2023-10-01       0.077499        0.113060          -0.035561              -0.077460               -0.082525            0.005065               1.077499                1.113060
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay             12   2024-07-01 2025-06-01       0.128281        0.161644          -0.033363              -0.062659               -0.034729           -0.027930               1.128281                1.161644
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay             12   2022-09-01 2023-08-01       0.131093        0.160725          -0.029633              -0.029859               -0.046638            0.016778               1.131093                1.160725
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay             12   2022-05-01 2023-04-01      -0.028315       -0.002309          -0.026005              -0.123868               -0.121698           -0.002170               0.971685                0.997691
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay             24   2022-05-01 2024-04-01       0.077353        0.087935          -0.010582              -0.123868               -0.121698           -0.002170               1.160689                1.183603
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay             12   2023-01-01 2023-12-01       0.203260        0.213155          -0.009896              -0.077460               -0.082525            0.005065               1.203260                1.213155
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay             24   2022-10-01 2024-09-01       0.241260        0.243114          -0.001854              -0.077460               -0.082525            0.005065               1.540726                1.545333
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay             12   2024-03-01 2025-02-01       0.149709        0.146596           0.003113              -0.062659               -0.027668           -0.034991               1.149709                1.146596
+
+UK selected underwater
+----------------------------------------------------------------------------------------------------
+Najgorsze underwater periods:
+                                                                                                                                                         strategy benchmark series_type underwater_start underwater_bottom underwater_recovery  duration_months  months_to_bottom  max_drawdown  is_recovered
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk   benchmark       2022-01-01        2022-09-01          2024-01-01               24                 8     -0.244403             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk    strategy       2021-12-01        2022-10-01          2023-12-01               24                10     -0.176139             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk    strategy       2026-03-01        2026-03-01                 NaN                0                 0     -0.078207             0
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk    strategy       2024-11-01        2024-12-01          2025-03-01                4                 1     -0.062659             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk    strategy       2021-09-01        2021-09-01          2021-11-01                2                 0     -0.057733             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk    strategy       2024-04-01        2024-04-01          2024-05-01                1                 0     -0.049932             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk    strategy       2025-12-01        2025-12-01          2026-01-01                1                 0     -0.047426             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk   benchmark       2021-09-01        2021-09-01          2021-10-01                1                 0     -0.047120             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk   benchmark       2026-02-01        2026-03-01                 NaN                1                 1     -0.040844             0
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk    strategy       2024-07-01        2024-07-01          2024-10-01                3                 0     -0.034776             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk   benchmark       2025-03-01        2025-03-01          2025-05-01                2                 0     -0.034729             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk   benchmark       2024-04-01        2024-04-01          2024-05-01                1                 0     -0.027668             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk   benchmark       2024-12-01        2024-12-01          2025-02-01                2                 0     -0.024455             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk   benchmark       2021-11-01        2021-11-01          2021-12-01                1                 0     -0.010935             1
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk   benchmark       2024-10-01        2024-10-01          2024-11-01                1                 0     -0.005045             1
+
+Niezrecoverowane okresy:
+                                                                                                                                                         strategy benchmark series_type underwater_start underwater_bottom underwater_recovery  duration_months  months_to_bottom  months_to_recovery  max_drawdown  start_equity  bottom_equity  recovery_equity  is_recovered
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk    strategy       2026-03-01        2026-03-01                 NaN                0                 0                 NaN     -0.078207      2.252475       2.076317              NaN             0
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   vwra.uk   benchmark       2026-02-01        2026-03-01                 NaN                1                 1                 NaN     -0.040844      1.574315       1.510013              NaN             0
+
+UK replay monthly exposure summary
+----------------------------------------------------------------------------------------------------
+Ekspozycje wg wag monthly:
+  asset  months_present  avg_weight  max_weight
+iuit.uk              45    0.511888    0.822517
+u10c.uk              33    0.188159    0.208705
+cspx.uk              23    0.193862    0.204704
+igln.uk              21    0.636532    0.804501
+cmod.uk              10    0.407491    0.694000
+  _CASH               6    0.809154    0.824411
+vwra.uk               2    1.000000    1.000000
+
+====================================================================================================
+MAPPING CONSISTENCY - US SELECTED VS UK REPLAY
+====================================================================================================
+- Wspólne miesiące: 58
+- Korelacja monthly returns UK vs US: 0.9360
+- Średnia różnica UK - US monthly return: -0.19 pp
+- MAE monthly return difference: 1.29%
+- Max abs monthly return difference: 4.68%
+
+Największe rozjazdy miesięczne UK vs US:
+      date  return_us  return_uk      diff  abs_diff
+2024-09-01   0.045496  -0.001340 -0.046836  0.046836
+2022-04-01   0.033784  -0.007588 -0.041373  0.041373
+2021-12-01   0.008926  -0.024763 -0.033689  0.033689
+2022-03-01   0.053001   0.020432 -0.032569  0.032569
+2021-11-01   0.005181   0.035996  0.030815  0.030815
+2024-08-01   0.001739   0.030314  0.028574  0.028574
+2024-07-01  -0.062416  -0.034776  0.027640  0.027640
+2024-05-01   0.078571   0.103542  0.024971  0.024971
+2023-12-01  -0.010636   0.013900  0.024536  0.024536
+2024-12-01  -0.026152  -0.049419 -0.023266  0.023266
+2026-02-01   0.114249   0.094727 -0.019522  0.019522
+2025-08-01   0.044471   0.025434 -0.019037  0.019037
+2026-03-01  -0.095674  -0.078207  0.017468  0.017468
+2022-06-01  -0.077107  -0.094161 -0.017054  0.017054
+2024-02-01   0.052012   0.068493  0.016481  0.016481
+
+Na wspólnym okresie:
+- US cumulative return: 130.49%
+- UK cumulative return: 107.63%
+- UK/US cumulative ratio: 0.9008
+
+US selected vs UK replay - porównanie ekspozycji miesięcznych
+----------------------------------------------------------------------------------------------------
+- Wspólne miesiące: 58
+- Średnia liczba aktywów US: 2.62
+- Średnia liczba aktywów UK: 2.41
+- Miesiące z cash US > 0: 6
+- Miesiące z cash UK > 0: 6
+- Miesiące z różnicą liczby aktywów albo cash status: 26
+
+Najważniejsze mismatch months:
+      date             us_assets               uk_assets  us_asset_count  uk_asset_count  us_cash_weight  uk_cash_weight
+2021-07-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2021-08-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2021-09-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2022-01-01         dbc.us,xlk.us cmod.uk,iuit.uk,u10c.uk               2               3             0.0        0.000000
+2022-06-01         dbc.us,xlk.us cmod.uk,iuit.uk,u10c.uk               2               3             0.0        0.000000
+2022-11-01                 _CASH           _CASH,u10c.uk               1               2             1.0        0.824411
+2023-02-01         vglt.us,vt.us                 vwra.uk               2               1             0.0        0.000000
+2023-09-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2023-10-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2023-11-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2023-12-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2024-01-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2024-02-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2024-03-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2024-04-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2024-05-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2024-06-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2024-07-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2024-08-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2024-09-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2024-10-01 ivv.us,vglt.us,xlk.us         cspx.uk,iuit.uk               3               2             0.0        0.000000
+2025-01-01         iau.us,xlk.us igln.uk,iuit.uk,u10c.uk               2               3             0.0        0.000000
+2025-06-01 iau.us,ivv.us,vglt.us         cspx.uk,igln.uk               3               2             0.0        0.000000
+2025-09-01         iau.us,xlk.us igln.uk,iuit.uk,u10c.uk               2               3             0.0        0.000000
+2026-01-01         iau.us,xlk.us igln.uk,iuit.uk,u10c.uk               2               3             0.0        0.000000
+2026-02-01         iau.us,xlk.us igln.uk,iuit.uk,u10c.uk               2               3             0.0        0.000000
+
+====================================================================================================
+UK REPLAY COSTS / HOLDINGS / TAX
+====================================================================================================
+
+Trades
+----------------------------------------------------------------------------------------------------
+- Liczba wierszy trades: 46
+- Suma turnover: 28.46
+- Suma trade_cost: 0.11
+      date                                                                                                                                                          strategy   asset  weight_before_trade  weight_after_trade  trade_weight_delta side  signal_changed_source  rebalanced  turnover  trade_cost
+2021-06-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   _CASH             1.000000            0.000000           -1.000000 SELL                      0           1  1.000000    0.004000
+2021-06-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay cspx.uk             0.000000            0.204704            0.204704  BUY                      0           1  1.000000    0.004000
+2021-06-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay iuit.uk             0.000000            0.795296            0.795296  BUY                      0           1  1.000000    0.004000
+2021-10-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay cmod.uk             0.000000            0.160000            0.160000  BUY                      1           1  0.360000    0.001440
+2021-10-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay cspx.uk             0.196295            0.000000           -0.196295 SELL                      1           1  0.360000    0.001440
+2021-10-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay iuit.uk             0.803705            0.640000           -0.163705 SELL                      1           1  0.360000    0.001440
+2021-10-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay u10c.uk             0.000000            0.200000            0.200000  BUY                      1           1  0.360000    0.001440
+2022-03-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay cmod.uk             0.182824            0.640000            0.457176  BUY                      1           1  0.463647    0.001855
+2022-03-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay iuit.uk             0.623647            0.160000           -0.463647 SELL                      1           1  0.463647    0.001855
+2022-03-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay u10c.uk             0.193529            0.200000            0.006471  BUY                      1           1  0.463647    0.001855
+2022-07-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   _CASH             0.000000            0.800000            0.800000  BUY                      1           1  0.820603    0.003282
+2022-07-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay cmod.uk             0.678073            0.000000           -0.678073 SELL                      1           1  0.820603    0.003282
+2022-07-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay iuit.uk             0.142529            0.000000           -0.142529 SELL                      1           1  0.820603    0.003282
+2022-07-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay u10c.uk             0.179397            0.200000            0.020603  BUY                      1           1  0.820603    0.003282
+2023-01-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   _CASH             0.816836            0.000000           -0.816836 SELL                      1           1  1.000000    0.004000
+2023-01-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay u10c.uk             0.183164            0.000000           -0.183164 SELL                      1           1  1.000000    0.004000
+2023-01-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay vwra.uk             0.000000            1.000000            1.000000  BUY                      1           1  1.000000    0.004000
+2023-03-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay igln.uk             0.000000            0.800000            0.800000  BUY                      1           1  1.000000    0.004000
+2023-03-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay u10c.uk             0.000000            0.200000            0.200000  BUY                      1           1  1.000000    0.004000
+2023-03-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay vwra.uk             1.000000            0.000000           -1.000000 SELL                      1           1  1.000000    0.004000
+2023-04-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay cmod.uk             0.000000            0.640000            0.640000  BUY                      1           1  0.642060    0.002568
+2023-04-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay igln.uk             0.802060            0.160000           -0.642060 SELL                      1           1  0.642060    0.002568
+2023-04-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay u10c.uk             0.197940            0.200000            0.002060  BUY                      1           1  0.642060    0.002568
+2023-05-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay cmod.uk             0.631586            0.000000           -0.631586 SELL                      1           1  0.634437    0.002538
+2023-05-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay igln.uk             0.165563            0.640000            0.474437  BUY                      1           1  0.634437    0.002538
+2023-05-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay iuit.uk             0.000000            0.160000            0.160000  BUY                      1           1  0.634437    0.002538
+2023-05-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay u10c.uk             0.202851            0.200000           -0.002851 SELL                      1           1  0.634437    0.002538
+2023-06-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay igln.uk             0.626885            0.160000           -0.466885 SELL                      1           1  0.466885    0.001868
+2023-06-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay iuit.uk             0.178373            0.640000            0.461627  BUY                      1           1  0.466885    0.001868
+2023-06-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay u10c.uk             0.194742            0.200000            0.005258  BUY                      1           1  0.466885    0.001868
+
+Holdings
+----------------------------------------------------------------------------------------------------
+- Liczba wierszy holdings: 140
+
+Top holdings:
+asset
+iuit.uk    45
+u10c.uk    33
+cspx.uk    23
+igln.uk    21
+cmod.uk    10
+_CASH       6
+vwra.uk     2
+
+Monthly cost/tax
+----------------------------------------------------------------------------------------------------
+- Suma turnover: 8.26
+- Suma operations: 59.00
+- Suma tax_amount: 0.22
+- Suma trade_cost: 0.03
+
+====================================================================================================
+DAILY PERIOD MAXDD DETAILS
+====================================================================================================
+
+US base period daily MaxDD
+----------------------------------------------------------------------------------------------------
+                                                                                                     strategy period_start period_end  return_daily_rebuilt  return_from_monthly_csv  return_diff_vs_monthly_csv  period_daily_maxdd  period_min_equity
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2008-07-01 2008-08-01             -0.105045                      NaN                         NaN           -0.120254           0.894955
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2008-08-01 2008-09-01              0.000000                      NaN                         NaN            0.000000           0.894955
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2008-09-01 2008-10-01              0.000000                      NaN                         NaN            0.000000           0.894955
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2008-10-01 2008-11-01              0.000000                      NaN                         NaN            0.000000           0.894955
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2008-11-01 2008-12-01              0.000000                      NaN                         NaN            0.000000           0.894955
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2008-12-01 2009-01-01              0.000000                      NaN                         NaN            0.000000           0.894955
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2009-01-01 2009-02-01              0.000000                      NaN                         NaN            0.000000           0.894955
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2009-02-01 2009-03-01              0.000000                      NaN                         NaN            0.000000           0.894955
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2009-03-01 2009-04-01              0.000000                      NaN                         NaN            0.000000           0.894955
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2009-04-01 2009-05-01              0.000000                      NaN                         NaN            0.000000           0.894955
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2009-05-01 2009-06-01              0.125460                      NaN                         NaN           -0.052008           0.894955
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2009-06-01 2009-07-01             -0.028446                      NaN                         NaN           -0.076375           0.930308
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2009-07-01 2009-08-01              0.105296                      NaN                         NaN           -0.052947           0.926772
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2009-08-01 2009-09-01             -0.016824                      NaN                         NaN           -0.039654           1.041308
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2009-09-01 2009-10-01              0.048010                      NaN                         NaN           -0.042917           1.063428
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2009-10-01 2009-11-01              0.060204                      NaN                         NaN           -0.033557           1.114483
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2009-11-01 2009-12-01              0.117847                      NaN                         NaN           -0.014206           1.181579
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2009-12-01 2010-01-01             -0.042909                      NaN                         NaN           -0.084515           1.223889
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2010-01-01 2010-02-01             -0.029607                      NaN                         NaN           -0.066989           1.202299
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2010-02-01 2010-03-01              0.015346                      NaN                         NaN           -0.041495           1.185054
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2010-03-01 2010-04-01              0.050388                      NaN                         NaN           -0.008465           1.244735
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2010-04-01 2010-05-01              0.045749                      NaN                         NaN           -0.019843           1.308309
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2010-05-01 2010-06-01              0.009099                      NaN                         NaN           -0.054846           1.338156
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2010-06-01 2010-07-01             -0.027689                      NaN                         NaN           -0.054562           1.342384
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2010-07-01 2010-08-01              0.006969                      NaN                         NaN           -0.029401           1.332383
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2010-08-01 2010-09-01              0.033212                      NaN                         NaN           -0.008553           1.351739
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2010-09-01 2010-10-01              0.063696                      NaN                         NaN           -0.007594           1.396634
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2010-10-01 2010-11-01              0.029462                      NaN                         NaN           -0.030381           1.479660
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2010-11-01 2010-12-01              0.023218                      NaN                         NaN           -0.052463           1.510212
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2010-12-01 2011-01-01              0.022621                      NaN                         NaN           -0.029176           1.557157
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2011-01-01 2011-02-01             -0.036745                      NaN                         NaN           -0.053122           1.515260
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2011-02-01 2011-03-01              0.054835                      NaN                         NaN           -0.005174           1.540171
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2011-03-01 2011-04-01             -0.004155                      NaN                         NaN           -0.032138           1.574549
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2011-04-01 2011-05-01              0.069419                      NaN                         NaN           -0.012560           1.619237
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2011-05-01 2011-06-01             -0.012815                      NaN                         NaN           -0.054483           1.637297
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2011-06-01 2011-07-01             -0.032329                      NaN                         NaN           -0.039999           1.654086
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2011-07-01 2011-08-01              0.062454                      NaN                         NaN           -0.007616           1.654186
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2011-08-01 2011-09-01              0.094825                      NaN                         NaN           -0.048966           1.757497
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2011-09-01 2011-10-01             -0.104719                      NaN                         NaN           -0.140706           1.690856
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3   2011-10-01 2011-11-01              0.052264                      NaN                         NaN           -0.033881           1.702329
+
+UK selected period daily MaxDD
+----------------------------------------------------------------------------------------------------
+                                                                                                                                                         strategy period_start period_end  return_daily_rebuilt  return_from_monthly_csv  return_diff_vs_monthly_csv  period_daily_maxdd  period_min_equity
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2021-06-01 2021-07-01              0.058515                      NaN                         NaN           -0.011055           0.997037
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2021-07-01 2021-08-01              0.043116                      NaN                         NaN           -0.027417           1.058515
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2021-08-01 2021-09-01              0.034686                      NaN                         NaN           -0.011243           1.093760
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2021-09-01 2021-10-01             -0.057730                      NaN                         NaN           -0.059382           1.076499
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2021-10-01 2021-11-01              0.057143                      NaN                         NaN           -0.009737           1.068385
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2021-11-01 2021-12-01              0.035558                      NaN                         NaN           -0.024076           1.138014
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2021-12-01 2022-01-01              0.014165                      NaN                         NaN           -0.036475           1.144900
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2022-01-01 2022-02-01             -0.043965                      NaN                         NaN           -0.096110           1.080303
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2022-02-01 2022-03-01             -0.023523                      NaN                         NaN           -0.056869           1.082314
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2022-03-01 2022-04-01              0.023610                      NaN                         NaN           -0.068534           1.094017
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2022-04-01 2022-05-01             -0.003438                      NaN                         NaN           -0.034856           1.112935
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2022-05-01 2022-06-01              0.005390                      NaN                         NaN           -0.041447           1.090991
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2022-06-01 2022-07-01             -0.094070                      NaN                         NaN           -0.118267           1.036654
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2022-07-01 2022-08-01              0.006997                      NaN                         NaN           -0.007582           1.030749
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2022-08-01 2022-09-01             -0.016597                      NaN                         NaN           -0.016597           1.026581
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2022-09-01 2022-10-01             -0.008206                      NaN                         NaN           -0.014427           1.012444
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2022-10-01 2022-11-01             -0.012225                      NaN                         NaN           -0.019886           0.997910
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2022-11-01 2022-12-01              0.012762                      NaN                         NaN           -0.004977           1.001115
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2022-12-01 2023-01-01             -0.003447                      NaN                         NaN           -0.014459           1.011844
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2023-01-01 2023-02-01              0.073741                      NaN                         NaN           -0.017812           1.015034
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2023-02-01 2023-03-01             -0.029859                      NaN                         NaN           -0.053029           1.053561
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2023-03-01 2023-04-01              0.080289                      NaN                         NaN           -0.016639           1.051893
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2023-04-01 2023-05-01             -0.022298                      NaN                         NaN           -0.034771           1.116763
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2023-05-01 2023-06-01              0.004340                      NaN                         NaN           -0.029318           1.096485
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2023-06-01 2023-07-01              0.027992                      NaN                         NaN           -0.021280           1.116491
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2023-07-01 2023-08-01              0.035445                      NaN                         NaN           -0.021893           1.138270
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2023-08-01 2023-09-01             -0.011389                      NaN                         NaN           -0.076567           1.102462
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2023-09-01 2023-10-01             -0.056238                      NaN                         NaN           -0.078185           1.090205
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2023-10-01 2023-11-01             -0.010951                      NaN                         NaN           -0.069410           1.073392
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2023-11-01 2023-12-01              0.111602                      NaN                         NaN           -0.007642           1.101703
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2023-12-01 2024-01-01              0.019950                      NaN                         NaN           -0.023994           1.206153
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2024-01-01 2024-02-01              0.061834                      NaN                         NaN           -0.027187           1.233584
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2024-02-01 2024-03-01              0.068564                      NaN                         NaN           -0.044465           1.326323
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2024-03-01 2024-04-01              0.002138                      NaN                         NaN           -0.023335           1.404781
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2024-04-01 2024-05-01             -0.049880                      NaN                         NaN           -0.075597           1.328330
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2024-05-01 2024-06-01              0.103368                      NaN                         NaN           -0.038097           1.349445
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2024-06-01 2024-07-01              0.084658                      NaN                         NaN           -0.032505           1.488935
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2024-07-01 2024-08-01             -0.034811                      NaN                         NaN           -0.088780           1.535805
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2024-08-01 2024-09-01              0.030374                      NaN                         NaN           -0.063399           1.459941
+ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay   2024-09-01 2024-10-01             -0.001227                      NaN                         NaN           -0.066273           1.499669
+
+====================================================================================================
+RAW KEY PREVIEWS
+====================================================================================================
+
+Selected US monthly preview
+----------------------------------------------------------------------------------------------------
+      date                                                                                                                                           strategy  signal_changed  kept_by_hysteresis  forced_rebalance_due_to_cap  forced_exit_due_to_asset_gate  min_score_gap_to_switch  turnover  operations  trade_cost  gross_return  net_return_before_tax  taxable_profit_year  tax_amount  tax_event  tax_base_before  tax_base_after  net_return
+2008-07-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               1                   0                            0                              0                    0.005   1.00000           2    0.004000     -0.104671              -0.108252              0.00000    0.000000          0         1.000000        1.000000   -0.108252
+2008-08-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               1                   0                            0                              0                    0.005   1.00000           2    0.004000      0.000000              -0.004000              0.00000    0.000000          0         1.000000        1.000000   -0.004000
+2008-09-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000      0.000000               0.000000              0.00000    0.000000          0         1.000000        1.000000    0.000000
+2008-10-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000      0.000000               0.000000              0.00000    0.000000          0         1.000000        1.000000    0.000000
+2008-11-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000      0.000000               0.000000              0.00000    0.000000          0         1.000000        1.000000    0.000000
+2008-12-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000      0.000000               0.000000              0.00000    0.000000          0         1.000000        1.000000    0.000000
+2009-01-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000      0.000000               0.000000              0.00000    0.000000          0         1.000000        1.000000    0.000000
+2009-02-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000      0.000000               0.000000              0.00000    0.000000          0         1.000000        1.000000    0.000000
+2009-03-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000      0.000000               0.000000              0.00000    0.000000          0         1.000000        1.000000    0.000000
+2009-04-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000      0.000000               0.000000              0.00000    0.000000          0         1.000000        1.000000    0.000000
+2009-05-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               1                   0                            0                              0                    0.005   1.00000           1    0.004000      0.125460               0.120959              0.00000    0.000000          0         1.000000        1.000000    0.120959
+2009-06-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000     -0.028446              -0.028446              0.00000    0.000000          0         1.000000        1.000000   -0.028446
+2009-07-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000      0.105296               0.105296              0.00000    0.000000          0         1.000000        1.000000    0.105296
+2009-08-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000     -0.016824              -0.016824              0.00000    0.000000          0         1.000000        1.000000   -0.016824
+2009-09-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000      0.048010               0.048010              0.00000    0.000000          0         1.000000        1.000000    0.048010
+2009-10-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               1                   0                            0                              0                    0.005   1.00000           2    0.004000      0.060204               0.055963              0.00000    0.000000          0         1.000000        1.000000    0.055963
+2009-11-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               1                   0                            0                              0                    0.005   0.20000           3    0.000800      0.117935               0.117041              0.00000    0.000000          0         1.000000        1.000000    0.117041
+2009-12-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000     -0.042237              -0.042237              0.24454    0.046463          1         1.000000        1.198078   -0.077994
+2010-01-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000     -0.029422              -0.029422              0.00000    0.000000          0         1.198078        1.198078   -0.029422
+2010-02-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000      0.015311               0.015311              0.00000    0.000000          0         1.198078        1.198078    0.015311
+2010-03-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               1                   0                            0                              1                    0.005   0.79907           4    0.003196      0.050364               0.047007              0.00000    0.000000          0         1.198078        1.198078    0.047007
+2010-04-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               1                   0                            0                              0                    0.005   0.80000           4    0.003200      0.045517               0.042172              0.00000    0.000000          0         1.198078        1.198078    0.042172
+2010-05-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000      0.009531               0.009531              0.00000    0.000000          0         1.198078        1.198078    0.009531
+2010-06-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000     -0.028376              -0.028376              0.00000    0.000000          0         1.198078        1.198078   -0.028376
+2010-07-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive               0                   0                            0                              0                    0.005   0.00000           0    0.000000      0.007535               0.007535              0.00000    0.000000          0         1.198078        1.198078    0.007535
+
+UK replay selected monthly preview
+----------------------------------------------------------------------------------------------------
+      date                                                                                                                                                          strategy execution_mode                                                                           source_weights_json                                                                      mapped_target_weights_json                                                                       weights_before_trade_json                                                                               weights_used_json                                                                               next_weights_json  signal_changed_source  rebalanced  turnover  operations  trade_cost  gross_return  net_return_before_tax  taxable_profit_year  tax_amount  tax_event
+2021-06-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                                 {"ivv.us": 0.20470402010425837, "xlk.us": 0.7952959798957415}                                  {"cspx.uk": 0.2047040201042584, "iuit.uk": 0.7952959798957416}                                                                                  {"_CASH": 1.0}                                  {"cspx.uk": 0.2047040201042584, "iuit.uk": 0.7952959798957416}                                  {"cspx.uk": 0.1982567415518443, "iuit.uk": 0.8017432584481557}                      0           1  1.000000           2    0.004000      0.058604               0.054369             0.000000    0.000000          0
+2021-07-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed {"ivv.us": 0.15804625322586063, "vglt.us": 0.19999999999999996, "xlk.us": 0.6419537467741394} {"cspx.uk": 0.15804625322586063, "u10c.uk": 0.19999999999999996, "iuit.uk": 0.6419537467741394}                                  {"cspx.uk": 0.1982567415518443, "iuit.uk": 0.8017432584481557}                                  {"cspx.uk": 0.1982567415518443, "iuit.uk": 0.8017432584481557}                                 {"cspx.uk": 0.19484508421238636, "iuit.uk": 0.8051549157876137}                      0           0  0.000000           0    0.000000      0.043116               0.043116             0.000000    0.000000          0
+2021-08-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed {"ivv.us": 0.15597067114950658, "vglt.us": 0.19999999999999993, "xlk.us": 0.6440293288504934}  {"cspx.uk": 0.1559706711495066, "u10c.uk": 0.19999999999999996, "iuit.uk": 0.6440293288504935}                                 {"cspx.uk": 0.19484508421238636, "iuit.uk": 0.8051549157876137}                                 {"cspx.uk": 0.19484508421238636, "iuit.uk": 0.8051549157876137}                                 {"cspx.uk": 0.19351935210598453, "iuit.uk": 0.8064806478940155}                      0           0  0.000000           0    0.000000      0.034665               0.034665             0.000000    0.000000          0
+2021-09-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed {"ivv.us": 0.15515179839266502, "vglt.us": 0.19999999999999996, "xlk.us": 0.6448482016073351} {"cspx.uk": 0.15515179839266502, "u10c.uk": 0.19999999999999996, "iuit.uk": 0.6448482016073351}                                 {"cspx.uk": 0.19351935210598453, "iuit.uk": 0.8064806478940155}                                 {"cspx.uk": 0.19351935210598453, "iuit.uk": 0.8064806478940155}                                 {"cspx.uk": 0.19629497569345808, "iuit.uk": 0.8037050243065419}                      0           0  0.000000           0    0.000000     -0.057733              -0.057733             0.000000    0.000000          0
+2021-10-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                              {"dbc.us": 0.16, "vglt.us": 0.19999999999999996, "xlk.us": 0.64}                              {"cmod.uk": 0.16, "u10c.uk": 0.19999999999999996, "iuit.uk": 0.64}                                 {"cspx.uk": 0.19629497569345808, "iuit.uk": 0.8037050243065419}                              {"cmod.uk": 0.16, "u10c.uk": 0.19999999999999996, "iuit.uk": 0.64} {"cmod.uk": 0.15593055749134874, "u10c.uk": 0.19441876665545738, "iuit.uk": 0.6496506758531939}                      1           1  0.360000           5    0.001440      0.056818               0.055296             0.000000    0.000000          0
+2021-11-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed {"dbc.us": 0.15852092467170117, "vglt.us": 0.19999999999999996, "xlk.us": 0.6414790753282988} {"cmod.uk": 0.15852092467170117, "u10c.uk": 0.19999999999999996, "iuit.uk": 0.6414790753282988} {"cmod.uk": 0.15593055749134874, "u10c.uk": 0.19441876665545738, "iuit.uk": 0.6496506758531939} {"cmod.uk": 0.15593055749134874, "u10c.uk": 0.19441876665545738, "iuit.uk": 0.6496506758531939} {"cmod.uk": 0.13966956259861643, "u10c.uk": 0.19289264735892134, "iuit.uk": 0.6674377900424622}                      0           0  0.000000           0    0.000000      0.035996               0.035996             0.000000    0.000000          0
+2021-12-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed {"dbc.us": 0.14157429046410272, "vglt.us": 0.19999999999999996, "xlk.us": 0.6584257095358973} {"cmod.uk": 0.14157429046410272, "u10c.uk": 0.19999999999999996, "iuit.uk": 0.6584257095358973} {"cmod.uk": 0.13966956259861643, "u10c.uk": 0.19289264735892134, "iuit.uk": 0.6674377900424622} {"cmod.uk": 0.13966956259861643, "u10c.uk": 0.19289264735892134, "iuit.uk": 0.6674377900424622}   {"cmod.uk": 0.1450892446300971, "u10c.uk": 0.1837392673842871, "iuit.uk": 0.6711714879856158}                      0           0  0.000000           0    0.000000      0.003901               0.003901             0.176853    0.033602          1
+2022-01-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                                 {"dbc.us": 0.18019342505924085, "xlk.us": 0.8198065749407591}                                 {"cmod.uk": 0.18019342505924085, "iuit.uk": 0.8198065749407591}   {"cmod.uk": 0.1450892446300971, "u10c.uk": 0.1837392673842871, "iuit.uk": 0.6711714879856158}   {"cmod.uk": 0.1450892446300971, "u10c.uk": 0.1837392673842871, "iuit.uk": 0.6711714879856158}  {"cmod.uk": 0.1626071696551308, "u10c.uk": 0.18829013259674926, "iuit.uk": 0.6491026977481199}                      0           0  0.000000           0    0.000000     -0.034712              -0.034712             0.000000    0.000000          0
+2022-02-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                 {"dbc.us": 0.16323806625576576, "vglt.us": 0.2, "xlk.us": 0.6367619337442343}                 {"cmod.uk": 0.16323806625576576, "u10c.uk": 0.2, "iuit.uk": 0.6367619337442343}  {"cmod.uk": 0.1626071696551308, "u10c.uk": 0.18829013259674926, "iuit.uk": 0.6491026977481199}  {"cmod.uk": 0.1626071696551308, "u10c.uk": 0.18829013259674926, "iuit.uk": 0.6491026977481199}    {"cmod.uk": 0.1828240939979222, "u10c.uk": 0.193528561151193, "iuit.uk": 0.6236473448508848}                      0           0  0.000000           0    0.000000     -0.023273              -0.023273             0.000000    0.000000          0
+2022-03-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                              {"dbc.us": 0.64, "vglt.us": 0.19999999999999996, "xlk.us": 0.16}                              {"cmod.uk": 0.64, "u10c.uk": 0.19999999999999996, "iuit.uk": 0.16}    {"cmod.uk": 0.1828240939979222, "u10c.uk": 0.193528561151193, "iuit.uk": 0.6236473448508848}                              {"cmod.uk": 0.64, "u10c.uk": 0.19999999999999996, "iuit.uk": 0.16} {"cmod.uk": 0.6544378743066779, "u10c.uk": 0.18264853041549098, "iuit.uk": 0.16291359527783109}                      1           1  0.463647           6    0.001855      0.022328               0.020432             0.000000    0.000000          0
+2022-04-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                  {"dbc.us": 0.6405999969214795, "vglt.us": 0.2, "xlk.us": 0.1594000030785205}                  {"cmod.uk": 0.6405999969214795, "u10c.uk": 0.2, "iuit.uk": 0.1594000030785205} {"cmod.uk": 0.6544378743066779, "u10c.uk": 0.18264853041549098, "iuit.uk": 0.16291359527783109} {"cmod.uk": 0.6544378743066779, "u10c.uk": 0.18264853041549098, "iuit.uk": 0.16291359527783109} {"cmod.uk": 0.6831773486351432, "u10c.uk": 0.16735739260316665, "iuit.uk": 0.14946525876169015}                      0           0  0.000000           0    0.000000     -0.007588              -0.007588             0.000000    0.000000          0
+2022-05-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed {"dbc.us": 0.6602987010260267, "vglt.us": 0.20000000000000007, "xlk.us": 0.13970129897397324} {"cmod.uk": 0.6602987010260267, "u10c.uk": 0.20000000000000007, "iuit.uk": 0.13970129897397324} {"cmod.uk": 0.6831773486351432, "u10c.uk": 0.16735739260316665, "iuit.uk": 0.14946525876169015} {"cmod.uk": 0.6831773486351432, "u10c.uk": 0.16735739260316665, "iuit.uk": 0.14946525876169015}  {"cmod.uk": 0.6939995465121165, "u10c.uk": 0.1624644097810133, "iuit.uk": 0.14353604370687018}                      0           0  0.000000           0    0.000000      0.009876               0.009876             0.000000    0.000000          0
+2022-06-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                                 {"dbc.us": 0.8338209671379481, "xlk.us": 0.16617903286205193}                                 {"cmod.uk": 0.8338209671379481, "iuit.uk": 0.16617903286205193}  {"cmod.uk": 0.6939995465121165, "u10c.uk": 0.1624644097810133, "iuit.uk": 0.14353604370687018}  {"cmod.uk": 0.6939995465121165, "u10c.uk": 0.1624644097810133, "iuit.uk": 0.14353604370687018} {"cmod.uk": 0.6780734604888577, "u10c.uk": 0.17939712439912375, "iuit.uk": 0.14252941511201855}                      0           0  0.000000           0    0.000000     -0.094161              -0.094161             0.000000    0.000000          0
+2022-07-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                                                                {"_CASH": 0.8, "vglt.us": 0.2}                                                                  {"_CASH": 0.8, "u10c.uk": 0.2} {"cmod.uk": 0.6780734604888577, "u10c.uk": 0.17939712439912375, "iuit.uk": 0.14252941511201855}                                                                  {"_CASH": 0.8, "u10c.uk": 0.2}                                   {"_CASH": 0.7945215639200645, "u10c.uk": 0.20547843607993566}                      1           1  0.820603           4    0.003282      0.006895               0.003590             0.000000    0.000000          0
+2022-08-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                                                                {"_CASH": 0.8, "vglt.us": 0.2}                                                                  {"_CASH": 0.8, "u10c.uk": 0.2}                                   {"_CASH": 0.7945215639200645, "u10c.uk": 0.20547843607993566}                                   {"_CASH": 0.7945215639200645, "u10c.uk": 0.20547843607993566}                                   {"_CASH": 0.8077005240044459, "u10c.uk": 0.19229947599555394}                      0           0  0.000000           0    0.000000     -0.016317              -0.016317             0.000000    0.000000          0
+2022-09-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                                                                {"_CASH": 0.8, "vglt.us": 0.2}                                                                  {"_CASH": 0.8, "u10c.uk": 0.2}                                   {"_CASH": 0.8077005240044459, "u10c.uk": 0.19229947599555394}                                   {"_CASH": 0.8077005240044459, "u10c.uk": 0.19229947599555394}                                   {"_CASH": 0.8144243683633752, "u10c.uk": 0.18557563163662477}                      0           0  0.000000           0    0.000000     -0.008256              -0.008256             0.000000    0.000000          0
+2022-10-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                                                                {"_CASH": 0.8, "vglt.us": 0.2}                                                                  {"_CASH": 0.8, "u10c.uk": 0.2}                                   {"_CASH": 0.8144243683633752, "u10c.uk": 0.18557563163662477}                                   {"_CASH": 0.8144243683633752, "u10c.uk": 0.18557563163662477}                                   {"_CASH": 0.8244106405364207, "u10c.uk": 0.17558935946357931}                      0           0  0.000000           0    0.000000     -0.012113              -0.012113             0.000000    0.000000          0
+2022-11-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                                                                                {"_CASH": 1.0}                                                                                  {"_CASH": 1.0}                                   {"_CASH": 0.8244106405364207, "u10c.uk": 0.17558935946357931}                                   {"_CASH": 0.8244106405364207, "u10c.uk": 0.17558935946357931}                                   {"_CASH": 0.8138675040501481, "u10c.uk": 0.18613249594985193}                      0           0  0.000000           0    0.000000      0.012954               0.012954             0.000000    0.000000          0
+2022-12-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                                                                {"_CASH": 0.8, "vglt.us": 0.2}                                                                  {"_CASH": 0.8, "u10c.uk": 0.2}                                   {"_CASH": 0.8138675040501481, "u10c.uk": 0.18613249594985193}                                   {"_CASH": 0.8138675040501481, "u10c.uk": 0.18613249594985193}                                   {"_CASH": 0.8168358982777868, "u10c.uk": 0.18316410172221326}                      0           0  0.000000           0    0.000000     -0.003634              -0.003634             0.000000    0.000000          0
+2023-01-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                                                                                {"vt.us": 1.0}                                                                                {"vwra.uk": 1.0}                                   {"_CASH": 0.8168358982777868, "u10c.uk": 0.18316410172221326}                                                                                {"vwra.uk": 1.0}                                                                                {"vwra.uk": 1.0}                      1           1  1.000000           2    0.004000      0.073741               0.069446             0.000000    0.000000          0
+2023-02-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                                                                {"vglt.us": 0.2, "vt.us": 0.8}                                                                {"u10c.uk": 0.2, "vwra.uk": 0.8}                                                                                {"vwra.uk": 1.0}                                                                                {"vwra.uk": 1.0}                                                                                {"vwra.uk": 1.0}                      0           0  0.000000           0    0.000000     -0.029859              -0.029859             0.000000    0.000000          0
+2023-03-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                                                               {"iau.us": 0.8, "vglt.us": 0.2}                                                                {"igln.uk": 0.8, "u10c.uk": 0.2}                                                                                {"vwra.uk": 1.0}                                                                {"igln.uk": 0.8, "u10c.uk": 0.2}                                 {"igln.uk": 0.8020601176105839, "u10c.uk": 0.19793988238941615}                      1           1  1.000000           3    0.004000      0.080011               0.075691             0.000000    0.000000          0
+2023-04-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                              {"dbc.us": 0.64, "iau.us": 0.16, "vglt.us": 0.19999999999999996}                              {"cmod.uk": 0.64, "igln.uk": 0.16, "u10c.uk": 0.19999999999999996}                                 {"igln.uk": 0.8020601176105839, "u10c.uk": 0.19793988238941615}                              {"cmod.uk": 0.64, "igln.uk": 0.16, "u10c.uk": 0.19999999999999996}  {"cmod.uk": 0.631586139792116, "igln.uk": 0.16556332692570042, "u10c.uk": 0.20285053328218366}                      1           1  0.642060           5    0.002568     -0.022503              -0.025013             0.000000    0.000000          0
+2023-05-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                              {"iau.us": 0.64, "vglt.us": 0.19999999999999996, "xlk.us": 0.16}                              {"igln.uk": 0.64, "u10c.uk": 0.19999999999999996, "iuit.uk": 0.16}  {"cmod.uk": 0.631586139792116, "igln.uk": 0.16556332692570042, "u10c.uk": 0.20285053328218366}                              {"igln.uk": 0.64, "u10c.uk": 0.19999999999999996, "iuit.uk": 0.16}  {"igln.uk": 0.626884971607001, "u10c.uk": 0.19474198105555063, "iuit.uk": 0.17837304733744835}                      1           1  0.634437           6    0.002538      0.004770               0.002220             0.000000    0.000000          0
+2023-06-01 ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3__hedge_vglt.us_0.2_hedge_lb_positive__mapped_replay signal_changed                              {"iau.us": 0.16, "vglt.us": 0.19999999999999996, "xlk.us": 0.64}                              {"igln.uk": 0.16, "u10c.uk": 0.19999999999999996, "iuit.uk": 0.64}  {"igln.uk": 0.626884971607001, "u10c.uk": 0.19474198105555063, "iuit.uk": 0.17837304733744835}                              {"igln.uk": 0.16, "u10c.uk": 0.19999999999999996, "iuit.uk": 0.64} {"igln.uk": 0.15132176563738436, "u10c.uk": 0.19374946270916296, "iuit.uk": 0.6549287716534526}                      1           1  0.466885           6    0.001868      0.028222               0.026302             0.000000    0.000000          0
+
+====================================================================================================
+COMPACT COMPARISON TABLE FOR FUTURE STRATEGY SELECTION
+====================================================================================================
+              scope final_equity   cagr   maxdd calmar benchmark_cagr benchmark_maxdd cagr_vs_benchmark maxdd_vs_benchmark
+    US base monthly        14.44 16.23% -17.19%    n/a          7.64%         -48.60%             8.59%             31.40%
+UK selected monthly         2.08 16.32% -17.61%    n/a          8.90%         -24.44%             7.42%              6.83%
+  UK selected daily         2.68    n/a -16.96%    n/a            n/a         -26.06%               n/a              9.10%
