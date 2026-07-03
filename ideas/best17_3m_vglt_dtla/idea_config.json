@@ -21,7 +21,7 @@
   
   "selected_hedge_variant": {
 	  "enabled": true,
-	  "hedge_asset": "vglt.us",
+	  "hedge_asset": "tlt.us",
 	  "hedge_weight": 0.20,
 	  "rule": "hedge_positive_and_beats_a",
 	  "lookback": 1,
@@ -35,9 +35,9 @@
   
     "us": {
       "enabled": true,
-      "hedge_assets": ["uup.us", "vglt.us"],
-      "primary_hedge": "uup.us",
-      "uup_ticker": "uup.us",
+      "hedge_assets": ["tlt.us"],
+      "primary_hedge": "tlt.us",
+      "uup_ticker": "tlt.us",
       "run_uup_deep_dive": false,
       "group_assets": ["xlk.us", "ivv.us", "dbc.us", "iau.us"]
     },
