@@ -1,0 +1,8 @@
+{
+  "series": "uk_selected_monthly",
+
+  "metrics": {
+    "cagr": {"weight": 0.50, "higher_is_better": true},
+    "maxdd": {"weight": 0.50, "higher_is_better": true}
+  }
+}
