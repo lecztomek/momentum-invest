@@ -34,6 +34,16 @@ def safe_read_json(path: Path) -> Dict[str, Any]:
         return {}
 
 
+def read_warnings(path: Path) -> List[str]:
+    if not path.exists():
+        return []
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        return []
+    return [line.strip() for line in lines if line.strip()]
+
+
 def as_num(value: Any) -> Optional[float]:
     x = pd.to_numeric(value, errors="coerce")
     if pd.isna(x):
@@ -150,6 +160,8 @@ def discover_paths(run_dir: Path) -> Dict[str, Path]:
         "us_base_daily_summary": run_dir / "04_us_daily_base" / "summary_daily_maxdd.csv",
         "us_base_daily_periods": run_dir / "04_us_daily_base" / "period_daily_maxdd.csv",
         "us_base_daily_equity": run_dir / "04_us_daily_base" / "daily_equity_drawdown.csv",
+        "us_base_daily_warnings": run_dir / "04_us_daily_base" / "warnings.txt",
+        "us_base_checkpoints": run_dir / "03_us_backtest_base" / "summary_equity_checkpoints.csv",
 
         "us_hedge_overlay_dir": run_dir / "05_us_hedge_overlay_all",
         "us_hedge_summary": run_dir / "05_us_hedge_overlay_all" / "monthly_active_hedge_daily_summary.csv",
@@ -162,6 +174,11 @@ def discover_paths(run_dir: Path) -> Dict[str, Path]:
         "us_selected_daily_summary": run_dir / "07_us_selected_daily_maxdd" / "summary_daily_maxdd.csv",
         "us_selected_daily_periods": run_dir / "07_us_selected_daily_maxdd" / "period_daily_maxdd.csv",
         "us_selected_daily_equity": run_dir / "07_us_selected_daily_maxdd" / "daily_equity_drawdown.csv",
+        "us_selected_daily_warnings": run_dir / "07_us_selected_daily_maxdd" / "warnings.txt",
+        "us_selected_named": run_dir / "07_us_selected_daily_maxdd" / "summary_named_periods.csv",
+        "us_selected_rolling": run_dir / "07_us_selected_daily_maxdd" / "summary_rolling.csv",
+        "us_selected_worst": run_dir / "07_us_selected_daily_maxdd" / "worst_rolling_windows.csv",
+        "us_selected_underwater": run_dir / "07_us_selected_daily_maxdd" / "summary_underwater_periods.csv",
 
         "us_selected_vs_base_summary": run_dir / "08_us_selected_vs_base" / "hedge_vs_baseline_summary.csv",
         "us_selected_vs_base_relative": run_dir / "08_us_selected_vs_base" / "hedge_vs_baseline_relative.csv",
@@ -176,10 +193,12 @@ def discover_paths(run_dir: Path) -> Dict[str, Path]:
         "uk_base_named": run_dir / "11_uk_replay_base_A" / "summary_named_periods.csv",
         "uk_base_holdings": run_dir / "11_uk_replay_base_A" / "replayed_holdings.csv",
         "uk_base_trades": run_dir / "11_uk_replay_base_A" / "replayed_trades.csv",
+        "uk_base_checkpoints": run_dir / "11_uk_replay_base_A" / "summary_equity_checkpoints.csv",
 
         "uk_base_daily_summary": run_dir / "12_uk_daily_base_A" / "summary_daily_maxdd.csv",
         "uk_base_daily_periods": run_dir / "12_uk_daily_base_A" / "period_daily_maxdd.csv",
         "uk_base_daily_equity": run_dir / "12_uk_daily_base_A" / "daily_equity_drawdown.csv",
+        "uk_base_daily_warnings": run_dir / "12_uk_daily_base_A" / "warnings.txt",
 
         "uk_selected_monthly": run_dir / "13_uk_replay_selected_hedge" / "replayed_monthly.csv",
         "uk_selected_full": run_dir / "13_uk_replay_selected_hedge" / "summary_full_period.csv",
@@ -189,10 +208,12 @@ def discover_paths(run_dir: Path) -> Dict[str, Path]:
         "uk_selected_named": run_dir / "13_uk_replay_selected_hedge" / "summary_named_periods.csv",
         "uk_selected_holdings": run_dir / "13_uk_replay_selected_hedge" / "replayed_holdings.csv",
         "uk_selected_trades": run_dir / "13_uk_replay_selected_hedge" / "replayed_trades.csv",
+        "uk_selected_checkpoints": run_dir / "13_uk_replay_selected_hedge" / "summary_equity_checkpoints.csv",
 
         "uk_selected_daily_summary": run_dir / "14_uk_daily_selected_hedge" / "summary_daily_maxdd.csv",
         "uk_selected_daily_periods": run_dir / "14_uk_daily_selected_hedge" / "period_daily_maxdd.csv",
         "uk_selected_daily_equity": run_dir / "14_uk_daily_selected_hedge" / "daily_equity_drawdown.csv",
+        "uk_selected_daily_warnings": run_dir / "14_uk_daily_selected_hedge" / "warnings.txt",
     }
 
 
@@ -210,6 +231,7 @@ def load_data(run_dir: Path) -> Tuple[Dict[str, Path], Dict[str, pd.DataFrame], 
         "us_base_daily_summary",
         "us_base_daily_periods",
         "us_base_daily_equity",
+        "us_base_checkpoints",
         "us_hedge_summary",
         "us_hedge_relative",
         "us_hedge_ranked",
@@ -217,6 +239,10 @@ def load_data(run_dir: Path) -> Tuple[Dict[str, Path], Dict[str, pd.DataFrame], 
         "us_selected_daily_summary",
         "us_selected_daily_periods",
         "us_selected_daily_equity",
+        "us_selected_named",
+        "us_selected_rolling",
+        "us_selected_worst",
+        "us_selected_underwater",
         "us_selected_vs_base_summary",
         "us_selected_vs_base_relative",
         "uk_data_check",
@@ -228,6 +254,7 @@ def load_data(run_dir: Path) -> Tuple[Dict[str, Path], Dict[str, pd.DataFrame], 
         "uk_base_named",
         "uk_base_holdings",
         "uk_base_trades",
+        "uk_base_checkpoints",
         "uk_base_daily_summary",
         "uk_base_daily_periods",
         "uk_base_daily_equity",
@@ -239,6 +266,7 @@ def load_data(run_dir: Path) -> Tuple[Dict[str, Path], Dict[str, pd.DataFrame], 
         "uk_selected_named",
         "uk_selected_holdings",
         "uk_selected_trades",
+        "uk_selected_checkpoints",
         "uk_selected_daily_summary",
         "uk_selected_daily_periods",
         "uk_selected_daily_equity",
@@ -593,20 +621,15 @@ def summarize_weights(df: pd.DataFrame, label: str, json_col: str = "weights_use
     return out
 
 
-def compare_us_uk_weights(us_df: pd.DataFrame, uk_df: pd.DataFrame, title: str) -> str:
-    out = h2(title)
-
+def weights_diff_table(us_df: pd.DataFrame, uk_df: pd.DataFrame) -> Tuple[pd.DataFrame, str]:
     if us_df.empty or uk_df.empty:
-        out += "Brak US albo UK monthly.\n"
-        return out
+        return pd.DataFrame(), "Brak US albo UK monthly.\n"
 
     if "date" not in us_df.columns or "date" not in uk_df.columns:
-        out += "Brak kolumn date.\n"
-        return out
+        return pd.DataFrame(), "Brak kolumn date.\n"
 
     if "weights_used_json" not in us_df.columns or "weights_used_json" not in uk_df.columns:
-        out += "Brak kolumn weights_used_json.\n"
-        return out
+        return pd.DataFrame(), "Brak kolumn weights_used_json.\n"
 
     u = us_df[["date", "weights_used_json"]].copy()
     k = uk_df[["date", "weights_used_json"]].copy()
@@ -620,8 +643,7 @@ def compare_us_uk_weights(us_df: pd.DataFrame, uk_df: pd.DataFrame, title: str) 
     merged = u.merge(k, on="date", how="inner", suffixes=("_us", "_uk"))
 
     if merged.empty:
-        out += "Brak wspólnych miesięcy US/UK.\n"
-        return out
+        return pd.DataFrame(), "Brak wspólnych miesięcy US/UK.\n"
 
     diffs = []
 
@@ -639,7 +661,24 @@ def compare_us_uk_weights(us_df: pd.DataFrame, uk_df: pd.DataFrame, title: str) 
             "uk_cash_weight": uk_w.get("_CASH", 0.0),
         })
 
-    d = pd.DataFrame(diffs)
+    return pd.DataFrame(diffs), ""
+
+
+def weights_mismatch_mask(d: pd.DataFrame) -> pd.Series:
+    return (
+        (d["us_asset_count"] != d["uk_asset_count"])
+        | ((d["us_cash_weight"] > 0) != (d["uk_cash_weight"] > 0))
+    )
+
+
+def compare_us_uk_weights(us_df: pd.DataFrame, uk_df: pd.DataFrame, title: str) -> str:
+    out = h2(title)
+
+    d, reason = weights_diff_table(us_df, uk_df)
+
+    if d.empty:
+        out += reason or "Brak danych.\n"
+        return out
 
     out += bullet("Wspólne miesiące", len(d))
     out += bullet("Średnia liczba aktywów US", fmt_num(d["us_asset_count"].mean()))
@@ -647,10 +686,7 @@ def compare_us_uk_weights(us_df: pd.DataFrame, uk_df: pd.DataFrame, title: str) 
     out += bullet("Miesiące z cash US > 0", int((d["us_cash_weight"] > 0).sum()))
     out += bullet("Miesiące z cash UK > 0", int((d["uk_cash_weight"] > 0).sum()))
 
-    mismatch = d[
-        (d["us_asset_count"] != d["uk_asset_count"])
-        | ((d["us_cash_weight"] > 0) != (d["uk_cash_weight"] > 0))
-    ].copy()
+    mismatch = d[weights_mismatch_mask(d)].copy()
 
     out += bullet("Miesiące z różnicą liczby aktywów albo cash status", len(mismatch))
 
@@ -687,38 +723,113 @@ def monthly_returns_from_monthly(df: pd.DataFrame) -> pd.DataFrame:
     return d[["date", "return"]]
 
 
-def consistency_block(us_monthly: pd.DataFrame, uk_monthly: pd.DataFrame, title: str) -> str:
+def monthly_returns_from_daily_equity(df: pd.DataFrame, equity_col: str = "equity_daily") -> pd.DataFrame:
+    if df.empty or "date" not in df.columns or equity_col not in df.columns:
+        return pd.DataFrame()
+
+    d = df.copy()
+    d["date"] = pd.to_datetime(d["date"], errors="coerce")
+    d = d.dropna(subset=["date"]).sort_values("date")
+    d["period"] = d["date"].dt.to_period("M")
+
+    monthly_eq = d.groupby("period")[equity_col].last().dropna()
+    if len(monthly_eq) < 2:
+        return pd.DataFrame()
+
+    ret = monthly_eq.pct_change().dropna()
+    return pd.DataFrame({"date": ret.index.to_timestamp(), "return": ret.values})
+
+
+# =========================
+# CALENDAR RETURNS TABLE
+# =========================
+
+MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def calendar_returns_table(monthly_returns: pd.DataFrame) -> pd.DataFrame:
+    if monthly_returns.empty:
+        return pd.DataFrame()
+
+    d = monthly_returns.copy()
+    d["year"] = d["date"].dt.year
+    d["month"] = d["date"].dt.month
+
+    pivot = d.pivot_table(index="year", columns="month", values="return", aggfunc="first")
+    pivot = pivot.reindex(columns=range(1, 13))
+    pivot.columns = MONTH_LABELS
+
+    annual = d.groupby("year")["return"].apply(lambda s: float((1.0 + s).prod() - 1.0))
+    pivot["YEAR"] = annual
+
+    return pivot.reset_index()
+
+
+def calendar_returns_block(title: str, monthly_returns: pd.DataFrame) -> str:
     out = h2(title)
 
+    piv = calendar_returns_table(monthly_returns)
+    if piv.empty:
+        out += "Brak danych.\n"
+        return out
+
+    display = piv.copy()
+    for col in MONTH_LABELS + ["YEAR"]:
+        display[col] = display[col].apply(lambda v: fmt_pct(v) if pd.notna(v) else "")
+
+    out += table(display, 40, 14)
+    return out
+
+
+def compute_return_consistency(us_monthly: pd.DataFrame, uk_monthly: pd.DataFrame) -> Dict[str, Any]:
     us_ret = monthly_returns_from_monthly(us_monthly)
     uk_ret = monthly_returns_from_monthly(uk_monthly)
 
     if us_ret.empty or uk_ret.empty:
-        out += "Brak miesięcznych zwrotów US albo UK do porównania.\n"
-        return out
+        return {"reason": "Brak miesięcznych zwrotów US albo UK do porównania.\n"}
 
     merged = us_ret.merge(uk_ret, on="date", how="inner", suffixes=("_us", "_uk"))
 
     if merged.empty:
-        out += "Brak wspólnych miesięcy dla US i UK.\n"
-        return out
+        return {"reason": "Brak wspólnych miesięcy dla US i UK.\n"}
 
     merged["diff"] = merged["return_uk"] - merged["return_us"]
     merged["abs_diff"] = merged["diff"].abs()
 
-    corr = merged["return_us"].corr(merged["return_uk"])
-    mae = merged["abs_diff"].mean()
-    mean_diff = merged["diff"].mean()
-    max_abs = merged["abs_diff"].max()
-
-    out += bullet("Wspólne miesiące", len(merged))
-    out += bullet("Korelacja monthly returns UK vs US", fmt_num(corr, 4))
-    out += bullet("Średnia różnica UK - US monthly return", fmt_pp(mean_diff))
-    out += bullet("MAE monthly return difference", fmt_pct(mae))
-    out += bullet("Max abs monthly return difference", fmt_pct(max_abs))
-
     us_cum = (1 + merged["return_us"]).prod()
     uk_cum = (1 + merged["return_uk"]).prod()
+
+    return {
+        "merged": merged,
+        "common_months": len(merged),
+        "corr": merged["return_us"].corr(merged["return_uk"]),
+        "mae": merged["abs_diff"].mean(),
+        "mean_diff": merged["diff"].mean(),
+        "max_abs": merged["abs_diff"].max(),
+        "us_cum": us_cum,
+        "uk_cum": uk_cum,
+    }
+
+
+def consistency_block(us_monthly: pd.DataFrame, uk_monthly: pd.DataFrame, title: str) -> str:
+    out = h2(title)
+
+    stats = compute_return_consistency(us_monthly, uk_monthly)
+
+    if "reason" in stats:
+        out += stats["reason"]
+        return out
+
+    merged = stats["merged"]
+
+    out += bullet("Wspólne miesiące", stats["common_months"])
+    out += bullet("Korelacja monthly returns UK vs US", fmt_num(stats["corr"], 4))
+    out += bullet("Średnia różnica UK - US monthly return", fmt_pp(stats["mean_diff"]))
+    out += bullet("MAE monthly return difference", fmt_pct(stats["mae"]))
+    out += bullet("Max abs monthly return difference", fmt_pct(stats["max_abs"]))
+
+    us_cum = stats["us_cum"]
+    uk_cum = stats["uk_cum"]
 
     out += "\nNa wspólnym okresie:\n"
     out += bullet("US cumulative return", fmt_pct(us_cum - 1))
@@ -750,7 +861,14 @@ def named_periods_block(
     out += table(clean_named(uk_base), 50)
 
     out += h2("US selected hedge named periods")
-    out += table(clean_named(us_selected), 50)
+    if us_selected.empty:
+        out += (
+            "Niedostępne w tym run (brak 07_us_selected_daily_maxdd/summary_named_periods.csv, "
+            "prawdopodobnie stary run z przed dodania kroku 07b). Nie podstawiamy tu US base A, "
+            "żeby nie sugerować fałszywej zgodności/niezgodności z UK selected hedge.\n"
+        )
+    else:
+        out += table(clean_named(us_selected), 50)
 
     out += h2("UK selected hedge named periods")
     out += table(clean_named(uk_selected), 50)
@@ -1026,6 +1144,164 @@ def selected_vs_base_block(summary: pd.DataFrame, relative: pd.DataFrame) -> str
 
 
 # =========================
+# EQUITY CHECKPOINTS
+# =========================
+
+def checkpoints_block(title: str, df: pd.DataFrame) -> str:
+    out = h2(title)
+
+    if df.empty:
+        out += "Brak equity checkpoints (sprawdź, czy config ma klucz 'equity_checkpoints').\n"
+        return out
+
+    out += table(select_cols(df, [
+        "checkpoint_name", "start", "end", "months",
+        "strategy_equity_multiple", "benchmark_equity_multiple", "equity_ratio_strategy_vs_benchmark",
+        "strategy_cagr", "benchmark_cagr",
+        "strategy_max_drawdown", "benchmark_max_drawdown",
+    ]), 30)
+
+    return out
+
+
+# =========================
+# DAILY RECONSTRUCTION WARNINGS
+# =========================
+
+def warnings_block(title: str, warnings: List[str]) -> str:
+    out = h2(title)
+
+    if not warnings:
+        out += "Brak warningów.\n"
+        return out
+
+    out += f"{len(warnings)} warning(i):\n"
+    for w in warnings:
+        out += f"- {w}\n"
+
+    return out
+
+
+# =========================
+# RED FLAGS / SANITY CHECKS
+# =========================
+
+def build_red_flags(
+    data: Dict[str, pd.DataFrame],
+    warnings_map: Dict[str, List[str]],
+    us_base_monthly_m: "Metrics",
+    us_base_daily_m: "Metrics",
+    uk_base_monthly_m: "Metrics",
+    uk_base_daily_m: "Metrics",
+    uk_selected_monthly_m: "Metrics",
+    uk_selected_daily_m: "Metrics",
+    maxdd_tol: float = 0.02,
+    corr_min: float = 0.80,
+    max_abs_diff_max: float = 0.08,
+) -> List[Dict[str, Any]]:
+    flags: List[Dict[str, Any]] = []
+
+    def add(label: str, ok: bool, detail: str) -> None:
+        flags.append({"label": label, "ok": bool(ok), "detail": detail})
+
+    add(
+        "US selected hedge named periods dostępne",
+        not data["us_selected_named"].empty,
+        "OK" if not data["us_selected_named"].empty
+        else "brak danych (krok 07b nie policzył / stary run przed dodaniem tego kroku)",
+    )
+
+    for label, us_key, uk_key in [
+        ("UK base A vs US base A: liczba aktywów / cash", "us_base_monthly", "uk_base_monthly"),
+        ("UK selected hedge vs US selected hedge: liczba aktywów / cash", "selected_us_monthly", "uk_selected_monthly"),
+    ]:
+        d, reason = weights_diff_table(data[us_key], data[uk_key])
+        if d.empty:
+            add(label, False, reason.strip() or "brak danych")
+            continue
+        mismatch = int(weights_mismatch_mask(d).sum())
+        add(
+            label,
+            mismatch == 0,
+            f"{mismatch}/{len(d)} miesięcy z różną liczbą aktywów/cash "
+            "(mapping jest 1:1, więc powinno być 0 - jeśli nie, sprawdź czy UK replay nie jest stary względem US)",
+        )
+
+    # Uwaga: summary_daily_maxdd.csv (daily_maxdd_from_monthly_weights.py) nigdy nie liczy CAGR,
+    # więc "daily CAGR" jest zawsze n/a z definicji - porównujemy tu tylko MaxDD, bo to jedyna
+    # metryka obecna po obu stronach.
+    for label, daily_m, monthly_m in [
+        ("US base A: daily vs monthly MaxDD", us_base_daily_m, us_base_monthly_m),
+        ("UK base A: daily vs monthly MaxDD", uk_base_daily_m, uk_base_monthly_m),
+        ("UK selected hedge: daily vs monthly MaxDD", uk_selected_daily_m, uk_selected_monthly_m),
+    ]:
+        if daily_m.maxdd is None or monthly_m.maxdd is None:
+            add(label, False, "brak danych MaxDD do porównania")
+            continue
+        dd_diff = daily_m.maxdd - monthly_m.maxdd
+        ok = abs(dd_diff) <= maxdd_tol
+        add(
+            label,
+            ok,
+            f"MaxDD diff {fmt_pp(dd_diff)} (tolerancja {maxdd_tol * 100:.0f}pp)",
+        )
+
+    for label, us_key, uk_key in [
+        ("US base A vs UK base A: korelacja monthly returns", "us_base_monthly", "uk_base_monthly"),
+        ("US selected hedge vs UK selected hedge: korelacja monthly returns", "selected_us_monthly", "uk_selected_monthly"),
+    ]:
+        stats = compute_return_consistency(data[us_key], data[uk_key])
+        if "reason" in stats:
+            add(label, False, stats["reason"].strip())
+            continue
+        corr = stats["corr"]
+        ok = corr is not None and corr >= corr_min and stats["max_abs"] <= max_abs_diff_max
+        add(
+            label,
+            ok,
+            f"corr={fmt_num(corr, 3)}, max abs monthly diff={fmt_pct(stats['max_abs'])} "
+            f"(próg: corr>={corr_min:.2f}, max<={max_abs_diff_max * 100:.0f}%)",
+        )
+
+    total_warnings = sum(len(v) for v in warnings_map.values())
+    warnings_detail = ", ".join(f"{k}: {len(v)}" for k, v in warnings_map.items() if v) or "brak"
+    add(
+        "Warningi z rekonstrukcji dziennej (brakujące tickery / daty rebalancingu)",
+        total_warnings == 0,
+        warnings_detail,
+    )
+
+    for label, key in [("US data quality (check_ranges)", "us_data_check"), ("UK data quality (check_ranges)", "uk_data_check")]:
+        df = data[key]
+        if df.empty or "status" not in df.columns:
+            add(label, True, "brak raportu check_ranges / brak kolumny status")
+            continue
+        bad = int((df["status"].astype(str).str.upper() != "FOUND").sum())
+        add(label, bad == 0, f"{bad} tickerów MISSING/ERROR" if bad else "wszystkie tickery FOUND")
+
+    return flags
+
+
+def red_flags_block(flags: List[Dict[str, Any]]) -> str:
+    out = h1("RED FLAGS / SANITY CHECKS")
+
+    n_bad = sum(1 for f in flags if not f["ok"])
+
+    out += (
+        "Automatyczne checki spójności danych. Jeśli coś tu jest oznaczone jako [!!], "
+        "traktuj resztę raportu z ostrożnością, dopóki to nie zostanie wyjaśnione.\n\n"
+    )
+    out += bullet("Liczba flag wymagających uwagi", f"{n_bad} / {len(flags)}")
+    out += "\n"
+
+    for f in flags:
+        mark = "OK" if f["ok"] else "!!"
+        out += f"[{mark}] {f['label']}: {f['detail']}\n"
+
+    return out
+
+
+# =========================
 # COMPACT TABLE
 # =========================
 
@@ -1079,6 +1355,24 @@ def build_global_summary_txt(run_dir: Path, output_path: Path) -> None:
     uk_selected_monthly = extract_metrics(data["uk_selected_full"], "UK selected hedge monthly", "13_uk_replay_selected_hedge/summary_full_period.csv")
     uk_selected_daily = extract_metrics(data["uk_selected_daily_summary"], "UK selected hedge daily", "14_uk_daily_selected_hedge/summary_daily_maxdd.csv")
 
+    warnings_map = {
+        "US base A daily": read_warnings(paths["us_base_daily_warnings"]),
+        "US selected hedge daily": read_warnings(paths["us_selected_daily_warnings"]),
+        "UK base A daily": read_warnings(paths["uk_base_daily_warnings"]),
+        "UK selected hedge daily": read_warnings(paths["uk_selected_daily_warnings"]),
+    }
+
+    red_flags = build_red_flags(
+        data=data,
+        warnings_map=warnings_map,
+        us_base_monthly_m=us_base_monthly,
+        us_base_daily_m=us_base_daily,
+        uk_base_monthly_m=uk_base_monthly,
+        uk_base_daily_m=uk_base_daily,
+        uk_selected_monthly_m=uk_selected_monthly,
+        uk_selected_daily_m=uk_selected_daily,
+    )
+
     parts: List[str] = []
 
     parts.append(
@@ -1102,12 +1396,18 @@ def build_global_summary_txt(run_dir: Path, output_path: Path) -> None:
         "Raport NIE wybiera automatycznie najlepszego wariantu.\n"
     )
 
+    parts.append(red_flags_block(red_flags))
+
     parts.append(selected_variant_block(manifest, selected_meta))
     parts.append(coverage_block(data))
 
     parts.append(h1("DATA QUALITY"))
     parts.append(data_quality_assessment("US", data["us_data_check"]))
     parts.append(data_quality_assessment("UK", data["uk_data_check"]))
+    parts.append(warnings_block("US base A daily reconstruction warnings", warnings_map["US base A daily"]))
+    parts.append(warnings_block("US selected hedge daily reconstruction warnings", warnings_map["US selected hedge daily"]))
+    parts.append(warnings_block("UK base A daily reconstruction warnings", warnings_map["UK base A daily"]))
+    parts.append(warnings_block("UK selected hedge daily reconstruction warnings", warnings_map["UK selected hedge daily"]))
 
     parts.append(h1("US BASE A"))
     parts.append(h2("US base A monthly metrics"))
@@ -1124,6 +1424,8 @@ def build_global_summary_txt(run_dir: Path, output_path: Path) -> None:
     parts.append(selected_vs_base_block(data["us_selected_vs_base_summary"], data["us_selected_vs_base_relative"]))
     parts.append(h2("US selected hedge daily vs US base A daily"))
     parts.append(compare_metric_blocks("US selected hedge daily vs US base A daily", us_selected_daily, us_base_daily, "US selected", "US base A"))
+    parts.append(rolling_assessment("US selected hedge rolling robustness", data["us_selected_rolling"], data["us_selected_worst"]))
+    parts.append(underwater_assessment("US selected hedge underwater", data["us_selected_underwater"]))
     parts.append(summarize_weights(data["selected_us_monthly"], "Selected US monthly exposure summary"))
 
     parts.append(hedge_context_block(data["us_hedge_summary"], data["us_hedge_relative"], data["us_hedge_ranked"]))
@@ -1158,9 +1460,20 @@ def build_global_summary_txt(run_dir: Path, output_path: Path) -> None:
     parts.append(named_periods_block(
         us_base=data["us_base_named"],
         uk_base=data["uk_base_named"],
-        us_selected=data["us_base_named"],
+        us_selected=data["us_selected_named"],
         uk_selected=data["uk_selected_named"],
     ))
+
+    parts.append(h1("EQUITY CHECKPOINTS"))
+    parts.append(checkpoints_block("US base A equity checkpoints", data["us_base_checkpoints"]))
+    parts.append(checkpoints_block("UK base A equity checkpoints", data["uk_base_checkpoints"]))
+    parts.append(checkpoints_block("UK selected hedge equity checkpoints", data["uk_selected_checkpoints"]))
+
+    parts.append(h1("MONTHLY RETURNS CALENDAR"))
+    parts.append(calendar_returns_block("US base A - miesięczne zwroty", monthly_returns_from_monthly(data["us_base_monthly"])))
+    parts.append(calendar_returns_block("US selected hedge - miesięczne zwroty (z dziennej equity, bo monthly ma stare zwroty przed hedge)", monthly_returns_from_daily_equity(data["us_selected_daily_equity"])))
+    parts.append(calendar_returns_block("UK base A - miesięczne zwroty", monthly_returns_from_monthly(data["uk_base_monthly"])))
+    parts.append(calendar_returns_block("UK selected hedge - miesięczne zwroty", monthly_returns_from_monthly(data["uk_selected_monthly"])))
 
     parts.append(h1("UK COSTS / HOLDINGS / TAX"))
     parts.append(costs_holdings_block("UK base A costs / holdings", data["uk_base_trades"], data["uk_base_holdings"], data["uk_base_monthly"]))

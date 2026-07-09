@@ -91,25 +91,6 @@ def run_cmd(cmd: List[str], cwd: Path, log_file: Path) -> None:
         raise RuntimeError(f"Command failed. Log: {log_file}")
 
 
-def file_exists(path: Path) -> bool:
-    return path.exists() and path.stat().st_size > 0
-
-
-def step_done(step_dir: Path, required_files: List[Path], force: bool) -> bool:
-    if force:
-        return False
-    done_file = step_dir / "_DONE.json"
-    if not file_exists(done_file):
-        return False
-    return all(file_exists(p) for p in required_files)
-
-
-def mark_done(step_dir: Path, meta: Dict[str, Any]) -> None:
-    meta = dict(meta)
-    meta["done_at"] = datetime.now().isoformat(timespec="seconds")
-    write_json(step_dir / "_DONE.json", meta)
-
-
 def copy_if_exists(src: Path, dst: Path) -> None:
     if src.exists():
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -304,17 +285,7 @@ def run_us_hedge_overlay_all(
     daily_equity_all: Path,
     daily_close: Path,
     cfg: Dict[str, Any],
-    force: bool,
 ) -> None:
-    required = [
-        step_dir / "monthly_active_hedge_daily_summary.csv",
-        step_dir / "monthly_active_hedge_daily_relative_vs_baseline.csv",
-    ]
-
-    if step_done(step_dir, required, force):
-        print("[SKIP] 05_us_hedge_overlay_all")
-        return
-
     print("[RUN ] 05_us_hedge_overlay_all")
     ensure_dir(step_dir)
 
@@ -381,7 +352,6 @@ def run_us_hedge_overlay_all(
     ]
 
     run_cmd(cmd, cwd=ROOT, log_file=step_dir / "run.log")
-    mark_done(step_dir, {"step": "us_hedge_overlay_all"})
 
 
 def export_selected_hedge_variant(
@@ -390,15 +360,9 @@ def export_selected_hedge_variant(
     hedge_overlay_dir: Path,
     daily_equity_all: Path,
     cfg: Dict[str, Any],
-    force: bool,
 ) -> Path:
     selected_monthly = step_dir / "selected_us_monthly.csv"
     selected_meta = step_dir / "selected_hedge_metadata.json"
-    required = [selected_monthly, selected_meta]
-
-    if step_done(step_dir, required, force):
-        print("[SKIP] 06_us_selected_hedge_export")
-        return selected_monthly
 
     print("[RUN ] 06_us_selected_hedge_export")
     ensure_dir(step_dir)
@@ -415,7 +379,6 @@ def export_selected_hedge_variant(
                 "note": "selected_hedge_variant disabled, copied base US monthly.",
             },
         )
-        mark_done(step_dir, {"step": "us_selected_hedge_export", "enabled": False})
         return selected_monthly
 
     cmd = [
@@ -435,75 +398,7 @@ def export_selected_hedge_variant(
     ]
 
     run_cmd(cmd, cwd=ROOT, log_file=step_dir / "run.log")
-    mark_done(step_dir, {"step": "us_selected_hedge_export", "enabled": True})
     return selected_monthly
-
-
-def run_uup_deep_dive_if_enabled(
-    step_dir: Path,
-    daily_equity_all: Path,
-    daily_close: Path,
-    cfg: Dict[str, Any],
-    force: bool,
-) -> None:
-    marker = step_dir / "uup_deep_dive_done.marker"
-
-    if step_done(step_dir, [marker], force):
-        print("[SKIP] 07_us_uup_deep_dive")
-        return
-
-    hedge_cfg = cfg.get("hedges", {}).get("us", {})
-    if not isinstance(hedge_cfg, dict):
-        hedge_cfg = {}
-
-    if not bool(hedge_cfg.get("run_uup_deep_dive", False)):
-        print("[SKIP] 07_us_uup_deep_dive disabled")
-        ensure_dir(step_dir)
-        marker.write_text("disabled\n", encoding="utf-8")
-        mark_done(step_dir, {"step": "us_uup_deep_dive", "disabled": True})
-        return
-
-    print("[RUN ] 07_us_uup_deep_dive")
-    ensure_dir(step_dir)
-
-    a_strategy = resolve_strategy_name(
-        hedge_cfg.get("a_strategy", "AUTO"),
-        daily_equity_all,
-        "hedges.us.a_strategy",
-    )
-
-    baseline_strategy = resolve_strategy_name(
-        hedge_cfg.get("baseline_strategy", "AUTO"),
-        daily_equity_all,
-        "hedges.us.baseline_strategy",
-    )
-
-    cmd = [
-        sys.executable,
-        str(ENGINE / "deep_dive_active_uup20.py"),
-        "--daily-equity-all",
-        str(daily_equity_all),
-        "--daily-close",
-        str(daily_close),
-        "--a-strategy",
-        a_strategy,
-        "--baseline-strategy",
-        baseline_strategy,
-        "--uup-ticker",
-        str(hedge_cfg.get("uup_ticker", "uup.us")),
-        "--thresholds",
-        *list_arg(cfg_list(hedge_cfg, "uup_thresholds", [0.0, 0.0025, 0.005, 0.01])),
-        "--weights",
-        *list_arg(cfg_list(hedge_cfg, "uup_weights", [0.05, 0.10, 0.15, 0.20, 0.25, 0.30])),
-        "--cost-bps",
-        *list_arg(cfg_list(hedge_cfg, "uup_cost_bps", [0.0, 5.0, 10.0, 20.0])),
-        "--output-dir",
-        str(step_dir),
-    ]
-
-    run_cmd(cmd, cwd=ROOT, log_file=step_dir / "run.log")
-    marker.write_text("done\n", encoding="utf-8")
-    mark_done(step_dir, {"step": "us_uup_deep_dive"})
 
 
 def run_hedge_vs_baseline(
@@ -511,17 +406,7 @@ def run_hedge_vs_baseline(
     daily_equity_all: Path,
     daily_close: Path,
     cfg: Dict[str, Any],
-    force: bool,
 ) -> None:
-    required = [
-        step_dir / "hedge_vs_baseline_summary.csv",
-        step_dir / "hedge_vs_baseline_relative.csv",
-    ]
-
-    if step_done(step_dir, required, force):
-        print("[SKIP] 08_us_selected_vs_base")
-        return
-
     print("[RUN ] 08_us_selected_vs_base")
     ensure_dir(step_dir)
 
@@ -569,7 +454,6 @@ def run_hedge_vs_baseline(
     ]
 
     run_cmd(cmd, cwd=ROOT, log_file=step_dir / "run.log")
-    mark_done(step_dir, {"step": "us_selected_vs_base"})
 
 
 def run_uk_replay(
@@ -582,14 +466,9 @@ def run_uk_replay(
     transaction_cost: float,
     annual_tax: float,
     cfg: Dict[str, Any],
-    force: bool,
     label: str,
 ) -> Path:
     replayed_monthly = step_dir / "replayed_monthly.csv"
-
-    if step_done(step_dir, [replayed_monthly], force):
-        print(f"[SKIP] {label}")
-        return replayed_monthly
 
     print(f"[RUN ] {label}")
     ensure_dir(step_dir)
@@ -621,7 +500,6 @@ def run_uk_replay(
         cmd += ["--execution-mode", str(cfg["execution_mode"])]
 
     run_cmd(cmd, cwd=ROOT, log_file=step_dir / "run.log")
-    mark_done(step_dir, {"step": label})
     return replayed_monthly
 
 
@@ -630,16 +508,8 @@ def run_daily_maxdd(
     monthly_replay: Path,
     daily_close: Path,
     benchmark: str,
-    force: bool,
     label: str,
 ) -> None:
-    summary = step_dir / "summary_daily_maxdd.csv"
-    equity = step_dir / "daily_equity_drawdown.csv"
-
-    if step_done(step_dir, [summary, equity], force):
-        print(f"[SKIP] {label}")
-        return
-
     print(f"[RUN ] {label}")
     ensure_dir(step_dir)
 
@@ -660,10 +530,36 @@ def run_daily_maxdd(
         log_file=step_dir / "run.log",
     )
 
-    mark_done(step_dir, {"step": label})
+
+def run_named_periods_from_daily(
+    step_dir: Path,
+    daily_equity: Path,
+    benchmark_daily_equity: Path,
+    config_path: Path,
+    label: str,
+) -> None:
+    print(f"[RUN ] {label}")
+    ensure_dir(step_dir)
+
+    run_cmd(
+        [
+            sys.executable,
+            str(ENGINE / "named_periods_from_daily_equity.py"),
+            "--daily-equity",
+            str(daily_equity),
+            "--benchmark-daily-equity",
+            str(benchmark_daily_equity),
+            "--config",
+            str(config_path),
+            "--output-dir",
+            str(step_dir),
+        ],
+        cwd=ROOT,
+        log_file=step_dir / "run_named_periods.log",
+    )
 
 
-def run_pipeline(idea_name: str, force: bool, requested_run: Optional[str]) -> None:
+def run_pipeline(idea_name: str, requested_run: Optional[str]) -> None:
     idea_dir, cfg = load_idea(idea_name)
     run_dir = make_run_dir(idea_name, requested_run)
 
@@ -726,80 +622,65 @@ def run_pipeline(idea_name: str, force: bool, requested_run: Optional[str]) -> N
     us_check_csv = s01 / "us_data_check.csv"
     uk_check_csv = s09 / "uk_data_check.csv"
 
-    us_base_daily_summary = s04 / "summary_daily_maxdd.csv"
     us_base_daily_equity = s04 / "daily_equity_drawdown.csv"
-
-    selected_us_monthly = s06 / "selected_us_monthly.csv"
 
     global_summary_run = s15 / "GLOBAL_SUMMARY.txt"
     global_summary_final = idea_out / "GLOBAL_SUMMARY.txt"
 
     # 01
-    if step_done(s01, [us_check_csv], force):
-        print("[SKIP] 01_check_us_data")
-    else:
-        print("[RUN ] 01_check_us_data")
-        ensure_dir(s01)
-        run_cmd(
-            [
-                sys.executable,
-                str(ENGINE / "check_ranges.py"),
-                "--base-dir",
-                str(us_data_dir),
-                "--tickers-file",
-                str(us_tickers),
-                "--output-csv",
-                str(us_check_csv),
-            ],
-            cwd=ROOT,
-            log_file=s01 / "run.log",
-        )
-        mark_done(s01, {"step": "check_us_data"})
+    print("[RUN ] 01_check_us_data")
+    ensure_dir(s01)
+    run_cmd(
+        [
+            sys.executable,
+            str(ENGINE / "check_ranges.py"),
+            "--base-dir",
+            str(us_data_dir),
+            "--tickers-file",
+            str(us_tickers),
+            "--output-csv",
+            str(us_check_csv),
+        ],
+        cwd=ROOT,
+        log_file=s01 / "run.log",
+    )
 
     # 02
-    if step_done(s02, [us_daily_close, us_returns, us_build_out / "resolved_files.csv"], force):
-        print("[SKIP] 02_build_us_data")
-    else:
-        print("[RUN ] 02_build_us_data")
-        ensure_dir(s02)
-        run_cmd(
-            [
-                sys.executable,
-                str(ENGINE / "build_data.py"),
-                "--base-dir",
-                str(us_data_dir),
-                "--tickers-file",
-                str(us_tickers),
-                "--output-dir",
-                str(us_build_out),
-                "--frequency",
-                frequency,
-            ],
-            cwd=ROOT,
-            log_file=s02 / "run.log",
-        )
-        mark_done(s02, {"step": "build_us_data"})
+    print("[RUN ] 02_build_us_data")
+    ensure_dir(s02)
+    run_cmd(
+        [
+            sys.executable,
+            str(ENGINE / "build_data.py"),
+            "--base-dir",
+            str(us_data_dir),
+            "--tickers-file",
+            str(us_tickers),
+            "--output-dir",
+            str(us_build_out),
+            "--frequency",
+            frequency,
+        ],
+        cwd=ROOT,
+        log_file=s02 / "run.log",
+    )
 
     # 03
-    if step_done(s03, [patched_hybrid_config, s03 / "summary_full_period.csv"], force):
-        print("[SKIP] 03_us_backtest_base")
-    else:
-        print("[RUN ] 03_us_backtest_base")
-        ensure_dir(s03)
-        patch_hybrid_config(hybrid_config, patched_hybrid_config, us_build_out)
-        run_cmd(
-            [
-                sys.executable,
-                str(ENGINE / "backtest_hybrid_search.py"),
-                "--config",
-                str(patched_hybrid_config),
-                "--out-dir",
-                str(s03),
-            ],
-            cwd=ROOT,
-            log_file=s03 / "run.log",
-        )
-        mark_done(s03, {"step": "us_backtest_base"})
+    print("[RUN ] 03_us_backtest_base")
+    ensure_dir(s03)
+    patch_hybrid_config(hybrid_config, patched_hybrid_config, us_build_out)
+    run_cmd(
+        [
+            sys.executable,
+            str(ENGINE / "backtest_hybrid_search.py"),
+            "--config",
+            str(patched_hybrid_config),
+            "--out-dir",
+            str(s03),
+        ],
+        cwd=ROOT,
+        log_file=s03 / "run.log",
+    )
 
     source_monthly_base = select_source_monthly(cfg, s03)
     print(f"US base monthly source: {rel(source_monthly_base)}")
@@ -810,7 +691,6 @@ def run_pipeline(idea_name: str, force: bool, requested_run: Optional[str]) -> N
         monthly_replay=source_monthly_base,
         daily_close=us_daily_close,
         benchmark=us_benchmark,
-        force=force,
         label="04_us_daily_base",
     )
 
@@ -821,12 +701,10 @@ def run_pipeline(idea_name: str, force: bool, requested_run: Optional[str]) -> N
             daily_equity_all=us_base_daily_equity,
             daily_close=us_daily_close,
             cfg=cfg,
-            force=force,
         )
     else:
         print("[SKIP] 05_us_hedge_overlay_all selected_hedge_variant disabled")
         ensure_dir(s05)
-        mark_done(s05, {"step": "us_hedge_overlay_all", "disabled": True})
 
     # 06
     selected_us_monthly = export_selected_hedge_variant(
@@ -835,7 +713,6 @@ def run_pipeline(idea_name: str, force: bool, requested_run: Optional[str]) -> N
         hedge_overlay_dir=s05,
         daily_equity_all=us_base_daily_equity,
         cfg=cfg,
-        force=force,
     )
 
     # 07
@@ -844,8 +721,17 @@ def run_pipeline(idea_name: str, force: bool, requested_run: Optional[str]) -> N
         monthly_replay=selected_us_monthly,
         daily_close=us_daily_close,
         benchmark=us_benchmark,
-        force=force,
         label="07_us_selected_daily_maxdd",
+    )
+
+    # 07b: named periods dla US selected hedge nie da się policzyć z monthly (hedge patchuje
+    # tylko weights_used_json, nie przelicza zwrotów), więc liczymy je z dziennej krzywej equity.
+    run_named_periods_from_daily(
+        step_dir=s07,
+        daily_equity=s07 / "daily_equity_drawdown.csv",
+        benchmark_daily_equity=s07 / "benchmark_daily_equity_drawdown.csv",
+        config_path=patched_hybrid_config,
+        label="07b_us_selected_named_periods",
     )
 
     # 08
@@ -855,60 +741,50 @@ def run_pipeline(idea_name: str, force: bool, requested_run: Optional[str]) -> N
             daily_equity_all=us_base_daily_equity,
             daily_close=us_daily_close,
             cfg=cfg,
-            force=force,
         )
     else:
         print("[SKIP] 08_us_selected_vs_base selected_hedge_variant disabled")
         ensure_dir(s08)
-        mark_done(s08, {"step": "us_selected_vs_base", "disabled": True})
 
     # optional uup deep dive intentionally not in main flow anymore
 
     # 09
-    if step_done(s09, [uk_check_csv], force):
-        print("[SKIP] 09_check_uk_data")
-    else:
-        print("[RUN ] 09_check_uk_data")
-        ensure_dir(s09)
-        run_cmd(
-            [
-                sys.executable,
-                str(ENGINE / "check_ranges.py"),
-                "--base-dir",
-                str(uk_data_dir),
-                "--tickers-file",
-                str(uk_tickers),
-                "--output-csv",
-                str(uk_check_csv),
-            ],
-            cwd=ROOT,
-            log_file=s09 / "run.log",
-        )
-        mark_done(s09, {"step": "check_uk_data"})
+    print("[RUN ] 09_check_uk_data")
+    ensure_dir(s09)
+    run_cmd(
+        [
+            sys.executable,
+            str(ENGINE / "check_ranges.py"),
+            "--base-dir",
+            str(uk_data_dir),
+            "--tickers-file",
+            str(uk_tickers),
+            "--output-csv",
+            str(uk_check_csv),
+        ],
+        cwd=ROOT,
+        log_file=s09 / "run.log",
+    )
 
     # 10
-    if step_done(s10, [uk_daily_close, uk_returns, uk_build_out / "resolved_files.csv"], force):
-        print("[SKIP] 10_build_uk_data")
-    else:
-        print("[RUN ] 10_build_uk_data")
-        ensure_dir(s10)
-        run_cmd(
-            [
-                sys.executable,
-                str(ENGINE / "build_data.py"),
-                "--base-dir",
-                str(uk_data_dir),
-                "--tickers-file",
-                str(uk_tickers),
-                "--output-dir",
-                str(uk_build_out),
-                "--frequency",
-                frequency,
-            ],
-            cwd=ROOT,
-            log_file=s10 / "run.log",
-        )
-        mark_done(s10, {"step": "build_uk_data"})
+    print("[RUN ] 10_build_uk_data")
+    ensure_dir(s10)
+    run_cmd(
+        [
+            sys.executable,
+            str(ENGINE / "build_data.py"),
+            "--base-dir",
+            str(uk_data_dir),
+            "--tickers-file",
+            str(uk_tickers),
+            "--output-dir",
+            str(uk_build_out),
+            "--frequency",
+            frequency,
+        ],
+        cwd=ROOT,
+        log_file=s10 / "run.log",
+    )
 
     # 11 UK replay base A
     uk_base_monthly = run_uk_replay(
@@ -921,7 +797,6 @@ def run_pipeline(idea_name: str, force: bool, requested_run: Optional[str]) -> N
         transaction_cost=transaction_cost,
         annual_tax=annual_tax,
         cfg=cfg,
-        force=force,
         label="11_uk_replay_base_A",
     )
 
@@ -931,7 +806,6 @@ def run_pipeline(idea_name: str, force: bool, requested_run: Optional[str]) -> N
         monthly_replay=uk_base_monthly,
         daily_close=uk_daily_close,
         benchmark=uk_benchmark,
-        force=force,
         label="12_uk_daily_base_A",
     )
 
@@ -946,7 +820,6 @@ def run_pipeline(idea_name: str, force: bool, requested_run: Optional[str]) -> N
         transaction_cost=transaction_cost,
         annual_tax=annual_tax,
         cfg=cfg,
-        force=force,
         label="13_uk_replay_selected_hedge",
     )
 
@@ -956,29 +829,24 @@ def run_pipeline(idea_name: str, force: bool, requested_run: Optional[str]) -> N
         monthly_replay=uk_selected_monthly,
         daily_close=uk_daily_close,
         benchmark=uk_benchmark,
-        force=force,
         label="14_uk_daily_selected_hedge",
     )
 
     # 15 summary
-    if step_done(s15, [global_summary_run], force):
-        print("[SKIP] 15_global_summary")
-    else:
-        print("[RUN ] 15_global_summary")
-        ensure_dir(s15)
-        run_cmd(
-            [
-                sys.executable,
-                str(ENGINE / "build_global_summary.py"),
-                "--run-dir",
-                str(run_dir),
-                "--output",
-                str(global_summary_run),
-            ],
-            cwd=ROOT,
-            log_file=s15 / "run.log",
-        )
-        mark_done(s15, {"step": "global_summary"})
+    print("[RUN ] 15_global_summary")
+    ensure_dir(s15)
+    run_cmd(
+        [
+            sys.executable,
+            str(ENGINE / "build_global_summary.py"),
+            "--run-dir",
+            str(run_dir),
+            "--output",
+            str(global_summary_run),
+        ],
+        cwd=ROOT,
+        log_file=s15 / "run.log",
+    )
 
     copy_if_exists(global_summary_run, global_summary_final)
 
@@ -1006,18 +874,17 @@ def run_pipeline(idea_name: str, force: bool, requested_run: Optional[str]) -> N
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Pipeline: US A, US selected hedge, UK A replay, UK selected replay, GLOBAL_SUMMARY.txt"
+        description="Pipeline: US A, US selected hedge, UK A replay, UK selected replay, GLOBAL_SUMMARY.txt. "
+        "Każde uruchomienie liczy wszystkie kroki od nowa, nie ma trybu cache/resume."
     )
 
     parser.add_argument("--idea", required=True)
-    parser.add_argument("--force", action="store_true")
     parser.add_argument("--run", default=None)
 
     args = parser.parse_args()
 
     run_pipeline(
         idea_name=args.idea,
-        force=args.force,
         requested_run=args.run,
     )
 
