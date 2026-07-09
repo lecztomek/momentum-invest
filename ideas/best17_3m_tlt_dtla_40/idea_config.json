@@ -1,0 +1,55 @@
+{
+  "idea_name": "best17_3m",
+  "frequency": "monthly",
+
+  "us_data_dir": "data/us",
+  "uk_data_dir": "data/uk",
+
+  "us_tickers_file": "tickers_us.txt",
+  "uk_tickers_file": "tickers_uk.txt",
+
+  "hybrid_config_file": "hybrid_config.json",
+  "ticker_mapping_file": "ticker_mapping.json",
+
+  "us_benchmark": "vt.us",
+  "uk_benchmark": "vwra.uk",
+
+  "transaction_cost_bps_one_way": 40.0,
+  "annual_tax_rate": 0.19,
+
+  "unmapped": "cash",
+  
+  "selected_hedge_variant": {
+	  "enabled": true,
+	  "hedge_asset": "tlt.us",
+	  "hedge_weight": 0.40,
+	  "rule": "hedge_positive_and_beats_a_not_6m_extended",
+	  "lookback": 1,
+	  "ema_span": null,
+	  "min_hedge_return": 0.0,
+	  "min_spread_vs_a": 0.0
+	},
+
+  "hedges": {
+    "enabled": true,
+  
+    "us": {
+      "enabled": true,
+      "hedge_assets": ["tlt.us"],
+      "primary_hedge": "tlt.us",
+      "uup_ticker": "tlt.us",
+      "run_uup_deep_dive": false,
+      "group_assets": ["xlk.us", "ivv.us", "dbc.us", "iau.us"]
+    },
+  
+	"uk": {
+	  "enabled": true,
+	  "a_strategy": "AUTO",
+	  "baseline_strategy": "AUTO",
+	  "hedge_assets": ["dtla.uk"],
+	  "primary_hedge": "dtla.uk",
+	  "uup_ticker": "dtla.uk",
+	  "run_uup_deep_dive": false
+	}
+  }
+}
