@@ -1,0 +1,238 @@
+{
+  "score_files": {
+    "score_ema7_over_ema16": "output/score_ema7_over_ema16.csv",
+    "score_ema5_over_ema12": "output/score_ema5_over_ema12.csv",
+    "score_ema6_over_ema12": "output/score_ema6_over_ema12.csv",
+    "score_ema5_over_ema10": "output/score_ema5_over_ema10.csv",
+    "score_ema6_over_ema14": "output/score_ema6_over_ema14.csv"
+  },
+  "signal_files": {
+    "momentum_r3": "output/momentum_r3.csv"
+  },
+  "returns_file": "output/month_start_to_month_start_returns.csv",
+  "benchmark_asset": "vt.us",
+  "transaction_cost_bps_one_way": 40.0,
+  "annual_tax_rate": 0.19,
+  "rolling_windows_months": [12, 24, 36, 48, 60, 84, 120, 180],
+  "combined_rank_windows": [12, 24, 36, 48, 60, 84, 120, 180],
+  "named_periods": [
+    {
+      "name": "full_until_2023_no_gold_breakout",
+      "start": "2008-07-01",
+      "end": "2023-12-01"
+    },
+    {
+      "name": "full_until_2024_no_gold_odklejka",
+      "start": "2008-07-01",
+      "end": "2024-12-01"
+    },
+    {
+      "name": "post_gfc_recovery",
+      "start": "2008-07-01",
+      "end": "2012-12-01"
+    },
+    {
+      "name": "post_gfc_bull_full",
+      "start": "2009-04-01",
+      "end": "2019-12-01"
+    },
+    {
+      "name": "post_gfc_expansion_clean",
+      "start": "2013-01-01",
+      "end": "2019-12-01"
+    },
+    {
+      "name": "pre_covid_full",
+      "start": "2008-07-01",
+      "end": "2019-12-01"
+    },
+    {
+      "name": "covid_crash_rebound",
+      "start": "2020-01-01",
+      "end": "2021-12-01"
+    },
+    {
+      "name": "inflation_bear",
+      "start": "2022-01-01",
+      "end": "2023-03-01"
+    },
+    {
+      "name": "pre_gold_odklejka",
+      "start": "2008-07-01",
+      "end": "2022-12-01"
+    },
+    {
+      "name": "recent_full",
+      "start": "2023-01-01",
+      "end": "2026-07-01"
+    },
+    {
+      "name": "recent_2023_only",
+      "start": "2023-01-01",
+      "end": "2023-12-01"
+    },
+    {
+      "name": "gold_breakout_2024",
+      "start": "2024-01-01",
+      "end": "2024-12-01"
+    },
+    {
+      "name": "gold_odklejka_2025_2026",
+      "start": "2025-01-01",
+      "end": "2026-07-01"
+    },
+    {
+      "name": "gold_recent_2024_2026",
+      "start": "2024-01-01",
+      "end": "2026-07-01"
+    },
+    {
+      "name": "overlap_uk_available",
+      "start": "2020-01-01",
+      "end": "2026-07-01"
+    }
+  ],
+  "equity_checkpoints": [
+    {
+      "name": "full_until_2023_no_gold_breakout",
+      "start": "2008-07-01",
+      "end": "2023-12-01"
+    },
+    {
+      "name": "full_until_2024_no_gold_odklejka",
+      "start": "2008-07-01",
+      "end": "2024-12-01"
+    },
+    {
+      "name": "full_vt_available",
+      "start": "2008-07-01",
+      "end": "2026-07-01"
+    },
+    {
+      "name": "pre_covid_full",
+      "start": "2008-07-01",
+      "end": "2019-12-01"
+    },
+    {
+      "name": "pre_gold_odklejka",
+      "start": "2008-07-01",
+      "end": "2022-12-01"
+    },
+    {
+      "name": "post_gfc_bull_full",
+      "start": "2009-04-01",
+      "end": "2019-12-01"
+    },
+    {
+      "name": "covid_crash_rebound",
+      "start": "2020-01-01",
+      "end": "2021-12-01"
+    },
+    {
+      "name": "inflation_bear",
+      "start": "2022-01-01",
+      "end": "2023-03-01"
+    },
+    {
+      "name": "recent_full",
+      "start": "2023-01-01",
+      "end": "2026-07-01"
+    },
+    {
+      "name": "recent_2023_only",
+      "start": "2023-01-01",
+      "end": "2023-12-01"
+    },
+    {
+      "name": "gold_breakout_2024",
+      "start": "2024-01-01",
+      "end": "2024-12-01"
+    },
+    {
+      "name": "gold_recent_2024_2026",
+      "start": "2024-01-01",
+      "end": "2026-07-01"
+    },
+    {
+      "name": "gold_odklejka_2025_2026",
+      "start": "2025-01-01",
+      "end": "2026-07-01"
+    }
+  ],
+  "group_sets": {
+    "gs_compact_4": {
+      "RISK": ["xlk.us"],
+      "MID": ["ivv.us", "dbc.us"],
+      "GOLD": ["iau.us"],
+      "DEF": ["_CASH"]
+    }
+  },
+  "canary_pairs": {
+    "score_canary_hard_approx_vt_xlk": ["vt.us", "xlk.us"]
+  },
+  "behavior_maps": {
+    "regime_risk_mid_gold": {
+      "0": {
+        "allowed_groups": ["RISK", "MID", "GOLD", "DEF"],
+        "exclude_assets": []
+      },
+      "1": {
+        "allowed_groups": ["DEF"],
+        "exclude_assets": []
+      },
+      "2": {
+        "allowed_groups": ["DEF"],
+        "exclude_assets": []
+      },
+      "3": {
+        "allowed_groups": ["DEF"],
+        "exclude_assets": []
+      }
+    }
+  },
+  "strategies": [
+    {
+      "name": "ema7_16__canary_ema5_12__compact4__hard_approx__top2_rank80_20__hyst005__vt_r3_005__iau_dbc_r3_gate_gt_minus3",
+      "score_name": "score_ema7_over_ema16",
+      "canary_score_name": "score_ema5_over_ema12",
+      "group_set_name": "gs_compact_4",
+      "canary_pair_name": "score_canary_hard_approx_vt_xlk",
+      "behavior_map_name": "regime_risk_mid_gold",
+      "top_n": 2,
+      "weighting_method": "rank_weights",
+      "rank_weights": [0.8, 0.2],
+      "min_score_gap_to_switch": 0.005,
+      "covariance_lookback_months": 6,
+      "min_history_months": 12,
+      "require_positive_score": true,
+      "canary_bad_threshold": -0.02,
+      "missing_canary_as_bad": true,
+      "asset_gates": {
+        "iau.us": {
+          "enabled": true,
+          "min_return_3m": -0.01,
+          "missing_as_block": true
+        },
+        "dbc.us": {
+          "enabled": true,
+          "min_return_3m": -0.01,
+          "missing_as_block": true
+        }
+      },
+      "max_weight_per_asset": {},
+      "start_date": "2008-07-01",
+      "end_date": "2026-07-01",
+      "rebound_starter": {
+        "enabled": true,
+        "only_when_full_cash": true,
+        "signal_name": "momentum_r3",
+        "trigger_asset": "vt.us",
+        "trigger_operator": ">",
+        "trigger_threshold": 0.05,
+        "target_weights": {
+          "vt.us": 1.0
+        }
+      }
+    }
+  ]
+}

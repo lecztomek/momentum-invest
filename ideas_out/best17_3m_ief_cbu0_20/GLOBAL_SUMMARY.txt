@@ -1,6 +1,6 @@
 GLOBAL SUMMARY TXT
-Generated at: 2026-07-09T09:23:16
-Run dir: C:\Users\tleczycki\Desktop\git\momentum-invest\ideas_out\best17_3m_ief_cbu0\runs\20260709_092235
+Generated at: 2026-07-09T09:43:17
+Run dir: C:\Users\tleczycki\Desktop\git\momentum-invest\ideas_out\best17_3m_ief_cbu0_20\runs\20260709_094236
 Idea: n/a
 Frequency: n/a
 US benchmark: n/a
