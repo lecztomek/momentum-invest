@@ -23,7 +23,7 @@
 	  "enabled": true,
 	  "hedge_asset": "tlt.us",
 	  "hedge_weight": 0.20,
-	  "rule": "hedge_positive_and_beats_a",
+	  "rule": "hedge_positive_and_beats_a_not_6m_extended",
 	  "lookback": 1,
 	  "ema_span": null,
 	  "min_hedge_return": 0.0,

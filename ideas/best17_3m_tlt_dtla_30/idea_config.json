@@ -21,9 +21,9 @@
   
   "selected_hedge_variant": {
 	  "enabled": true,
-	  "hedge_asset": "ief.us",
+	  "hedge_asset": "tlt.us",
 	  "hedge_weight": 0.30,
-	  "rule": "hedge_positive_and_beats_a_a_3m_positive",
+	  "rule": "hedge_positive_and_beats_a_not_6m_extended",
 	  "lookback": 1,
 	  "ema_span": null,
 	  "min_hedge_return": 0.0,
@@ -35,9 +35,9 @@
   
     "us": {
       "enabled": true,
-      "hedge_assets": ["ief.us"],
-      "primary_hedge": "ief.us",
-      "uup_ticker": "ief.us",
+      "hedge_assets": ["tlt.us"],
+      "primary_hedge": "tlt.us",
+      "uup_ticker": "tlt.us",
       "run_uup_deep_dive": false,
       "group_assets": ["xlk.us", "ivv.us", "dbc.us", "iau.us"]
     },
@@ -46,9 +46,9 @@
 	  "enabled": true,
 	  "a_strategy": "AUTO",
 	  "baseline_strategy": "AUTO",
-	  "hedge_assets": ["cbu0.uk"],
-	  "primary_hedge": "cbu0.uk",
-	  "uup_ticker": "cbu0.uk",
+	  "hedge_assets": ["dtla.uk"],
+	  "primary_hedge": "dtla.uk",
+	  "uup_ticker": "dtla.uk",
 	  "run_uup_deep_dive": false
 	}
   }

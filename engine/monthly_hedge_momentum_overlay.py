@@ -260,6 +260,29 @@ def build_monthly_hedge_signal(
     elif rule == "hedge_positive_and_beats_a":
         raw = (h_lb > min_hedge_return) & ((h_lb - a_lb) > min_spread_vs_a)
 
+    elif rule == "hedge_positive_and_beats_a_not_6m_extended":
+        h_6m = rolling_total_return(h, 6)
+        a_6m = rolling_total_return(a, 6)
+
+        raw = (
+            (h_lb > min_hedge_return)
+            & ((h_lb - a_lb) > min_spread_vs_a)
+            & ((h_6m - a_6m) <= 0.0)
+        )
+
+    elif rule == "hedge_positive_and_beats_a_not_6m_12m_extended":
+        h_6m = rolling_total_return(h, 6)
+        a_6m = rolling_total_return(a, 6)
+        h_12m = rolling_total_return(h, 12)
+        a_12m = rolling_total_return(a, 12)
+
+        raw = (
+            (h_lb > min_hedge_return)
+            & ((h_lb - a_lb) > min_spread_vs_a)
+            & ((h_6m - a_6m) <= 0.0)
+            & ((h_12m - a_12m) <= 0.0)
+        )
+
     elif rule == "hedge_positive_and_a_negative":
         raw = (h_lb > min_hedge_return) & (a < 0.0)
 
@@ -276,6 +299,14 @@ def build_monthly_hedge_signal(
         h_ema = h_eq.ewm(span=ema_span, adjust=False).mean()
         raw = (h_eq > h_ema) & ((h_lb - a_lb) > min_spread_vs_a)
 
+    elif rule == "hedge_positive_and_beats_a_a_3m_positive":
+        a_3m = rolling_total_return(a, 3)
+        raw = (
+            (h_lb > min_hedge_return)
+            & ((h_lb - a_lb) > min_spread_vs_a)
+            & (a_3m > 0.0)
+        )
+		
     else:
         raise ValueError(f"Nieznana reguła: {rule}")
 
@@ -316,6 +347,9 @@ def iter_rule_configs(
 
         elif rule in {
             "hedge_positive_and_beats_a",
+            "hedge_positive_and_beats_a_not_6m_extended",
+            "hedge_positive_and_beats_a_not_6m_12m_extended",
+			"hedge_positive_and_beats_a_a_3m_positive",
             "hedge_positive_and_a_negative",
             "hedge_positive_and_a_lb_negative",
         }:
@@ -389,6 +423,480 @@ def build_daily_overlay_returns_from_monthly_signal(
     df["a_drawdown"] = calc_drawdown(df["a_equity"])
 
     return df
+
+
+# =========================
+# HEDGE ATTRIBUTION / DIAGNOSTICS
+# =========================
+
+def build_monthly_hedge_attribution(
+    label: str,
+    overlay_result: pd.DataFrame,
+    hedge_weight: float,
+) -> pd.DataFrame:
+    """
+    Monthly diagnostic table: when did the hedge overlay help or hurt vs pure A?
+
+    Important:
+    - hedge_delta for month M is overlay_return_M - A_return_M,
+    - feature columns ending with _prev are shifted by one month, so they are
+      known before month M starts,
+    - this is diagnostic output, not a fitted rule.
+    """
+    df = overlay_result.copy().sort_index()
+
+    monthly = pd.DataFrame({
+        "a_return": df["A"].resample("M").apply(period_return),
+        "baseline_return": df["BASELINE"].resample("M").apply(period_return),
+        "hedge_return": df["HEDGE"].resample("M").apply(period_return),
+        "overlay_return": df["overlay_return"].resample("M").apply(period_return),
+        "hedge_on": df["hedge_on"].resample("M").max().astype(bool),
+        "overlay_weight_a": df["overlay_weight_a"].resample("M").last(),
+        "overlay_weight_hedge": df["overlay_weight_hedge"].resample("M").last(),
+    })
+
+    monthly.index.name = "month_end"
+    monthly["portfolio"] = label
+    monthly["hedge_weight_config"] = float(hedge_weight)
+
+    # Realized contribution of the overlay in month M vs pure A.
+    monthly["hedge_delta"] = monthly["overlay_return"] - monthly["a_return"]
+    monthly["hedge_helped"] = monthly["hedge_delta"] > 0.0
+
+    # Equity and drawdown streams at month-end.
+    monthly["a_equity"] = compound_returns(monthly["a_return"])
+    monthly["baseline_equity"] = compound_returns(monthly["baseline_return"])
+    monthly["overlay_equity"] = compound_returns(monthly["overlay_return"])
+    monthly["hedge_equity"] = compound_returns(monthly["hedge_return"])
+
+    monthly["a_drawdown"] = calc_drawdown(monthly["a_equity"])
+    monthly["baseline_drawdown"] = calc_drawdown(monthly["baseline_equity"])
+    monthly["overlay_drawdown"] = calc_drawdown(monthly["overlay_equity"])
+    monthly["hedge_drawdown"] = calc_drawdown(monthly["hedge_equity"])
+
+    # Features known before month M starts.
+    monthly["a_1m_prev"] = monthly["a_return"].shift(1)
+    monthly["baseline_1m_prev"] = monthly["baseline_return"].shift(1)
+    monthly["hedge_1m_prev"] = monthly["hedge_return"].shift(1)
+
+    monthly["a_3m_prev"] = rolling_total_return(monthly["a_return"], 3).shift(1)
+    monthly["a_6m_prev"] = rolling_total_return(monthly["a_return"], 6).shift(1)
+    monthly["a_12m_prev"] = rolling_total_return(monthly["a_return"], 12).shift(1)
+
+    monthly["hedge_3m_prev"] = rolling_total_return(monthly["hedge_return"], 3).shift(1)
+    monthly["hedge_6m_prev"] = rolling_total_return(monthly["hedge_return"], 6).shift(1)
+    monthly["hedge_12m_prev"] = rolling_total_return(monthly["hedge_return"], 12).shift(1)
+
+    monthly["a_drawdown_prev"] = monthly["a_drawdown"].shift(1)
+    monthly["baseline_drawdown_prev"] = monthly["baseline_drawdown"].shift(1)
+    monthly["overlay_drawdown_prev"] = monthly["overlay_drawdown"].shift(1)
+    monthly["hedge_drawdown_prev"] = monthly["hedge_drawdown"].shift(1)
+
+    monthly["hedge_minus_a_1m_prev"] = monthly["hedge_1m_prev"] - monthly["a_1m_prev"]
+    monthly["hedge_minus_a_3m_prev"] = monthly["hedge_3m_prev"] - monthly["a_3m_prev"]
+    monthly["hedge_minus_a_6m_prev"] = monthly["hedge_6m_prev"] - monthly["a_6m_prev"]
+    monthly["hedge_minus_a_12m_prev"] = monthly["hedge_12m_prev"] - monthly["a_12m_prev"]
+
+    # Simple, interpretable candidate conditions. These are only diagnostics.
+    monthly["a_1m_prev_negative"] = monthly["a_1m_prev"] < 0.0
+    monthly["a_3m_prev_negative"] = monthly["a_3m_prev"] < 0.0
+    monthly["a_6m_prev_negative"] = monthly["a_6m_prev"] < 0.0
+    monthly["a_12m_prev_negative"] = monthly["a_12m_prev"] < 0.0
+
+    monthly["a_drawdown_prev_lt_3pct"] = monthly["a_drawdown_prev"] < -0.03
+    monthly["a_drawdown_prev_lt_5pct"] = monthly["a_drawdown_prev"] < -0.05
+    monthly["a_drawdown_prev_lt_10pct"] = monthly["a_drawdown_prev"] < -0.10
+
+    monthly["hedge_1m_prev_positive"] = monthly["hedge_1m_prev"] > 0.0
+    monthly["hedge_3m_prev_positive"] = monthly["hedge_3m_prev"] > 0.0
+    monthly["hedge_6m_prev_positive"] = monthly["hedge_6m_prev"] > 0.0
+    monthly["hedge_12m_prev_positive"] = monthly["hedge_12m_prev"] > 0.0
+
+    monthly["hedge_1m_prev_beats_a"] = monthly["hedge_minus_a_1m_prev"] > 0.0
+    monthly["hedge_3m_prev_beats_a"] = monthly["hedge_minus_a_3m_prev"] > 0.0
+    monthly["hedge_6m_prev_beats_a"] = monthly["hedge_minus_a_6m_prev"] > 0.0
+    monthly["hedge_12m_prev_beats_a"] = monthly["hedge_minus_a_12m_prev"] > 0.0
+
+    # Slightly more combined conditions, still not optimized.
+    monthly["a_weak_and_hedge_positive_3m"] = (
+        monthly["a_3m_prev_negative"] & monthly["hedge_3m_prev_positive"]
+    )
+    monthly["a_drawdown_5pct_and_hedge_positive_3m"] = (
+        monthly["a_drawdown_prev_lt_5pct"] & monthly["hedge_3m_prev_positive"]
+    )
+    monthly["a_weak_and_hedge_beats_a_3m"] = (
+        monthly["a_3m_prev_negative"] & monthly["hedge_3m_prev_beats_a"]
+    )
+
+    monthly = monthly.reset_index()
+    return monthly
+
+
+def add_regime_buckets(attribution: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add categorical regime buckets and 2D regime labels.
+
+    The thresholds are intentionally coarse and interpretable. They are meant
+    for diagnosis, not for fitted optimization.
+    """
+    df = attribution.copy()
+
+    def bucket_a_return(x: float) -> str:
+        if pd.isna(x):
+            return "missing"
+        if x > 0.10:
+            return "strong_up_gt_10"
+        if x > 0.03:
+            return "up_3_10"
+        if x >= -0.03:
+            return "flat_-3_3"
+        if x >= -0.10:
+            return "down_-10_-3"
+        return "strong_down_lt_-10"
+
+    def bucket_bond_return(x: float) -> str:
+        if pd.isna(x):
+            return "missing"
+        if x > 0.05:
+            return "strong_up_gt_5"
+        if x > 0.01:
+            return "up_1_5"
+        if x >= -0.01:
+            return "flat_-1_1"
+        if x >= -0.05:
+            return "down_-5_-1"
+        return "strong_down_lt_-5"
+
+    def bucket_drawdown(x: float) -> str:
+        if pd.isna(x):
+            return "missing"
+        if x >= -0.02:
+            return "near_high_gt_-2"
+        if x >= -0.05:
+            return "mild_dd_-5_-2"
+        if x >= -0.10:
+            return "medium_dd_-10_-5"
+        return "deep_dd_lt_-10"
+
+    def bucket_spread(x: float) -> str:
+        if pd.isna(x):
+            return "missing"
+        if x < -0.10:
+            return "a_leads_big_lt_-10"
+        if x < -0.03:
+            return "a_leads_-10_-3"
+        if x <= 0.03:
+            return "similar_-3_3"
+        if x <= 0.10:
+            return "hedge_leads_3_10"
+        return "hedge_leads_big_gt_10"
+
+    for src, out in [
+        ("a_3m_prev", "a_3m_bucket"),
+        ("a_6m_prev", "a_6m_bucket"),
+        ("a_12m_prev", "a_12m_bucket"),
+    ]:
+        if src in df.columns:
+            df[out] = df[src].apply(bucket_a_return)
+
+    for src, out in [
+        ("hedge_3m_prev", "hedge_3m_bucket"),
+        ("hedge_6m_prev", "hedge_6m_bucket"),
+        ("hedge_12m_prev", "hedge_12m_bucket"),
+    ]:
+        if src in df.columns:
+            df[out] = df[src].apply(bucket_bond_return)
+
+    if "a_drawdown_prev" in df.columns:
+        df["a_drawdown_bucket"] = df["a_drawdown_prev"].apply(bucket_drawdown)
+
+    for src, out in [
+        ("hedge_minus_a_3m_prev", "spread_3m_bucket"),
+        ("hedge_minus_a_6m_prev", "spread_6m_bucket"),
+        ("hedge_minus_a_12m_prev", "spread_12m_bucket"),
+    ]:
+        if src in df.columns:
+            df[out] = df[src].apply(bucket_spread)
+
+    def combine(a: str, b: str, out: str) -> None:
+        if a in df.columns and b in df.columns:
+            df[out] = df[a].astype(str) + "__" + df[b].astype(str)
+
+    combine("a_3m_bucket", "hedge_3m_bucket", "a3m_x_hedge3m")
+    combine("a_3m_bucket", "spread_6m_bucket", "a3m_x_spread6m")
+    combine("a_drawdown_bucket", "hedge_3m_bucket", "dd_x_hedge3m")
+    combine("a_drawdown_bucket", "spread_6m_bucket", "dd_x_spread6m")
+    combine("hedge_3m_bucket", "spread_6m_bucket", "hedge3m_x_spread6m")
+    combine("a_6m_bucket", "spread_12m_bucket", "a6m_x_spread12m")
+    combine("a_drawdown_bucket", "spread_12m_bucket", "dd_x_spread12m")
+
+    return df
+
+
+def build_hedge_attribution_buckets(attribution: pd.DataFrame) -> pd.DataFrame:
+    """
+    Summarize hedge_delta by simple conditions, categorical regimes and 2D regimes.
+
+    Output is per portfolio/rule/weight. `is_reliable_bucket` is a guardrail for
+    interpretation, not a filter: True means at least 12 months in the bucket and
+    at least 5 hedge-active months inside that bucket.
+    """
+    attribution = add_regime_buckets(attribution)
+
+    bucket_cols = [
+        "hedge_on",
+
+        "a_1m_prev_negative",
+        "a_3m_prev_negative",
+        "a_6m_prev_negative",
+        "a_12m_prev_negative",
+
+        "a_drawdown_prev_lt_3pct",
+        "a_drawdown_prev_lt_5pct",
+        "a_drawdown_prev_lt_10pct",
+
+        "hedge_1m_prev_positive",
+        "hedge_3m_prev_positive",
+        "hedge_6m_prev_positive",
+        "hedge_12m_prev_positive",
+
+        "hedge_1m_prev_beats_a",
+        "hedge_3m_prev_beats_a",
+        "hedge_6m_prev_beats_a",
+        "hedge_12m_prev_beats_a",
+
+        "a_weak_and_hedge_positive_3m",
+        "a_drawdown_5pct_and_hedge_positive_3m",
+        "a_weak_and_hedge_beats_a_3m",
+
+        "a_3m_bucket",
+        "a_6m_bucket",
+        "a_12m_bucket",
+        "hedge_3m_bucket",
+        "hedge_6m_bucket",
+        "hedge_12m_bucket",
+        "a_drawdown_bucket",
+        "spread_3m_bucket",
+        "spread_6m_bucket",
+        "spread_12m_bucket",
+
+        "a3m_x_hedge3m",
+        "a3m_x_spread6m",
+        "dd_x_hedge3m",
+        "dd_x_spread6m",
+        "hedge3m_x_spread6m",
+        "a6m_x_spread12m",
+        "dd_x_spread12m",
+    ]
+
+    rows: List[Dict[str, Any]] = []
+
+    for portfolio, pg in attribution.groupby("portfolio", dropna=False):
+        meta = pg.iloc[0].to_dict()
+
+        for bucket in bucket_cols:
+            if bucket not in pg.columns:
+                continue
+
+            for value, g in pg.groupby(bucket, dropna=False):
+                hedge_active = g[g["hedge_on"].astype(bool)]
+                months = int(len(g))
+                hedge_active_months = int(g["hedge_on"].sum())
+
+                row = {
+                    "portfolio": portfolio,
+                    "hedge": meta.get("hedge", np.nan),
+                    "hedge_weight": meta.get("hedge_weight", np.nan),
+                    "rule": meta.get("rule", np.nan),
+                    "lookback": meta.get("lookback", np.nan),
+                    "ema_span": meta.get("ema_span", np.nan),
+                    "min_hedge_return": meta.get("min_hedge_return", np.nan),
+                    "min_spread_vs_a": meta.get("min_spread_vs_a", np.nan),
+
+                    "bucket": bucket,
+                    "value": value,
+                    "months": months,
+                    "hedge_active_months": hedge_active_months,
+                    "hedge_active_pct_months": float(g["hedge_on"].mean()),
+                    "is_reliable_bucket": bool(months >= 12 and hedge_active_months >= 5),
+
+                    "avg_hedge_delta_all_months": float(g["hedge_delta"].mean()),
+                    "median_hedge_delta_all_months": float(g["hedge_delta"].median()),
+                    "sum_hedge_delta_all_months": float(g["hedge_delta"].sum()),
+                    "hit_rate_hedge_helped_all_months": float((g["hedge_delta"] > 0.0).mean()),
+
+                    "avg_hedge_delta_active_months": (
+                        float(hedge_active["hedge_delta"].mean())
+                        if not hedge_active.empty else np.nan
+                    ),
+                    "median_hedge_delta_active_months": (
+                        float(hedge_active["hedge_delta"].median())
+                        if not hedge_active.empty else np.nan
+                    ),
+                    "sum_hedge_delta_active_months": (
+                        float(hedge_active["hedge_delta"].sum())
+                        if not hedge_active.empty else np.nan
+                    ),
+                    "hit_rate_hedge_helped_active_months": (
+                        float((hedge_active["hedge_delta"] > 0.0).mean())
+                        if not hedge_active.empty else np.nan
+                    ),
+
+                    "avg_a_return": float(g["a_return"].mean()),
+                    "avg_overlay_return": float(g["overlay_return"].mean()),
+                    "worst_a_return": float(g["a_return"].min()),
+                    "worst_overlay_return": float(g["overlay_return"].min()),
+                    "best_a_return": float(g["a_return"].max()),
+                    "best_overlay_return": float(g["overlay_return"].max()),
+
+                    # Useful for sorting regimes where hedge is likely valuable.
+                    "tail_improvement_worst_month": (
+                        float(g["overlay_return"].min() - g["a_return"].min())
+                    ),
+                }
+                rows.append(row)
+
+    if not rows:
+        return pd.DataFrame()
+
+    return pd.DataFrame(rows).sort_values(
+        ["portfolio", "is_reliable_bucket", "avg_hedge_delta_active_months", "bucket", "value"],
+        ascending=[True, False, False, True, True],
+    )
+
+
+def build_hedge_attribution_regime_matrix(attribution: pd.DataFrame) -> pd.DataFrame:
+    """
+    Long-form 2D regime matrix for selected bucket pairs.
+
+    This is easier to pivot in Excel/LibreOffice:
+    rows = row_bucket_value, columns = col_bucket_value,
+    values = avg_hedge_delta_active_months / hit_rate / tail improvement.
+    """
+    attribution = add_regime_buckets(attribution)
+
+    matrix_pairs = [
+        ("a_3m_bucket", "hedge_3m_bucket"),
+        ("a_3m_bucket", "spread_6m_bucket"),
+        ("a_drawdown_bucket", "hedge_3m_bucket"),
+        ("a_drawdown_bucket", "spread_6m_bucket"),
+        ("hedge_3m_bucket", "spread_6m_bucket"),
+        ("a_6m_bucket", "spread_12m_bucket"),
+        ("a_drawdown_bucket", "spread_12m_bucket"),
+    ]
+
+    rows: List[Dict[str, Any]] = []
+
+    for portfolio, pg in attribution.groupby("portfolio", dropna=False):
+        meta = pg.iloc[0].to_dict()
+
+        for row_bucket, col_bucket in matrix_pairs:
+            if row_bucket not in pg.columns or col_bucket not in pg.columns:
+                continue
+
+            for (row_value, col_value), g in pg.groupby([row_bucket, col_bucket], dropna=False):
+                hedge_active = g[g["hedge_on"].astype(bool)]
+                months = int(len(g))
+                hedge_active_months = int(g["hedge_on"].sum())
+
+                rows.append({
+                    "portfolio": portfolio,
+                    "hedge": meta.get("hedge", np.nan),
+                    "hedge_weight": meta.get("hedge_weight", np.nan),
+                    "rule": meta.get("rule", np.nan),
+                    "lookback": meta.get("lookback", np.nan),
+                    "ema_span": meta.get("ema_span", np.nan),
+                    "min_hedge_return": meta.get("min_hedge_return", np.nan),
+                    "min_spread_vs_a": meta.get("min_spread_vs_a", np.nan),
+                    "matrix": f"{row_bucket}__x__{col_bucket}",
+                    "row_bucket": row_bucket,
+                    "row_value": row_value,
+                    "col_bucket": col_bucket,
+                    "col_value": col_value,
+                    "months": months,
+                    "hedge_active_months": hedge_active_months,
+                    "is_reliable_cell": bool(months >= 12 and hedge_active_months >= 5),
+                    "avg_hedge_delta_all_months": float(g["hedge_delta"].mean()),
+                    "hit_rate_hedge_helped_all_months": float((g["hedge_delta"] > 0.0).mean()),
+                    "avg_hedge_delta_active_months": (
+                        float(hedge_active["hedge_delta"].mean())
+                        if not hedge_active.empty else np.nan
+                    ),
+                    "hit_rate_hedge_helped_active_months": (
+                        float((hedge_active["hedge_delta"] > 0.0).mean())
+                        if not hedge_active.empty else np.nan
+                    ),
+                    "worst_a_return": float(g["a_return"].min()),
+                    "worst_overlay_return": float(g["overlay_return"].min()),
+                    "tail_improvement_worst_month": float(g["overlay_return"].min() - g["a_return"].min()),
+                })
+
+    if not rows:
+        return pd.DataFrame()
+
+    return pd.DataFrame(rows).sort_values(
+        ["portfolio", "matrix", "is_reliable_cell", "avg_hedge_delta_active_months"],
+        ascending=[True, True, False, False],
+    )
+
+def build_top_hedge_attribution_months(
+    attribution: pd.DataFrame,
+    top_n: int = 20,
+) -> pd.DataFrame:
+    """Top helpful and harmful months per portfolio by hedge_delta."""
+    attribution = add_regime_buckets(attribution)
+    rows: List[pd.DataFrame] = []
+
+    for portfolio, g in attribution.groupby("portfolio", dropna=False):
+        cols = [
+            "month_end",
+            "portfolio",
+            "hedge",
+            "hedge_weight",
+            "rule",
+            "lookback",
+            "ema_span",
+            "min_hedge_return",
+            "min_spread_vs_a",
+            "a_return",
+            "hedge_return",
+            "overlay_return",
+            "hedge_delta",
+            "hedge_on",
+            "a_3m_prev",
+            "a_drawdown_prev",
+            "hedge_3m_prev",
+            "hedge_minus_a_3m_prev",
+            "a_3m_bucket",
+            "a_6m_bucket",
+            "a_12m_bucket",
+            "hedge_3m_bucket",
+            "hedge_6m_bucket",
+            "hedge_12m_bucket",
+            "a_drawdown_bucket",
+            "spread_3m_bucket",
+            "spread_6m_bucket",
+            "spread_12m_bucket",
+            "a3m_x_hedge3m",
+            "a3m_x_spread6m",
+            "dd_x_hedge3m",
+            "dd_x_spread6m",
+            "hedge3m_x_spread6m",
+        ]
+        existing = [c for c in cols if c in g.columns]
+
+        best = g.sort_values("hedge_delta", ascending=False).head(top_n).copy()
+        best["side"] = "best_helped"
+        rows.append(best[["side"] + existing])
+
+        worst = g.sort_values("hedge_delta", ascending=True).head(top_n).copy()
+        worst["side"] = "worst_hurt"
+        rows.append(worst[["side"] + existing])
+
+    if not rows:
+        return pd.DataFrame()
+
+    return pd.concat(rows, ignore_index=True)
 
 
 # =========================
@@ -879,20 +1387,26 @@ def main() -> None:
             "hedge_1m_positive",
             "hedge_lb_positive",
             "hedge_positive_and_beats_a",
+            "hedge_positive_and_beats_a_not_6m_extended",
+            "hedge_positive_and_beats_a_not_6m_12m_extended",
             "hedge_positive_and_a_negative",
             "hedge_positive_and_a_lb_negative",
             "hedge_ema_positive",
             "hedge_ema_positive_and_beats_a",
+			"hedge_positive_and_beats_a_a_3m_positive"
         ],
         choices=[
             "hedge_1m_positive",
             "hedge_lb_positive",
             "hedge_beats_a",
             "hedge_positive_and_beats_a",
+            "hedge_positive_and_beats_a_not_6m_extended",
+            "hedge_positive_and_beats_a_not_6m_12m_extended",
             "hedge_positive_and_a_negative",
             "hedge_positive_and_a_lb_negative",
             "hedge_ema_positive",
             "hedge_ema_positive_and_beats_a",
+			"hedge_positive_and_beats_a_a_3m_positive"
         ],
     )
 
@@ -1000,6 +1514,7 @@ def main() -> None:
     portfolio_returns["A100"] = a_r
 
     signal_rows: List[pd.DataFrame] = []
+    attribution_rows: List[pd.DataFrame] = []
 
     for hedge in args.hedges:
         hedge_daily = get_ticker_daily_returns(daily_close, hedge)
@@ -1066,6 +1581,20 @@ def main() -> None:
 
                 overlay_store[label] = result
                 portfolio_returns[label] = result["overlay_return"]
+
+                attribution = build_monthly_hedge_attribution(
+                    label=label,
+                    overlay_result=result,
+                    hedge_weight=hedge_weight,
+                )
+                attribution["hedge"] = hedge
+                attribution["hedge_weight"] = hedge_weight
+                attribution["rule"] = rule
+                attribution["lookback"] = lookback
+                attribution["ema_span"] = ema_span
+                attribution["min_hedge_return"] = min_h
+                attribution["min_spread_vs_a"] = spread
+                attribution_rows.append(attribution)
 
                 sig = pd.DataFrame({
                     "month_end": monthly.index,
@@ -1135,6 +1664,11 @@ def main() -> None:
     rolling_monthly_file = output_dir / "rolling_monthly_top.csv"
     rolling_summary_file = output_dir / "rolling_summary_top.csv"
     daily_detail_file = output_dir / "daily_detail_top.csv"
+    attribution_file = output_dir / "hedge_monthly_attribution.csv"
+    attribution_buckets_file = output_dir / "hedge_attribution_buckets.csv"
+    attribution_top_months_file = output_dir / "hedge_attribution_top_months.csv"
+    attribution_reliable_buckets_file = output_dir / "hedge_attribution_buckets_reliable.csv"
+    attribution_regime_matrix_file = output_dir / "hedge_attribution_regime_matrix.csv"
 
     summary_df.to_csv(summary_file, index=False, float_format="%.10f")
     relative.to_csv(relative_file, index=False, float_format="%.10f")
@@ -1143,6 +1677,43 @@ def main() -> None:
     if signal_rows:
         signals = pd.concat(signal_rows, ignore_index=True)
         signals.to_csv(signals_file, index=False, float_format="%.10f")
+
+    if attribution_rows:
+        attribution_all = pd.concat(attribution_rows, ignore_index=True)
+        attribution_all.to_csv(attribution_file, index=False, float_format="%.10f")
+
+        attribution_buckets = build_hedge_attribution_buckets(attribution_all)
+        attribution_buckets.to_csv(
+            attribution_buckets_file,
+            index=False,
+            float_format="%.10f",
+        )
+
+        attribution_buckets_reliable = attribution_buckets[
+            attribution_buckets["is_reliable_bucket"].astype(bool)
+        ].copy()
+        attribution_buckets_reliable.to_csv(
+            attribution_reliable_buckets_file,
+            index=False,
+            float_format="%.10f",
+        )
+
+        attribution_regime_matrix = build_hedge_attribution_regime_matrix(attribution_all)
+        attribution_regime_matrix.to_csv(
+            attribution_regime_matrix_file,
+            index=False,
+            float_format="%.10f",
+        )
+
+        attribution_top_months = build_top_hedge_attribution_months(
+            attribution_all,
+            top_n=20,
+        )
+        attribution_top_months.to_csv(
+            attribution_top_months_file,
+            index=False,
+            float_format="%.10f",
+        )
 
     daily_rolling.to_csv(rolling_daily_file, index=False, float_format="%.10f")
     monthly_rolling.to_csv(rolling_monthly_file, index=False, float_format="%.10f")
@@ -1167,6 +1738,14 @@ def main() -> None:
     print(f"[OK] zapisano: {relative_file}")
     print(f"[OK] zapisano: {full_file}")
     print(f"[OK] zapisano: {signals_file}")
+
+    if attribution_rows:
+        print(f"[OK] zapisano: {attribution_file}")
+        print(f"[OK] zapisano: {attribution_buckets_file}")
+        print(f"[OK] zapisano: {attribution_top_months_file}")
+        print(f"[OK] zapisano: {attribution_reliable_buckets_file}")
+        print(f"[OK] zapisano: {attribution_regime_matrix_file}")
+
     print(f"[OK] zapisano: {rolling_daily_file}")
     print(f"[OK] zapisano: {rolling_monthly_file}")
     print(f"[OK] zapisano: {rolling_summary_file}")
