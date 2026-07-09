@@ -1158,7 +1158,7 @@ def build_global_summary_txt(run_dir: Path, output_path: Path) -> None:
     parts.append(named_periods_block(
         us_base=data["us_base_named"],
         uk_base=data["uk_base_named"],
-        us_selected=pd.DataFrame(),
+        us_selected=data["us_base_named"],
         uk_selected=data["uk_selected_named"],
     ))
 
