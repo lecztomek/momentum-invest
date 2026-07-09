@@ -169,6 +169,21 @@ def select_variant_row(
     return df.iloc[0].to_dict()
 
 
+def resolved_field(row: Dict[str, Any], key: str, cast: Any) -> Optional[Any]:
+    value = row.get(key)
+
+    if value is None:
+        return None
+
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        pass
+
+    return cast(value)
+
+
 def find_daily_detail(hedge_overlay_dir: Path) -> Path:
     path = hedge_overlay_dir / "daily_detail_top.csv"
 
@@ -186,6 +201,34 @@ def find_daily_detail(hedge_overlay_dir: Path) -> Path:
     )
 
 
+def build_portfolio_label(
+    hedge_asset: str,
+    hedge_weight: float,
+    rule: str,
+    lookback: Optional[int],
+    ema_span: Optional[int],
+    min_hedge_return: Optional[float],
+    min_spread_vs_a: Optional[float],
+) -> str:
+    # Musi zostać w sync z label-em budowanym w monthly_hedge_momentum_overlay.py (grep "ACTIVE_{hedge}")
+    # - to jedyny sposób jednoznacznego dopasowania wiersza w daily_detail_top.csv, bo ten plik nie ma
+    # osobnych kolumn hedge/hedge_weight/rule/... tylko jedną kolumnę "portfolio" z takim zakodowanym labelem.
+    lb = lookback if lookback is not None else 0
+    ema = ema_span if ema_span is not None else 0
+    min_h = min_hedge_return if min_hedge_return is not None else 0.0
+    spread = min_spread_vs_a if min_spread_vs_a is not None else 0.0
+
+    return (
+        f"ACTIVE_{hedge_asset}"
+        f"_w{int(round(hedge_weight * 100)):03d}"
+        f"_{rule}"
+        f"_lb{lb}"
+        f"_ema{ema}"
+        f"_minh{int(round(min_h * 10000)):05d}"
+        f"_spread{int(round(spread * 10000)):05d}"
+    )
+
+
 def match_daily_detail_rows(
     daily_detail: pd.DataFrame,
     hedge_asset: str,
@@ -198,6 +241,22 @@ def match_daily_detail_rows(
 ) -> pd.DataFrame:
     df = daily_detail.copy()
 
+    if "portfolio" in df.columns:
+        label = build_portfolio_label(
+            hedge_asset, hedge_weight, rule, lookback, ema_span, min_hedge_return, min_spread_vs_a,
+        )
+        matched = df[df["portfolio"] == label].copy()
+
+        if matched.empty:
+            raise ValueError(
+                f"Nie znalazłem w daily_detail_top.csv wiersza dla portfolio='{label}'. "
+                f"Dostępne portfolio (przykłady): {sorted(df['portfolio'].astype(str).unique())[:10]}"
+            )
+
+        return matched
+
+    # Fallback dla starszych/innych formatów daily_detail bez kolumny "portfolio" (osobne kolumny
+    # hedge/hedge_weight/rule/... per wiersz).
     df = filter_if_column_exists(df, "hedge", hedge_asset)
     df = filter_if_column_exists(df, "hedge_asset", hedge_asset)
     df = filter_if_column_exists(df, "uup_ticker", hedge_asset)
@@ -432,6 +491,31 @@ def export_selected_monthly(
         axis=1,
     )
 
+    # signal_changed z bazowej strategii nie wie nic o wł/wył hedge'a (ten patch jest nałożony
+    # później, w tym kroku) - jeśli go nie poprawimy, replay_mapped_monthly.py z domyślnym
+    # execution_mode=signal_changed nie zauważy, że hedge się w danym miesiącu włączył/wyłączył,
+    # i będzie trzymał starą pozycję aż do najbliższej zmiany sygnału BAZOWEJ strategii. To dawało
+    # wieloma miesiącami rozjazd UK vs US w mapping consistency, mimo że mapping sam w sobie jest 1:1.
+    #
+    # Uwaga: nie porównujemy tu surowych weights_used_json miesiąc do miesiąca - wagi w bazowym pliku
+    # naturalnie dryfują z ceną nawet bez żadnego rebalansu (to equity-weighted holdings, nie stały
+    # target), więc taka zmiana zawsze wygląda na "różną". Interesuje nas wyłącznie przejście
+    # hedge_active True<->False, bo tylko to jest realną zmianą decyzji nałożoną przez ten krok.
+    hedge_active_bool = out["hedge_active"].astype(bool).tolist()
+    hedge_transition = [True] + [
+        hedge_active_bool[i] != hedge_active_bool[i - 1] for i in range(1, len(hedge_active_bool))
+    ]
+
+    if "signal_changed" in out.columns:
+        out["signal_changed_base_only"] = out["signal_changed"]
+        base_flags = pd.to_numeric(out["signal_changed"], errors="coerce").fillna(0).astype(int)
+        out["signal_changed"] = [
+            1 if (base_flag == 1 or changed) else 0
+            for base_flag, changed in zip(base_flags, hedge_transition)
+        ]
+    else:
+        out["signal_changed"] = [1 if changed else 0 for changed in hedge_transition]
+
     if "strategy" in out.columns:
         out["base_strategy"] = out["strategy"]
         out["strategy"] = (
@@ -474,9 +558,18 @@ def main() -> None:
     parser.add_argument("--output-monthly", required=True)
     parser.add_argument("--output-metadata", required=True)
 
-    parser.add_argument("--hedge-asset", required=True)
-    parser.add_argument("--hedge-weight", required=True, type=float)
-    parser.add_argument("--rule", required=True)
+    parser.add_argument(
+        "--hedge-asset", default=None,
+        help="Puste/nieustawione = AUTO: wybierz najlepszy hedge_asset z rankingu.",
+    )
+    parser.add_argument(
+        "--hedge-weight", type=float, default=None,
+        help="Puste/nieustawione = AUTO: wybierz najlepszą wagę z rankingu.",
+    )
+    parser.add_argument(
+        "--rule", default=None,
+        help="Puste/nieustawione = AUTO: wybierz najlepszą regułę z rankingu.",
+    )
 
     parser.add_argument("--lookback", type=int, default=None)
     parser.add_argument("--ema-span", type=int, default=None)
@@ -503,23 +596,34 @@ def main() -> None:
         min_spread_vs_a=args.min_spread_vs_a,
     )
 
+    # Zawsze bierzemy WARTOŚCI Z DOPASOWANEGO WIERSZA, nie surowe args - inaczej przy niepełnym
+    # (AUTO) filtrze eksportowalibyśmy hedge z innej kombinacji niż ta, którą faktycznie
+    # zaraportowaliśmy jako wybraną (matched_variant_row).
+    resolved_hedge_asset = str(variant_row.get("hedge"))
+    resolved_hedge_weight = float(variant_row.get("hedge_weight"))
+    resolved_rule = str(variant_row.get("rule"))
+    resolved_lookback = resolved_field(variant_row, "lookback", int)
+    resolved_ema_span = resolved_field(variant_row, "ema_span", int)
+    resolved_min_hedge_return = resolved_field(variant_row, "min_hedge_return", float)
+    resolved_min_spread_vs_a = resolved_field(variant_row, "min_spread_vs_a", float)
+
     daily_detail_path = find_daily_detail(hedge_overlay_dir)
 
     export_meta = export_selected_monthly(
         base_monthly_path=base_monthly,
         daily_detail_path=daily_detail_path,
         output_monthly=output_monthly,
-        hedge_asset=args.hedge_asset,
-        hedge_weight=args.hedge_weight,
-        rule=args.rule,
-        lookback=args.lookback,
-        ema_span=args.ema_span,
-        min_hedge_return=args.min_hedge_return,
-        min_spread_vs_a=args.min_spread_vs_a,
+        hedge_asset=resolved_hedge_asset,
+        hedge_weight=resolved_hedge_weight,
+        rule=resolved_rule,
+        lookback=resolved_lookback,
+        ema_span=resolved_ema_span,
+        min_hedge_return=resolved_min_hedge_return,
+        min_spread_vs_a=resolved_min_spread_vs_a,
     )
 
     metadata = {
-        "selected_variant": {
+        "requested_filter": {
             "hedge_asset": args.hedge_asset,
             "hedge_weight": args.hedge_weight,
             "rule": args.rule,
@@ -527,6 +631,15 @@ def main() -> None:
             "ema_span": args.ema_span,
             "min_hedge_return": args.min_hedge_return,
             "min_spread_vs_a": args.min_spread_vs_a,
+        },
+        "selected_variant": {
+            "hedge_asset": resolved_hedge_asset,
+            "hedge_weight": resolved_hedge_weight,
+            "rule": resolved_rule,
+            "lookback": resolved_lookback,
+            "ema_span": resolved_ema_span,
+            "min_hedge_return": resolved_min_hedge_return,
+            "min_spread_vs_a": resolved_min_spread_vs_a,
         },
         "matched_variant_row": variant_row,
         "export": export_meta,

@@ -239,6 +239,26 @@ def select_source_monthly(cfg: Dict[str, Any], backtest_dir: Path) -> Path:
     return candidates[0].resolve()
 
 
+# Domyślny zakres przeszukiwania dla kroku 05 (monthly_hedge_momentum_overlay.py), używany gdy
+# idea_config.json nie ustawia explicite hedges.us.rules / hedge_weights. Bez tego search zwężał się
+# po cichu do jednej reguły i jednej wagi z selected_hedge_variant, czyli w ogóle nie przeszukiwał.
+DEFAULT_HEDGE_RULES = [
+    "hedge_1m_positive",
+    "hedge_lb_positive",
+    "hedge_beats_a",
+    "hedge_positive_and_beats_a",
+    "hedge_positive_and_beats_a_not_6m_extended",
+    "hedge_positive_and_beats_a_not_6m_12m_extended",
+    "hedge_positive_and_a_negative",
+    "hedge_positive_and_a_lb_negative",
+    "hedge_ema_positive",
+    "hedge_ema_positive_and_beats_a",
+    "hedge_positive_and_beats_a_a_3m_positive",
+]
+
+DEFAULT_HEDGE_WEIGHTS = [0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]
+
+
 def get_selected_hedge_cfg(cfg: Dict[str, Any]) -> Dict[str, Any]:
     selected = cfg.get("selected_hedge_variant", {})
     if not isinstance(selected, dict):
@@ -253,28 +273,34 @@ def selected_hedge_enabled(cfg: Dict[str, Any]) -> bool:
     return bool(get_selected_hedge_cfg(cfg).get("enabled", False))
 
 
+def is_auto(value: Any) -> bool:
+    return isinstance(value, str) and value.strip().upper() == "AUTO"
+
+
 def build_selected_hedge_args(selected: Dict[str, Any]) -> List[str]:
+    # "AUTO" (albo brak klucza) = nie wymuszaj tego wymiaru, niech export_selected_hedge_variant.py
+    # weźmie najlepiej rankingowaną kombinację z pełnego przeszukania (krok 05) po tym wymiarze.
     args: List[str] = []
 
-    if selected.get("hedge_asset"):
+    if selected.get("hedge_asset") and not is_auto(selected.get("hedge_asset")):
         args += ["--hedge-asset", str(selected["hedge_asset"])]
 
-    if selected.get("hedge_weight") is not None:
+    if selected.get("hedge_weight") is not None and not is_auto(selected.get("hedge_weight")):
         args += ["--hedge-weight", str(selected["hedge_weight"])]
 
-    if selected.get("rule"):
+    if selected.get("rule") and not is_auto(selected.get("rule")):
         args += ["--rule", str(selected["rule"])]
 
-    if selected.get("lookback") is not None:
+    if selected.get("lookback") is not None and not is_auto(selected.get("lookback")):
         args += ["--lookback", str(selected["lookback"])]
 
-    if selected.get("ema_span") is not None:
+    if selected.get("ema_span") is not None and not is_auto(selected.get("ema_span")):
         args += ["--ema-span", str(selected["ema_span"])]
 
-    if selected.get("min_hedge_return") is not None:
+    if selected.get("min_hedge_return") is not None and not is_auto(selected.get("min_hedge_return")):
         args += ["--min-hedge-return", str(selected["min_hedge_return"])]
 
-    if selected.get("min_spread_vs_a") is not None:
+    if selected.get("min_spread_vs_a") is not None and not is_auto(selected.get("min_spread_vs_a")):
         args += ["--min-spread-vs-a", str(selected["min_spread_vs_a"])]
 
     return args
@@ -298,7 +324,7 @@ def run_us_hedge_overlay_all(
     hedge_assets = cfg_list(
         hedge_cfg,
         "hedge_assets",
-        [selected["hedge_asset"]] if selected.get("hedge_asset") else [],
+        [selected["hedge_asset"]] if selected.get("hedge_asset") and not is_auto(selected.get("hedge_asset")) else [],
     )
 
     if not hedge_assets:
@@ -316,6 +342,44 @@ def run_us_hedge_overlay_all(
         "hedges.us.baseline_strategy",
     )
 
+    default_lookback = selected.get("lookback", 1)
+    default_lookback = 1 if is_auto(default_lookback) else default_lookback
+
+    default_ema_span = selected.get("ema_span")
+    default_ema_span = 3 if default_ema_span is None or is_auto(default_ema_span) else default_ema_span
+
+    default_min_hedge_return = selected.get("min_hedge_return", 0.0)
+    default_min_hedge_return = 0.0 if is_auto(default_min_hedge_return) else default_min_hedge_return
+
+    default_min_spread_vs_a = selected.get("min_spread_vs_a", 0.0)
+    default_min_spread_vs_a = 0.0 if is_auto(default_min_spread_vs_a) else default_min_spread_vs_a
+
+    # Jeśli dany wymiar jest w selected_hedge_variant przypięty na sztywno (nie AUTO), krok 05
+    # przeszukuje po nim wąsko (tylko tę jedną wartość) - szybko, bo i tak wiemy co wybierzemy.
+    # Jeśli wymiar to AUTO (albo brak selected_hedge_variant), przeszukujemy szeroko, żeby było
+    # z czego wybrać automatycznie.
+    def narrow_or_wide(selected_value: Any, wide_default: List[Any]) -> List[Any]:
+        if selected_value is None or is_auto(selected_value):
+            return wide_default
+        return [selected_value]
+
+    hedge_weights = cfg_list(hedge_cfg, "hedge_weights", narrow_or_wide(selected.get("hedge_weight"), DEFAULT_HEDGE_WEIGHTS))
+    rules = cfg_list(hedge_cfg, "rules", narrow_or_wide(selected.get("rule"), DEFAULT_HEDGE_RULES))
+    lookbacks = cfg_list(hedge_cfg, "lookbacks", [default_lookback])
+    ema_spans = cfg_list(hedge_cfg, "ema_spans", [default_ema_span])
+    min_hedge_returns = cfg_list(hedge_cfg, "min_hedge_returns", [default_min_hedge_return])
+    min_spreads_vs_a = cfg_list(hedge_cfg, "min_spreads_vs_a", [default_min_spread_vs_a])
+
+    # Domyślnie zapisujemy daily detail dla CAŁEGO przeszukanego grida, nie tylko dla top 30 -
+    # inaczej selected_hedge_variant wskazujący na kombinację poza top-N powodowałby błąd w kroku 06
+    # ("daily_detail po filtrowaniu jest pusty"), bo export_selected_hedge_variant.py szuka dokładnie
+    # tej kombinacji w daily_detail_top.csv, a nie w pełnej tabeli wynikowej.
+    grid_size = (
+        len(hedge_assets) * len(hedge_weights) * len(rules)
+        * len(lookbacks) * len(ema_spans) * len(min_hedge_returns) * len(min_spreads_vs_a)
+    )
+    save_daily_detail_top_n = int(hedge_cfg.get("save_daily_detail_top_n", grid_size))
+
     cmd = [
         sys.executable,
         str(ENGINE / "monthly_hedge_momentum_overlay.py"),
@@ -330,23 +394,23 @@ def run_us_hedge_overlay_all(
         "--hedges",
         *list_arg(hedge_assets),
         "--hedge-weights",
-        *list_arg(cfg_list(hedge_cfg, "hedge_weights", [selected.get("hedge_weight", 0.20)])),
+        *list_arg(hedge_weights),
         "--rules",
-        *list_arg(cfg_list(hedge_cfg, "rules", [selected.get("rule", "hedge_positive_and_beats_a")])),
+        *list_arg(rules),
         "--lookbacks",
-        *list_arg(cfg_list(hedge_cfg, "lookbacks", [selected.get("lookback", 1)])),
+        *list_arg(lookbacks),
         "--ema-spans",
-        *list_arg(cfg_list(hedge_cfg, "ema_spans", [selected.get("ema_span", 3) if selected.get("ema_span") is not None else 3])),
+        *list_arg(ema_spans),
         "--min-hedge-returns",
-        *list_arg(cfg_list(hedge_cfg, "min_hedge_returns", [selected.get("min_hedge_return", 0.0)])),
+        *list_arg(min_hedge_returns),
         "--min-spreads-vs-a",
-        *list_arg(cfg_list(hedge_cfg, "min_spreads_vs_a", [selected.get("min_spread_vs_a", 0.0)])),
+        *list_arg(min_spreads_vs_a),
         "--rolling-day-windows",
         *list_arg(cfg_list(hedge_cfg, "rolling_day_windows", [21, 63, 126, 252])),
         "--rolling-month-windows",
         *list_arg(cfg_list(hedge_cfg, "rolling_month_windows", [3, 6, 12])),
         "--save-daily-detail-top-n",
-        str(hedge_cfg.get("save_daily_detail_top_n", 30)),
+        str(save_daily_detail_top_n),
         "--output-dir",
         str(step_dir),
     ]
@@ -406,6 +470,7 @@ def run_hedge_vs_baseline(
     daily_equity_all: Path,
     daily_close: Path,
     cfg: Dict[str, Any],
+    selected_meta_path: Path,
 ) -> None:
     print("[RUN ] 08_us_selected_vs_base")
     ensure_dir(step_dir)
@@ -416,8 +481,19 @@ def run_hedge_vs_baseline(
 
     selected = get_selected_hedge_cfg(cfg)
 
-    hedge_assets = [selected["hedge_asset"]] if selected.get("hedge_asset") else cfg_list(hedge_cfg, "hedge_assets", [])
-    hedge_weights = [selected["hedge_weight"]] if selected.get("hedge_weight") is not None else cfg_list(hedge_cfg, "hedge_weights", [0.20])
+    # Krok 06 już rozwiązał "AUTO" na konkretną, wygrywającą kombinację (bierzemy z jego metadanych,
+    # nie z surowego cfg["selected_hedge_variant"], bo tam wciąż może być literalnie "AUTO").
+    resolved_variant = read_json(selected_meta_path).get("selected_variant", {})
+
+    resolved_hedge_asset = resolved_variant.get("hedge_asset") or (
+        selected.get("hedge_asset") if not is_auto(selected.get("hedge_asset")) else None
+    )
+    resolved_hedge_weight = resolved_variant.get("hedge_weight")
+    if resolved_hedge_weight is None and not is_auto(selected.get("hedge_weight")):
+        resolved_hedge_weight = selected.get("hedge_weight")
+
+    hedge_assets = [resolved_hedge_asset] if resolved_hedge_asset else cfg_list(hedge_cfg, "hedge_assets", [])
+    hedge_weights = [resolved_hedge_weight] if resolved_hedge_weight is not None else cfg_list(hedge_cfg, "hedge_weights", [0.20])
 
     if not hedge_assets:
         raise ValueError("Brak selected_hedge_variant.hedge_asset albo hedges.us.hedge_assets.")
@@ -741,6 +817,7 @@ def run_pipeline(idea_name: str, requested_run: Optional[str]) -> None:
             daily_equity_all=us_base_daily_equity,
             daily_close=us_daily_close,
             cfg=cfg,
+            selected_meta_path=s06 / "selected_hedge_metadata.json",
         )
     else:
         print("[SKIP] 08_us_selected_vs_base selected_hedge_variant disabled")
