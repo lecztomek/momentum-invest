@@ -155,8 +155,17 @@ def select_variant_row(
             f"Preview dostępnych wariantów:\n{table[available_cols].head(30).to_string(index=False)}"
         )
 
+    # quality_score_vs_baseline (z monthly_hedge_momentum_overlay.py) to wieloczynnikowy score
+    # (poprawa calmar/maxdd/ulcer index/underwater time/worst 6-12m/CAGR WZGLĘDEM baseline bez
+    # hedge'a) - dużo lepsze kryterium "czy hedge się opłaca" niż surowy calmar, który głównie
+    # odzwierciedla samą strategię A, nie wkład hedge'a. _auto_score to hak na przyszłość, gdyby
+    # ktoś chciał podać własny score z zewnątrz.
     if "_auto_score" in df.columns:
         df = df.sort_values("_auto_score", ascending=False)
+    elif "quality_score_vs_baseline" in df.columns:
+        tmp = df.copy()
+        tmp["__score"] = pd.to_numeric(tmp["quality_score_vs_baseline"], errors="coerce")
+        df = tmp.sort_values("__score", ascending=False).drop(columns=["__score"])
     elif "calmar" in df.columns:
         tmp = df.copy()
         tmp["__calmar"] = pd.to_numeric(tmp["calmar"], errors="coerce")

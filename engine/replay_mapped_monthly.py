@@ -35,6 +35,36 @@ def parse_json_obj(value: Any) -> Dict[str, float]:
     return {str(k): float(v) for k, v in obj.items()}
 
 
+def determine_safe_start_date(
+    monthly_source: pd.DataFrame,
+    returns_df: pd.DataFrame,
+    mapping: Dict[str, str],
+) -> pd.Timestamp:
+    """
+    Wcześniej to była na sztywno wpisana data (dostosowana do jednego konkretnego tickera UK),
+    co psuło replay dla każdej innej idei, gdzie mapowany hedge/aktywo ma krótszą historię niż ten
+    ticker. Zamiast tego: bierzemy tylko tickery UK faktycznie trzymane w monthly_source (nie cały
+    ticker_mapping.json, który może mieć dużo nigdy-nieużywanych par) i zaczynamy od najpóźniejszej
+    z ich pierwszych dostępnych dat - dopiero wtedy każdy trzymany ticker ma realny zwrot.
+    """
+    used_us_tickers: set[str] = set()
+
+    for weights_json in monthly_source["weights_used_json"]:
+        weights = parse_json_obj(weights_json)
+        used_us_tickers.update(a for a in weights.keys() if a != "_CASH")
+
+    used_uk_tickers = {mapping[t] for t in used_us_tickers if t in mapping}
+    available = [t for t in used_uk_tickers if t in returns_df.columns]
+
+    first_valid_dates = [returns_df[t].first_valid_index() for t in available]
+    first_valid_dates = [d for d in first_valid_dates if d is not None]
+
+    if first_valid_dates:
+        return max(first_valid_dates)
+
+    return returns_df.index.min()
+
+
 def normalize_weights_or_cash(weights: Dict[str, float]) -> Dict[str, float]:
     clean = {str(a): float(w) for a, w in weights.items() if abs(float(w)) > EPS}
     total = float(sum(clean.values()))
@@ -794,15 +824,12 @@ def main() -> None:
     monthly_source = load_monthly_csv(args.monthly)
     returns_df = load_wide_csv(args.returns)
     mapping = load_mapping(args.mapping)
-    
-    # START TESTU UK
-    # speq.uk masz dopiero od 2021-05-10, więc bezpieczniej zacząć od pełnego miesiąca:
-    START_DATE = pd.Timestamp("2021-06-01")
-    # ewentualnie bardziej konserwatywnie:
-    # START_DATE = pd.Timestamp("2021-07-01")
-    
-    monthly_source = monthly_source.loc[monthly_source.index >= START_DATE].copy()
-    returns_df = returns_df.loc[returns_df.index >= START_DATE].copy()
+
+    start_date = determine_safe_start_date(monthly_source, returns_df, mapping)
+    print(f"[INFO] Bezpieczny start replay (wszystkie trzymane tickery UK mają dane): {start_date.date()}")
+
+    monthly_source = monthly_source.loc[monthly_source.index >= start_date].copy()
+    returns_df = returns_df.loc[returns_df.index >= start_date].copy()
 
     strategy_name = args.strategy_name
     if strategy_name is None:
