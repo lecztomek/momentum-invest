@@ -63,7 +63,12 @@ def daily_equity_curve(
         trade_cost = float(row.get("trade_cost", 0.0))
         equity *= (1.0 - trade_cost)
 
-        tickers = [t for t in weights if t != "_CASH"]
+        # Tylko tickery z FAKTYCZNIE niezerowa waga - ticker z waga 0.0 (np. z tabeli COMBINERA,
+        # ktora zawsze zawiera pelna unie kolumn calego uniwersum) moze jeszcze nie miec zadnych
+        # danych cenowych (np. nie istnial jeszcze na gieldzie) - mnozenie 0.0 * NaN dalo by NaN
+        # i zarazilo cala reszte krzywej equity, mimo ze ten ticker nigdy nie byl faktycznie
+        # trzymany.
+        tickers = [t for t in weights if t != "_CASH" and abs(weights[t]) > 1e-12]
         unknown = sorted(set(tickers) - set(prices.columns))
         if unknown:
             raise ValueError(f"daily_equity_curve: nieznane tickery {unknown} (brak w daily_prices).")
