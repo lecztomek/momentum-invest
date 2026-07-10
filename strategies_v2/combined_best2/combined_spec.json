@@ -1,6 +1,6 @@
 {
   "name": "combined_best2_v0",
-  "hypothesis": "Polaczenie dwoch najlepszych strategii z engine_v2 wg dotychczasowych wynikow: best17_a (final CAGR ~19%, Sharpe ~1.03, brak rozjazdu train/OOS - najlepszy wynik ze wszystkich przykladowych strategii) i the_one (jedyna strategia gdzie OOS/validation wypadl LEPIEJ niz train - CAGR ~11.9% OOS vs ~10.0% train, Sharpe ~0.77 vs ~0.66). Cel: sprawdzic czy COMBINER + jedna wspolna histereza na dwoch niezaleznie zaprojektowanych, realnych strategiach dziala poprawnie i czy polaczenie poprawia stabilnosc (np. nizsza korelacja sygnalow) wzgledem kazdej z osobna. Wagi kapitalowe 50/50 - domyslny, rowny podzial (nie optymalizowany, do dyskusji).",
+  "hypothesis": "Polaczenie best17_a i the_one (po poprawce buga w pipeline._run_phase_a z 2026-07-10 obie maja podobny turnover/Sharpe, zaden nie jest juz jednoznacznie 'najlepszy'). Cel: sprawdzic czy COMBINER, gdzie kazda strategia liczy WLASNY execution/histereze (korzystajac z wlasnego, bogatszego kontekstu - np. best17_a uzywa score_gap_hysteresis) PRZED polaczeniem, daje lepszy wynik niz wczesniejsza wersja z jedna, wspolna histereza WAGOWA na surowych targetach. Wagi kapitalowe 50/50 - domyslny, rowny podzial (nie optymalizowany, do dyskusji).",
 
   "strategy_spec_paths": [
     "../best17_a/strategy_spec.json",
@@ -11,9 +11,6 @@
   "combiner_params": {
     "capital_weights": {"best17_a_v0": 0.5, "the_one_v0": 0.5}
   },
-
-  "execution": "hysteresis",
-  "execution_params": {"hysteresis_pct": 0.02, "cost_bps": 40},
 
   "created_at": "2026-07-10"
 }

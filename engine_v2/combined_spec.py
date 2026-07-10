@@ -2,8 +2,10 @@
 COMBINED SPEC - opis polaczenia kilku strategii w jeden portfel.
 
 Warstwa WYZEJ niz StrategySpec (jedna strategia, wewnetrzne bloki): CombinedSpec opisuje kilka
-niezaleznie zaprojektowanych strategii, sposob polaczenia ich docelowych wag (COMBINER) i JEDNO
-wspolne EXECUTION/HYSTERESIS na polaczonym, realnym koncie (patrz combined_pipeline.py).
+niezaleznie zaprojektowanych strategii i sposob polaczenia ich JUZ WYKONANYCH (po wlasnym
+EXECUTION/HYSTERESIS kazdej strategii) wag wg COMBINERA (patrz combined_pipeline.py). Kazda
+strategia niesie WLASNY execution w swoim StrategySpec - CombinedSpec go juz nie potrzebuje
+(inaczej niz we wczesniejszej wersji, gdzie bylo jedno, wspolne execution na polaczonym koncie).
 """
 
 from __future__ import annotations
@@ -25,9 +27,6 @@ class CombinedSpec:
     combiner: str = ""
     combiner_params: Dict[str, Any] = field(default_factory=dict)
 
-    execution: str = ""
-    execution_params: Dict[str, Any] = field(default_factory=dict)
-
     created_at: Optional[str] = None
 
     def validate(self) -> List[str]:
@@ -41,8 +40,6 @@ class CombinedSpec:
             problems.append("CombinedSpec wymaga co najmniej 2 strategy_spec_paths.")
         if not self.combiner:
             problems.append("Brak combiner (nazwa implementacji w engine_v2.combiner).")
-        if not self.execution:
-            problems.append("Brak execution (nazwa implementacji w engine_v2.blocks.execution).")
 
         return problems
 

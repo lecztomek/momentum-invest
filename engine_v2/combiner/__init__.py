@@ -2,9 +2,10 @@
 COMBINER - registry.
 
 Inna warstwa niz `engine_v2/blocks/` (te sa WEWNATRZ jednej strategii). COMBINER laczy
-TargetWeights z KILKU niezaleznie policzonych strategii (kazda juz po wlasnej FAZIE A +
-OVERLAYS) w jeden Combined TargetWeights - dopiero na nim uruchamia sie JEDNO, wspolne
-EXECUTION/HYSTERESIS (patrz `engine_v2/combined_pipeline.py`).
+TargetWeights-ksztaltne tabele z KILKU niezaleznie policzonych strategii w jedna Combined
+TargetWeights - kazda strategia liczy je JUZ PO WLASNYM, PELNYM solo pipeline (WLACZNIE z
+wlasnym EXECUTION/HYSTERESIS), wiec to co tu wchodzi to JUZ WYKONANE wagi, nie surowy target
+sprzed histerezy (patrz `engine_v2/combined_pipeline.py`).
 
 Implementacje zyja jako osobne pliki w tym folderze, kazda rejestrujaca sie w REGISTRY pod
 stringiem uzywanym w CombinedSpec.combiner.

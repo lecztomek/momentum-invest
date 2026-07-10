@@ -192,24 +192,6 @@ def _run_phase_a(spec: StrategySpec):
     return market_data, indicator_set, score, target_weights
 
 
-def _run_overlays_only(spec: StrategySpec, market_data: MarketData, target_weights: pd.DataFrame) -> pd.DataFrame:
-    """Odpala OVERLAYS okres-po-okresie z WLASNYM, HIPOTETYCZNYM PortfolioState (jakby ta
-    strategia handlowala samodzielnie, zawsze rebalansujac do wlasnego targetu - bez wlasnej
-    histerezy). Uzywane WYLACZNIE przez combined_pipeline: prawdziwa histereza liczy sie tylko
-    RAZ, na polaczonym koncie, po COMBINERZE - overlay kazdej strategii dostaje wiec tu tylko
-    przyblizony, hipotetyczny obraz wlasnej historii, nie prawdziwy stan calego konta."""
-    overlay_fn = _lookup("overlays", spec.blocks["overlays"])
-    state = PortfolioState()
-    rows = []
-    for date in target_weights.index:
-        row = target_weights.loc[date]
-        overlay_ctx = OverlayContext(date=date, state=state, market_data=market_data)
-        row = overlay_fn(row, overlay_ctx, spec.base_params.get("overlays", {}))
-        rows.append(row)
-        state.current_weights = row.to_dict()
-    return pd.DataFrame(rows, index=target_weights.index)
-
-
 def run_strategy_pipeline(spec: StrategySpec) -> pd.DataFrame:
     problems = spec.validate()
     if problems:

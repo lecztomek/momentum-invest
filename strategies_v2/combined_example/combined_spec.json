@@ -12,8 +12,5 @@
     "capital_weights": {"example_v0": 0.6, "example_v0_b": 0.4}
   },
 
-  "execution": "hysteresis",
-  "execution_params": {"hysteresis_pct": 0.05},
-
   "created_at": "2026-07-10"
 }

@@ -92,28 +92,37 @@ Warstwa WYŻEJ niż pojedyncza strategia - `CombinedSpec` (`combined_spec.py`) o
 niezależnie zaprojektowanych strategii połączonych w jeden portfel:
 
 ```
-Strategy A: FAZA A -> OVERLAYS (własny, hipotetyczny stan) -> Target Weights A
-Strategy B: FAZA A -> OVERLAYS (własny, hipotetyczny stan) -> Target Weights B
+Strategy A: FAZA A -> OVERLAYS -> EXECUTION/HYSTERESIS (WŁASNY, REALNY PortfolioState) -> Weights Used A
+Strategy B: FAZA A -> OVERLAYS -> EXECUTION/HYSTERESIS (WŁASNY, REALNY PortfolioState) -> Weights Used B
                                     |
-                             STRATEGY COMBINER
-                                    |
-                          Combined Target Weights
-                                    |
-                  EXECUTION/HYSTERESIS (JEDEN, wspólny, realny PortfolioState)
+                     STRATEGY COMBINER (łączy JUŻ WYKONANE wagi wg capital_weights)
                                     |
                               FINAL PORTFOLIO
 ```
 
-Kluczowa decyzja: **EXECUTION dzieje się raz, po combinerze**, na wspólnym realnym stanie konta
-- nie osobno per strategia. Każda strategia liczy własny OVERLAYS z hipotetycznym stanem (jakby
-handlowała samodzielnie, zawsze rebalansując do własnego targetu, bez własnej histerezy) - bo i
-tak liczy się tylko jedna, prawdziwa histereza na końcu.
+**POPRAWIONO 2026-07-10** (zmiana architektury): każda strategia to osobna, w pełni samodzielna
+"sleeve" realnego konta - liczy PEŁNY solo pipeline (`run_strategy_pipeline`), WŁĄCZNIE Z WŁASNYM
+EXECUTION/HYSTERESIS, zanim COMBINER w ogóle zobaczy jej wagi. Wcześniej było odwrotnie: EXECUTION
+działo się RAZ, po combinerze, na surowych (niewygładzonych) targetach każdej strategii - to
+rzucało WŁASNĄ histerezę każdej strategii (np. `best17_a`'s `score_gap_hysteresis`, patrz sekcja
+"Piąta strategia" niżej). Histereza WAGOWA na poziomie połączonego portfela nie potrafi odtworzyć
+histerezy SCORE'OWEJ liczonej WEWNĄTRZ jednej strategii - widzi tylko WYNIK przełączenia (skok
+wagi o pełną wielkość pozycji), nie to jak blisko była decyzja (czy ranking przekręcił się "o
+włos" czy wyraźnie). Stąd: każda strategia decyduje SAMA, kiedy handlować, korzystając z WŁASNEGO,
+bogatszego kontekstu (np. `ExecutionContext.score_row`, którego COMBINER na poziomie połączonych
+wag nigdy nie miał). `CombinedSpec` już nie niesie własnego `execution`/`execution_params` - to w
+całości odpowiedzialność każdego `StrategySpec` z osobna.
 
-Implementacje COMBINERA żyją w `combiner/` (analogiczny registry co bloki). Pierwsza:
-`fixed_capital_weights` - stała alokacja kapitału między strategiami (`capital_weights`), waży i
-sumuje ich `TargetWeights` (unia kolumn dla różnych uniwersów, brakujące tickery = 0). Dla dat
-poza zakresem którejś strategii (np. inne okno rozgrzewki wskaźników) jej wkład to pełny
-`_CASH`, nie zera na całej linii - inaczej suma wierszy spadłaby poniżej 1.0.
+Implementacje COMBINERA żyją w `combiner/` (analogiczny registry co bloki, BEZ ZMIAN w tej
+przebudowie - działa identycznie na dowolnej tabeli kształtu `TargetWeights`, niezależnie czy to
+surowy target czy wagi po własnej histerezie). Pierwsza: `fixed_capital_weights` - stała alokacja
+kapitału między strategiami (`capital_weights`), waży i sumuje ich JUŻ WYKONANE wagi (unia kolumn
+dla różnych uniwersów, brakujące tickery = 0). Dla dat poza zakresem której strategii (np. inne
+okno rozgrzewki wskaźników) jej wkład to pełny `_CASH`, nie zera na całej linii - inaczej suma
+wierszy spadłaby poniżej 1.0. Pochodne metryki okresu (`turnover`/`trade_cost`/`gross_return`/
+`net_return`) też są łączone wg `capital_weights` (wprost w `combined_pipeline.py`, nie przez
+generyczny kontrakt COMBINERA) - `operations` (LICZBA transakcji, nie kwota) jest sumowane BEZ
+ważenia, bo transakcja w jednej sleeve i w drugiej to dwie osobne, realne transakcje.
 
 Orchestrator: `combined_pipeline.run_combined_pipeline(combined_spec, base_dir)` -> tabela
 FINAL PORTFOLIO. Przykład: `strategies_v2/combined_example/combined_spec.json`.
