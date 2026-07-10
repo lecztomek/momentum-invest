@@ -21,13 +21,24 @@ korzystajac z WLASNEGO, bogatszego kontekstu (np. `ExecutionContext.score_row`, 
 na poziomie polaczonych wag nigdy nie mial).
 
 CombinedSpec juz nie niesie wlasnego `execution`/`execution_params` - to w calosci
-odpowiedzialnosc kazdego StrategySpec z osobna. COMBINER (`combiner_params["capital_weights"]`)
-laczy zarowno JUZ WYKONANE wagi (przez istniejacy rejestr COMBINERA, bez zmian - dziala
-identycznie na dowolnej tabeli ksztaltu TargetWeights, niezaleznie czy to surowy target czy
-wagi po wlasnej histerezie), jak i pochodne metryki okresu (turnover/trade_cost/gross_return/
-net_return) - te ostatnie WPROST z `combiner_params["capital_weights"]` (nie z generycznego
-kontraktu COMBINERA), bo scalanie tych metryk jest z natury zwiazane z alokacja kapitalu, nie z
-samym mechanizmem laczenia wag.
+odpowiedzialnosc kazdego StrategySpec z osobna. COMBINER zwraca TERAZ dwie rzeczy:
+(combined_weights, effective_capital_weights) - drugi element to FAKTYCZNY udzial kapitalu
+kazdej strategii W KAZDYM OKRESIE (dla `fixed_capital_weights` to stale liczby z
+`combiner_params`, ale dla `dynamic_capital_weights` - patrz tam - realnie zmienia sie
+okres-po-okresie, np. gdy jedna strategia jest w cash, druga dostaje jej kapital). Pochodne
+metryki okresu (turnover/trade_cost/gross_return/net_return) sa wazone TYM efektywnym udzialem,
+NIE staly `capital_weights` - inaczej strategia, ktora przejela kapital drugiej (bo ta byla w
+cash), miałaby swoj zwrot/koszt policzony na jej WLASNYM, zbyt niskim udziale zamiast na
+faktycznie kontrolowanym kapitale.
+
+Uproszczenie: `turnover`/`operations` sa nadal wazone efektywnym udzialem (jak zwrot/koszt), NIE
+liczone wprost z kolejnych roznic `combined_weights` - to oznacza, ze SAMO przesuniecie kapitalu
+miedzy strategiami (np. A idzie w cash, B przejmuje jej udzial bez zmiany WLASNEGO targetu) nie
+jest wprost wliczone w turnover, mimo ze w realnym koncie wymagaloby to dokupienia pozycji B.
+Znany, swiadomie zaakceptowany kompromis (dokladne policzenie wymagaloby wspolnego `cost_bps`
+miedzy strategiami o roznych zalozeniach kosztowych) - `gross_return`/`trade_cost`/`net_return`
+(jedyne pola faktycznie konsumowane przez `backtest_engine.daily_equity_curve`) sa policzone
+poprawnie.
 
 Samodzielna implementacja - nie importuje niczego z `engine/` (starego kodu).
 """
@@ -94,14 +105,15 @@ def run_combined_pipeline(combined_spec: CombinedSpec, base_dir: Path) -> pd.Dat
             f"Combiner '{combined_spec.combiner}' nie jest zarejestrowany "
             f"(dostepne: {sorted(COMBINER_REGISTRY.keys()) or 'brak'})."
         )
-    combined_weights = combiner_fn(strategy_weights_used, combined_spec.combiner_params)
+    combined_weights, effective_weights = combiner_fn(strategy_weights_used, combined_spec.combiner_params)
 
     # metryki okresu (nie tylko wagi) - kazda strategia to osobna "sleeve": jej wklad do
-    # turnover/gross_return/trade_cost jest wazony jej udzialem kapitalu, dokladnie tak jak jej
-    # wklad do wag. "operations" to LICZBA transakcji (nie kwota), wiec sumujemy bez wazenia -
-    # transakcja w jednej sleeve i transakcja w drugiej to dwie osobne, realne transakcje.
-    capital_weights = combined_spec.combiner_params.get("capital_weights", {})
+    # turnover/gross_return/trade_cost jest wazony jej FAKTYCZNYM (nie statycznym) udzialem
+    # kapitalu w TYM okresie - patrz docstring modulu. "operations" to LICZBA transakcji (nie
+    # kwota), wiec sumujemy bez wazenia - transakcja w jednej sleeve i transakcja w drugiej to
+    # dwie osobne, realne transakcje.
     full_index = combined_weights.index
+    effective_weights = effective_weights.reindex(full_index).fillna(0.0)
 
     combined_turnover = pd.Series(0.0, index=full_index)
     combined_operations = pd.Series(0.0, index=full_index)
@@ -109,15 +121,16 @@ def run_combined_pipeline(combined_spec: CombinedSpec, base_dir: Path) -> pd.Dat
     combined_trade_cost = pd.Series(0.0, index=full_index)
     combined_signal_changed = pd.Series(False, index=full_index)
 
-    for name, capital_weight in capital_weights.items():
+    for name in effective_weights.columns:
         metrics = strategy_metrics[name].reindex(full_index)
         metrics[_METRIC_COLUMNS] = metrics[_METRIC_COLUMNS].fillna(0.0)
         metrics["signal_changed"] = metrics["signal_changed"].fillna(False).astype(bool)
 
-        combined_turnover = combined_turnover + capital_weight * metrics["turnover"]
+        weight = effective_weights[name]
+        combined_turnover = combined_turnover + weight * metrics["turnover"]
         combined_operations = combined_operations + metrics["operations"]
-        combined_gross_return = combined_gross_return + capital_weight * metrics["gross_return"]
-        combined_trade_cost = combined_trade_cost + capital_weight * metrics["trade_cost"]
+        combined_gross_return = combined_gross_return + weight * metrics["gross_return"]
+        combined_trade_cost = combined_trade_cost + weight * metrics["trade_cost"]
         combined_signal_changed = combined_signal_changed | metrics["signal_changed"]
 
     combined_net_return = combined_gross_return - combined_trade_cost

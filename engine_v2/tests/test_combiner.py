@@ -45,7 +45,7 @@ def test_blends_by_capital_weight_same_universe():
     tw_a = _target_weights([[1.0, 0.0], [0.5, 0.5]], ["x", "_CASH"], idx)
     tw_b = _target_weights([[0.0, 1.0], [1.0, 0.0]], ["x", "_CASH"], idx)
 
-    combined = fixed_capital_weights({"a": tw_a, "b": tw_b}, {"capital_weights": {"a": 0.6, "b": 0.4}})
+    combined, _effective_weights = fixed_capital_weights({"a": tw_a, "b": tw_b}, {"capital_weights": {"a": 0.6, "b": 0.4}})
 
     # okres 1: a=(x=1.0,_CASH=0.0), b=(x=0.0,_CASH=1.0) -> combined x = 0.6*1.0+0.4*0.0 = 0.6
     assert combined.loc[idx[0], "x"] == pytest.approx(0.6)
@@ -61,7 +61,7 @@ def test_different_date_ranges_missing_strategy_defaults_to_cash():
     tw_a = _target_weights([[1.0, 0.0]] * 3, ["x", "_CASH"], idx_a)
     tw_b = _target_weights([[1.0, 0.0]] * 2, ["x", "_CASH"], idx_b)
 
-    combined = fixed_capital_weights({"a": tw_a, "b": tw_b}, {"capital_weights": {"a": 0.6, "b": 0.4}})
+    combined, _effective_weights = fixed_capital_weights({"a": tw_a, "b": tw_b}, {"capital_weights": {"a": 0.6, "b": 0.4}})
 
     # styczen: tylko "a" ma dane, "b" jeszcze nie istnieje -> traktowane jako pelny cash u "b"
     jan = idx_a[0]
@@ -74,12 +74,23 @@ def test_different_date_ranges_missing_strategy_defaults_to_cash():
     assert combined.sum(axis=1).loc[feb] == pytest.approx(1.0)
 
 
+def test_effective_weights_are_constant_per_strategy():
+    idx = pd.date_range("2021-01-01", periods=2, freq="MS")
+    tw_a = _target_weights([[1.0, 0.0]] * 2, ["x", "_CASH"], idx)
+    tw_b = _target_weights([[1.0, 0.0]] * 2, ["y", "_CASH"], idx)
+
+    _combined, effective_weights = fixed_capital_weights({"a": tw_a, "b": tw_b}, {"capital_weights": {"a": 0.6, "b": 0.4}})
+
+    assert (effective_weights["a"] == 0.6).all()
+    assert (effective_weights["b"] == 0.4).all()
+
+
 def test_different_universes_combined_via_column_union_fill_zero():
     idx = pd.date_range("2021-01-01", periods=1, freq="MS")
     tw_a = _target_weights([[1.0, 0.0]], ["x", "_CASH"], idx)   # strategia a nie zna "y"
     tw_b = _target_weights([[1.0, 0.0]], ["y", "_CASH"], idx)   # strategia b nie zna "x"
 
-    combined = fixed_capital_weights({"a": tw_a, "b": tw_b}, {"capital_weights": {"a": 0.5, "b": 0.5}})
+    combined, _effective_weights = fixed_capital_weights({"a": tw_a, "b": tw_b}, {"capital_weights": {"a": 0.5, "b": 0.5}})
 
     assert set(combined.columns) == {"x", "y", "_CASH"}
     assert combined.loc[idx[0], "x"] == pytest.approx(0.5)

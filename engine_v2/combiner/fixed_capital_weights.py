@@ -17,7 +17,14 @@ sie do 1, wynik matematycznie tez sumuje sie do 1 - bez dodatkowej normalizacji.
 
 Samodzielna implementacja - nie importuje niczego z `engine/` (starego kodu).
 
-Kontrakt: (strategy_target_weights: Dict[str, TargetWeights], params: dict) -> TargetWeights.
+Kontrakt: (strategy_target_weights: Dict[str, TargetWeights], params: dict)
+-> (TargetWeights, EffectiveCapitalWeights). Drugi element - DataFrame (index=data, kolumny=nazwy
+strategii) z FAKTYCZNIE uzytym udzialem kapitalu KAZDEJ strategii w KAZDYM okresie - dla tego
+combinera to po prostu stale `capital_weights` powtorzone w kazdym wierszu, ale kontrakt jest
+wspolny z `dynamic_capital_weights` (gdzie udzial NAPRAWDE zmienia sie okres-po-okresie) - patrz
+tam. `combined_pipeline.py` uzywa tego do poprawnego wazenia metryk okresu (turnover/gross_return/
+trade_cost) - waga STATYCZNA z params nie wystarczy, gdy inny combiner realokuje kapital
+dynamicznie.
 
 params:
     capital_weights (dict[str, float], wymagane) - nazwa strategii -> udzial kapitalu (suma = 1)
@@ -30,6 +37,7 @@ from typing import Any, Dict
 import pandas as pd
 
 from engine_v2.combiner import REGISTRY
+from engine_v2.combiner._common import common_index_and_columns, reindex_to_common_shape
 from engine_v2.registry import register
 from engine_v2.types import TargetWeights
 
@@ -55,24 +63,15 @@ def fixed_capital_weights(
     if abs(total - 1.0) > 1e-9:
         raise ValueError(f"fixed_capital_weights: capital_weights musi sumowac sie do 1.0, dostalem {total}.")
 
-    all_index = sorted(set().union(*(tw.index for tw in strategy_target_weights.values())))
-    all_columns = sorted(set().union(*(tw.columns for tw in strategy_target_weights.values())))
-    if "_CASH" not in all_columns:
-        all_columns.append("_CASH")
+    all_index, all_columns = common_index_and_columns(strategy_target_weights)
+    full_by_name = reindex_to_common_shape(strategy_target_weights, all_index, all_columns)
 
     combined = pd.DataFrame(0.0, index=all_index, columns=all_columns)
     for strategy_name, capital_weight in capital_weights.items():
-        tw = strategy_target_weights[strategy_name]
+        combined = combined + full_by_name[strategy_name] * capital_weight
 
-        # brakujace TICKERY (kolumny) u tej strategii = 0 (po prostu w nie nie inwestuje)
-        tw_full = tw.reindex(columns=all_columns, fill_value=0.0)
-        # brakujace DATY (spoza jej wlasnego zakresu) = pelny cash, nie zera na calej linii
-        missing_dates = pd.Index(all_index).difference(tw_full.index)
-        if len(missing_dates) > 0:
-            filler = pd.DataFrame(0.0, index=missing_dates, columns=all_columns)
-            filler["_CASH"] = 1.0
-            tw_full = pd.concat([tw_full, filler]).sort_index()
+    effective_weights = pd.DataFrame(
+        {name: float(weight) for name, weight in capital_weights.items()}, index=all_index
+    )
 
-        combined = combined + tw_full.loc[all_index] * capital_weight
-
-    return combined
+    return combined, effective_weights

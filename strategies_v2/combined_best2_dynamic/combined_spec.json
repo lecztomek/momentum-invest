@@ -1,0 +1,16 @@
+{
+  "name": "combined_best2_dynamic_v0",
+  "hypothesis": "Wariant combined_best2 (best17_a + the_one, 50/50) z DYNAMICZNYM combinerem: gdy ktoras strategia jest w danym okresie w calosci w cash, jej kapital nie marnuje sie jako bezczynna gotowka - zostaje oddany drugiej strategii (dostaje 100% zamiast tylko swoich 50%). Odtwarza dynamic_combined ze starego silnika (engine/dynamic_combined.py: A cash + B risk -> B 100%, oba risk -> baza 50/50, oba cash -> cash). Porownanie wprost ze statycznym combined_best2 (fixed_capital_weights, zawsze 50/50 niezaleznie od stanu cash/risk) - ten sam pomysl co redistribute_if_short w rank_weights, tylko na poziomie COMBINERA zamiast pojedynczej strategii.",
+
+  "strategy_spec_paths": [
+    "../best17_a/strategy_spec.json",
+    "../the_one/strategy_spec.json"
+  ],
+
+  "combiner": "dynamic_capital_weights",
+  "combiner_params": {
+    "capital_weights": {"best17_a_v0": 0.5, "the_one_v0": 0.5}
+  },
+
+  "created_at": "2026-07-10"
+}

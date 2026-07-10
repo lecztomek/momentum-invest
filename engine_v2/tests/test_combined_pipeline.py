@@ -70,7 +70,7 @@ def test_combined_pipeline_matches_manual_capital_split(us_data_dir, us_universe
         strategy_spec = StrategySpec.load(base_dir / rel_path)
         strategy_weights_used[strategy_spec.name] = _weights_used_to_wide(run_strategy_pipeline(strategy_spec))
 
-    manual_combined = COMBINER_REGISTRY["fixed_capital_weights"](
+    manual_combined, _effective_weights = COMBINER_REGISTRY["fixed_capital_weights"](
         strategy_weights_used, combined_spec.combiner_params
     )
 
