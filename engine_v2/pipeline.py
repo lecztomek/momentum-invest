@@ -152,14 +152,31 @@ def _run_phase_a(spec: StrategySpec):
     rozgrzewke na poczatku historii (przed pierwsza data z choc jednym policzonym score).
     Reuzywane przez run_strategy_pipeline (pojedyncza strategia) i combined_pipeline (kilka
     strategii razem)."""
-    market_data = _lookup("data_loader", spec.blocks["data_loader"])(
+    raw_market_data = _lookup("data_loader", spec.blocks["data_loader"])(
         spec.universe, spec.base_params.get("data_loader", {})
     )
-    market_data = _lookup("data_cleaner", spec.blocks["data_cleaner"])(
-        market_data, spec.base_params.get("data_cleaner", {})
-    )
+    cleaner_fn = _lookup("data_cleaner", spec.blocks["data_cleaner"])
+    cleaner_params = spec.base_params.get("data_cleaner", {})
 
-    indicator_set = _run_indicators(market_data, spec)
+    # Wskazniki licza sie na PELNEJ, WLASNEJ historii kazdego tickera (skip_common_range_trim) -
+    # inaczej ticker z krotsza historia w uniwersum (np. kanarek notowany od niedawna) przycinalby
+    # rozgrzewke (np. EMA12) WSZYSTKIM innym tickerom (np. blue-chip notowany od 20 lat) do
+    # wlasnego, krotkiego zakresu, zanim jakikolwiek wskaznik zdazy sie naprawde rozgrzac - patrz
+    # README, sekcja "Znany, naprawiony bug (2)".
+    warmup_market_data = cleaner_fn(raw_market_data, {**cleaner_params, "skip_common_range_trim": True})
+    indicator_set = _run_indicators(warmup_market_data, spec)
+
+    # DOPIERO TERAZ przycinamy do wspolnego zakresu wykonania (gdzie WSZYSTKIE tickery w
+    # uniwersum maja dane naraz) - to jest realne okno, w ktorym backtest moze sie wykonywac.
+    # Wskazniki byly juz policzone na pelnej historii (WLASNA, monthly/month-end granularnosc
+    # kazdego wskaznika, NIE codzienna - `market_data.prices` jest zawsze DZIENNE, niezaleznie od
+    # `frequency` strategii, wiec reindex do niego by wstrzyknal dzienne daty do wskaznikow) -
+    # tu tylko odcinamy z ich wyniku rozgrzewke sprzed poczatku wspolnego okna, nie liczymy ich
+    # ponownie.
+    market_data = cleaner_fn(raw_market_data, cleaner_params)
+    warmup_cutoff = market_data.prices.index.min()
+    indicator_set = {key: df.loc[df.index >= warmup_cutoff] for key, df in indicator_set.items()}
+
     eligibility = _run_asset_filters(market_data, indicator_set, spec)
 
     score: ScoreMatrix = _lookup("asset_scoring", spec.blocks["asset_scoring"])(

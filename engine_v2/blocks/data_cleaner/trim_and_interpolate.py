@@ -17,6 +17,13 @@ params:
                                                          ktora zostanie wypelniona interpolacja;
                                                          dluzsze luki zostaja NaN (nie zgadujemy
                                                          na sile, gdy dziura jest zbyt duza)
+    skip_common_range_trim (bool, opcjonalnie, domyslnie False) - jesli True, POMIJA krok
+        przycinania do wspolnego zakresu (tylko wypelnia wewnetrzne luki, kazdy ticker zachowuje
+        WLASNY pelny zakres dat). Uzywane przez `pipeline._run_phase_a` do policzenia wskaznikow
+        na PELNEJ, WLASNEJ historii kazdego tickera - inaczej ticker z krotsza historia (np.
+        kanarek notowany od niedawna) przycinalby rozgrzewke (np. EMA12) WSZYSTKIM innym
+        tickerom w uniwersum do wlasnego, krotkiego zakresu, zanim jakikolwiek wskaznik zdazy
+        sie rozgrzac - patrz README, sekcja "Znany, naprawiony bug (2)".
 """
 
 from __future__ import annotations
@@ -52,7 +59,11 @@ def _fill_internal_gaps(df: pd.DataFrame, max_gap: Optional[int]) -> pd.DataFram
 def trim_and_interpolate(market_data: MarketData, params: Dict[str, Any]) -> MarketData:
     max_gap = params.get("max_gap")
 
-    prices = _fill_internal_gaps(_trim_to_common_range(market_data.prices), max_gap)
-    returns = _fill_internal_gaps(_trim_to_common_range(market_data.returns), max_gap)
+    if params.get("skip_common_range_trim", False):
+        prices = _fill_internal_gaps(market_data.prices, max_gap)
+        returns = _fill_internal_gaps(market_data.returns, max_gap)
+    else:
+        prices = _fill_internal_gaps(_trim_to_common_range(market_data.prices), max_gap)
+        returns = _fill_internal_gaps(_trim_to_common_range(market_data.returns), max_gap)
 
     return MarketData(prices=prices, returns=returns)

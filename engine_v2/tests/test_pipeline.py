@@ -81,14 +81,19 @@ def test_pipeline_matches_manual_wiring(us_data_dir, us_universe):
     from engine_v2.final_portfolio import build_final_portfolio
     from engine_v2.types import ExecutionContext, OverlayContext, PortfolioState
 
-    md = LOADER_REGISTRY["stooq_csv"](us_universe, {"data_dir": str(us_data_dir), "frequency": "monthly"})
-    md = DATA_CLEANER_REGISTRY["trim_and_interpolate"](md, {})
+    raw_md = LOADER_REGISTRY["stooq_csv"](us_universe, {"data_dir": str(us_data_dir), "frequency": "monthly"})
+    # wskazniki licza sie na pelnej, wlasnej historii kazdego tickera (skip_common_range_trim) -
+    # dopiero potem przycinamy do wspolnego zakresu wykonania i odcinamy rozgrzewke z wynikow
+    warmup_md = DATA_CLEANER_REGISTRY["trim_and_interpolate"](raw_md, {"skip_common_range_trim": True})
     indicator_set = {
-        "sma_200": INDICATORS_REGISTRY["sma_daily"](md, {"window": 200}),
-        "mom_3": INDICATORS_REGISTRY["momentum_monthly"](md, {"window": 3}),
-        "mom_6": INDICATORS_REGISTRY["momentum_monthly"](md, {"window": 6}),
-        "mom_12": INDICATORS_REGISTRY["momentum_monthly"](md, {"window": 12}),
+        "sma_200": INDICATORS_REGISTRY["sma_daily"](warmup_md, {"window": 200}),
+        "mom_3": INDICATORS_REGISTRY["momentum_monthly"](warmup_md, {"window": 3}),
+        "mom_6": INDICATORS_REGISTRY["momentum_monthly"](warmup_md, {"window": 6}),
+        "mom_12": INDICATORS_REGISTRY["momentum_monthly"](warmup_md, {"window": 12}),
     }
+    md = DATA_CLEANER_REGISTRY["trim_and_interpolate"](raw_md, {})
+    warmup_cutoff = md.prices.index.min()
+    indicator_set = {key: df.loc[df.index >= warmup_cutoff] for key, df in indicator_set.items()}
     eligibility = ASSET_FILTERS_REGISTRY["price_above_indicator"](md, indicator_set, {"indicator_key": "sma_200"})
     score = ASSET_SCORING_REGISTRY["weighted_sum"](
         md, indicator_set, eligibility, {"weights": {"mom_3": 0.5, "mom_6": 0.3, "mom_12": 0.2}}
