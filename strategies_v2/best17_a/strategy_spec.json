@@ -38,13 +38,13 @@
     },
     "asset_scoring": {"weights": {"ema7_16": 1.0}},
     "selector": {"top_n": 2},
-    "alpha_weighting": {"weights": [0.8, 0.2]},
+    "alpha_weighting": {"weights": [0.8, 0.2], "redistribute_if_short": true},
     "portfolio_risk_engine": {
       "rebound_ticker": "vt.us",
       "indicator_key": "mom_r3",
       "threshold": 0.05
     },
-    "execution": {"min_score_gap": 0.005, "cost_bps": 40}
+    "execution": {"min_score_gap": 0.005, "cost_bps": 40, "full_position_size": 2}
   },
 
   "allowed_param_families": {

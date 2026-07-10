@@ -19,8 +19,18 @@ Kontrakt: (target_weights_row: pd.Series, context: ExecutionContext, params: dic
 -> PeriodExecutionResult.
 
 params:
-    min_score_gap (float, wymagane)           - prog roznicy score do utrzymania portfela
-    cost_bps (float, opcjonalnie, domyslnie 0) - koszt transakcyjny w punktach bazowych od turnover
+    min_score_gap (float, wymagane)              - prog roznicy score do utrzymania portfela
+    cost_bps (float, opcjonalnie, domyslnie 0)    - koszt transakcyjny w punktach bazowych od turnover
+    full_position_size (int, opcjonalnie)         - odtwarza `should_keep_current_assets_by_hysteresis`
+        ze starego silnika (`engine/backtest_hybrid_search.py`): histereza dziala TYLKO gdy obecna
+        pozycja jest juz PELNA (dokladnie tyle aktywow ile `full_position_size`, zazwyczaj = top_n
+        selektora). Przy niedopelnionej pozycji (mniej aktywow niz docelowo - np. tylko 1 kandydat
+        byl dostepny w poprzednim okresie, a top_n=2) ZAWSZE wypelniamy do celu, bez sprawdzania
+        roznicy score - nie ma czego chronic przed zbyt szybka podmiana, skoro slot byl po prostu
+        pusty. Bez tego parametru (domyslnie None) histereza porownuje najslabszy trzymany vs
+        najlepszy wyzwanie NIEZALEZNIE od tego ile aktywow jest aktualnie trzymanych - co
+        odtwarza inny (bledny wzgledem oryginalu) przypadek: patrz README, sekcja "Znany,
+        naprawiony bug (5)".
 """
 
 from __future__ import annotations
@@ -45,6 +55,7 @@ def score_gap_hysteresis(
 
     min_gap = float(params["min_score_gap"])
     cost_bps = float(params.get("cost_bps", 0.0))
+    full_position_size = params.get("full_position_size")
     score_row = context.score_row
 
     current_weights = context.state.current_weights
@@ -55,6 +66,8 @@ def score_gap_hysteresis(
         keep_current = True
     elif not current_held and not target_held:
         keep_current = True
+    elif full_position_size is not None and len(current_held) != int(full_position_size):
+        keep_current = False
     else:
         challengers = [t for t in target_held if t not in current_held]
         if current_held and challengers:

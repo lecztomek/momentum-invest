@@ -75,6 +75,23 @@ def test_fewer_selected_than_weights_fills_remainder_to_cash():
     assert row["_CASH"] == pytest.approx(0.2)
 
 
+def test_fewer_selected_than_weights_redistributes_when_flag_set():
+    score, selection = _score_and_selection()
+    out = rank_weights(selection, score, {}, {"weights": [0.8, 0.2], "redistribute_if_short": True})
+
+    # 2021-03: wybrane tylko b -> renormalizacja weights[:1]=[0.8] do sumy 1.0 -> b=1.0, brak cash
+    row = out.loc["2021-03-01"]
+    assert row["b"] == pytest.approx(1.0)
+    assert row["a"] == 0.0
+    assert row["_CASH"] == pytest.approx(0.0)
+
+    # 2021-02: 2 wybrane (pelna liczba wag) - flaga nie zmienia nic
+    row = out.loc["2021-02-01"]
+    assert row["b"] == pytest.approx(0.8)
+    assert row["c"] == pytest.approx(0.2)
+    assert row["_CASH"] == pytest.approx(0.0)
+
+
 def test_no_selection_is_full_cash():
     idx = pd.date_range("2021-01-01", periods=1, freq="MS")
     score = pd.DataFrame({"a": [1.0]}, index=idx)

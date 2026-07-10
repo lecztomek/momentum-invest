@@ -167,6 +167,41 @@ def test_same_composition_always_kept():
     assert result.turnover == 0.0
 
 
+def test_full_position_size_fills_underfilled_slot_despite_weak_challenger():
+    # trzymamy TYLKO "a" (pozycja niedopelniona, top_n=2) - "b" ma znacznie slabszy score niz
+    # "a" (roznica duzo powyzej progu), ale slot byl PUSTY, wiec histereza nie powinna go
+    # chronic - odtwarza should_keep_current_assets_by_hysteresis ze starego silnika
+    # (len(current_assets) != top_n -> zawsze rebalansuj do celu)
+    target = pd.Series({"a": 0.8, "b": 0.2})
+    ctx = _exec_ctx({"a": 1.0}, {"a": 0.02, "b": 0.03}, {"a": 0.10, "b": 0.01})
+
+    result = score_gap_hysteresis(target, ctx, {"min_score_gap": 0.005, "full_position_size": 2})
+
+    assert result.signal_changed is True
+    assert result.weights_used == {"a": 0.8, "b": 0.2}
+
+
+def test_full_position_size_ignored_when_not_set_keeps_underfilled_slot():
+    # bez full_position_size - stare (inne niz oryginal) zachowanie: histereza chroni nawet
+    # niedopelniona pozycje, jesli wyzwaniowiec nie jest wyraznie lepszy
+    target = pd.Series({"a": 0.8, "b": 0.2})
+    ctx = _exec_ctx({"a": 1.0}, {"a": 0.02, "b": 0.03}, {"a": 0.10, "b": 0.01})
+
+    result = score_gap_hysteresis(target, ctx, {"min_score_gap": 0.005})
+
+    assert result.signal_changed is False
+
+
+def test_full_position_size_no_effect_when_position_already_full():
+    # pozycja JUZ pelna (2 aktywa = top_n) - full_position_size nie zmienia normalnej histerezy
+    target = pd.Series({"b": 1.0, "c": 1.0})
+    ctx = _exec_ctx({"a": 0.5, "b": 0.5}, {"a": 0.0, "b": 0.0, "c": 0.0}, {"a": 0.10, "b": 0.104, "c": -1.0})
+
+    result = score_gap_hysteresis(target, ctx, {"min_score_gap": 0.005, "full_position_size": 2})
+
+    assert result.signal_changed is False
+
+
 def test_both_cash_kept():
     target = pd.Series({"_CASH": 1.0})
     ctx = _exec_ctx({"_CASH": 1.0}, {}, {})
