@@ -4,6 +4,67 @@ Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co 
 
 ## 2026-07-10
 
+- **BUGFIX #2 `engine_v2/blocks/data_cleaner/trim_and_interpolate.py` + `pipeline.py`**:
+  wskaźniki liczyły się na cenach JUŻ przyciętych do wspólnego zakresu CAŁEGO uniwersum - skoro
+  `best17_a` ma w uniwersum VT (kanarek notowany dopiero od 2008-06), przycinało to rozgrzewkę
+  EMA również XLK (notowany od 1998!) do krótkiego zakresu VT. Zweryfikowane bezpośrednio na
+  starym silniku, uruchomionym ponownie na tych samych danych (`run_global_pipeline.py --idea
+  best17_3m_tlt_dtla_40`, dane w `data/us/nyse`): stary silnik liczy wskaźniki na PEŁNEJ,
+  WŁASNEJ historii każdego tickera (`engine/build_data.py` nie przycina do wspólnego zakresu
+  przed EMA) - EMA5/EMA12 dla XLK różniła się między silnikami o kilkadziesiąt procent
+  względnie w latach 2009-2014. Naprawa: nowy param `skip_common_range_trim` w
+  `trim_and_interpolate` - `_run_phase_a` liczy wskaźniki na pełnej historii, DOPIERO POTEM
+  przycina do wspólnego okna wykonania (tnie tylko rozgrzewkę z WYNIKÓW wskaźników, nie liczy
+  ich ponownie). Po poprawce EMA dla XLK zgadza się ze starym silnikiem co do 10 miejsca po
+  przecinku. Samo w sobie NIE zmieniło wyniku strategii (patrz bugfix #3 - prawdziwa przyczyna
+  była gdzie indziej, ale to odkrycie ujawniła to bardzo dokładne porównanie EMA).
+
+- **BUGFIX #3 `engine_v2/blocks/asset_filters/canary_regime_gate.py` + `never_eligible.py`**
+  (znaleziony PO #2, gdy wynik strategii się nie zmienił mimo poprawnych EMA) - **to był
+  faktyczny sprawca calego dotychczasowego rozjazdu z best17_a**: obie implementacje budowały
+  maskę eligibility na `market_data.prices.index` (ZAWSZE DZIENNYM, niezależnie od `frequency`
+  strategii), podczas gdy inne filtry (np. `indicator_positive`) używają indeksu WSKAŹNIKA
+  (miesięcznego). `_run_asset_filters` łączy maski przez `&` - gdy 1-szy dzień miesiąca wypada w
+  weekend/święto (a więc NIE jest dniem dziennego indeksu), maska kanarka nie ma tego wiersza w
+  ogóle - pandas przy `&` niedopasowanych indeksów wstawia brakujący wiersz jako NaN, po
+  `.fillna(False)` cały miesiąc wychodzi "regime zły" NIEZALEŻNIE OD PRAWDZIWEJ WARTOŚCI
+  KANARKA. Zweryfikowane bezpośrednio: canary_scores w tych miesiącach były dodatnie (regime
+  DOBRY), ale eligibility mimo to wychodziła False dla wszystkich 5 tickerów. Dotyczyło to
+  KAŻDEGO miesiąca, gdzie 1-szy dzień wypadał w weekend/święto - dokładnie tych samych 79
+  miesięcy (z ~201, ~40% historii) co bugfix #1 z rana. Naprawa: obie implementacje budują
+  teraz maskę na indeksie wskaźnika, nie `market_data.prices.index`.
+
+  **Konsekwencje dla `best17_a` solo (cała historia, z kosztem 40bps, bez podatku 19%)**:
+  | | Bugfix #1 (rano) | + Bugfix #2 | **+ Bugfix #3** | Stary silnik (realny, z podatkiem+kosztem) |
+  |---|---|---|---|---|
+  | CAGR | ~7.7% | ~7.5% | **~16.7%** | 15.67-16.23% (monthly) |
+  | Sharpe | ~0.58 | ~0.57 | **~0.97** | ~1.00 |
+  | Roczny turnover | ~7.0 | ~6.7 | **~0.91** | ~1.2 |
+
+  engine_v2 wypada NIECO WYŻEJ niż stary silnik - spójne z tym, że engine_v2 nadal NIE liczy
+  podatku 19% (znana, świadomie odłożona różnica). Miesiąc-po-miesiącu porównanie z realnym
+  `weights_used_json` starego silnika: rozbieżnych miesięcy spadło z 79/201 do 34/216 (~16%,
+  głównie drugie miejsce w rankingu top2 na granicy - który z pozostałych aktywów ma odrobinę
+  wyższy score - nie systemowy błąd).
+
+- **BUGFIX #4 `engine_v2/backtest_engine.py::daily_equity_curve`** (znaleziony przy weryfikacji
+  `combined_best2` po powyższych trzech poprawkach - `the_one`'s własny okres wykonania
+  przesunął się rok wcześniej dzięki bugfixowi #2, na okres SPRZED powstania VT): funkcja
+  mnożyła przez dzienny zwrot KAŻDEGO tickera obecnego w słowniku wag, nawet z wagą 0.0 - jeśli
+  taki ticker jeszcze nie istniał (np. VT przed 2008-06), `0.0 * NaN = NaN` zarażało całą resztę
+  krzywej equity od tego dnia w przód, mimo że ten ticker nigdy nie był faktycznie trzymany
+  (`combined_best2` dawało `NaN`/`inf` we wszystkich metrykach). Naprawa: tylko tickery z
+  faktycznie niezerową wagą wchodzą do pętli dziennego mnożenia.
+
+  **`combined_best2` po wszystkich czterech poprawkach**: CAGR ~13.0%, MaxDD ~-22.6%, Sharpe
+  ~0.97, Calmar ~0.58, roczny turnover ~3.67 - lepszy Sharpe niż `the_one` solo (~0.65), niższy
+  MaxDD niż `best17_a` solo (~-29.5%) - **realny efekt dywersyfikacji**, w przeciwieństwie do
+  wcześniejszych (przed dzisiejszymi bugfixami) wyników, gdzie połączenie wypadało gorzej niż
+  każda składowa z osobna.
+
+  Pełny pakiet testów po wszystkich czterech poprawkach: 157/158 (1 fail niepowiązany -
+  brakujące tickery efa/agg/shy dla `vaa_g4`).
+
 - **PRZEBUDOWA `engine_v2/combined_pipeline.py`**: każda strategia liczy teraz WŁASNY
   EXECUTION/HYSTERESIS (pełny solo `run_strategy_pipeline`, z prawdziwym `PortfolioState`) PRZED
   połączeniem, zamiast JEDNEJ, wspólnej histerezy WAGOWEJ na surowych targetach po combinerze.
@@ -23,19 +84,20 @@ Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co 
   manualne połączenie, bo żaden dodatkowy execution już się nie dzieje na poziomie połączonego
   portfela). Pełny pakiet: 157/158 (1 fail niepowiązany, jak niżej).
 
-  **`combined_best2` - wynik po przebudowie vs poprzednie wersje**:
-  | | Stara archit. (buggy pipeline) | Stara archit. (po bugfixie NaN) | **Nowa archit. (własny execution)** |
+  **`combined_best2` - wynik po przebudowie vs poprzednie wersje** (NIEAKTUALNE - patrz bugfixy
+  #2/#3/#4 WYŻEJ w tym pliku, chronologicznie PÓŹNIEJSZE tego samego dnia, z ostatecznym wynikiem
+  CAGR ~13.0%/Sharpe ~0.97):
+  | | Stara archit. (buggy pipeline) | Stara archit. (po bugfixie NaN) | Nowa archit. (własny execution, PRZED bugfixami #2-4) |
   |---|---|---|---|
-  | CAGR | ~7.4% | ~8.1% | **~8.9%** |
+  | CAGR | ~7.4% | ~8.1% | ~8.9% |
   | MaxDD | -15.5% | -17.4% | -20.2% |
-  | Sharpe | ~0.66 | ~0.68 | **~0.74** |
+  | Sharpe | ~0.66 | ~0.68 | ~0.74 |
   | Roczny turnover | ~6.6 | ~6.8 | ~6.7 |
 
-  Poprawa jest realna (Sharpe +~9%), ale turnover ledwo drgnął - `the_one` ma wbudowane
-  `execution.hysteresis_pct: 0.0` (dosłownie zero wygładzania) w swoim `strategy_spec.json`,
-  niezależnie od tego, na jakim poziomie liczy się histereza. Żeby faktycznie obniżyć turnover
-  połączonego portfela, trzeba by dostroić WŁASNĄ histerezę `the_one` (ma już zdefiniowany
-  sweep `allowed_param_families.execution.hysteresis_pct` - nieużyty jeszcze).
+  W tamtym momencie: poprawa realna (Sharpe +~9%), ale turnover ledwo drgnął - hipoteza brzmiała
+  "`the_one` ma wbudowane `execution.hysteresis_pct: 0.0`, niezależnie od architektury". Po
+  bugfixach #2-4 (patrz wyżej) okazało się, że dominującą przyczyną był bug #3 (indeksy w
+  canary_regime_gate) w `best17_a`, nie konfiguracja `the_one`.
 
 - **BUGFIX `engine_v2/pipeline.py::_run_phase_a`**: `usable_dates = score.dropna(how="all").index`
   miał wycinać tylko rozgrzewkę na starcie historii, ale w praktyce kasował KAŻDY miesiąc w

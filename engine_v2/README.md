@@ -322,43 +322,77 @@ jest jeszcze zaimplementowany w engine_v2 (`PeriodExecutionResult.tax_amount` is
 kontrakcie, ale zaden blok go dzis nie wypelnia) - to jest overlay na krzywej equity, nie
 logika selekcji, wiec swiadomie odlozone.
 
-**POPRAWIONO 2026-07-10**: liczby ponizej byly liczone na buggy pipeline, ktory cichcem gubil ~79
-z ~201 miesiecy historii (kazdy miesiac, gdzie `canary_regime_gate` robil caly score NaN, byl
-usuwany z FINAL PORTFOLIO zamiast trafiac tam jako poprawnie policzony wiersz - zobacz sekcje
-"Znany, naprawiony bug" nizej). Po naprawie `pipeline._run_phase_a` realny wynik `final` (cala
-historia) to: CAGR ~7.7%, MaxDD -28%, Sharpe ~0.58, Calmar ~0.27, roczny turnover ~7.0 - ZNACZNIE
-gorzej niz wczesniej raportowane (histereza po score NIE ogranicza juz handlu tak skutecznie, bo
-kanarek+rebound teraz faktycznie wlacza/wylacza pozycje przy kazdym przelaczeniu regime'u, zamiast
-byc cichcem pomijany). `best17_a` juz NIE jest najlepszym wynikiem ze wszystkich przykladowych
-strategii w tym repo - jest teraz w tej samej okolicy turnoveru/Sharpe co `the_one` (~6.8
-turnover, Sharpe ~0.66) i `vaa_g4`. Liczby `validation` (OOS) i sweep `min_score_gap` ponizej
-NIE zostaly jeszcze przeliczone po naprawie - traktowac jako nieaktualne do czasu ponownego
-uruchomienia.
+**POPRAWIONO 2026-07-10 (trzy kolejne bugfixy tego samego dnia - patrz sekcje nizej)**: po
+wszystkich trzech poprawkach realny wynik `final` (cala historia, z kosztem 40bps, BEZ podatku
+19% - patrz wyzej) to: **CAGR ~16.7%, MaxDD ~-29.5%, Sharpe ~0.97, Calmar ~0.57, roczny turnover
+~0.91**. To BARDZO blisko oryginalnego, realnego systemu uzytkownika (stary silnik, `US base A`,
+sprawdzone wprost z `ideas_out/*/GLOBAL_SUMMARY.txt` i ponownym uruchomieniem starego
+`run_global_pipeline.py` na tych samych danych): monthly CAGR 15.67-16.23%, Sharpe ~1.00, roczny
+turnover ~1.2 - engine_v2 wypada NIECO WYZEJ, spojnie z brakiem podatku 19% (ktorego stary silnik
+NIE pomija). Miesiac-po-miesiacu porownanie z realnym `weights_used_json` starego silnika: z 216
+wspolnych miesiecy 34 dalej sie roznia (~16%, w wiekszosci to drugie miejsce w rankingu top2 -
+ktory z pozostalych aktywow ma odrobine wyzszy score - a nie systemowy blad).
+
+~~Wczesniejsza (CZESCIOWA) poprawka z tego samego dnia dawala CAGR ~7.7%, Sharpe ~0.58, turnover
+~7.0 - patrz historia zmian w CHANGELOG.md za pelny opis eskalacji (3 osobne bugi, znalezione
+jeden po drugim przy weryfikacji przeciw staremu silnikowi).~~
 
 ~~Realny wynik: `final` (cala historia) CAGR ~19%, MaxDD -26%, Sharpe ~1.03, Calmar ~0.72, roczny
 turnover tylko ~0.45 (histereza po score bardzo skutecznie ogranicza handel) - najlepszy wynik
 ze wszystkich 5 przykladowych strategii w tym repo. `validation` (OOS) potwierdza (CAGR ~20%,
 Sharpe ~0.90) - nie ma rozjazdu train/OOS jak przy VAA. Sweep `min_score_gap` (0.0-0.01) pokazuje
 STABILNY plateau (CAGR ~15-16%, Sharpe ~1.07-1.10 w kazdym wariancie) - dokladnie sygnal
-stabilnosci rodziny, o ktory chodzilo od poczatku tego projektu.~~ (NIEAKTUALNE, patrz wyzej)
+stabilnosci rodziny, o ktory chodzilo od poczatku tego projektu.~~ (NIEAKTUALNE - te liczby byly
+mieszanka buga #1 [zaniza turnover, zawyza CAGR] - patrz nizej. `validation`/sweep ponizej dalej
+NIEPRZELICZONE po zadnym z trzech bugfixow - traktowac jako nieaktualne do czasu ponownego
+uruchomienia.)
 
-### Znany, naprawiony bug: gubione miesiace w srodku historii (2026-07-10)
+### Znane, naprawione bugi (2026-07-10) - trzy osobne, znalezione jeden po drugim
 
-`pipeline._run_phase_a` obcinal target_weights przez `score.dropna(how="all").index` - mial to
-wycinac WYLACZNIE rozgrzewke na poczatku historii (komentarz w kodzie mowil dokladnie to), ale
-`dropna(how="all")` usuwal KAZDA date w calej historii, gdzie score wyszedl w calosci NaN - a to
-sie dzieje regularnie przy `canary_regime_gate` (caly regime niezdatny -> score wszystkich 4
-aktywow = NaN). Sprawdzone wprost na dacie 2009-11-01: `target_weights` PRZED obcieciem mial
-poprawny wynik (`rebound_starter` wszedl w VT po jej odbiciu), ale ten wiersz byl nastepnie
-kasowany przez filtr - efekt: ten miesiac po prostu znikal z FINAL PORTFOLIO, a
-`backtest_engine` jechal dalej na starych wagach z poprzedniego miesiaca zamiast wykonac
-zaplanowana zmiane. Dotyczylo to 79 z ~201 miesiecy (prawie 40% historii).
+Wszystkie trzy znalezione przy weryfikacji `best17_a` przeciw REALNEMU, staremu silnikowi
+(`engine/`, uruchomiony ponownie na tych samych danych) - patrz `CHANGELOG.md` za pelna,
+chronologiczna historie odkrywania.
 
-Naprawa: `_run_phase_a` teraz obcina TYLKO ciagla rozgrzewke na starcie (do pierwszej daty z choc
-jednym policzonym score), zatrzymujac wszystkie pozniejsze daty niezaleznie od tego czy score
-akurat wyszedl w calosci NaN. Zaktualizowano tez dwa testy, ktore recznie duplikowaly stara
-(buggy) logike do porownania z orchestratorem (`test_pipeline.py::test_pipeline_matches_manual_wiring`,
-`test_final_portfolio.py::test_full_engine_chain_on_real_data`).
+**Bug #1 - gubione miesiace w srodku historii.** `pipeline._run_phase_a` obcinal target_weights
+przez `score.dropna(how="all").index` - mial to wycinac WYLACZNIE rozgrzewke na poczatku
+historii, ale `dropna(how="all")` usuwal KAZDA date w calej historii, gdzie score wyszedl w
+calosci NaN (regularnie przy `canary_regime_gate`). Naprawa: obcinamy TYLKO ciagla rozgrzewke na
+starcie (do pierwszej daty z choc jednym policzonym score). Zaktualizowano
+`test_pipeline.py::test_pipeline_matches_manual_wiring`,
+`test_final_portfolio.py::test_full_engine_chain_on_real_data`.
+
+**Bug #2 - rozgrzewka wskaznikow przycinana do najkrocej notowanego tickera w uniwersum.**
+`data_cleaner.trim_and_interpolate` przycinal WSZYSTKIE tickery do wspolnego zakresu dat CALEGO
+uniwersum PRZED policzeniem jakichkolwiek wskaznikow - skoro VT (kanarek, notowany dopiero od
+2008-06) jest w uniwersum `best17_a`, przycinalo to rozgrzewke EMA rowniez XLK (notowany od
+1998!) do wlasnego, krotkiego zakresu VT. Zweryfikowane bezposrednio: EMA5/EMA12 dla XLK w
+`engine_v2` NIE zgadzalo sie ze starym silnikiem (ktory liczy wskazniki na PELNEJ, WLASNEJ
+historii kazdego tickera) o kilkadziesiat procent wzglednie. Naprawa: nowy param
+`skip_common_range_trim` w `trim_and_interpolate` - `pipeline._run_phase_a` liczy teraz
+wskazniki na pelnej historii (`skip_common_range_trim=True`), DOPIERO POTEM przycina do
+wspolnego okna wykonania (i tnie z wynikow wskaznikow tylko rozgrzewke sprzed tego okna, nie
+przelicza ich ponownie). Po tej poprawce EMA dla XLK zgadza sie ze starym silnikiem co do 10
+miejsca po przecinku.
+
+**Bug #3 - niedopasowane indeksy w `canary_regime_gate`/`never_eligible` (najwiekszy wplyw).**
+Mimo poprawki #2, wynik strategii sie NIE zmienil - bo `canary_regime_gate` i `never_eligible`
+budowaly swoja maske na `market_data.prices.index` (ZAWSZE DZIENNYM, niezaleznie od `frequency`
+strategii), podczas gdy inne filtry (np. `indicator_positive`) uzywaja indeksu WSKAZNIKA
+(miesiecznego). `_run_asset_filters` laczy maski przez `&` - gdy 1. dzien miesiaca wypada w
+weekend/swieto (a wiec NIE jest dniem dziennego indeksu), maska kanarka nie ma tego wiersza w
+ogole, pandas przy `&` niedopasowanych indeksow wstawia NaN dla calego miesiaca -> po
+`.fillna(False)` caly miesiac wychodzi "regime zly" NIEZALEZNIE OD PRAWDZIWEJ WARTOSCI KANARKA.
+Dotyczylo to KAZDEGO miesiaca, ktorego 1-szy dzien wypadal w weekend/swieto (prawie 40% z nich) -
+dokladnie te same 79 miesiecy co bug #1. Naprawa: obie implementacje buduja teraz maske na
+indeksie wskaznika (`risk_on.index` / dowolnego wskaznika z `indicator_set`), nie
+`market_data.prices.index`.
+
+**Efekt uboczny #4 (backtest_engine, odkryty przy weryfikacji `combined_best2` po powyzszych
+poprawkach)**: `daily_equity_curve` mnozylo przez dzienny zwrot KAZDEGO tickera w slowniku wag,
+nawet z waga 0.0 - jesli taki ticker jeszcze nie mial zadnych danych cenowych (np. VT przed
+2008-06), `0.0 * NaN = NaN` zarazalo cala reszte krzywej equity od tego dnia, mimo ze ten ticker
+nigdy nie byl faktycznie trzymany. Naprawa: tylko tickery z faktycznie niezerowa waga wchodza do
+petli dziennego mnozenia.
 
 ## Testy
 
