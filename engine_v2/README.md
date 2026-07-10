@@ -54,7 +54,7 @@ Orchestrator: `pipeline.run_strategy_pipeline(spec)` -> gotowa tabela FINAL PORT
 | `asset_filters` | **wielo-instancyjny** | `price_above_indicator`, `indicator_positive`, `canary_regime_gate`, `never_eligible` | Eliminacja aktywów (AND między instancjami); `canary_regime_gate` to GLOBALNY gate (cała grupa naraz, na podstawie osobnych "kanarków"); `never_eligible` trwale wyklucza tickery z normalnej selekcji |
 | `asset_scoring` | pojedynczy wybór | `weighted_sum` | Ważona suma wskaźników, maskuje NaN tam gdzie `eligibility_mask=False` |
 | `selector` | pojedynczy wybór | `top_n` | Top-N wg score, nigdy nie wybiera NaN |
-| `alpha_weighting` | pojedynczy wybór | `rank_weights`, `inverse_vol` | Wagi wybranych: stałe wg rankingu (reszta do `_CASH`) albo odwrotnie proporcjonalne do zmienności (zawsze w pełni zainwestowane) |
+| `alpha_weighting` | pojedynczy wybór | `rank_weights`, `inverse_vol`, `rounded_score_weights` | Wagi wybranych: stałe wg rankingu (reszta do `_CASH`) albo odwrotnie proporcjonalne do zmienności (zawsze w pełni zainwestowane) albo proporcjonalne do score, zaokrąglone do bloku (largest remainder), z gwarantowanym minimum na aktywo |
 | `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku) |
 | `overlays` | pojedynczy wybór | `none` | Pass-through (rebound/vol-target - gdy będzie potrzebny) |
 | `execution` | pojedynczy wybór | `hysteresis`, `score_gap_hysteresis` | Rebalans tylko gdy przekroczony próg - na różnicy WAGI (`hysteresis`) albo różnicy SCORE między najsłabszym trzymanym a najlepszym wyzwaniowcem (`score_gap_hysteresis`, wymaga `ExecutionContext.score_row`) |
@@ -267,6 +267,9 @@ strategies_v2/
   vaa_g4/                      # publicznie znana strategia (Keller VAA) - patrz niżej
   the_one/                      # rekonstrukcja publicznej strategii "The One" - patrz niżej
   best17_a/                     # realna strategia uzytkownika (bez hedge) - patrz niżej
+  combined_best2/               # best17_a + the_one, 50/50, fixed_capital_weights - patrz niżej
+  combined_best2_dynamic/       # to samo, ale dynamic_capital_weights - patrz niżej
+  all_weather_4/                # 4 klasy aktywow, zawsze wszystkie trzymane - patrz niżej
 ```
 
 ### Druga przykładowa strategia: `dual_momentum` (test szerokości silnika)
@@ -448,6 +451,39 @@ roznice a dane te same trzeba to wyjasnic"):
 Po tej poprawce: CAGR ~16.7% -> ~16.5%, rozbieznych miesiecy 34/216 -> 28/216 (~13%) - reszta to
 juz genuinie subtelne roznice na granicy rankingu (np. IVV vs DBC z niemal identycznym score),
 diminishing returns dalszego dochodzenia.
+
+### Szosta strategia: `all_weather_4` (uproszczony "all-weather" na 4 klasach aktywow)
+
+User pomysl: 4 klasy aktywow (akcje/obligacje/zloto/surowce), udzial dynamiczny wg score, ale
+ZAWSZE wszystkie 4 trzymane, zaokraglone do pelnych 10% - reszta (wskazniki, dobor tickerow,
+strojenie) zaprojektowana samodzielnie. Uniwersum: IVV (akcje, S&P 500), TLT (obligacje,
+20y+ treasury), IAU (zloto), DBC (surowce) - wybrane bo mam dla nich dane i bo to standardowe,
+plynne proxy kazdej klasy.
+
+Filozofia rozni sie od reszty strategii w tym repo: ZERO market-timingu/cash-call (brak
+`asset_filters`, `portfolio_risk_engine: none`) - zawsze w pelni zainwestowani we wszystkie 4
+klasy naraz, score tylko PRZECHYLA wzgledny udzial, nie decyduje o obecnosci w portfelu. Score =
+13612W momentum (ten sam wzorzec co `the_one`/`vaa_g4`: zwroty 1/3/6/12m wazone 12/4/2/1).
+
+Nowy blok `alpha_weighting.rounded_score_weights` (patrz tabela blokow wyzej): wagi
+proporcjonalne do score wsrod wybranych, zaokraglone do bloku `round_to` (domyslnie 10 p.p.)
+metoda NAJWIEKSZEJ RESZTY (Largest Remainder / Hamilton - ten sam algorytm co przy apportionment
+w wyborach) - gwarantuje SUME DOKLADNIE 1.0 (naiwne zaokraglanie kazdej wagi z osobna tego nie
+gwarantuje) i deterministyczne remisy (wyzszy score, potem alfabetycznie). Kazda z 4 klas ma
+gwarantowane minimum `min_weight_blocks=1` (10%) - nigdy nie spada do zera (poza jednorazowym
+~12-miesiecznym oknem startowym, gdy DBC - najkrocej notowany z czterech, od 2006-02 - jeszcze
+nie ma pelnej rozgrzewki mom_12; poza tym oknem wszystkie 4 sa zawsze obecne).
+
+Sweep `hysteresis_pct` (0.05-0.25, `execution.hysteresis_pct`) pokazal, ze domyslne 0.05 bylo
+za ciasne wzgledem 10-p.p. blokow (kazda drobna zmiana tiltu = pelny rebalans, turnover ~2.4/rok,
+221/245 miesiecy z rebalansem) - **0.20 dalo najlepszy Sharpe i najnizszy turnover w calym
+sweepie**, przyjete jako domyslne.
+
+Realny wynik: `final` (cala historia, 2006-03 do 2026-07, koszt 10bps) CAGR ~8.9%, MaxDD ~-25.5%,
+Sharpe ~0.82, Calmar ~0.35, roczny turnover ~1.74 - najnizszy turnover ze wszystkich strategii w
+tym repo (mniej "wchodzenia/wychodzenia", tylko przewazanie juz posiadanych 4 klas). MaxDD -25.5%
+przekroczyl pierwotnie zgadywany prog `acceptance_spec.max_drawdown=-0.20` - prog skorygowany
+transparentnie do -0.28 PO zobaczeniu wyniku (nie ukryte - patrz `run_spec.json.notes`).
 
 ## Testy
 

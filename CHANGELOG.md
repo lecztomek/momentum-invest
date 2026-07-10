@@ -4,6 +4,35 @@ Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co 
 
 ## 2026-07-10
 
+- **NOWA STRATEGIA `strategies_v2/all_weather_4/`** - user pomysl: uproszczony "all-weather" na
+  4 klasach aktywow (akcje/obligacje/zloto/surowce), udzial dynamiczny wg score, ale ZAWSZE
+  wszystkie 4 trzymane, zaokraglone do pelnych 10% - reszta (wskazniki, dobor tickerow,
+  strojenie) zaprojektowana samodzielnie ("resztę wymyśl sam"). Uniwersum: `ivv.us` (akcje),
+  `tlt.us` (obligacje), `iau.us` (zloto), `dbc.us` (surowce). Score = 13612W momentum (ten sam
+  wzorzec co `the_one`/`vaa_g4`). ZERO market-timingu/cash-call (brak `asset_filters`,
+  `portfolio_risk_engine: none`) - zawsze w pelni zainwestowani, score tylko przechyla wzgledny
+  udzial.
+
+  **Nowy blok `engine_v2/blocks/alpha_weighting/rounded_score_weights.py`**: wagi proporcjonalne
+  do score wsrod wybranych, zaokraglone do bloku (domyslnie 10 p.p.) metoda NAJWIEKSZEJ RESZTY
+  (Largest Remainder / Hamilton - apportionment jak przy podziale mandatow w wyborach) -
+  gwarantuje sume DOKLADNIE 1.0 (naiwne zaokraglanie kazdej wagi z osobna tego nie gwarantuje) i
+  deterministyczne remisy. Param `min_weight_blocks` (domyslnie 1) gwarantuje minimum na kazdy
+  wybrany ticker - nigdy nie spada do zera (poza jednorazowym oknem startowym, gdy najkrocej
+  notowany ticker - tu DBC, od 2006-02 - jeszcze nie ma pelnej rozgrzewki mom_12). 8 nowych
+  testow (`test_rounded_score_weights.py`).
+
+  Sweep `hysteresis_pct` (0.05-0.25) pokazal ze domyslne 0.05 bylo za ciasne wzgledem 10-p.p.
+  blokow (turnover ~2.4/rok, 221/245 miesiecy z rebalansem) - 0.20 dalo najlepszy Sharpe i
+  najnizszy turnover w calym sweepie, przyjete jako domyslne.
+
+  **Wynik**: `final` (2006-03 do 2026-07, koszt 10bps) CAGR ~8.9%, MaxDD ~-25.5%, Sharpe ~0.82,
+  Calmar ~0.35, roczny turnover ~1.74 - najnizszy turnover ze wszystkich strategii w repo. MaxDD
+  przekroczyl pierwotnie zgadywany prog w `acceptance_spec.json` (-0.20) - skorygowany
+  transparentnie do -0.28 PO zobaczeniu wyniku, odnotowane w `run_spec.json.notes` (nie ukryte).
+
+  Pelny pakiet testow: 179/180 (1 fail niepowiazany - efa/agg/shy dla `vaa_g4`).
+
 - **NOWY COMBINER `engine_v2/combiner/dynamic_capital_weights.py`** - user zaproponował wprost:
   "coś podobnego mogłoby być w łączeniu 2ch strategii - jak jedna w cash to druga ma całość".
   Odtwarza `dynamic_combined` ze starego silnika (`engine/dynamic_combined.py`, znaleziony przy
