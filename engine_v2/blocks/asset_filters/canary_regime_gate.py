@@ -11,6 +11,15 @@ Inaczej niz reszta filtrow (ktore oceniaja KAZDY ticker osobno wg JEGO WLASNEJ w
 jest GLOBALNY gate: decyzja jest wspolna dla calej `target_assets`, oparta o OSOBNY, maly zestaw
 tickerow "kanarkowych" (moze, ale nie musi, pokrywac sie z target_assets).
 
+WAZNE: maska musi byc indeksowana TAK SAMO jak `indicator_set[indicator_key]` (np. miesiecznie),
+NIE jak `market_data.prices` (zawsze DZIENNIE, niezaleznie od `frequency` strategii - patrz
+`blocks/data_loader/csv_loader.py`). Inaczej `_run_asset_filters` laczac ta maske (`&`) z innymi
+filtrami (ktore poprawnie uzywaja indeksu wskaznika, np. `indicator_positive`) dostaje DWA
+niedopasowane indeksy - kazdy miesiac, ktorego kalendarzowy "1-szy dzien" wypada w weekend/swieto
+(a wiec NIE jest dniem dziennego indeksu), znika z wyniku AND (pandas wstawia NaN dla brakujacego
+wiersza, co po `.fillna(False)` w dalszym kroku daje falszywe "regime zly" dla calego miesiaca,
+NIEZALEZNIE OD PRAWDZIWEJ WARTOSCI KANARKA). Patrz README, sekcja "Znany, naprawiony bug (3)".
+
 Samodzielna implementacja - nie importuje niczego z `engine/` (starego kodu).
 
 Kontrakt: (market_data: MarketData, indicator_set: IndicatorSet, params: dict) -> EligibilityMask.
@@ -61,13 +70,13 @@ def canary_regime_gate(
     is_bad = canary_values.le(bad_threshold) | canary_values.isna()
     bad_count = is_bad.sum(axis=1)
 
-    risk_on = bad_count <= max_bad_count  # Series[bool], index=data kanarkow
+    risk_on = bad_count <= max_bad_count  # Series[bool], index = TAKI SAM jak canary_values
 
+    # Maska na indeksie wskaznika (risk_on.index), NIE market_data.prices.index (zawsze dzienny) -
+    # patrz uwaga w docstringu modulu.
     universe = list(market_data.prices.columns)
-    mask = pd.DataFrame(True, index=market_data.prices.index, columns=universe)
-
-    risk_on_aligned = risk_on.reindex(mask.index, method="ffill").fillna(False)
+    mask = pd.DataFrame(True, index=risk_on.index, columns=universe)
     for ticker in target_assets:
-        mask[ticker] = risk_on_aligned
+        mask[ticker] = risk_on
 
     return mask

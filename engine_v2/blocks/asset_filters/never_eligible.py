@@ -10,6 +10,14 @@ Samodzielna implementacja - nie importuje niczego z `engine/` (starego kodu).
 
 Kontrakt: (market_data: MarketData, indicator_set: IndicatorSet, params: dict) -> EligibilityMask.
 
+WAZNE: maska musi byc indeksowana TAK SAMO jak wskazniki (np. miesiecznie), NIE jak
+`market_data.prices` (zawsze DZIENNIE, niezaleznie od `frequency` strategii). Inaczej
+`_run_asset_filters` laczac ta maske (`&`) z innymi filtrami dostaje dwa niedopasowane indeksy -
+patrz `canary_regime_gate.py` (ten sam bug, tam opisany szerzej) i README, sekcja "Znany,
+naprawiony bug (3)". Bierzemy indeks DOWOLNEGO wskaznika z `indicator_set` (wszystkie musza
+dzielic ta sama czestotliwosc - wymog `asset_scoring.weighted_sum`); brak wskaznikow w ogole =
+fallback na `market_data.prices.index`.
+
 params:
     assets (list[str], wymagane) - tickery zawsze nieeligibilne
 """
@@ -33,7 +41,8 @@ def never_eligible(
     if not assets:
         raise ValueError("never_eligible wymaga params['assets'] (niepusta lista tickerow).")
 
-    mask = pd.DataFrame(True, index=market_data.prices.index, columns=market_data.prices.columns)
+    reference_index = next(iter(indicator_set.values())).index if indicator_set else market_data.prices.index
+    mask = pd.DataFrame(True, index=reference_index, columns=market_data.prices.columns)
     for ticker in assets:
         if ticker not in mask.columns:
             raise ValueError(f"never_eligible: nieznany ticker '{ticker}'.")
