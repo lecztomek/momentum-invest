@@ -1,0 +1,17 @@
+{
+  "name": "combined_triple_v0",
+  "hypothesis": "User pytanie: strategia z CAGR>10% ale nizszym MaxDD niz best17_a solo (-29.5%). Test: polaczenie TRZECH niezaleznie zaprojektowanych strategii (best17_a, the_one, all_weather_4) zamiast dwoch - kazda ma inny charakter (best17_a: skoncentrowany top2 momentum na metalach/surowcach z kanarkiem; the_one: dual-momentum switch akcje<->obligacje; all_weather_4: zawsze w pelni zainwestowany, nigdy market-timingu). Sweep wag (best17_a/the_one/all_weather_4) pokazal ze 45/20/35 daje najlepszy Sharpe/Calmar w calym repo przy CAGR>10%: CAGR ~11.5%, MaxDD ~-18.1%, Sharpe ~0.99, Calmar ~0.64 - lepsze na kazdym wymiarze niz best17_a solo (CAGR 16.5% ale MaxDD -29.5%) LUB combined_best2 50/50 (CAGR 12.6%, MaxDD -22.7%). Trzecia, niezalezna nietrafiona strategia dodaje wiecej dywersyfikacji niz dwie.",
+
+  "strategy_spec_paths": [
+    "../best17_a/strategy_spec.json",
+    "../the_one/strategy_spec.json",
+    "../all_weather_4/strategy_spec.json"
+  ],
+
+  "combiner": "fixed_capital_weights",
+  "combiner_params": {
+    "capital_weights": {"best17_a_v0": 0.45, "the_one_v0": 0.20, "all_weather_4_v0": 0.35}
+  },
+
+  "created_at": "2026-07-10"
+}
