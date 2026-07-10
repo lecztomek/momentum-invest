@@ -13,7 +13,7 @@
   },
 
   "execution": "hysteresis",
-  "execution_params": {"hysteresis_pct": 0.02},
+  "execution_params": {"hysteresis_pct": 0.02, "cost_bps": 40},
 
   "created_at": "2026-07-10"
 }
