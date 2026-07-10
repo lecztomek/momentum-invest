@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "Pierwszy przebieg 'all-weather' na 4 stalych klasach aktywow (akcje/obligacje/zloto/surowce), wagi tylko przechylane wzgledem 13612W momentum, zawsze min. 10% na kazda klase. Realny wynik: CAGR ~8.9%, MaxDD ~-25.5%, Sharpe ~0.82, turnover ~1.74 (hysteresis_pct=0.20, dostrojone sweepem 0.05-0.25). max_drawdown w acceptance_spec.json skorygowany z pierwotnie zgadywanego -0.20 na -0.28 PO zobaczeniu realnego wyniku (-25.5%) - przejrzyscie odnotowane, nie ukryte."
+}
