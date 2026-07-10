@@ -1,0 +1,44 @@
+{
+  "name": "the_one_v0",
+  "hypothesis": "Rekonstrukcja 'The One' (inwestujdlugoterminowo.pl/the-one/) wg publicznie znanej reguly Dual Momentum (GEM, Antonacci), na ktora strona sie powoluje - autor NIE ujawnia pelnego algorytmu risk-on/off, wiec to jest jawna rekonstrukcja, nie wierne odtworzenie. Risk-on: SPY/VEA/VWO, risk-off: LQD/IEF/TLT, score=13612W momentum. Risk-on jesli najlepszy risk-on ma dodatni score I bije najlepszy risk-off; inaczej risk-off (albo cash, jesli wlasny 12m momentum najlepszego risk-off jest ujemny - modyfikacja opisana na stronie).",
+  "universe": ["spy.us", "vea.us", "vwo.us", "lqd.us", "ief.us", "tlt.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "gem_dual_momentum_switch",
+    "overlays": "none",
+    "execution": "hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "mom_1": {"impl": "momentum_monthly", "window": 1},
+      "mom_3": {"impl": "momentum_monthly", "window": 3},
+      "mom_6": {"impl": "momentum_monthly", "window": 6},
+      "mom_12": {"impl": "momentum_monthly", "window": 12}
+    },
+    "asset_scoring": {
+      "weights": {"mom_1": 0.6316, "mom_3": 0.2105, "mom_6": 0.1053, "mom_12": 0.0526}
+    },
+    "selector": {"top_n": 1},
+    "alpha_weighting": {"weights": [1.0]},
+    "portfolio_risk_engine": {
+      "risk_on_assets": ["spy.us", "vea.us", "vwo.us"],
+      "risk_off_assets": ["lqd.us", "ief.us", "tlt.us"],
+      "mom_12_key": "mom_12"
+    },
+    "execution": {"hysteresis_pct": 0.0, "frequency": "monthly"}
+  },
+
+  "allowed_param_families": {
+    "execution": {"hysteresis_pct": [0.0, 0.02, 0.05]}
+  },
+
+  "created_at": "2026-07-10"
+}

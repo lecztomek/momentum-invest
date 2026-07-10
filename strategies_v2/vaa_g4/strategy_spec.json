@@ -1,0 +1,43 @@
+{
+  "name": "vaa_g4_v0",
+  "hypothesis": "Keller & Keuning (2017) VAA-G4 Aggressive Top1: 4 aktywa ofensywne = kanarki (SPY/EFA/VWO/AGG), 3 defensywne (SHY/IEF/LQD). Score = 13612W momentum. Jesli WSZYSTKIE kanarki > 0 - w calosci w najlepszy ofensywny; inaczej w calosci w najlepszy defensywny. Cala logika w PORTFOLIO_RISK_ENGINE (vaa_canary) - SELECTOR/ALPHA_WEIGHTING sa tu placeholderem.",
+  "universe": ["spy.us", "efa.us", "vwo.us", "agg.us", "shy.us", "ief.us", "lqd.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "vaa_canary",
+    "overlays": "none",
+    "execution": "hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "mom_1": {"impl": "momentum_monthly", "window": 1},
+      "mom_3": {"impl": "momentum_monthly", "window": 3},
+      "mom_6": {"impl": "momentum_monthly", "window": 6},
+      "mom_12": {"impl": "momentum_monthly", "window": 12}
+    },
+    "asset_scoring": {
+      "weights": {"mom_1": 0.6316, "mom_3": 0.2105, "mom_6": 0.1053, "mom_12": 0.0526}
+    },
+    "selector": {"top_n": 1},
+    "alpha_weighting": {"weights": [1.0]},
+    "portfolio_risk_engine": {
+      "offensive_assets": ["spy.us", "efa.us", "vwo.us", "agg.us"],
+      "defensive_assets": ["shy.us", "ief.us", "lqd.us"]
+    },
+    "execution": {"hysteresis_pct": 0.0, "frequency": "monthly"}
+  },
+
+  "allowed_param_families": {
+    "execution": {"hysteresis_pct": [0.0, 0.02, 0.05]}
+  },
+
+  "created_at": "2026-07-10"
+}

@@ -1,0 +1,37 @@
+{
+  "name": "example_v0_b",
+  "hypothesis": "Wariant bardziej skoncentrowany (top1 zamiast top2, krotszy SMA150) - do testowania COMBINERA z example_v0 na tym samym uniwersum.",
+  "universe": ["ivv.us", "xlk.us", "iau.us", "dbc.us", "tlt.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "none",
+    "overlays": "none",
+    "execution": "hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "sma_150": {"impl": "sma_daily", "window": 150},
+      "mom_6": {"impl": "momentum_monthly", "window": 6},
+      "mom_12": {"impl": "momentum_monthly", "window": 12}
+    },
+    "asset_filters": {
+      "trend": {"impl": "price_above_indicator", "indicator_key": "sma_150"}
+    },
+    "asset_scoring": {"weights": {"mom_6": 0.5, "mom_12": 0.5}},
+    "selector": {"top_n": 1},
+    "alpha_weighting": {"weights": [1.0]},
+    "execution": {"hysteresis_pct": 0.05, "frequency": "monthly"}
+  },
+
+  "allowed_param_families": {},
+
+  "created_at": "2026-07-10"
+}

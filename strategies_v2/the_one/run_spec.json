@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "Rekonstrukcja 'The One' (inwestujdlugoterminowo.pl) wg standardowej reguly GEM - autor nie ujawnia pelnego algorytmu, wiec to jest jawna rekonstrukcja, nie wierny port."
+}

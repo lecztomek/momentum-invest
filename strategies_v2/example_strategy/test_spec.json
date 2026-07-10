@@ -1,0 +1,42 @@
+{
+  "train_window": {"start": "2008-07-01", "end": "2019-12-31"},
+  "test_window": {"start": "2020-01-01", "end": "2026-06-30"},
+
+  "walk_forward": {
+    "enabled": true,
+    "window_months": 60,
+    "step_months": 12
+  },
+
+  "ablation": {
+    "enabled": true,
+    "modules_to_test": ["asset_filters", "portfolio_risk_engine", "overlays"]
+  },
+
+  "sensitivity": {
+    "enabled": true,
+    "blocks": ["asset_filters", "execution"]
+  },
+
+  "costs": {
+    "transaction_cost_bps_one_way": 40.0,
+    "annual_tax_rate": 0.19
+  },
+
+  "uk_mapping": {
+    "enabled": true,
+    "ticker_mapping_file": "ticker_mapping.json",
+    "uk_benchmark": "vwra.uk",
+    "run_once_at_end": true,
+    "checks": {
+      "weights_mismatch": {
+        "enabled": true,
+        "description": "Miesiace gdzie liczba aktywow/cash-status roznia sie miedzy US i UK po mapowaniu - mapping jest 1:1, wiec powinno byc 0."
+      },
+      "return_consistency": {
+        "enabled": true,
+        "description": "Korelacja i max pojedynczy rozjazd miesieczny UK vs US - progi w acceptance_spec.json."
+      }
+    }
+  }
+}

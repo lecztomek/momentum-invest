@@ -1,0 +1,19 @@
+{
+  "name": "combined_v0",
+  "hypothesis": "Polaczenie example_v0 (60% kapitalu) i example_v0_b (40%) - sprawdzenie czy COMBINER + jedna wspolna histereza dziala poprawnie na dwoch niezaleznie zaprojektowanych strategiach.",
+
+  "strategy_spec_paths": [
+    "../example_strategy/strategy_spec.json",
+    "../example_strategy_b/strategy_spec.json"
+  ],
+
+  "combiner": "fixed_capital_weights",
+  "combiner_params": {
+    "capital_weights": {"example_v0": 0.6, "example_v0_b": 0.4}
+  },
+
+  "execution": "hysteresis",
+  "execution_params": {"hysteresis_pct": 0.05},
+
+  "created_at": "2026-07-10"
+}
