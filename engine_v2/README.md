@@ -322,16 +322,17 @@ jest jeszcze zaimplementowany w engine_v2 (`PeriodExecutionResult.tax_amount` is
 kontrakcie, ale zaden blok go dzis nie wypelnia) - to jest overlay na krzywej equity, nie
 logika selekcji, wiec swiadomie odlozone.
 
-**POPRAWIONO 2026-07-10 (trzy kolejne bugfixy tego samego dnia - patrz sekcje nizej)**: po
-wszystkich trzech poprawkach realny wynik `final` (cala historia, z kosztem 40bps, BEZ podatku
-19% - patrz wyzej) to: **CAGR ~16.7%, MaxDD ~-29.5%, Sharpe ~0.97, Calmar ~0.57, roczny turnover
-~0.91**. To BARDZO blisko oryginalnego, realnego systemu uzytkownika (stary silnik, `US base A`,
+**POPRAWIONO 2026-07-10 (pieciokrotny bugfix tego samego dnia - patrz sekcje nizej)**: po
+wszystkich pieciu poprawkach realny wynik `final` (cala historia, z kosztem 40bps, BEZ podatku
+19% - patrz wyzej) to: **CAGR ~16.5%, MaxDD ~-29.5%, Sharpe ~0.96, Calmar ~0.56, roczny turnover
+~0.82**. To BARDZO blisko oryginalnego, realnego systemu uzytkownika (stary silnik, `US base A`,
 sprawdzone wprost z `ideas_out/*/GLOBAL_SUMMARY.txt` i ponownym uruchomieniem starego
 `run_global_pipeline.py` na tych samych danych): monthly CAGR 15.67-16.23%, Sharpe ~1.00, roczny
 turnover ~1.2 - engine_v2 wypada NIECO WYZEJ, spojnie z brakiem podatku 19% (ktorego stary silnik
 NIE pomija). Miesiac-po-miesiacu porownanie z realnym `weights_used_json` starego silnika: z 216
-wspolnych miesiecy 34 dalej sie roznia (~16%, w wiekszosci to drugie miejsce w rankingu top2 -
-ktory z pozostalych aktywow ma odrobine wyzszy score - a nie systemowy blad).
+wspolnych miesiecy **28 dalej sie roznia (~13%)**, w wiekszosci to drugie miejsce w rankingu top2
+na granicy - ktory z pozostalych aktywow ma odrobine wyzszy score - a nie systemowy blad
+(diminishing returns dalszego dochodzenia, zatrzymano tutaj).
 
 ~~Wczesniejsza (CZESCIOWA) poprawka z tego samego dnia dawala CAGR ~7.7%, Sharpe ~0.58, turnover
 ~7.0 - patrz historia zmian w CHANGELOG.md za pelny opis eskalacji (3 osobne bugi, znalezione
@@ -347,11 +348,11 @@ mieszanka buga #1 [zaniza turnover, zawyza CAGR] - patrz nizej. `validation`/swe
 NIEPRZELICZONE po zadnym z trzech bugfixow - traktowac jako nieaktualne do czasu ponownego
 uruchomienia.)
 
-### Znane, naprawione bugi (2026-07-10) - trzy osobne, znalezione jeden po drugim
+### Znane, naprawione bugi (2026-07-10) - piec osobnych, znalezionych jeden po drugim
 
-Wszystkie trzy znalezione przy weryfikacji `best17_a` przeciw REALNEMU, staremu silnikowi
-(`engine/`, uruchomiony ponownie na tych samych danych) - patrz `CHANGELOG.md` za pelna,
-chronologiczna historie odkrywania.
+Wszystkie znalezione przy weryfikacji `best17_a` przeciw REALNEMU, staremu silnikowi (`engine/`,
+uruchomiony ponownie na tych samych danych) - patrz `CHANGELOG.md` za pelna, chronologiczna
+historie odkrywania.
 
 **Bug #1 - gubione miesiace w srodku historii.** `pipeline._run_phase_a` obcinal target_weights
 przez `score.dropna(how="all").index` - mial to wycinac WYLACZNIE rozgrzewke na poczatku
@@ -393,6 +394,25 @@ nawet z waga 0.0 - jesli taki ticker jeszcze nie mial zadnych danych cenowych (n
 2008-06), `0.0 * NaN = NaN` zarazalo cala reszte krzywej equity od tego dnia, mimo ze ten ticker
 nigdy nie byl faktycznie trzymany. Naprawa: tylko tickery z faktycznie niezerowa waga wchodza do
 petli dziennego mnozenia.
+
+**Bug #5 - dwie drobne rozbieznosci vs stary silnik przy niedopelnionej pozycji** (znalezione po
+tym, jak mimo bugow #1-4 nadal 34/216 miesiecy sie roznilo - user zapytal wprost "dalej mamy
+roznice a dane te same trzeba to wyjasnic"):
+1. `rank_weights`: gdy SELECTOR znajdzie mniej kandydatow niz `top_n`, `engine_v2` dawal
+   jedynemu kandydatowi tylko jego wage rankingowa (np. 0.8), reszte zostawiajac w cash. Stary
+   silnik (`build_rank_weight_target`) RENORMALIZUJE uzyte wagi do sumy 1.0 - zawsze w pelni
+   zainwestowany. Naprawa: nowy param `redistribute_if_short` (domyslnie False, wlaczony w
+   `best17_a`).
+2. `score_gap_hysteresis`: stary silnik (`should_keep_current_assets_by_hysteresis`) chroni
+   pozycje histereza TYLKO gdy jest juz PELNA (`len(current_assets) == top_n`) - przy
+   niedopelnionej pozycji zawsze wypelnia brakujacy slot, nawet slabszym kandydatem. `engine_v2`
+   porownywal najslabszy trzymany vs najlepszy wyzwaniowiec NIEZALEZNIE od tego ile aktywow jest
+   trzymanych. Naprawa: nowy param `full_position_size` (domyslnie None/wylaczony, wlaczony w
+   `best17_a` jako `2` = jego `top_n`).
+
+Po tej poprawce: CAGR ~16.7% -> ~16.5%, rozbieznych miesiecy 34/216 -> 28/216 (~13%) - reszta to
+juz genuinie subtelne roznice na granicy rankingu (np. IVV vs DBC z niemal identycznym score),
+diminishing returns dalszego dochodzenia.
 
 ## Testy
 
