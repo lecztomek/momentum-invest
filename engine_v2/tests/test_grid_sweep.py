@@ -29,10 +29,65 @@ def test_raises_on_empty_allowed_param_families():
         expand_param_grid(spec)
 
 
-def test_raises_on_multi_instance_block():
+def test_raises_on_multi_instance_block_without_dotted_instance():
     spec = _base_spec({"indicators": {"window": [100, 200]}})
     with pytest.raises(ValueError, match="wielo-instancyjny"):
         expand_param_grid(spec)
+
+
+def test_raises_on_unknown_instance_in_multi_instance_block():
+    spec = _base_spec({"indicators": {"missing_instance.window": [100, 200]}})
+    with pytest.raises(ValueError, match="nie istnieje"):
+        expand_param_grid(spec)
+
+
+def test_multi_instance_block_sweep_with_dotted_param():
+    spec = StrategySpec(
+        name="base",
+        hypothesis="test",
+        universe=["a.us"],
+        blocks={},
+        base_params={
+            "indicators": {
+                "sma_200": {"impl": "sma_daily", "window": 200},
+                "mom_3": {"impl": "momentum_monthly", "window": 3},
+            }
+        },
+        allowed_param_families={"indicators": {"sma_200.window": [100, 150, 200]}},
+    )
+
+    variants = expand_param_grid(spec)
+
+    assert len(variants) == 3
+    windows = sorted(v.base_params["indicators"]["sma_200"]["window"] for v in variants)
+    assert windows == [100, 150, 200]
+    # impl i inne instancje pozostaja nietkniete
+    assert all(v.base_params["indicators"]["sma_200"]["impl"] == "sma_daily" for v in variants)
+    assert all(v.base_params["indicators"]["mom_3"] == {"impl": "momentum_monthly", "window": 3} for v in variants)
+    # base spec sam nie jest zmutowany
+    assert spec.base_params["indicators"]["sma_200"]["window"] == 200
+    # nazwa wariantu uzywa pelnego "instancja.param"
+    assert all("indicators.sma_200.window=" in v.name for v in variants)
+
+
+def test_run_param_sweep_reports_multi_instance_param_values():
+    spec = StrategySpec(
+        name="base",
+        hypothesis="test",
+        universe=["a.us"],
+        blocks={},
+        base_params={"indicators": {"sma_200": {"impl": "sma_daily", "window": 200}}},
+        allowed_param_families={"indicators": {"sma_200.window": [100, 200]}},
+    )
+
+    def fake_evaluate(variant):
+        return {"score": variant.base_params["indicators"]["sma_200"]["window"]}
+
+    result = run_param_sweep(spec, fake_evaluate)
+
+    assert len(result) == 2
+    assert set(result.columns) == {"variant_name", "indicators.sma_200.window", "score"}
+    assert sorted(result["score"]) == [100, 200]
 
 
 def test_raises_on_empty_value_list():

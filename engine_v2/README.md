@@ -167,9 +167,12 @@ zwraca jedna tabele: kombinacja parametrow + jej metryki. To jest fundament tryb
 pozwala zobaczyc czy dookola wybranych parametrow jest stabilna "rodzina" (plateau), nie tylko
 jeden szczesliwy punkt.
 
-Ograniczenie v0: wspiera tylko bloki jedno-implementacyjne (`base_params[blok][param]`) - bloki
-wielo-instancyjne (`indicators`, `asset_filters`) maja zagniezdzona strukture i nie sa jeszcze
-wspierane (czytelny blad zamiast zgadywania).
+Wspiera bloki jedno-implementacyjne (`allowed_param_families[blok][param]`, np.
+`{"execution": {"min_score_gap": [0.0, 0.005, 0.01]}}`) oraz wielo-instancyjne (`indicators`,
+`asset_filters`) przez notację `"instancja.param"`, np.
+`{"indicators": {"sma_200.window": [100, 150, 200]}}` - sweepuje parametr JUŻ istniejącej
+instancji (nie zmienia `impl` ani innych instancji); nieznana instancja albo brak kropki w
+kluczu dla bloku wielo-instancyjnego rzuca czytelny błąd zamiast zgadywania.
 
 ## RUN SPEC RUNNER (`run_spec_runner.py`, `acceptance_check.py`)
 
