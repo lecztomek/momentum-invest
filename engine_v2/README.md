@@ -146,18 +146,28 @@ pozycji B) - to by wymagało wspólnego `cost_bps` między strategiami o różny
 kosztowych, świadomie odłożone; `gross_return`/`trade_cost`/`net_return` (jedyne pola faktycznie
 konsumowane przez `backtest_engine.daily_equity_curve`) są policzone poprawnie.
 
-**Wynik `combined_best2` (50/50 best17_a+the_one) - statyczny vs dynamiczny combiner**:
+**Wynik `combined_best2` (50/50 best17_a+the_one) - statyczny vs dynamiczny combiner** (koszty:
+`the_one` ma `cost_bps=10`, patrz "Znany, naprawiony bug" nizej za wyjasnienie skorygowanego
+kosztu):
 | | `fixed_capital_weights` | `dynamic_capital_weights` |
 |---|---|---|
-| CAGR | ~12.9% | ~14.4% |
-| MaxDD | -22.6% | -26.5% |
-| Sharpe | ~0.97 | ~0.97 |
-| Calmar | ~0.57 | ~0.54 |
+| CAGR | ~12.6% | ~14.0% |
+| MaxDD | -22.7% | -26.8% |
+| Sharpe | ~0.94 | ~0.95 |
+| Calmar | ~0.55 | ~0.52 |
 
 Dynamiczna realokacja podnosi CAGR (pełniejsze wykorzystanie kapitału), ale TEŻ podnosi MaxDD
 (pełna koncentracja w jednej strategii akurat wtedy, gdy druga poszła w cash, usuwa dywersyfikację
 dokładnie w momencie, gdy mogłaby być najbardziej potrzebna) - Sharpe praktycznie bez zmian,
 Calmar nawet nieco gorszy. Sensowny, ale niejednoznaczny kompromis - nie "oczywista poprawa".
+
+**`strategies_v2/combined_triple/`** - user pytanie: strategia z CAGR>10% ale niższym MaxDD niż
+`best17_a` solo (-29.5%)? Sweep wag pokazał, że POŁĄCZENIE TRZECH niezależnie zaprojektowanych
+strategii (zamiast dwóch) daje wyraźnie lepszy kompromis: `best17_a` (45%) + `the_one` (20%) +
+`all_weather_4` (35%) - trzy różne charaktery (skoncentrowany momentum z kanarkiem;
+dual-momentum switch; zawsze-w-pełni-zainwestowany) dają więcej dywersyfikacji niż para. Wynik:
+CAGR ~11.5%, MaxDD ~-18.1%, Sharpe ~0.99, Calmar ~0.64 - **najlepszy Sharpe I Calmar w całym
+repo**, przy CAGR>10% i najniższym MaxDD ze wszystkich konfiguracji z CAGR>10%.
 
 Orchestrator: `combined_pipeline.run_combined_pipeline(combined_spec, base_dir)` -> tabela
 FINAL PORTFOLIO. Przykład: `strategies_v2/combined_example/combined_spec.json`.
@@ -270,6 +280,7 @@ strategies_v2/
   combined_best2/               # best17_a + the_one, 50/50, fixed_capital_weights - patrz niżej
   combined_best2_dynamic/       # to samo, ale dynamic_capital_weights - patrz niżej
   all_weather_4/                # 4 klasy aktywow, zawsze wszystkie trzymane - patrz niżej
+  combined_triple/               # best17_a+the_one+all_weather_4, 45/20/35 - patrz niżej
 ```
 
 ### Druga przykładowa strategia: `dual_momentum` (test szerokości silnika)
@@ -326,6 +337,12 @@ absolutnemu, plus cash-fallback) wypadl w `validation` (OOS 2020-2026) LEPIEJ ni
 wyraznie sie pogorszyl. To sugeruje, ze test wzgledny (SPY vs obligacje) + mozliwosc cash lepiej
 poradzil sobie z 2022 r. niz prosta "wszystkie 4 kanarki dodatnie" regula VAA - ale to
 obserwacja z jednego backtestu, nie dowod wyzszosci.
+
+**UWAGA (2026-07-10)**: liczby wyzej sa SPRZED poprawki rozgrzewki wskaznikow (patrz sekcja
+"Znane, naprawione bugi" nizej) I sprzed dodania `cost_bps=10` (wczesniej `the_one` mial koszt
+transakcyjny = 0, mimo najwyzszego turnoveru w repo, ~6.5/rok) - `final` (cala historia, z
+kosztem) to teraz CAGR ~8.8%, Sharpe ~0.61 - `validation`/OOS NIE przeliczone ponownie po tych
+zmianach, traktowac powyzsze porownanie train/OOS jako nieaktualne.
 
 ### Piata strategia: `best17_a` (realna strategia uzytkownika, bez hedge)
 

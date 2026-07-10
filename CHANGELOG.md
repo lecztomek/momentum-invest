@@ -4,6 +4,36 @@ Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co 
 
 ## 2026-07-10
 
+- **KOSZTY: dodano brakujacy `cost_bps` do `the_one`/`example_strategy`/`example_strategy_b`**
+  (user pytanie: "czy te wyniki sa z kosztami?") - okazalo sie ze NIE wszystkie strategie mialy
+  ustawiony koszt transakcyjny: tylko `best17_a` (40bps) i `all_weather_4` (10bps) mialy realny
+  `cost_bps`, reszta (`the_one`, `example_strategy`, `example_strategy_b`) miala go domyslnie na
+  0 (nigdy nie ustawiony w ich `execution` params) - porownania miedzy strategiami byly wiec
+  niesprawiedliwe (`the_one` ma najwyzszy turnover w repo, ~6.5/rok, wiec najwiecej zyskiwal na
+  pomijaniu kosztow). Dodano `cost_bps: 10` (standardowy koszt dla plynnych ETF, spojny z
+  `all_weather_4`) do wszystkich trzech. Zaktualizowano `test_pipeline.py::test_pipeline_matches_manual_wiring`
+  (recznie duplikowal stare params bez cost_bps).
+
+  **Wplyw**: `the_one` solo CAGR 9.47% -> 8.76% (Sharpe 0.65 -> 0.61), `example_strategy` 8.59%
+  -> 8.19%, `example_strategy_b` 7.75% -> 7.37%. `combined_best2`/`combined_best2_dynamic`
+  (zawieraja `the_one`) rowniez spadly o ~0.4pp CAGR.
+
+- **NOWA KONFIGURACJA `strategies_v2/combined_triple/`** - user pytanie: "jakis pomysl na
+  strategie z mniejszym MaxDD a CAGR powyzej 10%?". Sweep wag kapitalowych pokazal, ze
+  POLACZENIE TRZECH niezaleznie zaprojektowanych strategii (zamiast dwoch) daje wyraznie lepszy
+  kompromis niz jakakolwiek strategia solo albo para: `best17_a` (45%) + `the_one` (20%) +
+  `all_weather_4` (35%) - kazda ma inny charakter (skoncentrowany momentum z kanarkiem;
+  dual-momentum switch akcje<->obligacje; zawsze-w-pelni-zainwestowany bez market-timingu), wiec
+  trzecia niezalezna noga dodaje wiecej dywersyfikacji niz druga.
+
+  **Wynik**: CAGR ~11.5%, MaxDD ~-18.1%, Sharpe ~0.99, Calmar ~0.64, roczny turnover ~2.14 -
+  **najlepszy Sharpe I Calmar w calym repo**, przy CAGR>10% i najnizszym MaxDD ze wszystkich
+  konfiguracji z CAGR>10% (lepszy niz `best17_a` solo: CAGR 16.5%/MaxDD -29.5%; i niz
+  `combined_best2` 50/50: CAGR 12.6%/MaxDD -22.7%). Sweep pelny w historii sesji - lokalny
+  optimum wokol tych proporcji (przetestowano >15 kombinacji wag 2- i 3-skladnikowych).
+
+  Pelny pakiet testow: 179/180 (1 fail niepowiazany - efa/agg/shy dla `vaa_g4`).
+
 - **NOWA STRATEGIA `strategies_v2/all_weather_4/`** - user pomysl: uproszczony "all-weather" na
   4 klasach aktywow (akcje/obligacje/zloto/surowce), udzial dynamiczny wg score, ale ZAWSZE
   wszystkie 4 trzymane, zaokraglone do pelnych 10% - reszta (wskazniki, dobor tickerow,
