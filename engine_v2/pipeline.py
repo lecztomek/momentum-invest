@@ -148,9 +148,10 @@ def _run_asset_filters(
 
 def _run_phase_a(spec: StrategySpec):
     """FAZA A pojedynczej strategii: data_loader -> ... -> portfolio_risk_engine. Zwraca
-    (market_data, indicator_set, score, target_weights) - target_weights juz przycieta do
-    okresow z choc jednym policzonym score. Reuzywane przez run_strategy_pipeline (pojedyncza
-    strategia) i combined_pipeline (kilka strategii razem)."""
+    (market_data, indicator_set, score, target_weights) - target_weights juz przycieta o
+    rozgrzewke na poczatku historii (przed pierwsza data z choc jednym policzonym score).
+    Reuzywane przez run_strategy_pipeline (pojedyncza strategia) i combined_pipeline (kilka
+    strategii razem)."""
     market_data = _lookup("data_loader", spec.blocks["data_loader"])(
         spec.universe, spec.base_params.get("data_loader", {})
     )
@@ -174,9 +175,19 @@ def _run_phase_a(spec: StrategySpec):
         target_weights, market_data, indicator_set, score, spec.base_params.get("portfolio_risk_engine", {})
     )
 
-    # tylko okresy z choc jednym policzonym score (bez rozgrzewki na poczatku historii)
-    usable_dates = score.dropna(how="all").index
-    target_weights = target_weights.loc[target_weights.index.intersection(usable_dates)]
+    # Obcinamy WYLACZNIE rozgrzewke na poczatku historii (od pierwszej daty z choc jednym
+    # policzonym score) - NIE kazda pojedyncza date w SRODKU historii, gdzie score wyszedl w
+    # calosci NaN. Taka data w srodku historii to zazwyczaj "caly regime niezdatny" (np.
+    # canary_regime_gate) - target_weights dla niej MOZE byc poprawnie policzony (np.
+    # rebound_starter potrafi wejsc w kanarka mimo NaN score na glownych aktywach) i nie wolno
+    # go gubic, bo inaczej ten okres znika z FINAL PORTFOLIO, a backtest po prostu jedzie dalej
+    # na starych wagach zamiast wykonac zaplanowana zmiane.
+    non_nan_dates = score.index[score.notna().any(axis=1)]
+    if non_nan_dates.empty:
+        target_weights = target_weights.iloc[0:0]
+    else:
+        first_usable_date = non_nan_dates.min()
+        target_weights = target_weights.loc[target_weights.index >= first_usable_date]
 
     return market_data, indicator_set, score, target_weights
 

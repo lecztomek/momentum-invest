@@ -97,8 +97,9 @@ def test_pipeline_matches_manual_wiring(us_data_dir, us_universe):
     target_weights = ALPHA_WEIGHTING_REGISTRY["rank_weights"](selection, score, indicator_set, {"weights": [0.8, 0.2]})
     target_weights = PORTFOLIO_RISK_ENGINE_REGISTRY["none"](target_weights, md, indicator_set, score, {})
 
-    usable_dates = score.dropna(how="all").index
-    target_weights = target_weights.loc[target_weights.index.intersection(usable_dates)]
+    non_nan_dates = score.index[score.notna().any(axis=1)]
+    first_usable_date = non_nan_dates.min()
+    target_weights = target_weights.loc[target_weights.index >= first_usable_date]
 
     state = PortfolioState()
     results = []

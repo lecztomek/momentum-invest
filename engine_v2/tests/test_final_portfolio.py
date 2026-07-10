@@ -87,8 +87,10 @@ def test_full_engine_chain_on_real_data(us_data_dir, us_universe):
     target_weights = rank_weights(selection, score, indicator_set, {"weights": [0.8, 0.2]})
     target_weights = risk_none(target_weights, md, indicator_set, score, {})
 
-    # tylko okresy z pelnym scorem (bez rozgrzewki na poczatku historii)
-    usable_dates = score.dropna(how="all").index
+    # tylko okresy od pierwszej daty z choc jednym policzonym score (bez rozgrzewki na poczatku
+    # historii) - nie kazda pojedyncza data w srodku historii z NaN scorem
+    non_nan_dates = score.index[score.notna().any(axis=1)]
+    usable_dates = score.index[score.index >= non_nan_dates.min()]
     target_weights = target_weights.loc[usable_dates]
 
     # ---- FAZA B (okres po okresie) ----

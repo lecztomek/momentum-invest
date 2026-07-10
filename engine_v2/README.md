@@ -313,12 +313,43 @@ jest jeszcze zaimplementowany w engine_v2 (`PeriodExecutionResult.tax_amount` is
 kontrakcie, ale zaden blok go dzis nie wypelnia) - to jest overlay na krzywej equity, nie
 logika selekcji, wiec swiadomie odlozone.
 
-Realny wynik: `final` (cala historia) CAGR ~19%, MaxDD -26%, Sharpe ~1.03, Calmar ~0.72, roczny
+**POPRAWIONO 2026-07-10**: liczby ponizej byly liczone na buggy pipeline, ktory cichcem gubil ~79
+z ~201 miesiecy historii (kazdy miesiac, gdzie `canary_regime_gate` robil caly score NaN, byl
+usuwany z FINAL PORTFOLIO zamiast trafiac tam jako poprawnie policzony wiersz - zobacz sekcje
+"Znany, naprawiony bug" nizej). Po naprawie `pipeline._run_phase_a` realny wynik `final` (cala
+historia) to: CAGR ~7.7%, MaxDD -28%, Sharpe ~0.58, Calmar ~0.27, roczny turnover ~7.0 - ZNACZNIE
+gorzej niz wczesniej raportowane (histereza po score NIE ogranicza juz handlu tak skutecznie, bo
+kanarek+rebound teraz faktycznie wlacza/wylacza pozycje przy kazdym przelaczeniu regime'u, zamiast
+byc cichcem pomijany). `best17_a` juz NIE jest najlepszym wynikiem ze wszystkich przykladowych
+strategii w tym repo - jest teraz w tej samej okolicy turnoveru/Sharpe co `the_one` (~6.8
+turnover, Sharpe ~0.66) i `vaa_g4`. Liczby `validation` (OOS) i sweep `min_score_gap` ponizej
+NIE zostaly jeszcze przeliczone po naprawie - traktowac jako nieaktualne do czasu ponownego
+uruchomienia.
+
+~~Realny wynik: `final` (cala historia) CAGR ~19%, MaxDD -26%, Sharpe ~1.03, Calmar ~0.72, roczny
 turnover tylko ~0.45 (histereza po score bardzo skutecznie ogranicza handel) - najlepszy wynik
 ze wszystkich 5 przykladowych strategii w tym repo. `validation` (OOS) potwierdza (CAGR ~20%,
 Sharpe ~0.90) - nie ma rozjazdu train/OOS jak przy VAA. Sweep `min_score_gap` (0.0-0.01) pokazuje
 STABILNY plateau (CAGR ~15-16%, Sharpe ~1.07-1.10 w kazdym wariancie) - dokladnie sygnal
-stabilnosci rodziny, o ktory chodzilo od poczatku tego projektu.
+stabilnosci rodziny, o ktory chodzilo od poczatku tego projektu.~~ (NIEAKTUALNE, patrz wyzej)
+
+### Znany, naprawiony bug: gubione miesiace w srodku historii (2026-07-10)
+
+`pipeline._run_phase_a` obcinal target_weights przez `score.dropna(how="all").index` - mial to
+wycinac WYLACZNIE rozgrzewke na poczatku historii (komentarz w kodzie mowil dokladnie to), ale
+`dropna(how="all")` usuwal KAZDA date w calej historii, gdzie score wyszedl w calosci NaN - a to
+sie dzieje regularnie przy `canary_regime_gate` (caly regime niezdatny -> score wszystkich 4
+aktywow = NaN). Sprawdzone wprost na dacie 2009-11-01: `target_weights` PRZED obcieciem mial
+poprawny wynik (`rebound_starter` wszedl w VT po jej odbiciu), ale ten wiersz byl nastepnie
+kasowany przez filtr - efekt: ten miesiac po prostu znikal z FINAL PORTFOLIO, a
+`backtest_engine` jechal dalej na starych wagach z poprzedniego miesiaca zamiast wykonac
+zaplanowana zmiane. Dotyczylo to 79 z ~201 miesiecy (prawie 40% historii).
+
+Naprawa: `_run_phase_a` teraz obcina TYLKO ciagla rozgrzewke na starcie (do pierwszej daty z choc
+jednym policzonym score), zatrzymujac wszystkie pozniejsze daty niezaleznie od tego czy score
+akurat wyszedl w calosci NaN. Zaktualizowano tez dwa testy, ktore recznie duplikowaly stara
+(buggy) logike do porownania z orchestratorem (`test_pipeline.py::test_pipeline_matches_manual_wiring`,
+`test_final_portfolio.py::test_full_engine_chain_on_real_data`).
 
 ## Testy
 
