@@ -4,6 +4,48 @@ Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co 
 
 ## 2026-07-10
 
+- **NOWY COMBINER `engine_v2/combiner/dynamic_capital_weights.py`** - user zaproponował wprost:
+  "coś podobnego mogłoby być w łączeniu 2ch strategii - jak jedna w cash to druga ma całość".
+  Odtwarza `dynamic_combined` ze starego silnika (`engine/dynamic_combined.py`, znaleziony przy
+  przeglądaniu `engine/` - ma dokładnie tę regułę: A cash+B risk -> B 100%, oba risk -> stała
+  baza (tam 80/20), oba cash -> cash). Generalizacja na dowolną liczbę strategii: każdy okres
+  osobno klasyfikuje każdą strategię jako "cash" (same `_CASH`) albo "risk" (trzyma cokolwiek),
+  renormalizuje `capital_weights` TYLKO wśród strategii aktualnie "w risk".
+
+  **Zmiana kontraktu COMBINERA** (konieczna, żeby to zrobić poprawnie): `(strategy_target_weights,
+  params) -> (combined_weights, effective_capital_weights)` - drugi element to FAKTYCZNY udział
+  kapitału każdej strategii w KAŻDYM okresie, nie tylko statyczne `params["capital_weights"]`.
+  Bez tego `combined_pipeline.py` ważyłby metryki okresu (`gross_return`/`trade_cost`) strategii,
+  która przejęła kapitał drugiej, jej WŁASNYM, zbyt niskim udziałem - systematycznie zaniżając jej
+  wkład akurat w okresach realokacji. `fixed_capital_weights` zaktualizowany do tego samego
+  kontraktu (zwraca stałe liczby powtórzone w każdym wierszu - zero zmiany zachowania). Nowy
+  wspólny helper `combiner/_common.py` (`reindex_to_common_shape`/`common_index_and_columns`) -
+  wydzielony z duplikowanej logiki obu combinerów. Zaktualizowano `test_combiner.py`,
+  `test_combined_pipeline.py` (rozpakowanie krotki) + nowy `test_dynamic_capital_weights.py` (9
+  testów). Znane uproszczenie: `turnover`/`operations` nadal ważone efektywnym udziałem, NIE
+  liczone wprost z różnic `combined_weights` - samo przesunięcie kapitału między strategiami
+  (bez zmiany WŁASNEGO targetu żadnej z nich) nie jest wprost wliczone w turnover, co wymagałoby
+  wspólnego `cost_bps` między strategiami o różnych założeniach kosztowych.
+
+  Nowy config `strategies_v2/combined_best2_dynamic/combined_spec.json` (best17_a + the_one,
+  50/50, `dynamic_capital_weights` zamiast `fixed_capital_weights`) - do bezpośredniego
+  porównania z istniejącym `combined_best2`.
+
+  **Wynik - `fixed_capital_weights` vs `dynamic_capital_weights`**:
+  | | Statyczny (fixed) | Dynamiczny |
+  |---|---|---|
+  | CAGR | ~12.9% | ~14.4% |
+  | MaxDD | -22.6% | -26.5% |
+  | Sharpe | ~0.97 | ~0.97 |
+  | Calmar | ~0.57 | ~0.54 |
+
+  Dynamiczna realokacja podnosi CAGR (pełniejsze wykorzystanie kapitału), ale też MaxDD (pełna
+  koncentracja w jednej strategii akurat gdy druga poszła w cash usuwa dywersyfikację dokładnie
+  wtedy, gdy mogłaby być najbardziej potrzebna) - Sharpe bez zmian, Calmar nawet nieco gorszy.
+  Sensowny, ale NIEJEDNOZNACZNY kompromis - nie oczywista poprawa w żadną stronę.
+
+  Pełny pakiet testów: 171/172 (1 fail niepowiązany - efa/agg/shy dla `vaa_g4`).
+
 - **BUGFIX #5 `engine_v2/blocks/alpha_weighting/rank_weights.py` + `execution/score_gap_hysteresis.py`**
   (znalezione PRZY WERYFIKACJI, że 34 z 216 miesięcy dalej się różniły z realnym starym silnikiem
   mimo bugfixów #1-4 - user zapytał "dalej mamy różnice a dane te same trzeba to wyjaśnić"):

@@ -113,16 +113,51 @@ bogatszego kontekstu (np. `ExecutionContext.score_row`, którego COMBINER na poz
 wag nigdy nie miał). `CombinedSpec` już nie niesie własnego `execution`/`execution_params` - to w
 całości odpowiedzialność każdego `StrategySpec` z osobna.
 
-Implementacje COMBINERA żyją w `combiner/` (analogiczny registry co bloki, BEZ ZMIAN w tej
-przebudowie - działa identycznie na dowolnej tabeli kształtu `TargetWeights`, niezależnie czy to
-surowy target czy wagi po własnej histerezie). Pierwsza: `fixed_capital_weights` - stała alokacja
-kapitału między strategiami (`capital_weights`), waży i sumuje ich JUŻ WYKONANE wagi (unia kolumn
-dla różnych uniwersów, brakujące tickery = 0). Dla dat poza zakresem której strategii (np. inne
-okno rozgrzewki wskaźników) jej wkład to pełny `_CASH`, nie zera na całej linii - inaczej suma
-wierszy spadłaby poniżej 1.0. Pochodne metryki okresu (`turnover`/`trade_cost`/`gross_return`/
-`net_return`) też są łączone wg `capital_weights` (wprost w `combined_pipeline.py`, nie przez
-generyczny kontrakt COMBINERA) - `operations` (LICZBA transakcji, nie kwota) jest sumowane BEZ
-ważenia, bo transakcja w jednej sleeve i w drugiej to dwie osobne, realne transakcje.
+Implementacje COMBINERA żyją w `combiner/` (analogiczny registry co bloki). Kontrakt:
+`(strategy_target_weights, params) -> (combined_weights, effective_capital_weights)` - drugi
+element to FAKTYCZNY udział kapitału każdej strategii W KAŻDYM OKRESIE (patrz niżej dlaczego to
+osobny wynik, nie tylko `params["capital_weights"]`).
+
+- **`fixed_capital_weights`** - stała alokacja kapitału między strategiami (`capital_weights`),
+  waży i sumuje ich JUŻ WYKONANE wagi (unia kolumn dla różnych uniwersów, brakujące tickery = 0).
+  Dla dat poza zakresem której strategii (np. inne okno rozgrzewki wskaźników) jej wkład to pełny
+  `_CASH`, nie zera na całej linii - inaczej suma wierszy spadłaby poniżej 1.0.
+  `effective_capital_weights` = te same stałe liczby powtórzone w każdym wierszu.
+
+- **`dynamic_capital_weights`** - odtwarza `dynamic_combined` ze starego silnika
+  (`engine/dynamic_combined.py`): gdy KTÓRAŚ strategia jest w danym okresie CAŁKOWICIE w cash,
+  jej kapitał NIE marnuje się jako bezczynna gotówka - zostaje oddany strategiom, które SĄ
+  zainwestowane (proporcjonalnie do ich WŁASNYCH `capital_weights`, renormalizowanych tylko wśród
+  tych "w risk" w danym okresie). Gdy WSZYSTKIE strategie są w cash - cały połączony portfel w
+  cash. To ten sam pomysł co `redistribute_if_short` w `rank_weights` (patrz sekcja "Piąta
+  strategia"), tylko na poziomie COMBINERA zamiast pojedynczej strategii - user zaproponował to
+  wprost po zobaczeniu tamtej poprawki. Przykład: `strategies_v2/combined_best2_dynamic/`.
+  `effective_capital_weights` tu REALNIE zmienia się okres-po-okresie (0.0 gdy strategia w cash).
+
+Pochodne metryki okresu (`turnover`/`trade_cost`/`gross_return`/`net_return`) są łączone wg
+`effective_capital_weights` (nie statycznego `params["capital_weights"]`, wprost w
+`combined_pipeline.py`, nie przez generyczny kontrakt COMBINERA) - inaczej strategia, która
+przejęła kapitał drugiej, miałaby swój zwrot/koszt policzony na jej WŁASNYM, zbyt niskim udziale.
+`operations` (LICZBA transakcji, nie kwota) jest sumowane BEZ ważenia, bo transakcja w jednej
+sleeve i w drugiej to dwie osobne, realne transakcje. Znane uproszczenie: `turnover`/`operations`
+NIE liczą wprost samego przesunięcia kapitału między strategiami (np. gdy A idzie w cash, a B -
+bez zmiany WŁASNEGO targetu - przejmuje jej udział, w realnym koncie wymagałoby to dokupienia
+pozycji B) - to by wymagało wspólnego `cost_bps` między strategiami o różnych założeniach
+kosztowych, świadomie odłożone; `gross_return`/`trade_cost`/`net_return` (jedyne pola faktycznie
+konsumowane przez `backtest_engine.daily_equity_curve`) są policzone poprawnie.
+
+**Wynik `combined_best2` (50/50 best17_a+the_one) - statyczny vs dynamiczny combiner**:
+| | `fixed_capital_weights` | `dynamic_capital_weights` |
+|---|---|---|
+| CAGR | ~12.9% | ~14.4% |
+| MaxDD | -22.6% | -26.5% |
+| Sharpe | ~0.97 | ~0.97 |
+| Calmar | ~0.57 | ~0.54 |
+
+Dynamiczna realokacja podnosi CAGR (pełniejsze wykorzystanie kapitału), ale TEŻ podnosi MaxDD
+(pełna koncentracja w jednej strategii akurat wtedy, gdy druga poszła w cash, usuwa dywersyfikację
+dokładnie w momencie, gdy mogłaby być najbardziej potrzebna) - Sharpe praktycznie bez zmian,
+Calmar nawet nieco gorszy. Sensowny, ale niejednoznaczny kompromis - nie "oczywista poprawa".
 
 Orchestrator: `combined_pipeline.run_combined_pipeline(combined_spec, base_dir)` -> tabela
 FINAL PORTFOLIO. Przykład: `strategies_v2/combined_example/combined_spec.json`.
