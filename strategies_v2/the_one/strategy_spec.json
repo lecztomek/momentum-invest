@@ -33,7 +33,7 @@
       "risk_off_assets": ["lqd.us", "ief.us", "tlt.us"],
       "mom_12_key": "mom_12"
     },
-    "execution": {"hysteresis_pct": 0.0, "frequency": "monthly"}
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 10, "frequency": "monthly"}
   },
 
   "allowed_param_families": {

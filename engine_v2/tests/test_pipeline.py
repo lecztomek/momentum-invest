@@ -113,7 +113,7 @@ def test_pipeline_matches_manual_wiring(us_data_dir, us_universe):
         row = OVERLAYS_REGISTRY["none"](row, OverlayContext(date=date, state=state, market_data=md), {})
         returns_row = md.returns.loc[date] if date in md.returns.index else pd.Series(dtype=float)
         result = EXECUTION_REGISTRY["hysteresis"](
-            row, ExecutionContext(date=date, state=state, returns_row=returns_row), {"hysteresis_pct": 0.05}
+            row, ExecutionContext(date=date, state=state, returns_row=returns_row), {"hysteresis_pct": 0.05, "cost_bps": 10}
         )
         results.append(result)
         state.current_weights = result.weights_used
