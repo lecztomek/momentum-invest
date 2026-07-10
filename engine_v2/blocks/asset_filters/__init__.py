@@ -22,3 +22,5 @@ REGISTRY = make_registry()
 
 from engine_v2.blocks.asset_filters import price_above_indicator  # noqa: E402,F401  (rejestruje "price_above_indicator")
 from engine_v2.blocks.asset_filters import indicator_positive  # noqa: E402,F401  (rejestruje "indicator_positive")
+from engine_v2.blocks.asset_filters import canary_regime_gate  # noqa: E402,F401  (rejestruje "canary_regime_gate")
+from engine_v2.blocks.asset_filters import never_eligible  # noqa: E402,F401  (rejestruje "never_eligible")

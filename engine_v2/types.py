@@ -104,3 +104,4 @@ class ExecutionContext:
     date: pd.Timestamp
     state: PortfolioState
     returns_row: pd.Series
+    score_row: Optional[pd.Series] = None

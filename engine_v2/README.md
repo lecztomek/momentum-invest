@@ -50,14 +50,14 @@ Orchestrator: `pipeline.run_strategy_pipeline(spec)` -> gotowa tabela FINAL PORT
 |---|---|---|---|
 | `data_loader` | pojedynczy wybór | `stooq_csv` | Wczytuje ceny z plików stooq, wspiera `daily`/`weekly`/`monthly` |
 | `data_cleaner` | pojedynczy wybór | `trim_and_interpolate` | Równa wspólny zakres dat, uzupełnia luki interpolacją (z limitem `max_gap`) |
-| `indicators` | **wielo-instancyjny** | `sma_daily`, `momentum_monthly`, `volatility_daily` | Biblioteka wskaźników - osobna implementacja per wskaźnik+częstotliwość |
-| `asset_filters` | **wielo-instancyjny** | `price_above_indicator`, `indicator_positive` | Eliminacja aktywów (AND między instancjami), z opcjonalnym `assets` (zakres tickerów) |
+| `indicators` | **wielo-instancyjny** | `sma_daily`, `momentum_monthly`, `volatility_daily`, `ema_ratio_monthly`, `momentum_month_end` | Biblioteka wskaźników - osobna implementacja per wskaźnik+częstotliwość+baza cenowa (start/koniec miesiąca) |
+| `asset_filters` | **wielo-instancyjny** | `price_above_indicator`, `indicator_positive`, `canary_regime_gate`, `never_eligible` | Eliminacja aktywów (AND między instancjami); `canary_regime_gate` to GLOBALNY gate (cała grupa naraz, na podstawie osobnych "kanarków"); `never_eligible` trwale wyklucza tickery z normalnej selekcji |
 | `asset_scoring` | pojedynczy wybór | `weighted_sum` | Ważona suma wskaźników, maskuje NaN tam gdzie `eligibility_mask=False` |
 | `selector` | pojedynczy wybór | `top_n` | Top-N wg score, nigdy nie wybiera NaN |
 | `alpha_weighting` | pojedynczy wybór | `rank_weights`, `inverse_vol` | Wagi wybranych: stałe wg rankingu (reszta do `_CASH`) albo odwrotnie proporcjonalne do zmienności (zawsze w pełni zainwestowane) |
-| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku) |
+| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku) |
 | `overlays` | pojedynczy wybór | `none` | Pass-through (rebound/vol-target - gdy będzie potrzebny) |
-| `execution` | pojedynczy wybór | `hysteresis` | Rebalans tylko gdy max pojedyncza różnica wagi > próg; liczy zwrot okresu |
+| `execution` | pojedynczy wybór | `hysteresis`, `score_gap_hysteresis` | Rebalans tylko gdy przekroczony próg - na różnicy WAGI (`hysteresis`) albo różnicy SCORE między najsłabszym trzymanym a najlepszym wyzwaniowcem (`score_gap_hysteresis`, wymaga `ExecutionContext.score_row`) |
 
 **Wielo-instancyjne bloki** (`indicators`, `asset_filters`, patrz `spec.MULTI_INSTANCE_BLOCKS`):
 nie mają jednej implementacji w `blocks`, tylko słownik nazwanych instancji w `base_params`,
@@ -219,6 +219,7 @@ strategies_v2/
   dual_momentum/                # druga, niezależnie zaprojektowana strategia (patrz niżej)
   vaa_g4/                      # publicznie znana strategia (Keller VAA) - patrz niżej
   the_one/                      # rekonstrukcja publicznej strategii "The One" - patrz niżej
+  best17_a/                     # realna strategia uzytkownika (bez hedge) - patrz niżej
 ```
 
 ### Druga przykładowa strategia: `dual_momentum` (test szerokości silnika)
@@ -275,6 +276,46 @@ absolutnemu, plus cash-fallback) wypadl w `validation` (OOS 2020-2026) LEPIEJ ni
 wyraznie sie pogorszyl. To sugeruje, ze test wzgledny (SPY vs obligacje) + mozliwosc cash lepiej
 poradzil sobie z 2022 r. niz prosta "wszystkie 4 kanarki dodatnie" regula VAA - ale to
 obserwacja z jednego backtestu, nie dowod wyzszosci.
+
+### Piata strategia: `best17_a` (realna strategia uzytkownika, bez hedge)
+
+Wierne odtworzenie strategii bazowej "A" z realnego systemu uzytkownika (`best17_3m`, folder
+`ideas/`), BEZ overlaya hedge (tlt.us) - zbadane wprost w kodzie starego silnika
+(`engine/build_data.py`, `engine/backtest_hybrid_search.py`), nie zgadywane z configow.
+
+Uniwersum: XLK/IVV/DBC/IAU (tradowalne) + VT (wylacznie kanarek/gauge, nigdy kandydat do
+selekcji - `never_eligible`). Logika:
+1. **Kanarek regime** (`canary_regime_gate`): jesli VT lub XLK ma `EMA(5m)/EMA(12m)-1 <= -0.02`
+   - CALA grupa XLK/IVV/DBC/IAU staje sie nieeligibilna (100% cash), niezaleznie od wlasnych
+   scorow. To pierwszy GLOBALNY filtr w silniku (jeden sygnal decyduje o calej grupie, nie o
+   pojedynczym tickerze).
+2. **Asset gates**: IAU/DBC wypadaja jesli ich wlasny 3-miesieczny zwrot (na cenach KONCA
+   miesiaca) <= -1% (`indicator_positive` z ujemnym progiem).
+3. **Ranking**: `EMA(7m)/EMA(16m)-1`, tylko dodatnie (`require_positive_score`), top2, wagi
+   0.8/0.2 (`rank_weights` - bez zmian).
+4. **Histereza po SCORE, nie wadze** (`score_gap_hysteresis`, nowy blok EXECUTION): portfel
+   zostaje niezmieniony, jesli najslabszy trzymany ma score w odleglosci <= 0.005 od najlepszego
+   wyzwaniowca - to wymagalo rozszerzenia `ExecutionContext` o `score_row` (opcjonalne pole,
+   wstecznie kompatybilne).
+5. **Rebound starter** (`rebound_starter`, PORTFOLIO_RISK_ENGINE): jesli portfel jest w calosci
+   cash, a VT ma wlasny 3-miesieczny zwrot > 5% - wchodzi w calosci w VT zamiast zostawac w cash.
+
+Nowe wskazniki `ema_ratio_monthly`/`momentum_month_end` licza na cenach KONCA kazdego miesiaca
+(nie startu, jak reszta silnika) i przesuwaja wynik o miesiac do przodu - dokladnie odtwarzajac
+`align_scores_to_execution_month` ze starego silnika (sygnal z konca miesiaca M "wykonuje sie"
+na starcie M+1).
+
+**Znana roznica vs oryginal**: roczny podatek 19% (high-water-mark) z oryginalnego systemu NIE
+jest jeszcze zaimplementowany w engine_v2 (`PeriodExecutionResult.tax_amount` istnieje w
+kontrakcie, ale zaden blok go dzis nie wypelnia) - to jest overlay na krzywej equity, nie
+logika selekcji, wiec swiadomie odlozone.
+
+Realny wynik: `final` (cala historia) CAGR ~19%, MaxDD -26%, Sharpe ~1.03, Calmar ~0.72, roczny
+turnover tylko ~0.45 (histereza po score bardzo skutecznie ogranicza handel) - najlepszy wynik
+ze wszystkich 5 przykladowych strategii w tym repo. `validation` (OOS) potwierdza (CAGR ~20%,
+Sharpe ~0.90) - nie ma rozjazdu train/OOS jak przy VAA. Sweep `min_score_gap` (0.0-0.01) pokazuje
+STABILNY plateau (CAGR ~15-16%, Sharpe ~1.07-1.10 w kazdym wariancie) - dokladnie sygnal
+stabilnosci rodziny, o ktory chodzilo od poczatku tego projektu.
 
 ## Testy
 

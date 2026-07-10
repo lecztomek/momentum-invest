@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "Odtworzenie realnej strategii uzytkownika best17_3m - strategia bazowa A, bez hedge overlay. Brak rocznego podatku 19% (jeszcze niezaimplementowany w engine_v2) - roznica vs stary system."
+}

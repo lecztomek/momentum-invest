@@ -226,7 +226,8 @@ def run_strategy_pipeline(spec: StrategySpec) -> pd.DataFrame:
             if date in market_data.returns.index
             else pd.Series(dtype=float)
         )
-        exec_ctx = ExecutionContext(date=date, state=state, returns_row=returns_row)
+        score_row = score.loc[date] if date in score.index else None
+        exec_ctx = ExecutionContext(date=date, state=state, returns_row=returns_row, score_row=score_row)
         result = execution_fn(row, exec_ctx, spec.base_params.get("execution", {}))
 
         results.append(result)

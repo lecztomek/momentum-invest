@@ -1,0 +1,176 @@
+"""
+Testy regresyjne komponentow zbudowanych do odtworzenia realnej strategii uzytkownika
+"best17_3m" strategia A (bez hedge): ema_ratio_monthly, momentum_month_end,
+canary_regime_gate, rebound_starter, score_gap_hysteresis.
+
+Uruchomienie: .venv/bin/pytest engine_v2/tests/test_best17_a_components.py -v
+"""
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from engine_v2.blocks.asset_filters import REGISTRY as ASSET_FILTERS_REGISTRY
+from engine_v2.blocks.execution import REGISTRY as EXECUTION_REGISTRY
+from engine_v2.blocks.indicators import REGISTRY as INDICATORS_REGISTRY
+from engine_v2.blocks.portfolio_risk_engine import REGISTRY as PORTFOLIO_RISK_ENGINE_REGISTRY
+from engine_v2.types import ExecutionContext, MarketData, PortfolioState
+
+ema_ratio_monthly = INDICATORS_REGISTRY["ema_ratio_monthly"]
+momentum_month_end = INDICATORS_REGISTRY["momentum_month_end"]
+canary_regime_gate = ASSET_FILTERS_REGISTRY["canary_regime_gate"]
+rebound_starter = PORTFOLIO_RISK_ENGINE_REGISTRY["rebound_starter"]
+score_gap_hysteresis = EXECUTION_REGISTRY["score_gap_hysteresis"]
+
+
+# ---------------------------------------------------------------- ema_ratio_monthly
+
+def test_ema_ratio_monthly_shifted_to_next_month_start():
+    idx = pd.date_range("2021-01-01", "2021-04-30", freq="D")
+    prices = pd.DataFrame({"a": np.linspace(100, 110, len(idx))}, index=idx)
+    md = MarketData(prices=prices, returns=pd.DataFrame())
+
+    out = ema_ratio_monthly(md, {"fast_span": 2, "slow_span": 3})
+
+    # dane do konca stycznia -> etykieta start lutego (nie koniec stycznia)
+    assert pd.Timestamp("2021-02-01") in out.index
+    assert pd.Timestamp("2021-01-31") not in out.index
+
+
+def test_ema_ratio_monthly_requires_spans():
+    md = MarketData(prices=pd.DataFrame({"a": [1.0]}, index=[pd.Timestamp("2021-01-01")]), returns=pd.DataFrame())
+    with pytest.raises(ValueError, match="fast_span"):
+        ema_ratio_monthly(md, {})
+
+
+# ---------------------------------------------------------------- momentum_month_end
+
+def test_momentum_month_end_matches_manual_calc():
+    idx = pd.date_range("2021-01-01", "2021-04-30", freq="D")
+    prices = pd.DataFrame(index=idx)
+    prices["a"] = np.nan
+    month_ends = [pd.Timestamp("2021-01-31"), pd.Timestamp("2021-02-28"), pd.Timestamp("2021-03-31"), pd.Timestamp("2021-04-30")]
+    for d, v in zip(month_ends, [100.0, 110.0, 90.0, 120.0]):
+        prices.loc[d, "a"] = v
+    prices["a"] = prices["a"].ffill().bfill()
+    md = MarketData(prices=prices, returns=pd.DataFrame())
+
+    out = momentum_month_end(md, {"window": 1})
+
+    # marzec (90) vs luty (110), etykieta start kwietnia
+    assert out.loc["2021-04-01", "a"] == pytest.approx(90.0 / 110.0 - 1.0)
+
+
+# ---------------------------------------------------------------- canary_regime_gate
+
+def test_canary_regime_gate_blocks_targets_when_bad_canary():
+    idx = pd.date_range("2021-01-01", periods=3, freq="MS")
+    prices = pd.DataFrame({"a": 1.0, "b": 1.0, "vt": 1.0}, index=idx)
+    md = MarketData(prices=prices, returns=pd.DataFrame())
+    canary_indicator = pd.DataFrame({"vt": [0.01, -0.05, 0.0]}, index=idx)
+    indicator_set = {"canary": canary_indicator}
+
+    mask = canary_regime_gate(
+        md, indicator_set,
+        {"canary_assets": ["vt"], "indicator_key": "canary", "bad_threshold": -0.02,
+         "max_bad_count": 0, "target_assets": ["a", "b"]},
+    )
+
+    assert mask.loc[idx[0], "a"] == True  # noqa: E712 - vt ok
+    assert mask.loc[idx[1], "a"] == False  # vt zly (-0.05 <= -0.02)
+    assert mask.loc[idx[2], "a"] == True  # vt = 0.0, nie <= -0.02
+
+
+def test_canary_regime_gate_requires_params():
+    md = MarketData(prices=pd.DataFrame({"a": [1.0]}, index=[pd.Timestamp("2021-01-01")]), returns=pd.DataFrame())
+    with pytest.raises(ValueError, match="canary_regime_gate"):
+        canary_regime_gate(md, {}, {})
+
+
+# ---------------------------------------------------------------- rebound_starter
+
+def test_rebound_starter_switches_from_full_cash():
+    idx = pd.date_range("2021-01-01", periods=2, freq="MS")
+    target_weights = pd.DataFrame({"vt": [0.0, 0.0], "_CASH": [1.0, 1.0]}, index=idx)
+    indicator_set = {"mom": pd.DataFrame({"vt": [0.06, 0.01]}, index=idx)}
+    md = MarketData(prices=pd.DataFrame(index=idx), returns=pd.DataFrame())
+
+    out = rebound_starter(target_weights, md, indicator_set, pd.DataFrame(), {
+        "rebound_ticker": "vt", "indicator_key": "mom", "threshold": 0.05,
+    })
+
+    assert out.loc[idx[0], "vt"] == 1.0
+    assert out.loc[idx[0], "_CASH"] == 0.0
+    assert out.loc[idx[1], "_CASH"] == 1.0  # 0.01 nie przekracza progu
+
+
+def test_rebound_starter_leaves_non_cash_targets_untouched():
+    idx = pd.date_range("2021-01-01", periods=1, freq="MS")
+    target_weights = pd.DataFrame({"vt": [0.5], "b": [0.5], "_CASH": [0.0]}, index=idx)
+    indicator_set = {"mom": pd.DataFrame({"vt": [0.10]}, index=idx)}
+    md = MarketData(prices=pd.DataFrame(index=idx), returns=pd.DataFrame())
+
+    out = rebound_starter(target_weights, md, indicator_set, pd.DataFrame(), {
+        "rebound_ticker": "vt", "indicator_key": "mom", "threshold": 0.05,
+    })
+
+    assert out.loc[idx[0], "vt"] == 0.5
+    assert out.loc[idx[0], "b"] == 0.5
+
+
+# ---------------------------------------------------------------- score_gap_hysteresis
+
+def _exec_ctx(current_weights, returns_row, score_row):
+    return ExecutionContext(
+        date=pd.Timestamp("2021-02-01"),
+        state=PortfolioState(current_weights=current_weights),
+        returns_row=pd.Series(returns_row),
+        score_row=pd.Series(score_row),
+    )
+
+
+def test_score_gap_hysteresis_requires_score_row():
+    target = pd.Series({"a": 1.0})
+    ctx = ExecutionContext(date=pd.Timestamp("2021-01-01"), state=PortfolioState(), returns_row=pd.Series({"a": 0.0}))
+    with pytest.raises(ValueError, match="score_row"):
+        score_gap_hysteresis(target, ctx, {"min_score_gap": 0.005})
+
+
+def test_keeps_current_when_challenger_score_close():
+    # trzymamy "a" (score 0.10), wyzwaniowiec "b" (score 0.104) - roznica 0.004 < 0.005 -> keep
+    target = pd.Series({"b": 1.0})
+    ctx = _exec_ctx({"a": 1.0}, {"a": 0.02, "b": 0.03}, {"a": 0.10, "b": 0.104})
+
+    result = score_gap_hysteresis(target, ctx, {"min_score_gap": 0.005})
+
+    assert result.signal_changed is False
+    assert result.weights_used == {"a": 1.0, "b": 0.0}
+
+
+def test_switches_when_challenger_score_gap_exceeds_threshold():
+    target = pd.Series({"b": 1.0})
+    ctx = _exec_ctx({"a": 1.0}, {"a": 0.02, "b": 0.03}, {"a": 0.10, "b": 0.20})
+
+    result = score_gap_hysteresis(target, ctx, {"min_score_gap": 0.005})
+
+    assert result.signal_changed is True
+    assert result.weights_used == {"a": 0.0, "b": 1.0}
+
+
+def test_same_composition_always_kept():
+    target = pd.Series({"a": 1.0})
+    ctx = _exec_ctx({"a": 1.0}, {"a": 0.02}, {"a": 0.10})
+
+    result = score_gap_hysteresis(target, ctx, {"min_score_gap": 0.005})
+
+    assert result.signal_changed is False
+    assert result.turnover == 0.0
+
+
+def test_both_cash_kept():
+    target = pd.Series({"_CASH": 1.0})
+    ctx = _exec_ctx({"_CASH": 1.0}, {}, {})
+
+    result = score_gap_hysteresis(target, ctx, {"min_score_gap": 0.005})
+
+    assert result.signal_changed is False
