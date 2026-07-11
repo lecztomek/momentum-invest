@@ -2,6 +2,48 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (15)
+
+- **NOWA STRATEGIA `strategies_v2/gpm/` - "Generalized Protective Momentum"** (user poprosił o
+  strategię z niższym MaxDD, potem dostarczył pełny opis mechanizmu GPM do odtworzenia). Wymagała
+  4 CAŁKOWICIE NOWYCH implementacji blokow (nie dało się złożyć z istniejących):
+  - `indicators/momentum_avg_month_end.py` - średnia momentum z kilku okien (1/3/6/12m) na
+    cenach końca miesiąca.
+  - `indicators/corr_to_basket_month_end.py` - rocząca się korelacja miesięcznych zwrotów
+    każdego tickera do równoważonego koszyka wskazanych tickerów (stały koszyk, ten sam przy
+    ocenie KAŻDEGO tickera, włącznie z samym koszykiem - zamierzone, wierne odtworzenie
+    metodologii GPM, nie błąd).
+  - `asset_scoring/momentum_times_decorrelation.py` - `score = momentum * (1 - korelacja)` -
+    ILOCZYN dwóch wskaźników, nie liniowa suma wazona jak `weighted_sum` (który by tego nie
+    wyraził).
+  - `portfolio_risk_engine/gpm_breadth_protective_split.py` - zamiast binarnego przełączenia
+    risk-on/off (jak `vaa_canary`), udział części ochronnej skaluje się CIĄGLE wg szerokości
+    rynku: `n` = liczba z 12 aktywów ryzykownych z dodatnim score; `n<=6` → 100% ochrony, inaczej
+    `(12-n)/6`. Reszta kapitału w top3 aktywa ryzykowne wg score, po równo. Zweryfikowano na
+    realnych danych, że mechanizm faktycznie się aktywuje poprawnie (100% w IEF przez cały
+    2008 i marzec-czerwiec 2020, ciągłe skalowanie 0.167/0.333/0.5/0.833/1.0 widoczne w historii
+    wag - nie tylko binarne 0/100%).
+
+  **Brakujące dane**: IWM, VGK, EWJ, EEM nie istnieją w `data/us/nyse/` - user wybrał opcję
+  "zamienniki" (zapytany przez `AskUserQuestion`): IWM→IJR (US small cap), EEM→VWO (rynki
+  wschodzące, niemal identyczny fundusz), VGK→EFA, EWJ→VEA (oba "developed ex-US", znacząco
+  nakładające się - NIE oddzielne Europa/Japonia jak w oryginale, świadome przybliżenie z powodu
+  braku danych, jawnie opisane w `hypothesis`).
+
+  **Wynik (pełna historia 2007-08 do 2026-08, PRZED podatkiem)**: CAGR 5.32%, **MaxDD -15.20%**
+  (NAJNIŻSZY z całej sesji - niżej niż dotychczasowy rekord `dual_momentum_all_weather_4`
+  -16.71%), Sharpe 0.67, Calmar 0.35, turnover 4.36/rok. Train (2009-2019) i test/OOS (2020-2026)
+  spójne (CAGR 4.65%/6.10%, MaxDD -12.87%/-15.20%, Sharpe 0.61/0.72 - lepiej OOS niż w treningu,
+  nie odwrotnie). Wszystkie 7 okien walk-forward DODATNIE (CAGR 1.6%-5.7%, nigdy ujemne).
+  Param stability (sweep `top_n_risky`×`full_protective_max_n`, 9 wariantów): `relative_drop =
+  9.6%` - NAJBARDZIEJ STABILNA rodzina parametrów w całym repo (dla porównania: `best17_a` 26.7%,
+  `all_weather_4` 46.1%).
+
+  16 nowych testów (`test_gpm_components.py` - 4 nowe bloki na danych syntetycznych;
+  `test_gpm_strategy_spec.py` - wiring realnego `strategy_spec.json`, oba reżimy
+  ochrona/ekspozycja realnie występują w historii, nigdy więcej niż `top_n_risky` aktywów
+  naraz, zamrożony baseline metryk).
+
 ## 2026-07-11 (14)
 
 - **Eksperyment: `strategies_v2/synergy_v1` i `strategies_v2/synergy_v2`** - user poprosił o próbę

@@ -12,3 +12,4 @@ from engine_v2.registry import make_registry
 REGISTRY = make_registry()
 
 from engine_v2.blocks.asset_scoring import weighted_sum  # noqa: E402,F401  (rejestruje "weighted_sum")
+from engine_v2.blocks.asset_scoring import momentum_times_decorrelation  # noqa: E402,F401  (rejestruje "momentum_times_decorrelation")

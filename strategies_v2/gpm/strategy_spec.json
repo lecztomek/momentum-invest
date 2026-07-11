@@ -1,0 +1,47 @@
+{
+  "name": "gpm_v0",
+  "hypothesis": "Odtworzenie 'Generalized Protective Momentum' (GPM) - opis dostarczony przez uzytkownika: (1) dla kazdego z 12 aktywow ryzykownych + 2 kandydatow ochronnych liczymy r = srednia zwrotow 1/3/6/12m i c = 12-miesieczna korelacja zwrotow do rownowazonego koszyka 12 aktywow ryzykownych (STALY koszyk, ten sam przy ocenie kazdego tickera, WLACZNIE z samym koszykiem), score z = r*(1-c); (2) n = liczba aktywow ryzykownych z z>0, udzial ochronny = 100% gdy n<=6, w przeciwnym razie (12-n)/6; (3) czesc ochronna w calosci w aktywo ochronne (IEF/SHY) z wyzszym z; (4) reszta kapitalu w top3 aktywa ryzykowne wg z, po rowno; (5) rebalans co miesiac, bez histerezy. WYMAGA 4 NOWYCH BLOKOW (nie istnialy w silniku): indicators.momentum_avg_month_end (r), indicators.corr_to_basket_month_end (c), asset_scoring.momentum_times_decorrelation (iloczyn r*(1-c), nie suma wazona jak weighted_sum), portfolio_risk_engine.gpm_breadth_protective_split (ciagle skalowanie udzialu ochronnego wg szerokosci rynku, zamiast binarnego przelaczenia jak vaa_canary). BRAK w naszych danych: IWM, VGK, EWJ, EEM - zastapione (decyzja usera, opcja 'Zamienniki') przez IJR (US small cap), EFA (VGK/Europa), VEA (EWJ/Japonia), VWO (EEM/rynki wschodzace). UWAGA: EFA i VEA to oba SZEROKIE koszyki 'developed ex-US' (znaczaco nakladajace sie), NIE oddzielne Europa/Japonia jak w oryginale - to swiadome przyblizenie z powodu braku danych, nie wierne odtworzenie. cost_bps=10 (zalozenie, plynne ETFy jak w vaa_g4/dual_momentum) - brak zrodla realnych kosztow dla tej strategii.",
+  "universe": ["spy.us", "qqq.us", "ijr.us", "efa.us", "vea.us", "vwo.us", "vnq.us", "dbc.us", "gld.us", "hyg.us", "lqd.us", "tlt.us", "ief.us", "shy.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "momentum_times_decorrelation",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "gpm_breadth_protective_split",
+    "overlays": "none",
+    "execution": "hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "r": {"impl": "momentum_avg_month_end", "windows": [1, 3, 6, 12]},
+      "c": {
+        "impl": "corr_to_basket_month_end",
+        "basket_assets": ["spy.us", "qqq.us", "ijr.us", "efa.us", "vea.us", "vwo.us", "vnq.us", "dbc.us", "gld.us", "hyg.us", "lqd.us", "tlt.us"],
+        "window": 12
+      }
+    },
+    "asset_filters": {},
+    "asset_scoring": {"momentum_key": "r", "corr_key": "c"},
+    "selector": {"top_n": 1},
+    "alpha_weighting": {"weights": [1.0], "redistribute_if_short": true},
+    "portfolio_risk_engine": {
+      "risky_assets": ["spy.us", "qqq.us", "ijr.us", "efa.us", "vea.us", "vwo.us", "vnq.us", "dbc.us", "gld.us", "hyg.us", "lqd.us", "tlt.us"],
+      "protective_assets": ["ief.us", "shy.us"],
+      "top_n_risky": 3,
+      "full_protective_max_n": 6,
+      "protective_scale_denominator": 6
+    },
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 10}
+  },
+
+  "allowed_param_families": {
+    "portfolio_risk_engine": {"top_n_risky": [2, 3, 4], "full_protective_max_n": [5, 6, 7]}
+  },
+
+  "created_at": "2026-07-11"
+}

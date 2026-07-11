@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "Odtworzenie 'Generalized Protective Momentum' wg opisu usera - patrz hypothesis w strategy_spec.json. Najnizszy MaxDD z calej sesji (-15.2% pre-tax) i najbardziej stabilna rodzina parametrow (relative_drop 9.6%)."
+}

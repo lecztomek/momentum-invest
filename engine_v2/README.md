@@ -50,12 +50,12 @@ Orchestrator: `pipeline.run_strategy_pipeline(spec)` -> gotowa tabela FINAL PORT
 |---|---|---|---|
 | `data_loader` | pojedynczy wybór | `stooq_csv` | Wczytuje ceny z plików stooq, wspiera `daily`/`weekly`/`monthly` |
 | `data_cleaner` | pojedynczy wybór | `trim_and_interpolate` | Równa wspólny zakres dat, uzupełnia luki interpolacją (z limitem `max_gap`) |
-| `indicators` | **wielo-instancyjny** | `sma_daily`, `momentum_monthly`, `volatility_daily`, `ema_ratio_monthly`, `momentum_month_end` | Biblioteka wskaźników - osobna implementacja per wskaźnik+częstotliwość+baza cenowa (start/koniec miesiąca) |
+| `indicators` | **wielo-instancyjny** | `sma_daily`, `momentum_monthly`, `volatility_daily`, `ema_ratio_monthly`, `momentum_month_end`, `momentum_avg_month_end`, `corr_to_basket_month_end` | Biblioteka wskaźników - osobna implementacja per wskaźnik+częstotliwość+baza cenowa (start/koniec miesiąca); `momentum_avg_month_end` usredni kilka okien naraz (np. 1/3/6/12m), `corr_to_basket_month_end` liczy roczącą korelację do stałego, równoważonego koszyka tickerów - oba dla `strategies_v2/gpm/` |
 | `asset_filters` | **wielo-instancyjny** | `price_above_indicator`, `indicator_positive`, `canary_regime_gate`, `never_eligible` | Eliminacja aktywów (AND między instancjami); `canary_regime_gate` to GLOBALNY gate (cała grupa naraz, na podstawie osobnych "kanarków"), opcjonalny param `invert` (domyślnie `False`) odwraca gate na risk-OFF zamiast risk-on - patrz `strategies_v2/synergy_v2/`; `never_eligible` trwale wyklucza tickery z normalnej selekcji |
-| `asset_scoring` | pojedynczy wybór | `weighted_sum` | Ważona suma wskaźników, maskuje NaN tam gdzie `eligibility_mask=False` |
+| `asset_scoring` | pojedynczy wybór | `weighted_sum`, `momentum_times_decorrelation` | `weighted_sum` - ważona SUMA wskaźników; `momentum_times_decorrelation` - ILOCZYN dwóch konkretnych wskaźników (`momentum * (1 - korelacja)`, dla `strategies_v2/gpm/` - suma by tego nie wyraziła). Oba maskują NaN tam gdzie `eligibility_mask=False` |
 | `selector` | pojedynczy wybór | `top_n` | Top-N wg score, nigdy nie wybiera NaN |
 | `alpha_weighting` | pojedynczy wybór | `rank_weights`, `inverse_vol`, `rounded_score_weights` | Wagi wybranych: stałe wg rankingu (reszta do `_CASH`) albo odwrotnie proporcjonalne do zmienności (zawsze w pełni zainwestowane) albo proporcjonalne do score, zaokrąglone do bloku (largest remainder), z gwarantowanym minimum na aktywo |
-| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku) |
+| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch`, `gpm_breadth_protective_split` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku); `gpm_breadth_protective_split` skaluje udział ochronny CIĄGLE wg liczby dodatnich aktywów ryzykownych, zamiast binarnego przełączenia jak `vaa_canary` |
 | `overlays` | pojedynczy wybór | `none` | Pass-through (rebound/vol-target - gdy będzie potrzebny) |
 | `execution` | pojedynczy wybór | `hysteresis`, `score_gap_hysteresis` | Rebalans tylko gdy przekroczony próg - na różnicy WAGI (`hysteresis`) albo różnicy SCORE między najsłabszym trzymanym a najlepszym wyzwaniowcem (`score_gap_hysteresis`, wymaga `ExecutionContext.score_row`) |
 
@@ -578,6 +578,7 @@ strategies_v2/
   best17_b/                      # "Strategia B" uzytkownika - rotacja sektorowa - patrz niżej
   synergy_v1/                    # eksperyment: best17_a+TLT w JEDNYM pipeline (bez combinera) - patrz niżej, gorzej niż best17_a solo
   synergy_v2/                    # poprawka: TLT wzajemnie wykluczajacy sie z 4 aktywami ofensywnymi - patrz niżej, dalej gorzej niż best17_a solo
+  gpm/                            # "Generalized Protective Momentum" - patrz niżej, najnizszy MaxDD (-15.2%) i najstabilniejsza rodzina parametrow w calej sesji
   # wszystkie pozostale pary 7 glownych strategii (fixed_capital_weights 50/50) - patrz
   # "Wszystkie pary 7 głównych strategii" wyzej; vaa_g4_best17_a to najlepszy Sharpe w repo
   dual_momentum_vaa_g4/  dual_momentum_the_one/       dual_momentum_best17_a/
@@ -946,6 +947,55 @@ nigdy wiecej niz top_n=2 aktywow naraz).
 **Param stability (2026-07-11)**: rodzina `min_score_gap` x `mom_9.window` (12 wariantow) -
 `relative_drop` = 30.73%, **FAIL** (prog 0.30, borderline) - lekko powyzej progu, spojne z
 powyzszym sweepem (`window=6`/`12` wyraznie gorsze niz `window=9`).
+
+### Dziewiata strategia: `gpm` ("Generalized Protective Momentum", opis dostarczony przez usera)
+
+User poprosil o strategie z NIZSZYM MaxDD (patrz porownanie MaxDD wszystkich 38 strategii/portfeli
+w CHANGELOG.md, 2026-07-11 (13)), potem dostarczyl PELNY opis mechanizmu do wiernego odtworzenia -
+w odroznieniu od `best17_b` (zlozona wylacznie z JUZ ISTNIEJACYCH blokow), GPM wymagal 4 CALKOWICIE
+NOWYCH implementacji, bo zaden istniejacy blok nie umial wyrazic jego mechaniki:
+
+1. **`momentum_avg_month_end`** (`r`) - srednia momentum z 4 okien (1/3/6/12m) na cenach konca
+   miesiaca.
+2. **`corr_to_basket_month_end`** (`c`) - rocząca się 12-miesieczna korelacja miesiecznych
+   zwrotow KAZDEGO tickera do STALEGO, rownowazonego koszyka 12 aktywow ryzykownych (ten sam
+   koszyk przy ocenie kazdego tickera, WLACZNIE z samym koszykiem - zamierzone, wierne
+   odtworzenie metodologii, nie blad).
+3. **`momentum_times_decorrelation`** (asset_scoring) - `score = r * (1 - c)`, ILOCZYN dwoch
+   wskaznikow (nie liniowa suma wazona jak `weighted_sum`, ktory by tego nie wyrazil).
+4. **`gpm_breadth_protective_split`** (portfolio_risk_engine) - `n` = liczba z 12 aktywow
+   ryzykownych z dodatnim `score`; `n<=6` -> 100% udzialu ochronnego, inaczej `(12-n)/6` -
+   CIAGLE skalowanie zamiast binarnego przelaczenia jak `vaa_canary`. Reszta kapitalu w top3
+   aktywa ryzykowne wg `score`, po rowno; czesc ochronna w calosci w JEDNO aktywo ochronne
+   (IEF/SHY) z najwyzszym `score`.
+
+**Brakujace dane**: IWM, VGK, EWJ, EEM nie istnieja w `data/us/nyse/`. User wybral (przez
+`AskUserQuestion`) opcje "zamienniki": IWM->IJR (US small cap), EEM->VWO (rynki wschodzace,
+niemal identyczny fundusz), VGK->EFA, EWJ->VEA (oba "developed ex-US", znaczaco nakladajace sie -
+NIE oddzielne Europa/Japonia jak w oryginale, jawnie odnotowane przyblizenie).
+
+**Uniwersum**: 12 ryzykownych (spy/qqq/ijr/efa/vea/vwo/vnq/dbc/gld/hyg/lqd/tlt) + 2 ochronne
+(ief, shy). `execution: hysteresis` z `hysteresis_pct=0.0` (zawsze pelny rebalans co miesiac,
+bez histerezy - zgodnie z opisem "portfel jest rebalansowany do nowych wag" co miesiac).
+
+**Realny wynik** (2007-08 do 2026-08, 229 miesiecy, PRZED podatkiem): CAGR 5.32%,
+**MaxDD -15.20% (NAJNIZSZY z calej sesji** - nizej niz dotychczasowy rekord
+`dual_momentum_all_weather_4`, -16.71%), Sharpe 0.67, Calmar 0.35, turnover 4.36/rok. Train
+(2009-2019) CAGR 4.65%/MaxDD -12.87%/Sharpe 0.61 vs test/OOS (2020-2026) CAGR 6.10%/MaxDD
+-15.20%/Sharpe 0.72 - lepiej OOS niz w treningu. Wszystkie 7 okien walk-forward DODATNIE
+(1.6%-5.7% CAGR, nigdy ujemne). Zweryfikowano na wagach z historii, ze mechanizm dziala jak
+opisano: 100% w IEF przez caly 2008 i marzec-czerwiec 2020, ciagle skalowanie widoczne
+(0.167/0.333/0.5/0.833/1.0), nie tylko binarne 0%/100%.
+
+**Param stability** (sweep `top_n_risky` x `full_protective_max_n`, 9 wariantow):
+`relative_drop = 9.6%` - **NAJBARDZIEJ STABILNA rodzina parametrow w calym repo** (dla
+porownania: `best17_a` 26.7%, `all_weather_4` 46.1%, `best17_b` 30.7%).
+
+16 nowych testow: `test_gpm_components.py` (4 nowe bloki na danych syntetycznych - usrednianie
+okien, korelacja idealna/odwrotna, iloczyn+maskowanie, pelna/czesciowa ochrona, fallback do
+`_CASH` przy braku kandydatow) + `test_gpm_strategy_spec.py` (walidacja realnego
+`strategy_spec.json`, oba rezymy - pelna ochrona i ekspozycja ryzykowna - realnie wystepuja w
+historii, nigdy wiecej niz `top_n_risky` aktywow naraz, zamrozony baseline metryk).
 
 ## Testy
 

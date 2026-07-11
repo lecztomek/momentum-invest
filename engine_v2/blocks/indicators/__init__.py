@@ -30,3 +30,5 @@ from engine_v2.blocks.indicators import momentum_monthly  # noqa: E402,F401  (re
 from engine_v2.blocks.indicators import volatility_daily  # noqa: E402,F401  (rejestruje "volatility_daily")
 from engine_v2.blocks.indicators import ema_ratio_monthly  # noqa: E402,F401  (rejestruje "ema_ratio_monthly")
 from engine_v2.blocks.indicators import momentum_month_end  # noqa: E402,F401  (rejestruje "momentum_month_end")
+from engine_v2.blocks.indicators import momentum_avg_month_end  # noqa: E402,F401  (rejestruje "momentum_avg_month_end")
+from engine_v2.blocks.indicators import corr_to_basket_month_end  # noqa: E402,F401  (rejestruje "corr_to_basket_month_end")
