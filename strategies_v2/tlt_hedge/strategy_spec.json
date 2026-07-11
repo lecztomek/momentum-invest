@@ -1,0 +1,32 @@
+{
+  "name": "tlt_hedge_v0",
+  "hypothesis": "Trywialna, jedno-aktywowa 'sleeve' - zawsze 100% tlt.us (obligacje dlugoterminowe). Nie jest samodzielna strategia inwestycyjna - to CEGIELKA do combinera 'momentum_hedge_overlay' (patrz strategies_v2/best17_a_tlt_hedge/), ktory decyduje KIEDY i ILE tej cegielki dolozyc do glownej strategii (core), na podstawie wzglednego momentum tlt.us vs core. Odtwarza rola 'HEDGE' z ideas/best17_3m_tlt_dtla_40/idea_config.json (selected_hedge_variant, engine/monthly_hedge_momentum_overlay.py) - tam HEDGE tez byl po prostu surowym zwrotem tlt.us, nie osobna strategia z wlasnym timingiem.",
+  "universe": ["tlt.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "none",
+    "overlays": "none",
+    "execution": "hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "mom_1": {"impl": "momentum_monthly", "window": 1}
+    },
+    "asset_scoring": {"weights": {"mom_1": 1.0}},
+    "selector": {"top_n": 1},
+    "alpha_weighting": {"weights": [1.0]},
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 10, "frequency": "monthly"}
+  },
+
+  "allowed_param_families": {},
+
+  "created_at": "2026-07-11"
+}

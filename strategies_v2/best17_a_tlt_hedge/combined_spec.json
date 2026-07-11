@@ -1,0 +1,21 @@
+{
+  "name": "best17_a_tlt_hedge_v0",
+  "hypothesis": "Port hedge'u ze starego silnika (engine/monthly_hedge_momentum_overlay.py, regula 'hedge_positive_and_beats_a_not_6m_extended', dokladnie jak w produkcyjnym ideas/best17_3m_tlt_dtla_40/idea_config.json - selected_hedge_variant, hedge_weight=0.40) - ale jako OSOBNA, samodzielna, combinowalna strategia (strategies_v2/tlt_hedge/, zawsze 100% tlt.us), NIE jako wbudowany overlay wewnatrz best17_a. Nowy combiner 'momentum_hedge_overlay' (engine_v2/combiner/momentum_hedge_overlay.py) liczy sygnal na WLASNYCH, juz-wykonanych zwrotach obu strategii (nie na surowych cenach): dolozyc TLT (40% kapitalu) tylko gdy TLT ma dodatni 1-miesieczny zwrot I bije best17_a na tym 1m okresie, ALE NIE bije go juz od 6 miesiecy (guard 'not extended' - lapiemy POCZATEK ucieczki do bezpiecznych aktywow, nie dogrywamy sie do trwajacej juz hossy TLT). Rezultat na realnych danych (sweep hedge_weight 0.20-0.60, wszystkie redukuja MaxDD): przy 0.40 (jak w starym silniku) CAGR spada z 16.49% (best17_a solo) do 14.37%, ale MaxDD z -29.47% do -23.70%, Sharpe rosnie z 0.96 do 0.99. Przy 0.20 (najlepszy Calmar w sweepie): CAGR 14.07%, MaxDD -22.31%, Sharpe 0.94, Calmar 0.63.",
+
+  "strategy_spec_paths": [
+    "../best17_a/strategy_spec.json",
+    "../tlt_hedge/strategy_spec.json"
+  ],
+
+  "combiner": "momentum_hedge_overlay",
+  "combiner_params": {
+    "core_strategy": "best17_a_v0",
+    "hedge_strategy": "tlt_hedge_v0",
+    "hedge_weight": 0.40,
+    "lookback": 1,
+    "min_hedge_return": 0.0,
+    "min_spread_vs_a": 0.0
+  },
+
+  "created_at": "2026-07-11"
+}

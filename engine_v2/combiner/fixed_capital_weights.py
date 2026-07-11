@@ -17,8 +17,11 @@ sie do 1, wynik matematycznie tez sumuje sie do 1 - bez dodatkowej normalizacji.
 
 Samodzielna implementacja - nie importuje niczego z `engine/` (starego kodu).
 
-Kontrakt: (strategy_target_weights: Dict[str, TargetWeights], params: dict)
--> (TargetWeights, EffectiveCapitalWeights). Drugi element - DataFrame (index=data, kolumny=nazwy
+Kontrakt: (strategy_target_weights: Dict[str, TargetWeights], params: dict, strategy_returns:
+Dict[str, pd.Series] | None) -> (TargetWeights, EffectiveCapitalWeights). Trzeci argument istnieje
+tylko dla combinerow, ktore GO POTRZEBUJA (np. `momentum_hedge_overlay`) - ten combiner go
+IGNORUJE (alokacja kapitalu tu nie zalezy od zwrotow, tylko od statycznych `capital_weights`).
+Drugi element zwracanej pary - DataFrame (index=data, kolumny=nazwy
 strategii) z FAKTYCZNIE uzytym udzialem kapitalu KAZDEJ strategii w KAZDYM okresie - dla tego
 combinera to po prostu stale `capital_weights` powtorzone w kazdym wierszu, ale kontrakt jest
 wspolny z `dynamic_capital_weights` (gdzie udzial NAPRAWDE zmienia sie okres-po-okresie) - patrz
@@ -44,7 +47,9 @@ from engine_v2.types import TargetWeights
 
 @register(REGISTRY, "fixed_capital_weights")
 def fixed_capital_weights(
-    strategy_target_weights: Dict[str, TargetWeights], params: Dict[str, Any]
+    strategy_target_weights: Dict[str, TargetWeights],
+    params: Dict[str, Any],
+    strategy_returns: Dict[str, pd.Series] | None = None,
 ) -> TargetWeights:
     capital_weights = params.get("capital_weights")
     if not capital_weights:

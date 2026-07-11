@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "Nie jest samodzielna strategia do oceny wg acceptance_spec (celowo bardzo luzny - to tylko 'buy & hold tlt.us') - to cegielka HEDGE do combinera momentum_hedge_overlay, patrz strategies_v2/best17_a_tlt_hedge/combined_spec.json."
+}

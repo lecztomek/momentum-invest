@@ -105,7 +105,12 @@ def run_combined_pipeline(combined_spec: CombinedSpec, base_dir: Path) -> pd.Dat
             f"Combiner '{combined_spec.combiner}' nie jest zarejestrowany "
             f"(dostepne: {sorted(COMBINER_REGISTRY.keys()) or 'brak'})."
         )
-    combined_weights, effective_weights = combiner_fn(strategy_weights_used, combined_spec.combiner_params)
+    # net_return kazdej strategii z jej WLASNEGO solo pipeline - niektore combinery (np.
+    # `momentum_hedge_overlay`) potrzebuja porownac WYKONANE zwroty strategii, nie tylko ich wagi.
+    strategy_net_returns = {name: metrics["net_return"] for name, metrics in strategy_metrics.items()}
+    combined_weights, effective_weights = combiner_fn(
+        strategy_weights_used, combined_spec.combiner_params, strategy_returns=strategy_net_returns
+    )
 
     # metryki okresu (nie tylko wagi) - kazda strategia to osobna "sleeve": jej wklad do
     # turnover/gross_return/trade_cost jest wazony jej FAKTYCZNYM (nie statycznym) udzialem

@@ -23,8 +23,10 @@ nie zostawiamy martwej gotowki tam, gdzie inna czesc systemu mogla ja realnie wy
 
 Samodzielna implementacja - nie importuje niczego z `engine/` (starego kodu).
 
-Kontrakt: (strategy_target_weights: Dict[str, TargetWeights], params: dict)
--> (TargetWeights, EffectiveCapitalWeights). Drugi element - DataFrame (index=data, kolumny=nazwy
+Kontrakt: (strategy_target_weights: Dict[str, TargetWeights], params: dict, strategy_returns:
+Dict[str, pd.Series] | None) -> (TargetWeights, EffectiveCapitalWeights). Trzeci argument (jak
+w `fixed_capital_weights`) jest tu IGNOROWANY - klasyfikacja "cash vs risk" dziala tu wprost na
+wagach, nie na zwrotach. Drugi element zwracanej pary - DataFrame (index=data, kolumny=nazwy
 strategii) z FAKTYCZNIE uzytym udzialem kapitalu KAZDEJ strategii w KAZDYM okresie (0.0 w
 okresach, gdy dana strategia byla w cash) - patrz `combined_pipeline.py`, ktory tego uzywa do
 poprawnego wazenia metryk okresu (turnover/gross_return/trade_cost); statyczne `capital_weights`
@@ -55,7 +57,9 @@ def _is_cash_row(row: pd.Series) -> bool:
 
 @register(REGISTRY, "dynamic_capital_weights")
 def dynamic_capital_weights(
-    strategy_target_weights: Dict[str, TargetWeights], params: Dict[str, Any]
+    strategy_target_weights: Dict[str, TargetWeights],
+    params: Dict[str, Any],
+    strategy_returns: Dict[str, pd.Series] | None = None,
 ) -> TargetWeights:
     capital_weights = params.get("capital_weights")
     if not capital_weights:
