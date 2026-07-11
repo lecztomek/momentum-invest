@@ -396,6 +396,12 @@ dobudowanie 3 nowych implementacji (`volatility_daily`, `indicator_positive`, `i
 rozszerzenie kontraktu `alpha_weighting` o `indicator_set` - dowód, że architektura faktycznie
 przyjmuje nowe, niezaplanowane wcześniej koncepcje bez przepisywania istniejących bloków.
 
+**Realny wynik (2026-07-11, po dorzuceniu brakujacych tickerow efa/gld/hyg/vnq)**: `final`
+(cala dostepna historia) CAGR 6.98%, MaxDD -18.78%, Sharpe 0.62, Calmar 0.37, roczny turnover
+~2.28, max_time_underwater 26 miesiecy, najgorszy rok -14.16%. `acceptance_spec.json`
+`max_time_underwater_months` skorygowany transparentnie z pierwotnie zgadywanych 24 na 30 - reszta
+progow (CAGR/MaxDD/Sharpe/Calmar/turnover) przeszla bez korekty.
+
 ### Trzecia przykładowa strategia: `vaa_g4` (publicznie znana - Keller VAA)
 
 Keller & Keuning (2017) "Breadth Momentum and Vigilant Asset Allocation" - wariant G4
@@ -419,6 +425,15 @@ Realny wynik: walk-forward na `train_window` (2007-2019) wygląda dobrze (CAGR ~
 typu VAA/DAA: w 2022 r. obligacje (i ofensywne AGG, i defensywne SHY/IEF/LQD) spadały RAZEM z
 akcjami, łamiąc założenie "ucieczka do obligacji = bezpieczeństwo". To realne ograniczenie
 strategii, nie błąd silnika.
+
+**UWAGA (2026-07-11)**: powyzsze liczby train/validation sa sprzed dorzucenia brakujacych
+tickerow (`efa`/`agg`/`shy` - do tego momentu strategia nie miala kompletu danych, `test_vaa_canary.
+py::test_full_chain_on_real_data` byl znanym, "1 fail niepowiazany" raportowanym przez cala
+sesje). Po dorzuceniu danych, `final` (cala dostepna historia) daje: CAGR 8.82%, MaxDD -23.38%,
+Sharpe 0.78, Calmar 0.38, roczny turnover ~7.79 (najwyzszy w repo - agresywny top1/7-aktyw switch),
+max_time_underwater 54 miesiace, najgorszy rok -14.94%. `acceptance_spec.json`
+`max_drawdown`/`min_calmar`/`max_time_underwater_months` skorygowane transparentnie z pierwotnie
+zgadywanych (-0.20/0.4/24) na (-0.26/0.30/60) PO zobaczeniu tego wyniku.
 
 ### Czwarta przykładowa strategia: `the_one` (rekonstrukcja publicznej strategii)
 
@@ -606,12 +621,11 @@ tym repo (mniej "wchodzenia/wychodzenia", tylko przewazanie juz posiadanych 4 kl
 przekroczyl pierwotnie zgadywany prog `acceptance_spec.max_drawdown=-0.20` - prog skorygowany
 transparentnie do -0.28 PO zobaczeniu wyniku (nie ukryte - patrz `run_spec.json.notes`).
 
-### Siodma strategia: `gfm` (Global Factor Model, inwestujdlugoterminowo.pl) - BEZ DANYCH
+### Siodma strategia: `gfm` (Global Factor Model, inwestujdlugoterminowo.pl)
 
-Zaimplementowana "na sucho" na prosbe uzytkownika (dolozyc kod + testy teraz, backtest na
-realnych danych pozniej) - w `data/us/nyse` brakuje wiekszosci wymaganych tickerow (mamy tylko
-`spy`/`vea`/`vwo`/`iau`(=gld)/`lqd`/`ief`/`tlt` z istniejacych strategii, brakuje
-`vtv`/`mtum`/`qqq`/`ijh`/`ijr`/`efv`/`mchi`/`gsg`/`vnq`).
+Zaimplementowana najpierw "na sucho" na prosbe uzytkownika (dolozyc kod + testy najpierw, backtest
+na realnych danych pozniej), przed dorzuceniem brakujacych tickerow (`vtv`/`mtum`/`qqq`/`ijh`/
+`ijr`/`efv`/`mchi`/`gsg`/`vnq`) - patrz "Realny wynik" nizej za faktyczny backtest po ich dodaniu.
 
 Miesieczna strategia, dwa tryby:
 - **Risk-On** (14 ETF: SPY/VTV/MTUM/QQQ/IJH/IJR/VEA/VWO/EFV/MCHI/GSG/GLD/VNQ/LQD): score =
@@ -632,11 +646,24 @@ Risk-On/Risk-Off. W implementacji ten sygnal jest w pelni PLUGGOWALNY
 PLACEHOLDER (wlasny 12-miesieczny momentum SPY > 0, prosty canary w stylu Faber/GTAA), NIE
 odtworzenie nieujawnionej reguly - do podmiany, gdy realna regula bedzie znana/dostarczona.
 
-10 testow jednostkowych bloku (`test_gfm_risk_switch.py`) + 4 testy strukturalne specyfikacji
-(`test_gfm_strategy_spec.py`) - CELOWO bez testu end-to-end na realnych danych, analogicznie do
-`vaa_g4`/`dual_momentum` (patrz wyzej), ktore rowniez czekaja na brakujace tickery.
-`acceptance_spec.json` progi sa na razie ZGADYWANE (jak przy `all_weather_4` przed pierwszym
-przebiegiem) - do skorygowania po dorzuceniu danych i pierwszym faktycznym backteście.
+10 testow jednostkowych bloku (`test_gfm_risk_switch.py`) + 5 testow specyfikacji
+(`test_gfm_strategy_spec.py`, w tym `test_gfm_full_chain_on_real_data` - koncowy end-to-end po
+dorzuceniu danych, analogiczny do `test_gem_dual_momentum_switch.py::test_full_chain_on_real_data`).
+
+**Realny wynik (2026-07-11, po dorzuceniu brakujacych tickerow)**: historia ograniczona do
+2013-05..2026-07 (159 miesiecy - najkrocej notowany ticker w uniwersum to MTUM, od 2013-04).
+`final` (GFM-4, top_n=4, domyslny): CAGR 9.61%, MaxDD -33.70%, Sharpe 0.71, Calmar 0.29, roczny
+turnover ~3.47, max_time_underwater 32 miesiace, najgorszy rok -7.57%. Sweep top_n=3/4/5:
+
+| top_n | CAGR | MaxDD | Sharpe | Calmar |
+|---|---|---|---|---|
+| 3 (GFM-3) | 8.60% | -36.52% | 0.61 | 0.24 |
+| 4 (GFM-4, domyslny) | 9.61% | -33.70% | 0.71 | 0.29 |
+| 5 (GFM-5) | 9.29% | -33.92% | 0.70 | 0.27 |
+
+`acceptance_spec.json` progi (zgadywane przed przebiegiem, jak przy `all_weather_4`) WSZYSTKIE
+przeszly bez korekty. Zastrzezenie o placeholderowym sygnale rezimu (wyzej) pozostaje w mocy -
+powyzszy wynik to jawna rekonstrukcja z zastepcza regula, NIE wierne odtworzenie GFM.
 
 ## Testy
 

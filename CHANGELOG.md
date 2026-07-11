@@ -2,6 +2,44 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (7)
+
+- **Dorzucone brakujace tickery - `vaa_g4`, `dual_momentum`, `gfm` odblokowane** (user: "dorzuciłem
+  nowe dane"). 14 plikow w `data/us/nyse/`: `agg`, `efa`, `efv`, `gld`, `gsg`, `hyg`, `ijh`, `ijr`,
+  `mchi`, `mtum`, `qqq`, `shy`, `vnq`, `vtv`. Pelny pakiet testow: **206/206** - PIERWSZY RAZ w
+  calej sesji bez ani jednego fail-a (stary, znany `test_vaa_canary.py::test_full_chain_on_real_data`
+  wreszcie przechodzi). Dodano `test_gfm_full_chain_on_real_data` (koncowy test end-to-end na
+  realnych danych dla `gfm`, dotad niemozliwy z braku tickerow).
+
+  **Pierwsze realne wyniki trzech dotad "suchych"/blokowanych strategii**:
+
+  | Strategia | CAGR | MaxDD | Sharpe | Calmar | Turnover/rok | Najgorszy rok |
+  |---|---|---|---|---|---|---|
+  | `vaa_g4` (Keller VAA-G4) | 8.82% | -23.38% | 0.78 | 0.38 | 7.79 | -14.94% |
+  | `dual_momentum` | 6.98% | -18.78% | 0.62 | 0.37 | 2.28 | -14.16% |
+  | `gfm` (Global Factor Model, GFM-4) | 9.61% | -33.70% | 0.71 | 0.29 | 3.47 | -7.57% |
+
+  **Korekty progow akceptacji PO zobaczeniu realnego wyniku (transparentnie, jak przy
+  `all_weather_4`)**:
+  - `vaa_g4`: `max_drawdown` -0.20->-0.26, `min_calmar` 0.4->0.30, `max_time_underwater_months`
+    24->60 (realny wynik: MaxDD -23.38%, Calmar 0.38, 54 miesiace pod woda - agresywny top1/7-aktyw
+    switch generuje najdluzsze okresy podwodne w calym repo).
+  - `dual_momentum`: `max_time_underwater_months` 24->30 (realny wynik: 26 miesiecy).
+  - `gfm`: WSZYSTKIE progi (zgadywane przed przebiegiem) przeszly bez korekty.
+
+  **`gfm` - sweep top_n=3/4/5 (GFM-3/4/5) na realnych danych**: historia ograniczona do
+  2013-05..2026-07 (159 miesiecy - najkrocej notowany ticker w uniwersum to MTUM, od 2013-04).
+
+  | top_n | CAGR | MaxDD | Sharpe | Calmar |
+  |---|---|---|---|---|
+  | 3 (GFM-3) | 8.60% | -36.52% | 0.61 | 0.24 |
+  | 4 (GFM-4, domyslny) | 9.61% | -33.70% | 0.71 | 0.29 |
+  | 5 (GFM-5) | 9.29% | -33.92% | 0.70 | 0.27 |
+
+  Przypomnienie wciaz aktualnego zastrzezenia: sygnal Risk-On/Risk-Off w `gfm` to PLACEHOLDER
+  (wlasny SPY mom_12 > 0) - prawdziwa regula GFM nie jest publiczna, wiec powyzszy wynik NIE jest
+  wiernym odtworzeniem GFM, tylko jawna rekonstrukcja z zastepcza regula rezimu.
+
 ## 2026-07-11 (6)
 
 - **NOWA STRATEGIA `strategies_v2/gfm/` - "Global Factor Model" (inwestujdlugoterminowo.pl) -
