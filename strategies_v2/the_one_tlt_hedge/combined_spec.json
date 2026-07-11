@@ -1,0 +1,21 @@
+{
+  "name": "the_one_tlt_hedge_v0",
+  "hypothesis": "Ta sama regula co strategies_v2/best17_a_tlt_hedge/ (momentum_hedge_overlay, hedge_positive_and_beats_a_not_6m_extended, hedge_weight=0.40, lookback=1) - ale core='the_one' zamiast 'best17_a'. Test: user pytanie 'a jakby polaczyc hedge z the_one na tych samych regulach co z best17'. WYNIK ODWROTNY niz z best17_a: hedge SZKODZI na kazdej wadze (0.20-0.60) - CAGR spada (8.76%->7.34% przy 40%), MaxDD ROSNIE (-23.59%->-25.15%, zamiast spadac), Sharpe/Calmar tez gorsze. Przyczyna: 'the_one' JUZ MA tlt.us (razem z ief.us/lqd.us) jako WLASNE aktywo risk-off w swoim uniwersum ('universe': ['spy.us','vea.us','vwo.us','lqd.us','ief.us','tlt.us']) - w odroznieniu od 'best17_a' (uniwersum BEZ zadnych obligacji: xlk/ivv/dbc/iau/vt). Gdy the_one sam juz rotuje w TLT/obligacje w okresach risk-off, dolozenie NIEZALEZNEGO hedge'u w TLT nie dywersyfikuje, tylko KONCENTRUJE dodatkowo w tym samym aktywie (kosztem LQD/IEF, ktore the_one moglby wybrac zamiast TLT) - wyjasnia, czemu MaxDD rosnie zamiast spadac. Wniosek: hedge dziala dobrze TYLKO gdy core NIE MA juz wlasnej ekspozycji na hedge asset - nie jest uniwersalnym ulepszeniem kazdej strategii.",
+
+  "strategy_spec_paths": [
+    "../the_one/strategy_spec.json",
+    "../tlt_hedge/strategy_spec.json"
+  ],
+
+  "combiner": "momentum_hedge_overlay",
+  "combiner_params": {
+    "core_strategy": "the_one_v0",
+    "hedge_strategy": "tlt_hedge_v0",
+    "hedge_weight": 0.40,
+    "lookback": 1,
+    "min_hedge_return": 0.0,
+    "min_spread_vs_a": 0.0
+  },
+
+  "created_at": "2026-07-11"
+}
