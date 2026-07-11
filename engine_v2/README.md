@@ -390,7 +390,7 @@ Wspiera bloki jedno-implementacyjne (`allowed_param_families[blok][param]`, np.
 instancji (nie zmienia `impl` ani innych instancji); nieznana instancja albo brak kropki w
 kluczu dla bloku wielo-instancyjnego rzuca czytelny błąd zamiast zgadywania.
 
-## RUN SPEC RUNNER (`run_spec_runner.py`, `acceptance_check.py`, `param_stability.py`, `annual_tax.py`, `named_periods.py`)
+## RUN SPEC RUNNER (`run_spec_runner.py`, `acceptance_check.py`, `param_stability.py`, `local_param_stability.py`, `annual_tax.py`, `named_periods.py`)
 
 Wiaze `RunSpec.mode` z odpowiednim mechanizmem - pierwsze realne uzycie `RunSpec` (dotad tylko
 zdefiniowany, nic go nie czytalo):
@@ -583,6 +583,17 @@ ZADNYM z 5 okien) potwierdza, ze ta przewaga jest POWTARZALNA w kazdym oknie, ni
 szczesliwego folda. To NIE jest sygnal overfittingu (odosobniony szczyt otoczony przez szum) - to
 sygnal NIEDO-strojenia: te 2 parametry maja realna, konsekwentnie powtarzalna przestrzen do
 poprawy, ktorej obecna konfiguracja nie wykorzystuje.
+
+**Wpiete do `run_spec_runner._run_search` - AUTOMATYCZNIE, dla KAZDEGO `search`** (user: "To
+powinien byc krok naszego calego procesu" - dotad trzeba bylo recznie pisac skrypt ad-hoc).
+Nowy helper `_axis_default_value` czyta wartosc AKTUALNIE ustawiona w `StrategySpec.base_params`
+(ta sama konwencja "instancja.param" co `grid_sweep.expand_param_grid`) - jesli
+`allowed_param_families` ma DOKLADNIE 1 os, `result["local_param_stability"]` uzywa
+`describe_1d_sensitivity`; jesli DOKLADNIE 2 (jak `best17_a`), `describe_2d_sensitivity`; dla >2
+osi - `None` (nieobslugiwane, rzadkie w tym repo). `result["fold_rank_stability"]` (Kendall's W)
+liczy sie NIEZALEZNIE od liczby osi, gdy wszystkie warianty maja ta sama liczbe okien WF (>=2).
+Zweryfikowane end-to-end na prawdziwym `run_spec.json` strategii `best17_a` (`mode="search"`, bez
+zadnej dodatkowej konfiguracji) - identyczne wyniki co powyzsza analiza ad-hoc.
 
 ### NAMED PERIODS (`named_periods.py`) - "jak strategia wypada w konkretnym, znanym okresie"
 

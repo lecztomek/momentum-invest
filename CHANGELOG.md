@@ -2,6 +2,34 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (25)
+
+- **`local_param_stability` wpiete do `run_spec_runner._run_search` - AUTOMATYCZNIE, dla kazdego
+  `search`** (user: "To powinien byc krok naszego calego procesu" - dotad trzeba bylo recznie
+  pisac skrypt ad-hoc, jak dla `best17_a` poprzednio). Teraz kazde uruchomienie `mode="search"`
+  (na DOWOLNEJ strategii z `allowed_param_families`) automatycznie liczy:
+  - `result["local_param_stability"]` - `describe_1d_sensitivity` gdy `allowed_param_families`
+    ma DOKLADNIE 1 os, `describe_2d_sensitivity` gdy ma DOKLADNIE 2 (jak w `best17_a`) - wartosc
+    domyslna do porownania brana WPROST z `StrategySpec.base_params` (nowy helper
+    `_axis_default_value`, ta sama konwencja "instancja.param" dla blokow wielo-instancyjnych co
+    `grid_sweep.expand_param_grid`). Dla >2 osi: `None` (flood-fill 2D sie nie uogolnia trywialnie
+    na wiecej wymiarow, nieobslugiwane - rzadki przypadek w tym repo).
+  - `result["fold_rank_stability"]` - Kendall's W miedzy oknami walk-forward, liczone gdy
+    WSZYSTKIE warianty maja TA SAMA liczbe okien (>=2). Dziala generycznie NIEZALEZNIE od liczby
+    osi (1, 2, czy wiecej) - traktuje kazda kombinacje parametrow jako jeden "przedmiot" do
+    rankingu, wiec nie ma tego samego ograniczenia co `local_param_stability`.
+
+  **Zweryfikowane end-to-end na `best17_a`** (`mode="search"` na prawdziwym `run_spec.json`, bez
+  zadnej dodatkowej konfiguracji) - dokladnie te same wyniki co poprzednia analiza ad-hoc:
+  `default_meets_threshold=False`, `gap_to_best=8.2%`, `kendalls_w=0.90` (wysoka zgodnosc
+  rankingu miedzy 5 oknami WF), `default_wins_fold_count=0` - domyslna kombinacja
+  (`min_score_gap=0.005`, `canary.bad_threshold=-0.02`) nie wygrywa w ZADNYM z 5 okien.
+
+  2 nowe testy w `test_run_spec_runner.py` (`test_search_mode_end_to_end` rozszerzony o
+  asercje `local_param_stability`/`fold_rank_stability` na przykladzie 2-osiowym;
+  `test_search_mode_single_axis_uses_1d_sensitivity` - nowy, weryfikuje sciezke 1D). 390/390
+  testow przechodzi.
+
 ## 2026-07-11 (24)
 
 - **NOWY MODUL `engine_v2/local_param_stability.py`** - user trafnie skrytykowal

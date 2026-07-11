@@ -156,3 +156,43 @@ def test_search_mode_end_to_end(patched_example_dir):
     assert stability["best"] >= stability["worst"]
     assert stability["relative_drop"] >= 0.0
     assert isinstance(result["param_stability_check"], dict)
+
+    # local_param_stability - 2 osie (execution.hysteresis_pct x indicators.sma_200.window) ->
+    # describe_2d_sensitivity automatycznie, bez zadnej dodatkowej konfiguracji (user: "To
+    # powinien byc krok naszego calego procesu")
+    local_stability = result["local_param_stability"]
+    assert local_stability is not None
+    assert local_stability["param_cols"] == ("execution.hysteresis_pct", "indicators.sma_200.window")
+    assert local_stability["n_variants"] == 15
+    assert 0.0 <= local_stability["gap_to_best"]
+    assert isinstance(local_stability["default_meets_threshold"], bool)
+
+    # fold_rank_stability - Kendall's W miedzy oknami WF (wszystkie warianty maja ta sama liczbe okien)
+    fold_stability = result["fold_rank_stability"]
+    assert fold_stability is not None
+    assert fold_stability["n_variants"] == 15
+    assert 0.0 <= fold_stability["kendalls_w"] <= 1.0
+    assert "default_rank_mean" in fold_stability
+
+
+def test_search_mode_single_axis_uses_1d_sensitivity(patched_example_dir):
+    """Gdy allowed_param_families ma DOKLADNIE 1 os, local_param_stability powinien uzyc
+    describe_1d_sensitivity (nie 2D) - patrz vaa_g4/the_one w prawdziwym repo."""
+    from engine_v2.spec import StrategySpec
+
+    strategy_spec_path = patched_example_dir / "strategy_spec.json"
+    spec = StrategySpec.load(strategy_spec_path)
+    default_hysteresis = spec.base_params["execution"]["hysteresis_pct"]
+    spec.allowed_param_families = {"execution": {"hysteresis_pct": [0.0, default_hysteresis, 0.1]}}
+    spec.save(strategy_spec_path)
+
+    run_spec = RunSpec.load(patched_example_dir / "run_spec.json")
+    run_spec.mode = "search"
+
+    result = run(run_spec, patched_example_dir)
+
+    local_stability = result["local_param_stability"]
+    assert local_stability is not None
+    assert local_stability["param_col"] == "execution.hysteresis_pct"
+    assert local_stability["n_variants"] == 3
+    assert local_stability["default_value"] == pytest.approx(default_hysteresis)

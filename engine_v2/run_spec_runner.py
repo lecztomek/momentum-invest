@@ -29,6 +29,19 @@ Wynik w `result["named_periods"]`.
                      overfitting kombinacja parametrow), sprawdzony wzgledem
                      `AcceptanceSpec.param_stability.max_relative_metric_drop_within_family`.
 
+                     DODATKOWO (user: "To powinien byc krok naszego calego procesu" - po
+                     krytyce, ze sam `relative_drop` jest za slaby, patrz `local_param_stability.py`)
+                     `result["local_param_stability"]` - AUTOMATYCZNIE, dla KAZDEGO `search` (nie
+                     tylko na zadanie): jesli `allowed_param_families` ma DOKLADNIE 1 lub 2 osie,
+                     liczy `describe_1d_sensitivity`/`describe_2d_sensitivity` (lokalny spadek do
+                     sasiadow, szerokosc plateau, pozycja wartosci JUZ USTAWIONEJ w
+                     `base_params` wzgledem najlepszej) wzgledem TEJ SAMEJ `wf_mean_cagr`. Dla >2
+                     osi (rzadkie w tym repo) `local_param_stability=None` - flood-fill 2D sie nie
+                     uogolnia trywialnie na wiecej wymiarow, nieobslugiwane. `result["fold_rank_
+                     stability"]` - Kendall's W miedzy oknami WF (czy przewaga konkretnego
+                     wariantu jest powtarzalna, nie fold-specyficzna) - liczone gdy wszystkie
+                     warianty maja TA SAMA liczbe okien WF (>=2).
+
 Samodzielna implementacja - nie importuje niczego z `engine/` (starego kodu).
 """
 
@@ -45,12 +58,17 @@ from engine_v2.annual_tax import apply_annual_tax
 from engine_v2.backtest_engine import daily_equity_curve
 from engine_v2.blocks.data_loader import REGISTRY as DATA_LOADER_REGISTRY
 from engine_v2.grid_sweep import run_param_sweep
+from engine_v2.local_param_stability import (
+    compute_fold_rank_stability,
+    describe_1d_sensitivity,
+    describe_2d_sensitivity,
+)
 from engine_v2.metrics import compute_metrics
 from engine_v2.named_periods import compute_named_period_metrics
 from engine_v2.param_stability import check_param_stability, compute_param_stability
 from engine_v2.pipeline import run_strategy_pipeline
 from engine_v2.run_spec import RunSpec
-from engine_v2.spec import StrategySpec
+from engine_v2.spec import MULTI_INSTANCE_BLOCKS, StrategySpec
 from engine_v2.test_spec import TestSpec
 from engine_v2.validation import run_walk_forward
 
@@ -129,6 +147,16 @@ def _run_validation(
     }
 
 
+def _axis_default_value(strategy_spec: StrategySpec, block: str, param_path: str) -> Any:
+    """Wartosc AKTUALNIE ustawiona w `base_params` dla danej osi `allowed_param_families`
+    (ten sam `block`/`param_path`, ta sama konwencja "instancja.param" dla blokow
+    wielo-instancyjnych co `grid_sweep.expand_param_grid`)."""
+    if block in MULTI_INSTANCE_BLOCKS:
+        instance, _, param = param_path.partition(".")
+        return strategy_spec.base_params[block][instance][param]
+    return strategy_spec.base_params[block][param_path]
+
+
 def _run_search(
     strategy_spec: StrategySpec, test_spec: TestSpec, acceptance_spec: AcceptanceSpec
 ) -> Dict[str, Any]:
@@ -148,6 +176,7 @@ def _run_search(
             "wf_min_cagr": wf_result["cagr"].min(),
             "wf_worst_drawdown": wf_result["max_drawdown"].min(),
             "wf_mean_sharpe": wf_result["sharpe"].mean(),
+            "wf_fold_cagrs": list(wf_result["cagr"]),
         }
 
     sweep = run_param_sweep(strategy_spec, evaluate)
@@ -158,15 +187,56 @@ def _run_search(
     valid_sweep = sweep[sweep["wf_windows"] > 0]
     param_stability = None
     param_stability_check: Dict[str, bool] = {}
+    local_param_stability = None
+    fold_rank_stability = None
+
     if len(valid_sweep) >= 2:
         param_stability = compute_param_stability(valid_sweep, "wf_mean_cagr")
         param_stability_check = check_param_stability(param_stability, acceptance_spec.param_stability)
+
+        # Osie faktycznie sweepowane (kolumny "block.param_path" dodane przez grid_sweep) - patrz
+        # `local_param_stability.py`: rozroznia lokalny spadek/plateau/pozycje default/asymetrie,
+        # w odroznieniu od samego `relative_drop` (ktory patrzy tylko na skraj calego zakresu).
+        axes = [
+            (block, param_path, f"{block}.{param_path}")
+            for block, params in strategy_spec.allowed_param_families.items()
+            for param_path in params
+        ]
+        if len(axes) == 1:
+            block, param_path, col = axes[0]
+            default_value = _axis_default_value(strategy_spec, block, param_path)
+            local_param_stability = describe_1d_sensitivity(valid_sweep, "wf_mean_cagr", col, default_value)
+        elif len(axes) == 2:
+            (block_a, param_a, col_a), (block_b, param_b, col_b) = axes
+            default_a = _axis_default_value(strategy_spec, block_a, param_a)
+            default_b = _axis_default_value(strategy_spec, block_b, param_b)
+            local_param_stability = describe_2d_sensitivity(
+                valid_sweep, "wf_mean_cagr", (col_a, col_b), (default_a, default_b)
+            )
+        # >2 osie: flood-fill 2D sie nie uogolnia trywialnie, nieobslugiwane (patrz docstring modulu).
+
+        # Kendall's W miedzy oknami WF - TYLKO gdy kazdy wariant ma TA SAMA liczbe okien (>=2),
+        # inaczej ranking per-fold nie ma wspolnego mianownika.
+        fold_counts = valid_sweep["wf_windows"].unique()
+        if len(fold_counts) == 1 and fold_counts[0] >= 2:
+            combo_col = valid_sweep[[a[2] for a in axes]].apply(tuple, axis=1) if len(axes) > 1 else valid_sweep[axes[0][2]]
+            fold_sweep = valid_sweep.assign(_combo=combo_col.values)
+            default_combo = (
+                tuple(_axis_default_value(strategy_spec, b, p) for b, p, _ in axes)
+                if len(axes) > 1
+                else _axis_default_value(strategy_spec, axes[0][0], axes[0][1])
+            )
+            fold_rank_stability = compute_fold_rank_stability(
+                fold_sweep, "wf_fold_cagrs", "_combo", default_value=default_combo
+            )
 
     return {
         "mode": "search",
         "sweep": sweep,
         "param_stability": param_stability,
         "param_stability_check": param_stability_check,
+        "local_param_stability": local_param_stability,
+        "fold_rank_stability": fold_rank_stability,
     }
 
 
