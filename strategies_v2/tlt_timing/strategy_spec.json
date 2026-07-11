@@ -1,0 +1,37 @@
+{
+  "name": "tlt_timing_v0",
+  "hypothesis": "Prawdziwie SAMODZIELNA strategia timingu na tlt.us - w odroznieniu od strategies_v2/tlt_hedge/ (ktora zawsze trzyma 100% TLT i cala decyzja 'kiedy' zyje w combinerze momentum_hedge_overlay, WZGLEDEM innej strategii), ta strategia sama decyduje kiedy byc w TLT a kiedy w cash, wylacznie na WLASNYM, absolutnym momentum TLT - bez odniesienia do zadnej innej strategii. To odtwarza ABSOLUTNE warianty reguly hedge'u ze starego silnika (engine/monthly_hedge_momentum_overlay.py: 'hedge_lb_positive' - w TLT tylko gdy jego wlasny skumulowany zwrot za ostatnie `lookback` miesiecy jest dodatni), w odroznieniu od RELATYWNEGO wariantu 'hedge_positive_and_beats_a_not_6m_extended' faktycznie uzytego w produkcji (ten zyje w momentum_hedge_overlay). Sens: strategia przenosna - mozna ja polaczyc z DOWOLNA inna strategia (dowolnym fixed_capital_weights/dynamic_capital_weights) bez zmiany WLASNEGO zachowania, bo jej sygnal nie zalezy od tego z czym jest laczona.",
+  "universe": ["tlt.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "none",
+    "overlays": "none",
+    "execution": "hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "mom_3": {"impl": "momentum_monthly", "window": 3}
+    },
+    "asset_filters": {
+      "own_momentum_positive": {"impl": "indicator_positive", "indicator_key": "mom_3", "threshold": 0.0, "assets": ["tlt.us"]}
+    },
+    "asset_scoring": {"weights": {"mom_3": 1.0}},
+    "selector": {"top_n": 1},
+    "alpha_weighting": {"weights": [1.0]},
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 10, "frequency": "monthly"}
+  },
+
+  "allowed_param_families": {
+    "indicators": {"mom_3.window": [1, 3, 6]}
+  },
+
+  "created_at": "2026-07-11"
+}

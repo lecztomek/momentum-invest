@@ -1,0 +1,16 @@
+{
+  "name": "best17_a_tlt_timing_v0",
+  "hypothesis": "Wariant PORZADNIE PORTOWALNEJ, absolutnej strategii tlt_timing (strategies_v2/tlt_timing/, sama decyduje kiedy byc w TLT wg WLASNEGO 3-miesiecznego momentum, bez odniesienia do best17_a) polaczonej zwyklym, generycznym fixed_capital_weights (20% kapitalu) - w ODROZNIENIU od best17_a_tlt_hedge/ (momentum_hedge_overlay, sygnal RELATYWNY wobec best17_a). Zachowane dla porownania: na porownywalnym MaxDD (~-22.3%, ten sam co momentum_hedge_overlay przy 20%), ten wariant wypada WYRAZNIE gorzej - CAGR 11.60% (vs 13.94%), Sharpe 0.93 (vs 0.94, podobny), Calmar 0.52 (vs 0.62). Wniosek: portowalnosc (mozliwosc polaczenia z DOWOLNA strategia bez zmiany wlasnego zachowania) ma swoja cene - sama absolutna momentum TLT nie ma realnej przewagi (nawet gorsza niz zwykly buy&hold TLT solo), przewaga momentum_hedge_overlay bierze sie WLASNIE z porownania wzgledem core, nie z samego TLT.",
+
+  "strategy_spec_paths": [
+    "../best17_a/strategy_spec.json",
+    "../tlt_timing/strategy_spec.json"
+  ],
+
+  "combiner": "fixed_capital_weights",
+  "combiner_params": {
+    "capital_weights": {"best17_a_v0": 0.80, "tlt_timing_v0": 0.20}
+  },
+
+  "created_at": "2026-07-11"
+}

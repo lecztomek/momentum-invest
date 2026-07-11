@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "Prawdziwie samodzielna strategia (przenosna, bez odniesienia do zadnej innej strategii) - w odroznieniu od strategies_v2/tlt_hedge/. Sweep okna wlasnego momentum (1/3/6/12 miesiecy): window=3 najlepszy (CAGR 1.59%, MaxDD -41.38%, Sharpe 0.20), ale WCIAZ gorszy niz zwykly buy&hold tlt.us solo (CAGR 2.10%, MaxDD -47.76%, Sharpe 0.22) - absolutny momentum na samym TLT nie daje przewagi, tnie tylko troche MaxDD kosztem CAGR i kosztow transakcyjnych. W polaczeniu z best17_a (fixed_capital_weights/dynamic_capital_weights, sweep 10-40% kapitalu) wyraznie GORSZA niz relatywny wariant momentum_hedge_overlay+tlt_hedge na porownywalnym MaxDD (np. przy tym samym MaxDD~-22.3%: fixed_capital_weights 20% daje CAGR 11.60%/Sharpe 0.93/Calmar 0.52, momentum_hedge_overlay 20% daje CAGR 13.94%/Sharpe 0.94/Calmar 0.62) - relatywne porownanie do core (ktore momentum_hedge_overlay robi) daje realna przewage, ktorej brak samemu TLT. Zachowana jako uczciwie zaraportowany, dzialajacy ale slabszy wariant - NIE ukryta, bo user chcial zobaczyc czy 'prawdziwie osobna' strategia ma sens."
+}
