@@ -2,6 +2,47 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (17)
+
+- **NOWY MODUL `engine_v2/named_periods.py` - `AcceptanceSpec.named_periods` faktycznie
+  liczony** (user: "A named periods możesz pokazać?") - ten sam wzorzec co wczesniej
+  `param_stability` i `annual_tax`: pole zdefiniowane w `acceptance_spec.py` OD POCZATKU
+  projektu, uzywane juz w `example_strategy`/`all_weather_4` `acceptance_spec.json`
+  ("covid_crash_rebound", "inflation_bear", "post_gfc_recovery"), ale NIGDZIE nie liczone -
+  `Criteria` w `named_periods` niesie tylko progi, nie zakres dat, wiec brakowalo mapowania
+  nazwa->daty i kodu, ktory by to faktycznie sprawdzil.
+
+  Nowy `KNOWN_PERIODS` (WSPOLNY dla calego repo, zeby wyniki byly porownywalne 1:1 miedzy
+  strategiami pod tymi samymi etykietami):
+  - `gfc_crash`: 2008-01-01 - 2009-03-31 (szczyt do dna S&P, dno 2009-03-09)
+  - `post_gfc_recovery`: 2009-04-01 - 2012-12-31
+  - `covid_crash_rebound`: 2020-02-01 - 2020-12-31 (krach + odbicie w tym samym roku)
+  - `inflation_bear`: 2022-01-01 - 2022-12-31
+
+  Wpiete w `run_spec_runner._run_final` - jesli `acceptance_spec.named_periods` niepuste,
+  `result["named_periods"]` niesie metryki + checki per okres (na equity_curve PO podatku).
+  7 nowych testow (`test_named_periods.py` - okresy nienakladajace sie, nieznany okres rzuca
+  blad, metryki+checki dla pokrytego okresu, `covered=False` gdy equity_curve nie siega okresu,
+  pusty slownik = brak wpisu; `test_run_spec_runner.py` - 2 nowe: wiring pojawia sie/znika wg
+  `named_periods` w spec).
+
+  **Wynik dla 4 kluczowych strategii/portfeli (po podatku)**:
+
+  | | gfc_crash | post_gfc_recovery | covid_crash_rebound | inflation_bear |
+  |---|---|---|---|---|
+  | `gpm` solo | **+1.9%** CAGR, MaxDD -7.1% | +5.2%, -10.2% | +9.8%, -6.1% | **-5.5%**, -7.1% |
+  | `best17_a` solo | -14.2%*, -12.3% | +18.2%, -15.5% | +29.7%, -29.5% | -15.2%, -19.5% |
+  | `gpm_best17_a` (55/45) | -3.8%, -9.2% | +12.3%, -13.8% | +21.8%, -15.4% | -10.5%, -13.8% |
+  | `vaa_g4_best17_a` | +0.1%, -7.8% | +19.6%, -12.4% | +27.0%, -14.3% | -14.6%, -17.3% |
+
+  (*`best17_a`'s dane zaczynaja sie 2008-07, wiec `gfc_crash` to u niego tylko 9 z 15 miesiecy
+  okresu - nieporownywalne 1:1 z resztą, zaznaczone jawnie, nie ukryte.)
+
+  Potwierdza wczesniejsze ustalenie z porownania rok-po-roku: `gpm` jest realnie DODATNI w GFC
+  (2008) i lagodzi `inflation_bear` (2022) najbardziej ze wszystkich - ale `inflation_bear`
+  pozostaje trudny dla KAZDEJ z 4 strategii (wszystkie na minusie), zgodnie z wczesniej
+  zidentyfikowanym pekniuciem korelacji akcje-obligacje w tym konkretnym roku.
+
 ## 2026-07-11 (16)
 
 - **`strategies_v2/gpm_best17_a/` - miks defensywnego `gpm` z agresywnym `best17_a`** (user: "dobrze

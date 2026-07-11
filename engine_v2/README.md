@@ -390,7 +390,7 @@ Wspiera bloki jedno-implementacyjne (`allowed_param_families[blok][param]`, np.
 instancji (nie zmienia `impl` ani innych instancji); nieznana instancja albo brak kropki w
 kluczu dla bloku wielo-instancyjnego rzuca czytelny błąd zamiast zgadywania.
 
-## RUN SPEC RUNNER (`run_spec_runner.py`, `acceptance_check.py`, `param_stability.py`, `annual_tax.py`)
+## RUN SPEC RUNNER (`run_spec_runner.py`, `acceptance_check.py`, `param_stability.py`, `annual_tax.py`, `named_periods.py`)
 
 Wiaze `RunSpec.mode` z odpowiednim mechanizmem - pierwsze realne uzycie `RunSpec` (dotad tylko
 zdefiniowany, nic go nie czytalo):
@@ -531,6 +531,62 @@ nieznaleziony wczesniej bo byly zablokowane brakiem danych) - dodano `cost_bps: 
 CAGR 8.82%->7.98%, `dual_momentum` CAGR 6.98%->6.74% - wszystkie progi `acceptance_spec.json`
 nadal przechodza.
 
+### NAMED PERIODS (`named_periods.py`) - "jak strategia wypada w konkretnym, znanym okresie"
+
+User: "A named periods możesz pokazać?" - `AcceptanceSpec.named_periods` (dict `nazwa_okresu ->
+Criteria`) byl zdefiniowany w `acceptance_spec.py` OD POCZATKU projektu, uzywany juz w
+`example_strategy`/`all_weather_4` `acceptance_spec.json` ("covid_crash_rebound",
+"inflation_bear", "post_gfc_recovery"), ale NIGDZIE nie byl faktycznie liczony - ten sam wzorzec
+co wczesniej `param_stability`/`annual_tax` ("zdefiniowane, nigdy nie liczone"). `Criteria` niesie
+tylko PROGI (np. `max_drawdown: -0.30`), nie zakres dat - brakowalo mapowania nazwa->daty.
+
+`compute_named_period_metrics(equity_curve, final_portfolio, named_periods, metrics_params)`
+zamyka te luke: `KNOWN_PERIODS` (nowy, WSPOLNY dla calego repo slownik nazwa->start/koniec, zeby
+wyniki byly porownywalne 1:1 miedzy strategiami pod tymi samymi etykietami) mapuje kazda nazwe na
+konkretne daty, tnie `equity_curve`/`final_portfolio` do tego okna, liczy `compute_metrics` i
+`check_criteria` wzgledem progow z danego `named_periods[nazwa]`. Nieznana nazwa (spoza
+`KNOWN_PERIODS`) rzuca czytelny blad zamiast po cichu nic nie sprawdzac; okres calkowicie poza
+zakresem danych strategii daje `{"covered": False, ...}`, nie blad (np. strategia zaczynajaca sie
+po 2009 nie ma jak pokryc `gfc_crash`).
+
+```
+KNOWN_PERIODS = {
+    "gfc_crash":            2008-01-01 - 2009-03-31,  # szczyt do dna S&P (dno 2009-03-09)
+    "post_gfc_recovery":    2009-04-01 - 2012-12-31,
+    "covid_crash_rebound":  2020-02-01 - 2020-12-31,  # krach + odbicie w tym samym roku
+    "inflation_bear":       2022-01-01 - 2022-12-31,
+}
+```
+
+Wpiete w `run_spec_runner._run_final` - jesli `acceptance_spec.named_periods` niepuste,
+`result["named_periods"]` niesie metryki+checki per okres (na equity_curve PO podatku, spojnie z
+glownym `metrics`). Brak `named_periods` w spec = klucz w ogole nie pojawia sie w wyniku (ten sam
+styl co `metrics_pre_tax` przy braku podatku).
+
+**Wynik dla 4 kluczowych strategii/portfeli (2026-07-11, PO podatku)**:
+
+| | `gpm` solo | `best17_a` solo* | `gpm_best17_a` (55/45) | `vaa_g4_best17_a` |
+|---|---|---|---|---|
+| **gfc_crash** | CAGR **+1.9%**, MaxDD -7.1% | CAGR -14.2%, MaxDD -12.3% | CAGR -3.8%, MaxDD -9.2% | CAGR +0.1%, MaxDD -7.8% |
+| **post_gfc_recovery** | +5.2%, -10.2% | +18.2%, -15.5% | +12.3%, -13.8% | +19.6%, -12.4% |
+| **covid_crash_rebound** | +9.8%, -6.1% | +29.7%, -29.5% | +21.8%, -15.4% | +27.0%, -14.3% |
+| **inflation_bear** | **-5.5%**, -7.1% | -15.2%, -19.5% | -10.5%, -13.8% | -14.6%, -17.3% |
+
+**\*** `best17_a` dane zaczynaja sie 2008-07 - `gfc_crash` to u niego tylko 9 z 15 miesiecy
+okresu (2008-07 do 2009-03), nieporownywalne 1:1 z resztą (ktore maja pelne 15 miesiecy) -
+zaznaczone jawnie, nie ukryte.
+
+Potwierdza wczesniejsze ustalenie z porownania rok-po-roku (patrz sekcja `gpm_best17_a` wyzej):
+`gpm` jest realnie DODATNI w GFC (2008-09) i lagodzi `inflation_bear` (2022) najbardziej ze
+wszystkich czterech - ale `inflation_bear` pozostaje trudny dla KAZDEJ z nich (wszystkie na
+minusie), spojne z wczesniej zidentyfikowanym pekniuciem korelacji akcje-obligacje w tym
+konkretnym roku.
+
+7 nowych testow: `test_named_periods.py` (okresy nienakladajace sie, nieznany okres rzuca blad,
+metryki+checki dla pokrytego okresu, `covered=False` gdy equity_curve nie siega okresu, pusty
+slownik = brak wpisu) + `test_run_spec_runner.py` (2 nowe: wiring pojawia sie/znika wg
+`named_periods` w spec).
+
 ## Struktura folderów
 
 ```
@@ -549,6 +605,7 @@ engine_v2/
   acceptance_check.py                                       # METRICS vs AcceptanceSpec.Criteria -> pass/fail
   param_stability.py                                        # sweep -> "jak stabilna jest rodzina parametrow"
   annual_tax.py                                             # equity_curve -> equity_curve po rocznym podatku (19%, high-water mark)
+  named_periods.py                                          # KNOWN_PERIODS + metryki/checki per znany okres rynkowy (GFC, covid, inflation_bear)
   run_spec_runner.py                                        # RunSpec.mode -> final/validation/search
   blocks/
     data_loader/, data_cleaner/, indicators/, asset_filters/,

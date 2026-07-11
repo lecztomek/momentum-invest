@@ -15,6 +15,11 @@ Wiaze `RunSpec.mode` z odpowiednim mechanizmem (patrz README, sekcja "Tryby uzyc
 water mark" musi widziec CALA historie, zeby poprawnie zbudowac baze podatkowa az do momentu
 test_window, inaczej slice zresetowalby ja blednie do 1.0 na starcie okna). Metryki PRZED
 podatkiem sa zachowane w wyniku jako `metrics_pre_tax` (nie ukryte, do porownania).
+
+`AcceptanceSpec.named_periods` (jesli niepuste) jest liczony w "final" przez
+`named_periods.compute_named_period_metrics` - metryki + progi per znany okres rynkowy (patrz
+`named_periods.py`, `KNOWN_PERIODS`), na equity_curve PO podatku (spojnie z glownym `metrics`).
+Wynik w `result["named_periods"]`.
   - "search"     -> GRID SWEEP (StrategySpec.allowed_param_families) x WALK-FORWARD
                      (TestSpec.train_window) per wariant - zwraca zbiorcze statystyki
                      (srednia/min CAGR, najgorszy drawdown, srednia Sharpe) po oknach, dla kazdej
@@ -41,6 +46,7 @@ from engine_v2.backtest_engine import daily_equity_curve
 from engine_v2.blocks.data_loader import REGISTRY as DATA_LOADER_REGISTRY
 from engine_v2.grid_sweep import run_param_sweep
 from engine_v2.metrics import compute_metrics
+from engine_v2.named_periods import compute_named_period_metrics
 from engine_v2.param_stability import check_param_stability, compute_param_stability
 from engine_v2.pipeline import run_strategy_pipeline
 from engine_v2.run_spec import RunSpec
@@ -87,6 +93,10 @@ def _run_final(
     }
     if metrics_pre_tax is not None:
         result["metrics_pre_tax"] = metrics_pre_tax
+    if acceptance_spec.named_periods:
+        result["named_periods"] = compute_named_period_metrics(
+            equity_curve, final_portfolio, acceptance_spec.named_periods
+        )
     return result
 
 

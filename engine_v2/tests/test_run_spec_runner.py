@@ -105,6 +105,37 @@ def test_final_mode_without_tax_configured_has_no_pre_tax_key(patched_example_di
     assert "metrics_pre_tax" not in result
 
 
+def test_final_mode_computes_named_periods_when_configured(patched_example_dir):
+    """example_strategy/acceptance_spec.json ma juz named_periods (covid_crash_rebound,
+    inflation_bear, post_gfc_recovery) - musza sie pojawic w wyniku "final" bez zadnej
+    dodatkowej konfiguracji."""
+    run_spec = RunSpec.load(patched_example_dir / "run_spec.json")
+    run_spec.mode = "final"
+
+    result = run(run_spec, patched_example_dir)
+
+    assert "named_periods" in result
+    assert set(result["named_periods"]) == {"covid_crash_rebound", "inflation_bear", "post_gfc_recovery"}
+    for period_result in result["named_periods"].values():
+        assert "covered" in period_result
+
+
+def test_final_mode_without_named_periods_has_no_named_periods_key(patched_example_dir):
+    from engine_v2.acceptance_spec import AcceptanceSpec
+
+    acceptance_spec_path = patched_example_dir / "acceptance_spec.json"
+    acceptance_spec = AcceptanceSpec.load(acceptance_spec_path)
+    acceptance_spec.named_periods = {}
+    acceptance_spec.save(acceptance_spec_path)
+
+    run_spec = RunSpec.load(patched_example_dir / "run_spec.json")
+    run_spec.mode = "final"
+
+    result = run(run_spec, patched_example_dir)
+
+    assert "named_periods" not in result
+
+
 def test_search_mode_end_to_end(patched_example_dir):
     run_spec = RunSpec.load(patched_example_dir / "run_spec.json")
     run_spec.mode = "search"
