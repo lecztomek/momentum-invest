@@ -2,6 +2,36 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (4)
+
+- **`strategies_v2/the_one_tlt_hedge/` - ta sama regula hedge'u, ale core=`the_one`** - user
+  pytanie: "a jakby polaczyc hedge z the_one na tych samych regulach co z best17". WYNIK
+  ODWROTNY niz z `best17_a`: hedge SZKODZI na kazdej wadze (sweep 0.20-0.60), zamiast pomagac.
+
+  | hedge_weight | CAGR | MaxDD | Sharpe | Calmar |
+  |---|---|---|---|---|
+  | 0.00 (the_one solo) | 8.76% | -23.59% | 0.61 | 0.37 |
+  | 0.20 | 7.55% | -24.37% | 0.57 | 0.31 |
+  | 0.40 (jak z best17_a) | 7.34% | **-25.15%** | 0.57 | 0.29 |
+  | 0.60 | 7.12% | -25.93% | 0.56 | 0.27 |
+
+  **Przyczyna**: `the_one` JUZ MA `tlt.us` (razem z `ief.us`/`lqd.us`) jako WLASNE aktywo
+  risk-off w swoim uniwersum (`spy.us`/`vea.us`/`vwo.us`/`lqd.us`/`ief.us`/`tlt.us`) - w
+  odroznieniu od `best17_a` (uniwersum BEZ zadnych obligacji: `xlk`/`ivv`/`dbc`/`iau`/`vt`). Gdy
+  `the_one` sam juz rotuje w TLT/obligacje w okresach risk-off, dolozenie NIEZALEZNEGO hedge'u w
+  TLT nie dywersyfikuje - KONCENTRUJE dodatkowo w tym samym aktywie (kosztem LQD/IEF, ktore
+  `the_one` moglby wybrac zamiast TLT), stad MaxDD ROSNIE zamiast spadac.
+
+  **Wniosek (wazny, ogolny)**: `momentum_hedge_overlay` NIE jest uniwersalnym ulepszeniem
+  kazdej strategii - dziala dobrze TYLKO gdy core NIE MA juz wlasnej ekspozycji na hedge asset
+  (jak `best17_a`). Train/test split (train 2009-01..2019-12, test 2020-01..2026-06, wg
+  `strategies_v2/the_one/test_spec.json`) potwierdza spojnie na obu oknach: TRAIN CAGR 7.01% ->
+  7.28% (nieznaczna poprawa), ale TEST/OOS CAGR 11.18% -> 9.34% i MaxDD -23.59% -> -25.15%
+  (wyraznie gorzej) - w przeciwienstwie do `best17_a_tlt_hedge`, gdzie hedge poprawial OBA okna.
+
+  Zweryfikowane przez faktyczny `run_combined_pipeline()`. Pelny pakiet testow: 188/189 (1 fail
+  niepowiazany).
+
 ## 2026-07-11 (3)
 
 - **NOWA STRATEGIA `strategies_v2/tlt_timing/`** - user uwaga: "warunek wejscia hedge'u (patrz

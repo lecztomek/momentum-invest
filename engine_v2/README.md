@@ -207,6 +207,18 @@ Sharpe 0.93 (vs 0.94), Calmar 0.52 (vs 0.62) - wyraźnie gorzej na każdym wymia
 przewaga `momentum_hedge_overlay` bierze się WŁAŚNIE z relatywnego porównania do core, nie z
 samego TLT. `best17_a_tlt_hedge/` (relatywny wariant) pozostaje rekomendowanym wyborem.
 
+**`strategies_v2/the_one_tlt_hedge/` - ta sama reguła hedge'u, ale core=`the_one` zamiast
+`best17_a`.** WYNIK ODWROTNY: hedge SZKODZI na każdej wadze (sweep 0.20-0.60) - przy 40% CAGR
+spada 8.76%->7.34%, MaxDD **ROŚNIE** -23.59%->-25.15% (zamiast spadać). Przyczyna: `the_one` JUŻ
+MA `tlt.us` (razem z `ief.us`/`lqd.us`) jako WŁASNE aktywo risk-off w swoim uniwersum - w
+odróżnieniu od `best17_a` (uniwersum BEZ żadnych obligacji). Gdy core sam już rotuje w
+TLT/obligacje, dołożenie niezależnego hedge'u w TLT nie dywersyfikuje - KONCENTRUJE dodatkowo w
+tym samym aktywie kosztem LQD/IEF, które core mógłby wybrać zamiast TLT. **Wniosek:
+`momentum_hedge_overlay` NIE jest uniwersalnym ulepszeniem każdej strategii - działa dobrze
+TYLKO gdy core NIE MA już własnej ekspozycji na hedge asset.** Potwierdzone na train I test/OOS
+osobno (test/OOS: CAGR 11.18%->9.34%, MaxDD -23.59%->-25.15% - gorzej na obu, nie tylko na
+pełnej historii).
+
 Pochodne metryki okresu (`turnover`/`trade_cost`/`gross_return`/`net_return`) są łączone wg
 `effective_capital_weights` (nie statycznego `params["capital_weights"]`, wprost w
 `combined_pipeline.py`, nie przez generyczny kontrakt COMBINERA) - inaczej strategia, która
@@ -358,6 +370,7 @@ strategies_v2/
   best17_a_tlt_hedge/            # best17_a+tlt_hedge, momentum_hedge_overlay - patrz niżej
   tlt_timing/                    # samodzielny, przenosny timing na tlt.us (wlasny momentum) - patrz niżej
   best17_a_tlt_timing/           # best17_a+tlt_timing, fixed_capital_weights - patrz niżej
+  the_one_tlt_hedge/             # the_one+tlt_hedge, ta sama regula co best17_a - patrz niżej (hedge SZKODZI tu)
 ```
 
 ### Druga przykładowa strategia: `dual_momentum` (test szerokości silnika)
