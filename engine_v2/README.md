@@ -177,6 +177,30 @@ zwroty strategii, nie tylko ich wagi.
   `dynamic_capital_weights`). Blok zostaje w repo jako przetestowany, ogólny mechanizm (10 testów
   syntetycznych) - `gpm_best17_a` NIE zmienia konfiguracji.
 
+- **`signal_tilted_capital_weights`** (2026-07-11 (31), patrz CHANGELOG - **NOWY REKORD SESJI**)
+  - user po negatywnym wyniku wyżej: "a może inaczej liczba canary decyduje o proporcji". Zamiast
+  tiltu wg SUROWEGO zwrotu, tilt wg JUŻ ISTNIEJĄCEGO, wewnętrznego sygnału jednej ze strategii -
+  suma wag WYBRANEJ grupy tickerów w jej WŁASNYM, już wykonanym portfelu (np. `protective_share`
+  w `gpm`, którą `gpm_breadth_protective_split` i tak już liczy WEWNĘTRZNIE - zero nowego
+  wskaźnika/plumbingu). DOKŁADNIE dwie strategie (jak `momentum_hedge_overlay`):
+  `weight_a = clip(base_weight_a + tilt_strength*(signal-center), min_weight_a, max_weight_a)`,
+  `weight_b = 1 - weight_a`, `shift(1)`. `center` (domyślnie 0.5) to STAŁA, NIE średnia sygnału z
+  całej historii backtestu - użycie średniej z całej serii zanieczyszczałoby każdą decyzję
+  przyszłym wglądem w dane (look-ahead - złapane i naprawione PRZED sfinalizowaniem, wynik
+  pozostał solidny po poprawce, więc nie był artefaktem look-ahead).
+
+  **Zastosowane do `gpm_best17_a`**: sygnał = `protective_share` gpm. Kierunek "więcej gpm gdy
+  protective WYSOKI" (dodatni tilt) - WYNIK NEGATYWNY. Odwrócony kierunek (`tilt_strength=-0.10`
+  - "więcej gpm gdy JEJ WŁASNY protective_share jest NISKI") - POPRAWA: gpm w pełni defensywnym
+  trybie ma z definicji niższy oczekiwany zwrot do przodu, więc dublowanie jej defensywności na
+  poziomie combinera szkodzi; dawanie jej więcej kapitału właśnie gdy sama jest pewna siebie
+  działa lepiej. Wynik finalny (`center=0.5`, `min_weight_a=0.30`, `max_weight_a=0.80`): CAGR
+  10.38%, MaxDD -13.22%, Sharpe 1.011, Calmar **0.786** - lepszy niż `dynamic_capital_weights`
+  (0.774) na WSZYSTKICH 4 metrykach jednocześnie. Zweryfikowane na TRAIN/OOS/named periods -
+  poprawa szeroka (OOS Calmar 0.905->0.985, covid_crash_rebound 1.428->1.893), z drobnym
+  pogorszeniem tylko w `gfc_crash`/`inflation_bear` - brak sygnału dopasowania do jednego okresu.
+  11 nowych testów syntetycznych (`test_signal_tilted_capital_weights.py`).
+
   **Wynik `strategies_v2/best17_a_tlt_hedge/`** (`best17_a` + `tlt_hedge`, sweep `hedge_weight`
   na realnych danych - wszystkie warianty wyraźnie tną MaxDD względem `best17_a` solo; liczby
   PO poprawce z **2026-07-11 (2)** - patrz CHANGELOG, `hedge_on` nie mógł się wcześniej wyłączyć
@@ -748,7 +772,7 @@ strategies_v2/
   synergy_v1/                    # eksperyment: best17_a+TLT w JEDNYM pipeline (bez combinera) - patrz niżej, gorzej niż best17_a solo
   synergy_v2/                    # poprawka: TLT wzajemnie wykluczajacy sie z 4 aktywami ofensywnymi - patrz niżej, dalej gorzej niż best17_a solo
   gpm/                            # "Generalized Protective Momentum" - patrz niżej, najnizszy MaxDD (-15.2%) i najstabilniejsza rodzina parametrow w calej sesji
-  gpm_best17_a/                   # gpm(+xle.us)+best17_a, dynamic_capital_weights 45/55 - patrz nizej, NAJLEPSZY CALMAR calej sesji (0.774)
+  gpm_best17_a/                   # gpm(+xle.us)+best17_a, signal_tilted_capital_weights - patrz nizej, NAJLEPSZY CALMAR (0.786) I SHARPE (1.011) calej sesji
   gtaa_agg3/                      # "GTAA AGG3" - top3 momentum + filtr trendu PER SLOT - patrz nizej
   gtaa_agg6/                      # "GTAA AGG6" - to samo, top6 zamiast top3 - patrz nizej
   gtaa_agg6_best17_a/             # gtaa_agg6+best17_a, fixed_capital_weights 55/45 - patrz nizej, GORZEJ niz gpm_best17_a (negatywny wynik, udokumentowany)
@@ -756,7 +780,8 @@ strategies_v2/
   vaa_g4_ema/                     # vaa_g4 z EMA zamiast momentum - patrz nizej, GORZEJ (negatywny wynik)
   daa_g4_ema/                     # daa_g4 z EMA zamiast momentum - patrz nizej, GORZEJ (negatywny wynik)
   # wszystkie pozostale pary 7 glownych strategii (fixed_capital_weights 50/50) - patrz
-  # "Wszystkie pary 7 głównych strategii" wyzej; vaa_g4_best17_a to najlepszy Sharpe w repo
+  # "Wszystkie pary 7 głównych strategii" wyzej; vaa_g4_best17_a byl najlepszym Sharpe w repo,
+  # AZ DO gpm_best17_a (signal_tilted_capital_weights, Sharpe 1.011) - patrz CHANGELOG (31)
   dual_momentum_vaa_g4/  dual_momentum_the_one/       dual_momentum_best17_a/
   dual_momentum_all_weather_4/   dual_momentum_gfm/   dual_momentum_best17_b/
   vaa_g4_the_one/        vaa_g4_best17_a/             vaa_g4_all_weather_4/
@@ -1282,13 +1307,23 @@ wrazenie "gorszego CAGR" bylo artefaktem porownywania roznych wag (45% vs 55%), 
 User nastepnie zaproponowal dynamiczna alokacje kapitalu zamiast stalej - `dynamic_capital_weights`
 (juz istniejacy combiner z `combined_best2_dynamic`) na TEJ SAMEJ bazowej wadze 45/55 dal dalszy,
 mniejszy, ale konsekwentny plus na kazdej testowanej wadze: CAGR 10.23%, MaxDD -13.22%, Sharpe
-0.980, Calmar **0.774** - **NOWY REKORD CALEJ SESJI**, wybrany jako finalna konfiguracja
-`gpm_best17_a` (`combiner: dynamic_capital_weights`, `capital_weights: gpm_v0=0.55,
-best17_a_v0=0.45`).
+0.980, Calmar 0.774 - wtedy nowy rekord sesji.
+
+**NOWY REKORD 2026-07-11 (31), patrz CHANGELOG**: user - "a moze inaczej liczba canary decyduje o
+proporcji" (po odrzuconym pomysle tiltu wg surowego zwrotu, patrz `relative_strength_capital_weights`
+wyzej - NEGATYWNY wynik). Nowy combiner `signal_tilted_capital_weights` (patrz sekcja COMBINER
+wyzej) - tilt wg WLASNEGO `protective_share` gpm (kierunek: WIECEJ gpm gdy JEJ WLASNY
+protective_share jest NISKI, nie wysoki), `tilt_strength=-0.10`, `center=0.5` (stala, unika
+look-ahead), przyciete do [0.30, 0.80]. Wynik: CAGR 10.38%, MaxDD -13.22%, Sharpe 1.011, Calmar
+**0.786** - **NOWY REKORD CALEJ SESJI**, lepszy niz `dynamic_capital_weights` na WSZYSTKICH 4
+metrykach jednoczesnie, wybrany jako finalna konfiguracja `gpm_best17_a` (`combiner:
+signal_tilted_capital_weights`, `strategy_a: gpm_v0`, `base_weight_a: 0.55`).
 
 **Rekomendacja sesji (zaktualizowana)**: `gpm_best17_a` (z `xle.us` w `gpm`,
-`dynamic_capital_weights`, 45/55 best17_a/gpm) - jesli priorytetem jest MaxDD/Calmar; `vaa_g4_best17_a`
-pozostaje lepszy, jesli priorytetem jest czysty Sharpe (0.987 vs 0.980).
+`signal_tilted_capital_weights`) - jesli priorytetem jest MaxDD/Calmar; `vaa_g4_best17_a`
+pozostaje lepszy, jesli priorytetem jest czysty Sharpe (0.987 vs 1.011 - **UWAGA**, po tej
+poprawce `gpm_best17_a` ma teraz WYZSZY Sharpe niz `vaa_g4_best17_a` - `vaa_g4_best17_a` juz NIE
+jest najlepszym Sharpe w repo, `gpm_best17_a` bije go na OBU frontach).
 
 **Stabilnosc wagi combinera** (user: "Jak ze stabilnoscia naszego najlepszego miksu?") -
 `compute_param_stability` zastosowany PIERWSZY RAZ do wagi combinera (nie parametrow
@@ -1361,9 +1396,9 @@ rekomendacja - `gpm_best17_a` pozostaje najlepszym znalezionym miksem.
 
 **Po bugfixach gate'u IAU/DBC i histerezy w `best17_a` (2026-07-11 (27)+(28), patrz CHANGELOG)**:
 `gtaa_agg6_best17_a` (45/55, zapisany punkt) CAGR 10.42%, MaxDD -19.44%, Sharpe 0.910, Calmar
-0.536 - dalej wyraznie gorzej niz `gpm_best17_a` (Calmar 0.774 po rozszerzeniu o xle.us, patrz
-CHANGELOG (29)), wniosek bez zmian. Automatycznie odkryte i przetestowane przez
-`test_all_combined_specs.py` (glob-discovery).
+0.536 - dalej wyraznie gorzej niz `gpm_best17_a` (Calmar 0.786 po rozszerzeniu o xle.us i
+`signal_tilted_capital_weights`, patrz CHANGELOG (29)/(31)), wniosek bez zmian. Automatycznie
+odkryte i przetestowane przez `test_all_combined_specs.py` (glob-discovery).
 
 ### Dwunasta strategia: `daa_g4` ("DAA-G4" - Defensive Asset Allocation, Keller & Keuning 2017)
 

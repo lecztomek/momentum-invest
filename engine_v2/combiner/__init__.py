@@ -19,3 +19,4 @@ from engine_v2.combiner import fixed_capital_weights  # noqa: E402,F401  (rejest
 from engine_v2.combiner import dynamic_capital_weights  # noqa: E402,F401  (rejestruje "dynamic_capital_weights")
 from engine_v2.combiner import momentum_hedge_overlay  # noqa: E402,F401  (rejestruje "momentum_hedge_overlay")
 from engine_v2.combiner import relative_strength_capital_weights  # noqa: E402,F401  (rejestruje "relative_strength_capital_weights")
+from engine_v2.combiner import signal_tilted_capital_weights  # noqa: E402,F401  (rejestruje "signal_tilted_capital_weights")

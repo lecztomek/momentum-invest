@@ -2,6 +2,59 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (31)
+
+- **NOWY REKORD SESJI (drugi z rzedu): `gpm_best17_a` z `signal_tilted_capital_weights` - Calmar
+  0.786** (poprzedni rekord: 0.774, `dynamic_capital_weights`, patrz (29)). User po negatywnym
+  wyniku (30) - "a moze inaczej liczba canary decyduje o proporcji" - zamiast tiltu wg SUROWEGO
+  zwrotu (co nie zadzialalo), tilt wg JUZ ISTNIEJACEGO, wewnetrznego sygnalu "szerokosci
+  rynku"/regime jednej ze strategii.
+
+  **NOWY COMBINER `signal_tilted_capital_weights`**
+  (`engine_v2/combiner/signal_tilted_capital_weights.py`, 11 testow syntetycznych) - DOKLADNIE
+  dwie strategie (jak `momentum_hedge_overlay`): sygnal = suma wag WYBRANEJ grupy tickerow w
+  WLASNYM, juz wykonanym portfelu jednej strategii (`strategy_a`) - zero nowego wskaznika/
+  plumbingu, odczyt wprost z `weights_used` (ktore combiner i tak juz dostaje). Tilt: `weight_a =
+  clip(base_weight_a + tilt_strength*(signal-center), min_weight_a, max_weight_a)`, `weight_b = 1
+  - weight_a`, `shift(1)` (unika look-ahead, jak `momentum_hedge_overlay`). WAZNE: `center`
+  (domyslnie 0.5) to STALA, NIE srednia sygnalu z calej historii backtestu - uzycie sredniej z
+  calej serii zanieczyszczaloby kazda decyzje przyszlym wgladem w dane (look-ahead bug, zlapany
+  i naprawiony PRZED sfinalizowaniem - patrz nizej).
+
+  **Zastosowanie do `gpm_best17_a`** (gpm z xle.us, patrz (29)) - sygnal = `protective_share` gpm
+  (suma wag `ief.us`+`shy.us` w jej WLASNYM portfelu; `gpm_breadth_protective_split` juz liczy to
+  wewnetrznie jako ciagle 0..1, tu tylko odczytane z jej wyjscia). Pierwszy sweep (kierunek
+  "wiecej gpm gdy protective WYSOKI", tilt dodatni) dal WYNIK NEGATYWNY (Calmar spada do 0.57-0.69
+  im silniejszy tilt) - odwrocenie kierunku (tilt UJEMNY: "wiecej gpm gdy JEJ WLASNY
+  protective_share jest NISKI") dalo POPRAWE na calym sweepie. Interpretacja: gpm w pelni
+  defensywnym trybie (protective_share=1.0) ma z definicji NIZSZY oczekiwany zwrot do przodu niz
+  gdy jest w pelni zainwestowana - dawanie jej WIECEJ kapitalu WLASNIE wtedy (dublowanie
+  defensywnosci na poziomie combinera) szkodzi; odwrotnie, dawanie jej wiecej kapitalu gdy sama
+  jest pewna siebie (niski protective_share, potencjalnie takze koreluje z okresami gdy best17_a
+  radzi sobie gorzej) dziala lepiej.
+
+  **Poprawka look-ahead PRZED finalizacja**: pierwsza wersja uzywala `protective.mean()` (srednia
+  z CALEJ historii backtestu) jako `center` - to jest look-ahead (decyzja w 2010 nie moze znac
+  sredniej z danych do 2026). Po zamianie na STALA `center=0.5` (naturalny neutralny punkt dla
+  wartosci ograniczonej do [0,1]) wynik pozostal solidny (peak Calmar przesunal sie z 0.785 na
+  0.786 przy nieco innym optymalnym `tilt_strength`, ~-0.10 zamiast ~-0.12) - NIE byl artefaktem
+  look-ahead.
+
+  **Finalne parametry**: `tilt_strength=-0.10`, `center=0.5`, `min_weight_a=0.30`,
+  `max_weight_a=0.80`, `base_weight_a=0.55` (gpm). Wynik PO PODATKU: CAGR 10.38%, MaxDD -13.22%,
+  Sharpe 1.011, Calmar **0.786** - lepszy niz `dynamic_capital_weights` (0.774) na WSZYSTKICH 4
+  metrykach jednoczesnie (CAGR/MaxDD/Sharpe/Calmar), nie tylko na jednej.
+
+  **Weryfikacja robustnosci** (TRAIN/OOS/named periods, tilt=-0.10 vs baza bez tiltu): poprawa w
+  wiekszosci okresow - OOS Calmar 0.905->0.985, covid_crash_rebound Calmar 1.428->1.893,
+  post_gfc_recovery Calmar 0.880->0.951 - z drobnym pogorszeniem w `gfc_crash` (-3.97%->-4.89% -
+  zbyt krotka historia PRZED oknem treningowym, mala waga statystyczna) i `inflation_bear`
+  (-6.53%->-7.35%, wciaz DUZO lepiej niz best17_a solo -14.75%). Brak sygnalu ciezkiego
+  dopasowania do jednego okresu - poprawa jest szeroka, nie skoncentrowana w jednym roku.
+
+  **Zaktualizowano**: `strategies_v2/gpm_best17_a/combined_spec.json` (`combiner:
+  signal_tilted_capital_weights`). Pelny pakiet testow: 414/414 (403 + 11 nowych), bez regresji.
+
 ## 2026-07-11 (30)
 
 - **NOWY COMBINER `relative_strength_capital_weights`** (user: "chodzi mi o bardziej inteligentne
