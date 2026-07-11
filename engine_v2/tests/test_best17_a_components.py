@@ -227,3 +227,23 @@ def test_both_cash_kept():
     result = score_gap_hysteresis(target, ctx, {"min_score_gap": 0.005})
 
     assert result.signal_changed is False
+
+
+def test_forced_exit_when_currently_held_asset_becomes_ineligible():
+    """POPRAWKA 2026-07-11 (patrz CHANGELOG) - odtwarza `forced_exit_due_to_asset_gate` ze
+    starego silnika. Trzymamy "a" (0.8) i "b" (0.2, full_position_size=2); "a" wlasnie stal sie
+    nieeligibilny (NaN score - np. zablokowany przez asset gate), mimo ze "b" nadal ma score
+    bardzo bliski jedynemu wyzwaniowcowi "c" (roznica 0.001 << prog 0.005 - bez tej poprawki
+    histereza pominelaby NaN "a" z porownania i "keep"owalaby cala pozycje, w tym zablokowane
+    "a"). Musi wymusic PELNY rebalans do targetu, niezaleznie od tej bliskiej roznicy."""
+    target = pd.Series({"b": 0.2, "c": 0.8})
+    ctx = _exec_ctx(
+        {"a": 0.8, "b": 0.2},
+        {"a": 0.0, "b": 0.0, "c": 0.0},
+        {"a": float("nan"), "b": 0.100, "c": 0.101},
+    )
+
+    result = score_gap_hysteresis(target, ctx, {"min_score_gap": 0.005, "full_position_size": 2})
+
+    assert result.signal_changed is True
+    assert result.weights_used == {"a": 0.0, "b": 0.2, "c": 0.8}

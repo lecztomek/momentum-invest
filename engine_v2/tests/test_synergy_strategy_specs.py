@@ -101,7 +101,7 @@ def test_synergy_v1_metrics_regression_baseline(us_data_dir):
 
 def test_synergy_v2_metrics_regression_baseline(us_data_dir):
     """Zamrozony wynik (2026-07-11, PRZED podatkiem) - blisko, ale wciaz ponizej best17_a solo
-    (cagr ~0.1649, maxdd ~-0.2947, sharpe ~0.96) na kazdej z trzech metryk."""
+    (cagr ~0.1674, maxdd ~-0.3119, sharpe ~0.961) na kazdej z trzech metryk."""
     from engine_v2.backtest_engine import daily_equity_curve
     from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
     from engine_v2.metrics import compute_metrics
@@ -114,6 +114,6 @@ def test_synergy_v2_metrics_regression_baseline(us_data_dir):
     equity_curve = daily_equity_curve(final_portfolio, market_data.prices, {})
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
-    assert metrics["cagr"] == pytest.approx(0.1601, abs=0.01)
-    assert metrics["max_drawdown"] == pytest.approx(-0.2947, abs=0.01)
+    assert metrics["cagr"] == pytest.approx(0.1626, abs=0.01)
+    assert metrics["max_drawdown"] == pytest.approx(-0.3119, abs=0.01)
     assert metrics["sharpe"] == pytest.approx(0.92, abs=0.05)

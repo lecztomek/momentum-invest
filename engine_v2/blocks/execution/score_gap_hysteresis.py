@@ -10,6 +10,14 @@ NIE trzymamy obecnie) - inaczej rebalansuje do celu w calosci.
 Jesli sklad docelowy i obecny sa identyczne (te same tickery > 0) - zawsze "keep" (brak
 wyzwania). Jesli oba sa cash (brak trzymanych aktywow i brak docelowych) - tez "keep".
 
+**Wymuszony exit (POPRAWKA 2026-07-11, patrz CHANGELOG)**: jesli KTORYKOLWIEK obecnie trzymany
+aktyw ma NaN w `score_row` (nieeligibilny - zablokowany przez `asset_filters`, np. asset gate),
+histereza NIGDY nie "keep"uje, niezaleznie od roznicy score reszty portfela - odtwarza
+`forced_exit_due_to_asset_gate` ze starego silnika. Bez tego, aktyw ktory PRZESTAL byc eligible
+mogl zostac trzymany w nieskonczonosc, dopoki score PO ZOSTALYCH pozycjach nie uzasadnilby
+rebalansu z innego powodu - gate bindowalby tylko na SELEKCJI nowych pozycji, nie na wyjsciu
+ze starych.
+
 Wymaga `context.score_row` (biezacy wiersz SCORE - patrz types.ExecutionContext) - inaczej niz
 "hysteresis", ktora potrzebuje tylko wag i zwrotow.
 
@@ -62,7 +70,17 @@ def score_gap_hysteresis(
     current_held = sorted(t for t, w in current_weights.items() if t != "_CASH" and w > 1e-9)
     target_held = sorted(t for t in target_weights_row.index if t != "_CASH" and target_weights_row[t] > 1e-9)
 
-    if set(current_held) == set(target_held):
+    # Odtwarza `forced_exit_due_to_asset_gate` ze starego silnika: jesli trzymany aktyw PRZESTAL
+    # byc eligibilny (NaN w score - zablokowany przez asset_filters, patrz docstring ScoreMatrix),
+    # histereza NIE MOZE go "uratowac" samym porownaniem score najslabszego trzymanego vs
+    # najlepszego wyzwania - ten aktyw juz nie ma score do porownania, a jego dalsze trzymanie
+    # ignorowaloby gate calkowicie. Wymuszamy pelny rebalans do (juz poprawnie policzonego,
+    # gate-swiadomego) targetu, niezaleznie od roznicy score gdziekolwiek indziej w portfelu.
+    current_held_ineligible = any(pd.isna(score_row.get(t)) for t in current_held)
+
+    if current_held_ineligible:
+        keep_current = False
+    elif set(current_held) == set(target_held):
         keep_current = True
     elif not current_held and not target_held:
         keep_current = True

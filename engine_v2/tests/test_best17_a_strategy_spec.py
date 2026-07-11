@@ -135,6 +135,6 @@ def test_best17_a_metrics_regression_baseline(us_data_dir):
     equity_curve = daily_equity_curve(final_portfolio, market_data.prices, {})
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
-    assert metrics["cagr"] == pytest.approx(0.1635, abs=0.01)
-    assert metrics["max_drawdown"] == pytest.approx(-0.2947, abs=0.01)
-    assert metrics["sharpe"] == pytest.approx(0.949, abs=0.05)
+    assert metrics["cagr"] == pytest.approx(0.1674, abs=0.01)
+    assert metrics["max_drawdown"] == pytest.approx(-0.3119, abs=0.01)
+    assert metrics["sharpe"] == pytest.approx(0.961, abs=0.05)

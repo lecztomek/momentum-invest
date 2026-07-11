@@ -2,6 +2,71 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (28)
+
+- **BUGFIX (istotny, drugi tego dnia) `score_gap_hysteresis`: histereza mogla "uratowac"
+  aktyw, ktory wlasnie przestal byc eligibilny** (user: "jak odpalimy v1 best17 i sprawdzimy
+  miesiac po miesiacu z v2 to jaka jest zgodnosc aktywow" - po poprawce (27) sprawdzone wprost:
+  216 wspolnych miesiecy, 188/216 (87.0%) zgodnosci zestawu aktywow, 28 rozbieznych).
+
+  **Diagnoza**: dla WSZYSTKICH 28 rozbieznych miesiecy `target_weights` PRZED histereza (czyli
+  wynik `asset_filters`+`asset_scoring`+`selector`+`alpha_weighting`, JUZ poprawnie uwzgledniajacy
+  gate po poprawce (27)) byl IDENTYCZNY z `selected_assets` starego silnika. Rozbieznosc
+  wprowadzal DOPIERO blok EXECUTION (`score_gap_hysteresis`): gdy trzymany aktyw (np. IAU) staje
+  sie nieeligibilny (NaN w `score`, zablokowany przez `iau_gate`), histereza porownuje "najslabszy
+  TRZYMANY score vs najlepszy WYZWANIE score" - i po prostu POMIJA nieeligibilny aktyw z tego
+  porownania (`pd.notna` filtr), zamiast wymusic wyjscie. Jesli POZOSTALY trzymany aktyw ma score
+  blisko najlepszego wyzwania, `keep_current=True` i CALY stary sklad (WLACZNIE z juz
+  zablokowanym aktywem) zostaje utrzymany bez zmian. Stary silnik ma na to jawny mechanizm
+  (`forced_exit_due_to_asset_gate`, widoczny jako `1` dokladnie w pierwszym miesiacu kazdej z 28
+  rozbieznosci) - wymusza pelny rebalans, gdy trzymany aktyw traci eligibility, niezaleznie od
+  histerezy. To dotyczylo m.in. DOKLADNIE scenariusza czerwca 2026, ktory zapoczatkowal cala ta
+  sesje (poprawka (27) naprawila SELEKCJE, ale bez tej poprawki histereza wciaz trzymalaby IAU).
+
+  **Naprawa**: `engine_v2/blocks/execution/score_gap_hysteresis.py` - nowy warunek NA POCZATKU
+  (przed wszystkimi innymi): jesli ktorykolwiek aktualnie trzymany aktyw ma NaN w `score_row`,
+  `keep_current=False` bezwarunkowo (pelny rebalans do juz poprawnie policzonego targetu),
+  niezaleznie od roznicy score reszty portfela.
+
+  **Walidacja**: PO poprawce - **100% zgodnosci zestawu aktywow na WSZYSTKICH 216 wspolnych
+  miesiecach** (2008-2026) z prawdziwym CSV starego silnika (wczesniej 188/216, 87.0%). Nowy test
+  `test_forced_exit_when_currently_held_asset_becomes_ineligible`
+  (`test_best17_a_components.py`) odtwarza dokladnie ten scenariusz (trzymany aktyw z NaN score
+  mimo bliskiej roznicy score reszty portfela musi wymusic pelny rebalans).
+
+  **Wplyw na metryki - `best17_a` solo i 12 pochodnych (PRZED/PO tej poprawce, PO PODATKU)**:
+
+  | | CAGR przed→po | MaxDD przed→po | Sharpe przed→po | Calmar przed→po |
+  |---|---|---|---|---|
+  | `best17_a` solo | 15.93%→16.32% | -29.47%→-31.19% | 0.918→0.930 | 0.540→0.523 |
+  | `synergy_v1` | 13.91%→14.17% | -29.99%→-29.99% | 0.822→0.837 | 0.464→0.472 |
+  | `synergy_v2` | 15.45%→15.84% | -29.99%→-31.19% | 0.878→0.890 | 0.515→0.508 |
+  | `best17_a_tlt_hedge` | 13.47%→13.77% | -22.09%→-22.09% | 0.920→0.929 | 0.610→0.623 |
+  | `best17_a_tlt_timing` | 11.24%→11.51% | -22.31%→-23.87% | 0.883→0.896 | 0.504→0.482 |
+  | `combined_best2` | 12.21%→12.41% | -22.73%→-22.73% | 0.902→0.913 | 0.537→0.546 |
+  | `combined_best2_dynamic` | 13.62%→13.79% | -26.40%→-26.61% | 0.910→0.918 | 0.516→0.518 |
+  | `combined_triple` | 11.20%→11.37% | -19.65%→-20.75% | 0.951→0.961 | 0.570→0.548 |
+  | `dual_momentum_best17_a` | 10.87%→11.06% | -21.84%→-22.79% | 0.870→0.880 | 0.498→0.485 |
+  | `vaa_g4_best17_a` | 11.20%→11.37% | -17.33%→-18.09% | 0.987→0.995 | 0.646→0.629 |
+  | `best17_a_all_weather_4` | 11.48%→11.66% | -22.01%→-23.20% | 0.939→0.949 | 0.522→0.502 |
+  | `best17_a_gfm` | 11.43%→11.62% | -28.03%→-29.15% | 0.851→0.858 | 0.408→0.399 |
+  | `best17_a_best17_b` | 10.66%→10.66% | -29.42%→-30.31% | 0.809→0.804 | 0.362→0.352 |
+  | `gpm_best17_a` (55/45) | 10.82%→11.03% | -15.40%→-16.50% | 0.955→0.968 | 0.702→0.669 |
+  | `gtaa_agg6_best17_a` (45/55) | 10.26%→10.42% | -18.31%→-19.44% | 0.903→0.910 | 0.560→0.536 |
+
+  **Kierunek zmian spojny i zrozumialy**: CAGR i Sharpe rosna wszedzie (mniej "utopionego" w
+  nieeligibilnych aktywach kapitalu), ale MaxDD w wiekszosci przypadkow ROSNIE (pogarsza sie) -
+  wymuszony, szybszy exit z zablokowanego aktywa oznacza CZESCIEJ pelny rebalans w momentach
+  napiecia rynkowego (asset gate binduje wlasnie W OKRESACH zlego momentum), co podnosi turnover
+  (np. `best17_a`: 0.92→1.16/rok) i czasem prowadzi portfel przez GLEBSZY, ale KROTSZY drawdown
+  zamiast trzymac stara, czesciowo zablokowana pozycje dluzej. **Kluczowe rekomendacje sesji
+  BEZ ZMIAN**: `vaa_g4_best17_a` nadal najlepszy Sharpe w repo (0.995), `gpm_best17_a` (55/45)
+  nadal najlepszy Calmar (0.669 vs 0.629 `vaa_g4_best17_a`) - marginesy sie zmienily, ranking nie.
+
+  **Ta sama uwaga o zakresie co w (27)**: przeliczone zostaly WSZYSTKIE zapisane
+  `combined_spec.json` uzywajace `best17_a`. Tabele sweepow (gpm/gtaa_agg6/tlt_hedge wagi, przeglad
+  C(7,2) par) NIE zostaly w pelni ponownie przeliczone - patrz CHANGELOG (27) po pelne uzasadnienie.
+
 ## 2026-07-11 (27)
 
 - **BUGFIX (istotny) `best17_a`/`synergy_v1`/`synergy_v2`: `iau_gate`/`dbc_gate` liczyly 3-miesieczny
