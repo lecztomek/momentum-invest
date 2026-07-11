@@ -1082,6 +1082,19 @@ nowych plikow testowych potrzebnych.
 **Rekomendacja sesji**: `gpm_best17_a` (55/45) - jesli priorytetem jest MaxDD/Calmar i niski
 turnover; `vaa_g4_best17_a` pozostaje lepszy, jesli priorytetem jest czysty Sharpe.
 
+**Stabilnosc wagi combinera** (user: "Jak ze stabilnoscia naszego najlepszego miksu?") -
+`compute_param_stability` zastosowany PIERWSZY RAZ do wagi combinera (nie parametrow
+wewnetrznych pojedynczej strategii), sweep `best17_a_weight` [0.35..0.70] przez walk-forward na
+`train_window`: `wf_mean_sharpe` relative_drop = **2.9%** (PLASKO - wybor dokladnej wagi w tym
+zakresie prawie nie ma znaczenia dla Sharpe, w OBU okresach train/test). `wf_mean_cagr`
+relative_drop = 30.3%, ale to NIE krucha rodzina - CAGR rosnie MONOTONICZNIE z waga `best17_a`
+(oczekiwane, nie przypadkowy szczyt). Jednak Calmar (metryka wg ktorej wybrano 55/45) zachowuje
+sie ROZNIE miedzy okresami: TRAIN Calmar maleje monotonicznie z waga `best17_a` (wiecej `gpm` =
+lepiej), TEST/OOS Calmar ma prawdziwy szczyt kolo 55% - "55/45 optymalne dla Calmar" jest wiec
+czesciowo dopasowane do specyfiki 2020-2026 (COVID+2022), nie w pelni potwierdzone w treningu.
+**Wniosek**: sama koncepcja miksu jest solidna (Sharpe stabilny), ale dokladna waga 55/45 to
+"rozsadny wybor w szerokiej dobrej strefie" (40-65%), nie precyzyjnie skalibrowany punkt.
+
 ### Dziesiata/jedenasta strategia: `gtaa_agg3` / `gtaa_agg6` ("GTAA AGG3/AGG6", opis dostarczony przez usera)
 
 User (w trakcie sweepu gpm+best17_a+vaa_g4) zmienil plan i dostarczyl opis nowej strategii do

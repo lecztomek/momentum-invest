@@ -2,6 +2,40 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (20)
+
+- **Stabilnosc wagi combinera dla `gpm_best17_a`** (user: "Jak ze stabilnoscia naszego
+  najlepszego miksu?"). Dotad `param_stability` liczylismy tylko na WEWNETRZNYCH parametrach
+  pojedynczej strategii (`allowed_param_families`) - tu pierwszy raz zastosowane do WAGI
+  COMBINERA (jedynego "parametru" miksu 2 strategii), przez `compute_param_stability` (istniejaca
+  funkcja, zero nowego kodu) na sweep-u `best17_a_weight` w [0.35..0.70], wf_mean_* z
+  walk-forward na `train_window` (2010-06 do 2019-12, jak `best17_a`):
+
+  | Metryka (walk-forward, train) | relative_drop |
+  |---|---|
+  | `wf_mean_sharpe` | **2.9%** - PLASKO, wagi 35-70% dajа niemal identyczny Sharpe |
+  | `wf_mean_cagr` | 30.3% - ALE monotoniczny wzrost z waga `best17_a`, NIE krucha rodzina (patrz nizej) |
+
+  **Wazna roznica**: wysoki `relative_drop` dla CAGR NIE oznacza kruchosci w sensie
+  "overfitting" (izolowany szczyt otoczony gorszymi sasiadami) - tu CAGR rosnie MONOTONICZNIE
+  z waga `best17_a` (bardziej agresywna noga = wiecej CAGR, oczekiwane, nie przypadkowe). Sharpe
+  (relative_drop 2.9%) jest wlasciwa miara "czy wybor dokladnej wagi ma znaczenie" - i mowi
+  wyraznie NIE: 35-70% `best17_a` daje Sharpe w waskim pasmie w KAZDYM z 2 okresow (train
+  1.10-1.14, test/OOS 0.92-0.94).
+
+  **Ale**: Calmar (metryka wg ktorej wybralismy 55/45) zachowuje sie ROZNIE w train vs test:
+  TRAIN Calmar maleje MONOTONICZNIE z waga `best17_a` (0.94 przy 35% -> 0.72 przy 70% - im wiecej
+  `gpm`, tym lepiej), TEST/OOS Calmar ma PRAWDZIWY SZCZYT kolo 55% (0.75 przy 35% -> **0.83** przy
+  55% -> 0.72 przy 70%). Te dwa okresy NIE ZGADZAJA SIE co do optymalnej wagi dla Calmar
+  konkretnie - "55/45 jest optymalne" jest wiec czesciowo dopasowane do specyfiki okresu
+  2020-2026 (COVID + 2022), nie w pelni potwierdzone w oknie treningowym 2010-2019.
+
+  **Wniosek**: sama KONCEPCJA miksu `gpm`+`best17_a` jest solidna i odporna (Sharpe stabilny w
+  obu okresach, szeroki zakres wag 40-65% daje podobny wynik) - ale DOKLADNA waga 55/45 dobrana
+  pod maksymalny Calmar nie powinna byc traktowana jako precyzyjnie skalibrowana, tylko jako
+  "rozsadny wybor w szerokiej dobrej strefie". Dla porownania: `gpm` solo relative_drop
+  wlasnych parametrow = 9.6%, `best17_a` solo = 26.7% (patrz sekcja PARAM STABILITY).
+
 ## 2026-07-11 (19)
 
 - **`strategies_v2/gtaa_agg6_best17_a/` - miks gtaa_agg6+best17_a** (user: "Nigdy nie łącz 3 -
