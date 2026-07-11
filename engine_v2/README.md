@@ -641,6 +641,8 @@ strategies_v2/
   gtaa_agg6/                      # "GTAA AGG6" - to samo, top6 zamiast top3 - patrz nizej
   gtaa_agg6_best17_a/             # gtaa_agg6+best17_a, fixed_capital_weights 55/45 - patrz nizej, GORZEJ niz gpm_best17_a (negatywny wynik, udokumentowany)
   daa_g4/                         # "DAA-G4" (Keller & Keuning) - patrz nizej, kanarek osobny + ciagly udzial ochronny
+  vaa_g4_ema/                     # vaa_g4 z EMA zamiast momentum - patrz nizej, GORZEJ (negatywny wynik)
+  daa_g4_ema/                     # daa_g4 z EMA zamiast momentum - patrz nizej, GORZEJ (negatywny wynik)
   # wszystkie pozostale pary 7 glownych strategii (fixed_capital_weights 50/50) - patrz
   # "Wszystkie pary 7 głównych strategii" wyzej; vaa_g4_best17_a to najlepszy Sharpe w repo
   dual_momentum_vaa_g4/  dual_momentum_the_one/       dual_momentum_best17_a/
@@ -1188,6 +1190,27 @@ udzial ochronny, NaN kanarek liczy sie jako zly, ofensywny wybiera najlepszego d
 przy ujemnym score, top_n>1 dzieli po rowno, fallback do `_CASH`) + `test_daa_g4_strategy_spec.py`
 (kanarek WLASCIWYM podzbiorem ofensywnych - nie rownym, end-to-end z dowodem na wszystkie 3
 poziomy udzialu ochronnego, zamrozony baseline metryk).
+
+#### `vaa_g4_ema` / `daa_g4_ema` - eksperyment: EMA zamiast momentum (negatywny wynik)
+
+User (reagujac na rozczarowujacy `daa_g4`): "a co jesli posprawdzasz te oryginalne strategie
+korzystajac np z EMA zamiast tego momentum". Identyczny mechanizm co `vaa_g4`/`daa_g4`, ale
+score = `ema_ratio_monthly` (fast=7, slow=16 - te same wartosci co `best17_a`) zamiast 13612W
+momentum. Zero nowego kodu blokow - `ema_ratio_monthly` juz istnial i jest w pelni ogolny.
+
+**Wynik: EMA wyraznie gorsze niz momentum, na CALEJ siatce 9 sweepowanych spanow**:
+
+| | momentum (13612W) | EMA (7/16, jak best17_a) | EMA - najlepszy z 9 wariantow |
+|---|---|---|---|
+| `vaa_g4` | Sharpe 0.712, MaxDD -24.45% | Sharpe 0.263, MaxDD -36.47% | Sharpe 0.336 (7/12), MaxDD -36.47% |
+| `daa_g4` | Sharpe 0.538, MaxDD -25.50% | Sharpe 0.417, MaxDD -41.40% | Sharpe 0.513 (7/12), MaxDD -36.47% |
+
+Nawet najlepszy sweepowany wariant EMA nie bije domyslnego momentum w zadnej z dwoch strategii.
+**Prawdopodobny powod**: EMA(7,16) zostal dobrany dla `best17_a` (szybszy, waskoscezowy trend na
+XLK/IVV/DBC/IAU), NIE dla `vaa_g4`/`daa_g4` (wolniejsza, szeroka rotacja SPY/EFA/VWO/AGG) -
+13612W momentum jest zaprojektowany WLASNIE do takiej wolniejszej, wieloklasowej rotacji
+(oryginalna metodologia VAA/DAA), crossover EMA reaguje za wolno/za szybko (whipsaw) na tym
+typie uniwersum. 10 nowych testow (`test_ema_variant_strategy_specs.py`).
 
 ## Testy
 

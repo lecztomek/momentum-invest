@@ -2,6 +2,40 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (22)
+
+- **Eksperyment: `strategies_v2/vaa_g4_ema/` i `strategies_v2/daa_g4_ema/`** (user, reagujac na
+  rozczarowujacy wynik `daa_g4`: "a co jesli posprawdzasz te oryginalne strategie korzystajac np
+  z EMA zamiast tego momentum"). Identyczny mechanizm co `vaa_g4`/`daa_g4` (te same
+  ofensywne/obronne/kanarek, te same `portfolio_risk_engine`), ale score = `ema_ratio_monthly`
+  (fast=7, slow=16 - te same wartosci co w `best17_a`) zamiast 13612W momentum. **Zero nowego
+  kodu blokow** - `ema_ratio_monthly` juz istnieje i jest w pelni ogolny, tylko podmieniona
+  konfiguracja `indicators`/`asset_scoring`.
+
+  **UCZCIWY WYNIK: EMA wyraznie GORSZE niz momentum, na CALEJ siatce sweepowanych spanow**
+  (9 kombinacji fast_span×slow_span kazda, `allowed_param_families`):
+
+  | | momentum (13612W) | EMA (7/16, jak best17_a) | EMA - najlepszy z 9 wariantow (7/12) |
+  |---|---|---|---|
+  | `vaa_g4` | CAGR 7.98%, MaxDD -24.45%, Sharpe 0.712 | CAGR 2.69%, MaxDD -36.47%, Sharpe 0.263 | CAGR 3.73%, MaxDD -36.47%, Sharpe 0.336 |
+  | `daa_g4` | CAGR 6.62%, MaxDD -25.50%, Sharpe 0.538 | CAGR 5.59%, MaxDD -41.40%, Sharpe 0.417 | CAGR 6.97%, MaxDD -36.47%, Sharpe 0.513 |
+
+  Nawet NAJLEPSZY z 9 sweepowanych wariantow EMA nie bije domyslnego momentum w zadnym z dwoch
+  strategii. MaxDD identyczny (-36.47%) w wiekszosci wariantow EMA niezaleznie od spanow -
+  sugeruje TEN SAM realny kryzys (prawdopodobnie 2022 lub 2008) nie zostal unikniety przez
+  zadna kombinacje EMA, mimo strojenia.
+
+  **Prawdopodobny powod**: `ema_ratio_monthly(7,16)` zostal dobrany dla `best17_a`
+  (XLK/IVV/DBC/IAU - szybszy, waskoscezowy trend na akcjach technologicznych/surowcach/zlocie),
+  NIE dla `vaa_g4`/`daa_g4` (SPY/EFA/VWO/AGG - wolniejsza, szeroka rotacja miedzy klasami
+  aktywow). 13612W momentum (wazona srednia 1/3/6/12m) jest zaprojektowany WLASNIE do takiej
+  wolniejszej, wieloklasowej rotacji (oryginalna metodologia VAA/DAA) - crossover EMA reaguje
+  za wolno/za szybko (whipsaw) na tym typie uniwersum.
+
+  10 nowych testow (`test_ema_variant_strategy_specs.py` - walidacja obu specow, uzycie EMA nie
+  momentum, end-to-end na realnych danych, zamrozona regresja "EMA gorsze niz momentum" dla obu
+  par). 376/376 testow przechodzi.
+
 ## 2026-07-11 (21)
 
 - **NOWA STRATEGIA `strategies_v2/daa_g4/` - "DAA-G4" (Defensive Asset Allocation, Keller &

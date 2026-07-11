@@ -1,0 +1,40 @@
+{
+  "name": "vaa_g4_ema_v0",
+  "hypothesis": "Eksperyment (user: 'a co jesli posprawdzasz te oryginalne strategie korzystajac np z EMA zamiast tego momentum') - identyczny mechanizm co vaa_g4 (te same 4 ofensywne=kanarki SPY/EFA/VWO/AGG, 3 obronne SHY/IEF/LQD, binarne przelaczenie w vaa_canary), ale score = ema_ratio_monthly (fast=7, slow=16, TE SAME wartosci co w best17_a) zamiast 13612W momentum. Zero nowego kodu blokow - tylko podmieniona konfiguracja indicators/asset_scoring. Cel: sprawdzic, czy 'jakosc trendu' (EMA crossover) daje lepszy sygnal niz surowy momentum na TYM SAMYM uniwersum VAA-G4.",
+  "universe": ["spy.us", "efa.us", "vwo.us", "agg.us", "shy.us", "ief.us", "lqd.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "vaa_canary",
+    "overlays": "none",
+    "execution": "hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "ema7_16": {"impl": "ema_ratio_monthly", "fast_span": 7, "slow_span": 16}
+    },
+    "asset_scoring": {
+      "weights": {"ema7_16": 1.0}
+    },
+    "selector": {"top_n": 1},
+    "alpha_weighting": {"weights": [1.0]},
+    "portfolio_risk_engine": {
+      "offensive_assets": ["spy.us", "efa.us", "vwo.us", "agg.us"],
+      "defensive_assets": ["shy.us", "ief.us", "lqd.us"]
+    },
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 10, "frequency": "monthly"}
+  },
+
+  "allowed_param_families": {
+    "indicators": {"ema7_16.fast_span": [5, 7, 9], "ema7_16.slow_span": [12, 16, 20]}
+  },
+
+  "created_at": "2026-07-11"
+}
