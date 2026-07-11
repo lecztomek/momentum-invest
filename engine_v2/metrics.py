@@ -23,6 +23,11 @@ params:
 UWAGA: `min_pct_positive_rolling_windows` z AcceptanceSpec.Criteria NIE jest tu liczone - wymaga
 dodatkowego parametru (dlugosc okna), ktory nie jest jeszcze nigdzie zdefiniowany. Dolaczymy gdy
 bedzie realna potrzeba (np. przy budowie VALIDATION).
+
+`best_year_return`/`worst_year_return` - zwrot NAJLEPSZEGO i NAJGORSZEGO roku KALENDARZOWEGO w
+zakresie danych (nie ma odpowiednika w AcceptanceSpec.Criteria - to tylko raportowana metryka, nie
+prog akceptacji). Pierwszy i ostatni rok w danych moga byc CZESCIOWE (backtest rzadko zaczyna/
+konczy sie dokladnie 1 stycznia / 31 grudnia) - liczone tak jak wypadaja, bez doannualizowania.
 """
 
 from __future__ import annotations
@@ -76,6 +81,19 @@ def _max_time_underwater_months(monthly_equity: pd.Series) -> int:
     return longest
 
 
+def _yearly_returns(equity_curve: pd.DataFrame) -> pd.Series:
+    """Zwrot KAZDEGO roku kalendarzowego obecnego w equity_curve - pierwszy i ostatni rok moga
+    byc CZESCIOWE (backtest nie zaczyna/konczy sie dokladnie na granicy roku), liczone tak jak
+    sa (nie odrzucamy ich, nie doannualizujemy) - to standardowa konwencja "best/worst calendar
+    year" w raportach wydajnosci."""
+    series = equity_curve.set_index("date")["equity"].sort_index()
+    year_end_equity = series.resample("YE").last()
+    combined = pd.concat([pd.Series([series.iloc[0]], index=[series.index[0]]), year_end_equity])
+    returns = combined.pct_change().dropna()
+    returns.index = returns.index.year
+    return returns
+
+
 def _annual_turnover(final_portfolio: pd.DataFrame) -> float:
     dates = final_portfolio["date"]
     years = (dates.max() - dates.min()).days / 365.25
@@ -104,6 +122,7 @@ def compute_metrics(
 
     monthly_equity = _monthly_equity(equity_curve)
     monthly_returns = monthly_equity.pct_change().dropna()
+    yearly_returns = _yearly_returns(equity_curve)
 
     return {
         "cagr": cagr,
@@ -113,4 +132,6 @@ def compute_metrics(
         "annual_turnover": _annual_turnover(final_portfolio),
         "max_consecutive_negative_months": _max_consecutive_negative_months(monthly_returns),
         "max_time_underwater_months": _max_time_underwater_months(monthly_equity),
+        "best_year_return": float(yearly_returns.max()),
+        "worst_year_return": float(yearly_returns.min()),
     }

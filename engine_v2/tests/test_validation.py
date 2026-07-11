@@ -63,6 +63,7 @@ def test_run_walk_forward_computes_metrics_per_window():
     assert list(result.columns) == [
         "window_start", "window_end", "cagr", "max_drawdown", "sharpe", "calmar",
         "annual_turnover", "max_consecutive_negative_months", "max_time_underwater_months",
+        "best_year_return", "worst_year_return",
     ]
     # stale tempo wzrostu -> podobny CAGR w kazdym oknie
     assert result["cagr"].std() < 0.01

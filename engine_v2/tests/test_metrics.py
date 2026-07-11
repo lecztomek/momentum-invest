@@ -97,6 +97,35 @@ def test_max_time_underwater_months():
     assert result["max_time_underwater_months"] == 4
 
 
+def test_best_and_worst_year_return_known_values():
+    # 2020: 1.0 -> 1.5 (rok kompletny, +50%); 2021: 1.5 -> 1.2 (-20%); 2022: 1.2 -> 1.8 (+50% ex-aequo)
+    idx = [
+        pd.Timestamp("2020-01-01"),
+        pd.Timestamp("2020-12-31"),
+        pd.Timestamp("2021-12-31"),
+        pd.Timestamp("2022-12-31"),
+    ]
+    ec = pd.DataFrame({"date": idx, "equity": [1.0, 1.5, 1.2, 1.8]})
+    fp = _final_portfolio([idx[0]], [0.0])
+
+    result = compute_metrics(ec, fp, {})
+
+    assert result["best_year_return"] == pytest.approx(0.5, abs=1e-9)
+    assert result["worst_year_return"] == pytest.approx(-0.2, abs=1e-9)
+
+
+def test_best_and_worst_year_return_single_partial_year():
+    # caly backtest miesci sie w jednym (czesciowym) roku kalendarzowym - best == worst
+    idx = [pd.Timestamp("2020-03-01"), pd.Timestamp("2020-11-01")]
+    ec = pd.DataFrame({"date": idx, "equity": [1.0, 1.1]})
+    fp = _final_portfolio([idx[0]], [0.0])
+
+    result = compute_metrics(ec, fp, {})
+
+    assert result["best_year_return"] == pytest.approx(0.1, abs=1e-9)
+    assert result["worst_year_return"] == pytest.approx(0.1, abs=1e-9)
+
+
 def test_annual_turnover_averages_across_years():
     idx = pd.date_range("2020-01-01", periods=1, freq="D")
     ec = _equity_curve([1.0, 1.01], start="2020-01-01")
@@ -132,3 +161,4 @@ def test_full_chain_on_real_data(us_data_dir, us_universe):
     assert result["annual_turnover"] >= 0.0
     assert result["max_consecutive_negative_months"] >= 0
     assert result["max_time_underwater_months"] >= 0
+    assert result["best_year_return"] >= result["worst_year_return"]
