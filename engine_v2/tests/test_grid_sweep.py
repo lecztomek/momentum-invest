@@ -165,8 +165,9 @@ def test_full_chain_on_real_example_strategy(us_data_dir, us_universe):
 
     result = run_param_sweep(base_spec, evaluate)
 
-    assert len(result) == 5  # 5 wartosci hysteresis_pct w przykladowej strategii
-    assert result["execution.hysteresis_pct"].tolist() == [0.0, 0.025, 0.05, 0.075, 0.10]
+    assert len(result) == 15  # 5 wartosci hysteresis_pct x 3 wartosci sma_200.window
+    assert sorted(result["execution.hysteresis_pct"].unique().tolist()) == [0.0, 0.025, 0.05, 0.075, 0.10]
+    assert sorted(result["indicators.sma_200.window"].unique().tolist()) == [150, 200, 250]
     assert result["cagr"].notna().all()
     # wyzszy prog histerezy = mniej rebalansow = na ogol nizszy roczny turnover
     low = result.loc[result["execution.hysteresis_pct"] == 0.0, "annual_turnover"].iloc[0]

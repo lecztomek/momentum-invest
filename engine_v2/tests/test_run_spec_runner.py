@@ -78,7 +78,7 @@ def test_search_mode_end_to_end(patched_example_dir):
 
     assert result["mode"] == "search"
     sweep = result["sweep"]
-    assert len(sweep) == 5  # 5 wartosci hysteresis_pct
+    assert len(sweep) == 15  # 5 wartosci hysteresis_pct x 3 wartosci sma_200.window
     assert (sweep["wf_windows"] > 0).all()
     assert sweep["wf_mean_cagr"].notna().all()
 
@@ -86,7 +86,7 @@ def test_search_mode_end_to_end(patched_example_dir):
     stability = result["param_stability"]
     assert stability is not None
     assert stability["metric_key"] == "wf_mean_cagr"
-    assert stability["n_variants"] == 5
+    assert stability["n_variants"] == 15
     assert stability["best"] >= stability["worst"]
     assert stability["relative_drop"] >= 0.0
     assert isinstance(result["param_stability_check"], dict)

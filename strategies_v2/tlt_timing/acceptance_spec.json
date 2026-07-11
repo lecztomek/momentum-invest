@@ -13,7 +13,7 @@
   "named_periods": {},
 
   "param_stability": {
-    "max_relative_metric_drop_within_family": 1.0
+    "max_relative_metric_drop_within_family": 0.30
   },
 
   "uk_mapping": {}
