@@ -2,6 +2,49 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (12)
+
+- **WSZYSTKIE PARY 7 glownych strategii** - user: "dołóż brakujące kombinacje". Sposrod C(7,2)=21
+  mozliwych par (`dual_momentum`, `vaa_g4`, `the_one`, `best17_a`, `all_weather_4`, `gfm`,
+  `best17_b`) byla przetestowana tylko 1 (`the_one`+`best17_a` = `combined_best2`). Dodano
+  pozostale 20, wszystkie `fixed_capital_weights` 50/50 (STANDARDOWY split, NIE indywidualnie
+  strojony na kazda pare - dla uczciwego porownania na tych samych zasadach).
+
+  **ODKRYCIE**: `vaa_g4` + `best17_a` (50/50) daje Sharpe **1.03** - NAJLEPSZY w calym repo (bije
+  nawet `combined_triple`'s 0.99), Calmar 0.63 (prawie identyczny z `combined_triple`'s 0.64),
+  CAGR 11.48%, MaxDD -18.21% - to wszystko z PROSTEGO, niestrojonego 50/50 fixed split miedzy
+  dwiema strategiami, ktore nigdy wczesniej nie byly razem testowane.
+
+  Top 6 par wg Sharpe:
+
+  | Para | CAGR | MaxDD | Sharpe | Calmar | Turnover/rok |
+  |---|---|---|---|---|---|
+  | `vaa_g4` + `best17_a` | 11.48% | -18.21% | **1.03** | 0.63 | 4.24 |
+  | `best17_a` + `all_weather_4` | 11.84% | -21.84% | 0.98 | 0.54 | 1.23 |
+  | `the_one` + `best17_a` (=`combined_best2`) | 12.58% | -22.73% | 0.94 | 0.55 | 3.63 |
+  | `vaa_g4` + `all_weather_4` | 8.58% | -18.05% | 0.93 | 0.48 | 4.76 |
+  | `best17_a` + `gfm` | 11.84% | -27.86% | 0.89 | 0.43 | 1.67 |
+  | `best17_a` + `best17_b` | 10.99% | -29.42% | 0.84 | 0.37 | 1.46 |
+
+  Wzorzec: KAZDA z 6 najlepszych par zawiera `best17_a` - potwierdza, ze jest to najsilniejsza
+  pojedyncza "noga" w calym repo i dobry kandydat na core niemal kazdego portfela. Pary BEZ
+  `best17_a` konsekwentnie wypadaja slabiej (najlepsza: `vaa_g4`+`the_one`, Sharpe 0.71).
+
+  Nowe foldery: `dual_momentum_vaa_g4`, `dual_momentum_the_one`, `dual_momentum_best17_a`,
+  `dual_momentum_all_weather_4`, `dual_momentum_gfm`, `dual_momentum_best17_b`, `vaa_g4_the_one`,
+  `vaa_g4_best17_a`, `vaa_g4_all_weather_4`, `vaa_g4_gfm`, `vaa_g4_best17_b`,
+  `the_one_all_weather_4`, `the_one_gfm`, `the_one_best17_b`, `best17_a_all_weather_4`,
+  `best17_a_gfm`, `best17_a_best17_b`, `all_weather_4_gfm`, `all_weather_4_best17_b`,
+  `gfm_best17_b` (20 folderow).
+
+  **NOWY OGOLNY TEST** `test_all_combined_specs.py` - automatycznie odkrywa KAZDY
+  `strategies_v2/*/combined_spec.json` (glob), waliduje i uruchamia end-to-end na realnych
+  danych - zamyka luke "combined portfolio bez dedykowanego testu" (patrz README) dla
+  WSZYSTKICH 27 portfeli naraz, w tym przyszlych, bez potrzeby pisania nowego pliku per portfel.
+  55 nowych testow (27 portfeli x 2 + 1 sanity check).
+
+  Pelny pakiet testow: **289/289**.
+
 ## 2026-07-11 (11)
 
 - **BRAKUJACE TESTY end-to-end dla `best17_a` (solo) i `best17_a_tlt_hedge` (z hedge)** - user

@@ -257,8 +257,31 @@ Calmar nawet nieco gorszy. Sensowny, ale niejednoznaczny kompromis - nie "oczywi
 strategii (zamiast dwóch) daje wyraźnie lepszy kompromis: `best17_a` (45%) + `the_one` (20%) +
 `all_weather_4` (35%) - trzy różne charaktery (skoncentrowany momentum z kanarkiem;
 dual-momentum switch; zawsze-w-pełni-zainwestowany) dają więcej dywersyfikacji niż para. Wynik:
-CAGR ~11.5%, MaxDD ~-18.1%, Sharpe ~0.99, Calmar ~0.64 - **najlepszy Sharpe I Calmar w całym
-repo**, przy CAGR>10% i najniższym MaxDD ze wszystkich konfiguracji z CAGR>10%.
+CAGR ~11.5%, MaxDD ~-18.1%, Sharpe ~0.99, Calmar ~0.64 - przy CAGR>10% i najniższym MaxDD ze
+wszystkich konfiguracji z CAGR>10% (**UWAGA** - "najlepszy Sharpe w całym repo" przestało być
+prawdą po pełnym przeglądzie par niżej, `vaa_g4`+`best17_a` ma wyższy Sharpe).
+
+**Wszystkie pary 7 głównych strategii (2026-07-11)** - user: "dołóż brakujące kombinacje".
+Sposrod C(7,2)=21 możliwych par (`dual_momentum`/`vaa_g4`/`the_one`/`best17_a`/`all_weather_4`/
+`gfm`/`best17_b`) tylko 1 (`the_one`+`best17_a`) była wcześniej przetestowana. Dodano pozostałe
+20, wszystkie `fixed_capital_weights` 50/50 (standardowy split, NIE strojony indywidualnie - dla
+uczciwego porównania na tych samych zasadach). **Odkrycie**: `vaa_g4`+`best17_a` daje Sharpe
+**1.03** - najlepszy w całym repo (bije nawet `combined_triple`), Calmar 0.63 (prawie identyczny
+z `combined_triple`), CAGR 11.48%, MaxDD -18.21% - z PROSTEGO, niestrojonego 50/50 splitu między
+dwiema strategiami, które nigdy wcześniej nie były razem testowane. Top 6 par wg Sharpe:
+
+| Para | CAGR | MaxDD | Sharpe | Calmar | Turnover/rok |
+|---|---|---|---|---|---|
+| `vaa_g4` + `best17_a` | 11.48% | -18.21% | **1.03** | 0.63 | 4.24 |
+| `best17_a` + `all_weather_4` | 11.84% | -21.84% | 0.98 | 0.54 | 1.23 |
+| `the_one` + `best17_a` (=`combined_best2`) | 12.58% | -22.73% | 0.94 | 0.55 | 3.63 |
+| `vaa_g4` + `all_weather_4` | 8.58% | -18.05% | 0.93 | 0.48 | 4.76 |
+| `best17_a` + `gfm` | 11.84% | -27.86% | 0.89 | 0.43 | 1.67 |
+| `best17_a` + `best17_b` | 10.99% | -29.42% | 0.84 | 0.37 | 1.46 |
+
+Wzorzec: KAŻDA z 6 najlepszych par zawiera `best17_a` - potwierdza, że to najsilniejsza
+pojedyncza "noga" w całym repo, dobry kandydat na core niemal każdego portfela. Pary BEZ
+`best17_a` konsekwentnie wypadają słabiej (najlepsza: `vaa_g4`+`the_one`, Sharpe 0.71).
 
 Orchestrator: `combined_pipeline.run_combined_pipeline(combined_spec, base_dir)` -> tabela
 FINAL PORTFOLIO. Przykład: `strategies_v2/combined_example/combined_spec.json`.
@@ -464,6 +487,15 @@ strategies_v2/
   the_one_tlt_hedge/             # the_one+tlt_hedge, ta sama regula co best17_a - patrz niżej (hedge SZKODZI tu)
   gfm/                           # "Global Factor Model" - patrz niżej (BEZ DANYCH, zaimplementowane "na sucho")
   best17_b/                      # "Strategia B" uzytkownika - rotacja sektorowa - patrz niżej
+  # wszystkie pozostale pary 7 glownych strategii (fixed_capital_weights 50/50) - patrz
+  # "Wszystkie pary 7 głównych strategii" wyzej; vaa_g4_best17_a to najlepszy Sharpe w repo
+  dual_momentum_vaa_g4/  dual_momentum_the_one/       dual_momentum_best17_a/
+  dual_momentum_all_weather_4/   dual_momentum_gfm/   dual_momentum_best17_b/
+  vaa_g4_the_one/        vaa_g4_best17_a/             vaa_g4_all_weather_4/
+  vaa_g4_gfm/            vaa_g4_best17_b/             the_one_all_weather_4/
+  the_one_gfm/           the_one_best17_b/            best17_a_all_weather_4/
+  best17_a_gfm/          best17_a_best17_b/           all_weather_4_gfm/
+  all_weather_4_best17_b/                             gfm_best17_b/
 ```
 
 ### Druga przykładowa strategia: `dual_momentum` (test szerokości silnika)
@@ -833,18 +865,21 @@ w `tests/conftest.py`). Kluczowe testy regresyjne:
   co ręczne wywołanie każdego bloku po kolei.
 - `test_combined_pipeline.py` - COMBINER + wspólna histereza na dwóch różnych strategiach.
 
-**Uwaga o pokryciu testami per-strategia**: NIE każda strategia w `strategies_v2/` ma dedykowany
-test end-to-end ładujący jej WŁASNY `strategy_spec.json`/`combined_spec.json` z dysku i
-uruchamiający go na realnych danych - część weryfikacji w tej sesji była robiona ad-hoc skryptami
-bez trwałego śladu w `tests/` (user pytanie 2026-07-11: "a best17 z hedge czy bez są testy?" -
-odpowiedź brzmiała NIE dla obu, dopóki nie dodano `test_best17_a_strategy_spec.py` i
-`test_best17_a_tlt_hedge.py`). Strategie z takim dedykowanym testem (wiring + end-to-end +
-zamrożony baseline metryk): `example_strategy` (`test_pipeline.py`), `the_one`/`vaa_g4`
-(`test_gem_dual_momentum_switch.py`/`test_vaa_canary.py` - tylko blok, nie pełny plik specyfikacji),
-`gfm`, `best17_b`, `best17_a`, `best17_a_tlt_hedge`. Combined portfolio bez dedykowanego testu
-(tylko `combined_example` ma pełny end-to-end w `test_combined_pipeline.py`):
-`combined_best2`/`combined_best2_dynamic`/`combined_triple`/`best17_a_tlt_timing`/
-`the_one_tlt_hedge` - zweryfikowane ad-hoc przy tworzeniu, ale bez trwałej regresji.
+**Pokrycie testami per-strategia**: NIE każda SAMODZIELNA strategia w `strategies_v2/` ma
+dedykowany test end-to-end ładujący jej WŁASNY `strategy_spec.json` z dysku (user pytanie
+2026-07-11: "a best17 z hedge czy bez są testy?" - odpowiedź brzmiała NIE dla `best17_a`, dopóki
+nie dodano `test_best17_a_strategy_spec.py`). Strategie z takim dedykowanym testem (wiring +
+end-to-end + zamrożony baseline metryk): `example_strategy` (`test_pipeline.py`), `the_one`/
+`vaa_g4` (`test_gem_dual_momentum_switch.py`/`test_vaa_canary.py` - tylko blok, nie pełny plik
+specyfikacji), `gfm`, `best17_b`, `best17_a`.
+
+**Portfele łączone (`combined_spec.json`) - inaczej.** `test_all_combined_specs.py` (dodane
+2026-07-11 razem z pełnym przeglądem par - patrz sekcja "Wszystkie pary 7 głównych strategii"
+wyżej) automatycznie ODKRYWA (glob) KAŻDY zapisany `strategies_v2/*/combined_spec.json` i
+uruchamia go end-to-end na realnych danych - WSZYSTKIE 27 portfeli w repo (w tym przyszłe,
+jeszcze nienapisane) mają teraz to samo minimum regresji bez potrzeby nowego pliku testowego per
+portfel. `best17_a_tlt_hedge` ma DODATKOWO własny, bardziej szczegółowy test
+(`test_best17_a_tlt_hedge.py` - regresja na bugfix "hedge włączał się przed startem core").
 
 ## Co jeszcze nie istnieje
 
