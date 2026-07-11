@@ -2,6 +2,58 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (10)
+
+- **PARAM STABILITY na WSZYSTKICH strategiach** - user: "trzeba wszystkie strategie tym
+  posprawdzac i wszystkie parametry w jakims sensownym zakresie". Rozszerzono
+  `allowed_param_families` tam, gdzie mialy tylko 1 wymiar sweepa (dodano drugi, sensowny
+  parametr): `example_strategy` (+`sma_200.window` 150/200/250), `best17_a`
+  (+`canary.bad_threshold` -0.03/-0.02/-0.01), `gfm` (+`regime_threshold` -0.02/0.0/0.02),
+  `tlt_timing` (+`hysteresis_pct` 0.0/0.05/0.10), `the_one`/`vaa_g4` (rozszerzone
+  `hysteresis_pct` na 5 wartosci). `best17_b`/`dual_momentum`/`all_weather_4` mialy juz 2
+  wymiary - bez zmian.
+
+  **BUGFIX PRZY OKAZJI**: `vaa_g4` i `dual_momentum` NIE MIALY `cost_bps` w ogole (domyslnie 0) -
+  ten sam bug co wczesniej naprawiony dla `the_one`/`example_strategy`/`example_strategy_b`, tym
+  razem nieznaleziony wczesniej bo te dwie strategie byly zablokowane brakiem danych. Dodano
+  `cost_bps: 10`. Wplyw: `vaa_g4` CAGR 8.82%->7.98% (MaxDD -23.38%->-24.45%), `dual_momentum`
+  CAGR 6.98%->6.74% (MaxDD -18.78%->-18.99%) - wszystkie progi `acceptance_spec.json` nadal
+  przechodza.
+
+  **Wyniki `param_stability` (relative_drop wf_mean_cagr, prog 0.30 wszedzie oprocz
+  wyjatkow nizej)**:
+
+  | Strategia | Wariantow | Best | Worst | relative_drop | Check |
+  |---|---|---|---|---|---|
+  | `example_strategy` | 15 | 6.46% | 5.85% | 9.53% | PASS |
+  | `best17_a` | 15 | 15.15% | 11.10% | 26.73% | PASS |
+  | `vaa_g4`* | 5 | 9.20% | 9.20% | 0.00% | PASS (trywialnie) |
+  | `the_one`* | 5 | 6.18% | 6.18% | 0.00% | PASS (trywialnie) |
+  | `best17_b` | 12 | 11.01% | 7.63% | 30.73% | **FAIL** (borderline) |
+  | `dual_momentum` | 15 | 5.99% | 3.96% | 33.85% | **FAIL** |
+  | `gfm` | 9 | 12.15% | 8.12% | 33.18% | **FAIL** |
+  | `all_weather_4` | 15 | 5.40% | 2.91% | 46.12% | **FAIL** |
+  | `tlt_timing` | 9 | 5.60% | 2.04% | 63.49% | **FAIL** |
+
+  *`vaa_g4`/`the_one` - `hysteresis_pct` (jedyny obecnie sweepowany parametr) jest tu MARTWY:
+  `vaa_canary`/`gem_dual_momentum_switch` zawsze produkuja BINARNE (100% jednego aktywa albo
+  cash) alokacje, wiec dowolna wartosc `hysteresis_pct` ponizej 100% nigdy nie blokuje
+  przelaczenia - relative_drop=0.00% odzwierciedla "ten parametr nic tu nie robi w testowanym
+  zakresie", NIE prawdziwa odpornosc rodziny. Uczciwie odnotowane jako ograniczenie obecnego
+  sweepa, nie ukryte za falszywym "stabilne".
+
+  `tlt_timing` mial wczesniej ustawiony BARDZO luzny prog `param_stability` (1.0, przeniesiony z
+  `tlt_hedge` przy tworzeniu) - zaostrzony do standardowego 0.30, zgodnie z reszta repo (bez tej
+  korekty check trywialnie przechodzil, maskujac realne 63.49% - najbardziej krucha rodzina w
+  calym repo, spojne z wczesniejszym odkryciem "tlt_timing solo gorszy niz buy&hold").
+
+  Pominiete celowo: `example_strategy_b` (brak TestSpec/AcceptanceSpec/RunSpec - to tylko partner
+  do testowania combinera) i `tlt_hedge` (trywialna, zawsze-100%-TLT cegielka do combinera,
+  `walk_forward.enabled=false` - nie jest samodzielna strategia do oceny).
+
+  Pelny pakiet testow po rozszerzeniu `allowed_param_families` (2 hardkodowane liczby wariantow w
+  testach dopasowane do nowego 2-wymiarowego sweepa `example_strategy`): **224/224**.
+
 ## 2026-07-11 (9)
 
 - **NOWY MODUL `engine_v2/param_stability.py` - "jak silna jest rodzina strategii"** - user:

@@ -207,6 +207,12 @@ Sharpe 0.93 (vs 0.94), Calmar 0.52 (vs 0.62) - wyraźnie gorzej na każdym wymia
 przewaga `momentum_hedge_overlay` bierze się WŁAŚNIE z relatywnego porównania do core, nie z
 samego TLT. `best17_a_tlt_hedge/` (relatywny wariant) pozostaje rekomendowanym wyborem.
 
+**Param stability (2026-07-11)**: rodzina `mom_3.window` x `execution.hysteresis_pct` (9
+wariantow) - `relative_drop` = **63.49%**, **FAIL** (prog zaostrzony z pierwotnie luznych 1.0 do
+standardowego 0.30) - **najbardziej krucha rodzina w calym repo**, spojne z powyzszym wnioskiem:
+`tlt_timing` nie ma realnej przewagi jako samodzielna strategia, a jej solo-wynik jest bardzo
+wrazliwy na dobor okna momentum (window=3 duzo lepsze niz sasiednie 1/6).
+
 **`strategies_v2/the_one_tlt_hedge/` - ta sama reguła hedge'u, ale core=`the_one` zamiast
 `best17_a`.** WYNIK ODWROTNY: hedge SZKODZI na każdej wadze (sweep 0.20-0.60) - przy 40% CAGR
 spada 8.76%->7.34%, MaxDD **ROŚNIE** -23.59%->-25.15% (zamiast spadać). Przyczyna: `the_one` JUŻ
@@ -373,11 +379,46 @@ Wymaga metryki typu "wyzej = lepiej" (`cagr`, `sharpe`, `calmar`, `wf_mean_cagr`
 lepiej" (np. `annual_turnover`) `best`/`worst` wyjdzie odwrocone i strace sens; niezabezpieczone
 w kodzie, tylko udokumentowane.
 
-**Przyklad na realnej strategii** (`best17_b`, rodzina `execution.min_score_gap` x
-`indicators.mom_9.window`, 12 wariantow, 5 okien walk-forward kazdy): `wf_mean_cagr` od 7.63%
-(`min_score_gap=0.0, window=6`) do 11.01% (`min_score_gap=0.05, window=12`) - `relative_drop` =
-**30.7%**, LEKKO przekracza prog `acceptance_spec.json.param_stability.max_relative_metric_drop_
-within_family=0.30` (borderline fail) - rodzina jest umiarkowanie, ale nie idealnie stabilna.
+**Przebiegniete na WSZYSTKICH strategiach w repo** (2026-07-11, user: "trzeba wszystkie strategie
+tym posprawdzac i wszystkie parametry w jakims sensownym zakresie") - `allowed_param_families`
+rozszerzone tam, gdzie mialy tylko 1 wymiar (dodano drugi sensowny parametr: `example_strategy`
++`sma_200.window`, `best17_a` +`canary.bad_threshold`, `gfm` +`regime_threshold`, `tlt_timing`
++`hysteresis_pct`; `the_one`/`vaa_g4` rozszerzone na 5 wartosci `hysteresis_pct`;
+`best17_b`/`dual_momentum`/`all_weather_4` mialy juz 2 wymiary):
+
+| Strategia | Wariantow | Best (wf_mean_cagr) | Worst | relative_drop | Prog 0.30 |
+|---|---|---|---|---|---|
+| `example_strategy` | 15 | 6.46% | 5.85% | 9.53% | PASS |
+| `best17_a` | 15 | 15.15% | 11.10% | 26.73% | PASS |
+| `vaa_g4`* | 5 | 9.20% | 9.20% | 0.00% | PASS (trywialnie) |
+| `the_one`* | 5 | 6.18% | 6.18% | 0.00% | PASS (trywialnie) |
+| `best17_b` | 12 | 11.01% | 7.63% | 30.73% | **FAIL** (borderline) |
+| `dual_momentum` | 15 | 5.99% | 3.96% | 33.85% | **FAIL** |
+| `gfm` | 9 | 12.15% | 8.12% | 33.18% | **FAIL** |
+| `all_weather_4` | 15 | 5.40% | 2.91% | 46.12% | **FAIL** |
+| `tlt_timing` | 9 | 5.60% | 2.04% | 63.49% | **FAIL** |
+
+**\*** `vaa_g4`/`the_one` - jedyny obecnie sweepowany parametr (`hysteresis_pct`) jest tu MARTWY:
+`vaa_canary`/`gem_dual_momentum_switch` zawsze produkuja BINARNE (100% jednego aktywa albo cash)
+alokacje, wiec dowolna wartosc `hysteresis_pct` ponizej 100% nigdy nie blokuje przelaczenia -
+`relative_drop=0.00%` odzwierciedla "ten parametr nic tu nie robi w testowanym zakresie", NIE
+prawdziwa odpornosc rodziny. Uczciwie odnotowane jako ograniczenie obecnego sweepa, nie ukryte za
+falszywym "stabilne".
+
+`tlt_timing` mial wczesniej BARDZO luzny prog (1.0, przeniesiony z `tlt_hedge` przy tworzeniu) -
+zaostrzony do standardowego 0.30 - bez tej korekty check trywialnie przechodzil, maskujac realne
+63.49% - **najbardziej krucha rodzina w calym repo**, spojne z wczesniejszym odkryciem
+"`tlt_timing` solo gorszy niz buy&hold" (patrz sekcja `tlt_timing` nizej).
+
+Pominiete celowo: `example_strategy_b` (brak TestSpec/AcceptanceSpec/RunSpec - tylko partner do
+testowania combinera) i `tlt_hedge` (trywialna, zawsze-100%-TLT cegielka do combinera,
+`walk_forward.enabled=false` - nie jest samodzielna strategia do oceny).
+
+Przy okazji znaleziony bug: `vaa_g4`/`dual_momentum` NIE MIALY `cost_bps` w ogole (ten sam wzorzec
+co wczesniej naprawiony dla `the_one`/`example_strategy`/`example_strategy_b`, tym razem
+nieznaleziony wczesniej bo byly zablokowane brakiem danych) - dodano `cost_bps: 10`. Wplyw: `vaa_g4`
+CAGR 8.82%->7.98%, `dual_momentum` CAGR 6.98%->6.74% - wszystkie progi `acceptance_spec.json`
+nadal przechodza.
 
 ## Struktura folderów
 
@@ -440,6 +481,13 @@ przyjmuje nowe, niezaplanowane wcześniej koncepcje bez przepisywania istniejąc
 `max_time_underwater_months` skorygowany transparentnie z pierwotnie zgadywanych 24 na 30 - reszta
 progow (CAGR/MaxDD/Sharpe/Calmar/turnover) przeszla bez korekty.
 
+**UWAGA (2026-07-11, 2)**: powyzsze liczby byly BEZ `cost_bps` - strategia go w ogole nie miala
+ustawionego (ten sam bug co u `the_one`/`example_strategy`, nieznaleziony wczesniej bo strategia
+byla zablokowana brakiem danych). Po dodaniu `cost_bps: 10`: CAGR 6.98%->**6.74%**, MaxDD
+-18.78%->-18.99%, Sharpe 0.62->0.61, Calmar 0.37->0.35 - wszystkie progi nadal przechodza.
+Param stability (sekcja "PARAM STABILITY" wyzej): `relative_drop` = 33.85% - LEKKO przekracza
+prog 0.30 (fail).
+
 ### Trzecia przykładowa strategia: `vaa_g4` (publicznie znana - Keller VAA)
 
 Keller & Keuning (2017) "Breadth Momentum and Vigilant Asset Allocation" - wariant G4
@@ -473,6 +521,14 @@ max_time_underwater 54 miesiace, najgorszy rok -14.94%. `acceptance_spec.json`
 `max_drawdown`/`min_calmar`/`max_time_underwater_months` skorygowane transparentnie z pierwotnie
 zgadywanych (-0.20/0.4/24) na (-0.26/0.30/60) PO zobaczeniu tego wyniku.
 
+**UWAGA (2026-07-11, 2)**: powyzsze liczby byly BEZ `cost_bps` (ten sam bug co u `the_one`/
+`dual_momentum`, nieznaleziony wczesniej bo strategia byla zablokowana brakiem danych). Po
+dodaniu `cost_bps: 10`: CAGR 8.82%->**7.98%**, MaxDD -23.38%->-24.45%, Sharpe 0.78->0.71, Calmar
+0.38->0.33 - wszystkie progi nadal przechodza (`max_time_underwater_months` dokladnie na
+granicy: 60<=60). Param stability (sekcja "PARAM STABILITY" wyzej): `relative_drop` = 0.00% -
+TRYWIALNIE stabilne, bo `hysteresis_pct` jest martwym parametrem dla binarnego
+`vaa_canary` (patrz zastrzezenie tam).
+
 ### Czwarta przykładowa strategia: `the_one` (rekonstrukcja publicznej strategii)
 
 Rekonstrukcja "The One" (inwestujdlugoterminowo.pl/the-one/) - risk-on: SPY/VEA/VWO, risk-off:
@@ -500,6 +556,10 @@ obserwacja z jednego backtestu, nie dowod wyzszosci.
 transakcyjny = 0, mimo najwyzszego turnoveru w repo, ~6.5/rok) - `final` (cala historia, z
 kosztem) to teraz CAGR ~8.8%, Sharpe ~0.61 - `validation`/OOS NIE przeliczone ponownie po tych
 zmianach, traktowac powyzsze porownanie train/OOS jako nieaktualne.
+
+**Param stability (2026-07-11)**: `relative_drop` = 0.00% - TRYWIALNIE stabilne, z tego samego
+powodu co `vaa_g4` (`hysteresis_pct` martwy dla binarnego `gem_dual_momentum_switch` - patrz
+sekcja "PARAM STABILITY" wyzej).
 
 ### Piata strategia: `best17_a` (realna strategia uzytkownika, bez hedge)
 
@@ -626,6 +686,10 @@ Po tej poprawce: CAGR ~16.7% -> ~16.5%, rozbieznych miesiecy 34/216 -> 28/216 (~
 juz genuinie subtelne roznice na granicy rankingu (np. IVV vs DBC z niemal identycznym score),
 diminishing returns dalszego dochodzenia.
 
+**Param stability (2026-07-11)**: rodzina `execution.min_score_gap` x `asset_filters.canary.
+bad_threshold` (15 wariantow) - `relative_drop` = 26.73%, PASS (prog 0.30) - rodzina rozsadnie
+stabilna, wybor konkretnych progow nie jest krytyczny.
+
 ### Szosta strategia: `all_weather_4` (uproszczony "all-weather" na 4 klasach aktywow)
 
 User pomysl: 4 klasy aktywow (akcje/obligacje/zloto/surowce), udzial dynamiczny wg score, ale
@@ -658,6 +722,12 @@ Sharpe ~0.82, Calmar ~0.35, roczny turnover ~1.74 - najnizszy turnover ze wszyst
 tym repo (mniej "wchodzenia/wychodzenia", tylko przewazanie juz posiadanych 4 klas). MaxDD -25.5%
 przekroczyl pierwotnie zgadywany prog `acceptance_spec.max_drawdown=-0.20` - prog skorygowany
 transparentnie do -0.28 PO zobaczeniu wyniku (nie ukryte - patrz `run_spec.json.notes`).
+
+**Param stability (2026-07-11)**: rodzina `alpha_weighting.min_weight_blocks` x
+`execution.hysteresis_pct` (15 wariantow) - `relative_drop` = 46.12%, **FAIL** (prog 0.30) -
+najbardziej krucha rodzina posrod strategii z niezerowa wartoscia (`min_weight_blocks=1` vs `2`
+robi duza roznice - gwarantowane minimum 20% zamiast 10% na kazda z 4 klas wyraznie zmienia
+charakter strategii, nie jest subtelnym niuansem).
 
 ### Siodma strategia: `gfm` (Global Factor Model, inwestujdlugoterminowo.pl)
 
@@ -703,6 +773,11 @@ turnover ~3.47, max_time_underwater 32 miesiace, najgorszy rok -7.57%. Sweep top
 przeszly bez korekty. Zastrzezenie o placeholderowym sygnale rezimu (wyzej) pozostaje w mocy -
 powyzszy wynik to jawna rekonstrukcja z zastepcza regula, NIE wierne odtworzenie GFM.
 
+**Param stability (2026-07-11)**: rodzina `top_n` x `regime_threshold` (9 wariantow) -
+`relative_drop` = 33.18%, **FAIL** (prog 0.30) - GFM-3 z `regime_threshold=0.0` wyraznie lepszy
+niz GFM-5 z `regime_threshold=-0.02`; spojne z tym, ze placeholderowy sygnal rezimu jest z natury
+prowizoryczny - realna regula GFM (nieznana) moglaby zachowywac sie inaczej.
+
 ### Osma strategia: `best17_b` ("Strategia B" uzytkownika - rotacja sektorowa)
 
 Uzytkownik dostarczyl dane (`xlp`/`xlv`/`xlf`/`xle`/`xli`/`rsp` w `data/us/nyse/`) i opisal
@@ -738,6 +813,10 @@ reguly, nie wynik strojenia.
 5 testow (`test_best17_b_strategy_spec.py`) - walidacja specyfikacji, rozwiazanie blokow, kanarek
 XLI+XLP, gap 3%, i end-to-end na realnych danych (oba rezymy risk-on/cash wystapily w historii,
 nigdy wiecej niz top_n=2 aktywow naraz).
+
+**Param stability (2026-07-11)**: rodzina `min_score_gap` x `mom_9.window` (12 wariantow) -
+`relative_drop` = 30.73%, **FAIL** (prog 0.30, borderline) - lekko powyzej progu, spojne z
+powyzszym sweepem (`window=6`/`12` wyraznie gorsze niz `window=9`).
 
 ## Testy
 
