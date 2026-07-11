@@ -2,6 +2,29 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (26)
+
+- **KOREKTA: `iau_gate`/`dbc_gate`/`rebound` NIE sa "martwe"** (user: "a powiedz jak czesto
+  wchodzilo gate dla zlota?") - poprzedni wpis (23) opisal ich `relative_drop=0%` jako "gate
+  prawie nigdy nie binduje", co bylo NIEPRECYZYJNE. Sprawdzone wprost na realnych danych:
+  - `iau_gate` blokuje IAU w **78/218 miesiecy calej historii (35.8%)**, 46/115 (40%) w oknie
+    train, i w **21/115 miesiecy jest JEDYNYM blokerem** (kanarek + `require_positive_score`
+    akurat przepuszczaja) - a wiec DZIALA, nie jest redundantny.
+  - `dbc_gate` blokuje DBC jeszcze czesciej: **103/218 (47.2%)**.
+  - `rebound` (VT) aktywuje sie w **7/218 miesiecy (3.2%)** - rzadko, ale nie zero (z 16/218
+    miesiecy w calosci w cash, 7 zlapal rebound).
+
+  Mimo to, `relative_drop=0%` w OKNIE WALK-FORWARD (2010-06 do 2019-12) pozostaje poprawny wynik
+  z innego powodu: empirycznie zmiana progu `iau_gate` (-0.03 do +0.01) zmienia FAKTYCZNE wagi
+  portfela tylko w 9/218 miesiecy CALEJ historii - i **ZERO z nich wypada w oknie walk-forward**
+  (zmiany sa w 2009-09 [przed oknem] i 2021/2023 [w oknie test/OOS]). Powod: gdy gate binduje
+  NIEZALEZNIE w oknie treningowym, IAU i tak ma za slaby wlasny `ema7_16` score, zeby wygrac top2
+  - wiec dokladna wartosc progu nie zmienia WYNIKU w TYM oknie, mimo ze zmienia ELIGIBILNOSC.
+
+  **Poprawna interpretacja**: `relative_drop=0%` = "zmiana progu nie zmienia wyniku W TYM OKNIE
+  TESTOWYM", NIE "mechanizm nigdy nie dziala" - realna wartosc tych gate'ow "na przyszlosc" (poza
+  oknem 2010-2019) pozostaje niepotwierdzona przez ten konkretny test, nie odrzucona.
+
 ## 2026-07-11 (25)
 
 - **`local_param_stability` wpiete do `run_spec_runner._run_search` - AUTOMATYCZNIE, dla kazdego
