@@ -2,6 +2,36 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (8)
+
+- **NOWA STRATEGIA `strategies_v2/best17_b/` - "Strategia B" uzytkownika, rotacja sektorowa**.
+  User dorzucil dane (`xlp`/`xlv`/`xlf`/`xle`/`xli`/`rsp` w `data/us/nyse/`) i opisal regule:
+  9-miesieczny momentum na 6 sektorowych ETF, kanarek EMA7>EMA16 na XLI ORAZ XLP jednoczesnie
+  (jesli choc jeden zawodzi - 100% cash), top2 z dodatnim momentum po 50/50, histereza "zmien
+  tylko gdy nowy jest lepszy o >=3%", rebalans miesieczny.
+
+  **Zero nowego kodu bloku** - w calosci zlozone z JUZ ISTNIEJACYCH blokow: `momentum_monthly`
+  (9m), `ema_ratio_monthly` (kanarek EMA7/16), `canary_regime_gate` (XLI+XLP, `bad_threshold=0.0`
+  = "EMA7>EMA16" wprost), `indicator_positive` (tylko dodatni momentum), `weighted_sum`, `top_n`,
+  `rank_weights` (50/50), `score_gap_hysteresis` (`min_score_gap=0.03`, `full_position_size=2`) -
+  identyczna architektura co `best17_a` (kanarek+momentum+score-gap histereza), inne
+  tickery/progi/kanarek (para cykliczny-vs-defensywny XLI/XLP zamiast szerokiego rynku VT/XLK).
+
+  **Realny wynik** (cala historia, 2005-12 do 2026-07, 248 miesiecy): CAGR 7.11%, MaxDD -29.71%,
+  Sharpe 0.52, Calmar 0.24, roczny turnover ~2.21, max_time_underwater 35 miesiecy, najgorszy rok
+  -15.51%. Wszystkie progi `acceptance_spec.json` (zgadywane przed przebiegiem) przeszly bez
+  korekty.
+
+  Sweep `mom_9.window` (6/9/12) potwierdzil, ze wybor uzytkownika (9 miesiecy) jest WYRAZNIE
+  najlepszy (CAGR 7.11% vs 4.66%/4.81%, MaxDD -29.71% vs -38.39%/-41.51%) - nie przypadkowy dobor.
+  Sweep `min_score_gap` (0.00/0.01/0.03/0.05): 0.01 dal odrobine lepszy Sharpe/Calmar niz opisane
+  0.03, ale 0.03 pozostawione jako domyslne (wierne odtworzenie opisanej reguly, nie wynik
+  strojenia).
+
+  5 nowych testow (`test_best17_b_strategy_spec.py` - walidacja, wiring, kanarek XLI/XLP, gap 3%,
+  end-to-end na realnych danych: oba rezymy risk-on/cash wystapily, nigdy >2 aktywa naraz). Pelny
+  pakiet testow: **211/211**.
+
 ## 2026-07-11 (7)
 
 - **Dorzucone brakujace tickery - `vaa_g4`, `dual_momentum`, `gfm` odblokowane** (user: "dorzuciłem

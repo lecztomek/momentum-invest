@@ -385,6 +385,7 @@ strategies_v2/
   best17_a_tlt_timing/           # best17_a+tlt_timing, fixed_capital_weights - patrz niżej
   the_one_tlt_hedge/             # the_one+tlt_hedge, ta sama regula co best17_a - patrz niżej (hedge SZKODZI tu)
   gfm/                           # "Global Factor Model" - patrz niżej (BEZ DANYCH, zaimplementowane "na sucho")
+  best17_b/                      # "Strategia B" uzytkownika - rotacja sektorowa - patrz niżej
 ```
 
 ### Druga przykładowa strategia: `dual_momentum` (test szerokości silnika)
@@ -664,6 +665,42 @@ turnover ~3.47, max_time_underwater 32 miesiace, najgorszy rok -7.57%. Sweep top
 `acceptance_spec.json` progi (zgadywane przed przebiegiem, jak przy `all_weather_4`) WSZYSTKIE
 przeszly bez korekty. Zastrzezenie o placeholderowym sygnale rezimu (wyzej) pozostaje w mocy -
 powyzszy wynik to jawna rekonstrukcja z zastepcza regula, NIE wierne odtworzenie GFM.
+
+### Osma strategia: `best17_b` ("Strategia B" uzytkownika - rotacja sektorowa)
+
+Uzytkownik dostarczyl dane (`xlp`/`xlv`/`xlf`/`xle`/`xli`/`rsp` w `data/us/nyse/`) i opisal
+regule wprost - **zero nowego kodu bloku**, w calosci zlozona z JUZ ISTNIEJACYCH blokow
+(dowod, ze biblioteka blokow zbudowana dla `best17_a`/`the_one`/`vaa_g4` jest wystarczajaco
+ogolna, zeby wyrazic kolejna, niezaleznie opisana strategie bez ani jednej nowej implementacji):
+
+1. `momentum_monthly` (window=9) - 9-miesieczny momentum na 6 sektorowych ETF.
+2. `ema_ratio_monthly` (fast=7, slow=16) + `canary_regime_gate` (`canary_assets=["xli.us",
+   "xlp.us"]`, `bad_threshold=0.0`, `max_bad_count=0`) - "EMA7>EMA16" jest dokladnie rownowazne
+   `ema_ratio(=EMA7/EMA16-1) > 0`, wiec `bad_threshold=0.0` odtwarza regule WPROST, bez
+   przyblizenia; oba kanarki (XLI=cykliczny, XLP=defensywny) musza przejsc jednoczesnie, inaczej
+   caly portfel w `_CASH`.
+3. `indicator_positive` (`mom_9 > 0`) - tylko dodatni momentum jest eligibilny.
+4. `weighted_sum` + `top_n=2` + `rank_weights` (`weights=[0.5, 0.5]`) - top2 po rowno.
+5. `score_gap_hysteresis` (`min_score_gap=0.03`, `full_position_size=2`) - "zmien tylko gdy nowy
+   jest lepszy o >=3%", dziala tylko gdy pozycja jest juz PELNA (jak w `best17_a`).
+
+Identyczna architektura co `best17_a` (kanarek + momentum + score-gap histereza), inny kanarek
+(para cykliczny-vs-defensywny zamiast szerokiego rynku) i inne tickery/progi.
+
+**Realny wynik** (cala historia, 2005-12 do 2026-07, 248 miesiecy): CAGR 7.11%, MaxDD -29.71%,
+Sharpe 0.52, Calmar 0.24, roczny turnover ~2.21, max_time_underwater 35 miesiecy, najgorszy rok
+-15.51%. Wszystkie progi `acceptance_spec.json` (zgadywane przed przebiegiem) przeszly bez
+korekty.
+
+Sweep `mom_9.window` (6/9/12) potwierdzil, ze wybor uzytkownika (9 miesiecy) jest WYRAZNIE
+najlepszy (CAGR 7.11% vs 4.66%/4.81%, MaxDD -29.71% vs -38.39%/-41.51%) - nie przypadkowy dobor.
+Sweep `min_score_gap` (0.00/0.01/0.03/0.05): 0.01 dal odrobine lepszy Sharpe/Calmar (0.56/0.26)
+niz opisane 0.03 (0.52/0.24), ale 0.03 pozostawione jako domyslne - wierne odtworzenie opisanej
+reguly, nie wynik strojenia.
+
+5 testow (`test_best17_b_strategy_spec.py`) - walidacja specyfikacji, rozwiazanie blokow, kanarek
+XLI+XLP, gap 3%, i end-to-end na realnych danych (oba rezymy risk-on/cash wystapily w historii,
+nigdy wiecej niz top_n=2 aktywow naraz).
 
 ## Testy
 
