@@ -47,6 +47,44 @@ def test_best17_a_hysteresis_matches_own_top_n():
     assert spec.base_params["execution"]["full_position_size"] == spec.base_params["selector"]["top_n"]
 
 
+def test_best17_a_asset_gates_use_month_start_momentum_not_month_end():
+    """POPRAWKA 2026-07-11 (patrz CHANGELOG) - iau_gate/dbc_gate MUSZA uzywac execution-price
+    (momentum_monthly), NIE momentum_month_end (ta bazuje na cenach konca miesiaca - bledna
+    podstawa dla `min_return_3m` w starym silniku, zweryfikowane na 428 parach z prawdziwego
+    CSV). `mom_r3` (momentum_month_end) zostaje bez zmian dla rebound_starter - INNY mechanizm
+    w starym silniku, poprawnie oparty na cenach konca miesiaca."""
+    spec = _load_spec()
+    indicators = spec.base_params["indicators"]
+    assert indicators["mom_r3_gate"]["impl"] == "momentum_monthly"
+    assert indicators["mom_r3"]["impl"] == "momentum_month_end"
+
+    iau_gate = spec.base_params["asset_filters"]["iau_gate"]
+    dbc_gate = spec.base_params["asset_filters"]["dbc_gate"]
+    assert iau_gate["indicator_key"] == "mom_r3_gate"
+    assert dbc_gate["indicator_key"] == "mom_r3_gate"
+
+    rebound = spec.base_params["portfolio_risk_engine"]
+    assert rebound["indicator_key"] == "mom_r3"
+
+
+def test_best17_a_iau_gate_matches_real_2026_transition(us_data_dir):
+    """Zweryfikowane wprost przeciw prawdziwemu CSV starego silnika (ideas_out/best17_3m_tlt_dtla_40) -
+    IAU powinien byc eligibilny w maju 2026 (mom_r3_gate ~ -0.97%, > -1% progu) i zablokowany w
+    czerwcu 2026 (mom_r3_gate ~ -16.05%, znacznie ponizej progu)."""
+    from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
+    from engine_v2.blocks.indicators import REGISTRY as INDICATORS_REGISTRY
+
+    spec = _load_spec()
+    spec.base_params["data_loader"]["data_dir"] = str(us_data_dir)
+    market_data = LOADER_REGISTRY["stooq_csv"](spec.universe, {"data_dir": str(us_data_dir), "frequency": "monthly"})
+
+    mom_r3_gate = INDICATORS_REGISTRY["momentum_monthly"](market_data, {"window": 3})
+
+    threshold = spec.base_params["asset_filters"]["iau_gate"]["threshold"]
+    assert mom_r3_gate.loc["2026-05-01", "iau.us"] > threshold  # eligibilny (barely)
+    assert mom_r3_gate.loc["2026-06-01", "iau.us"] <= threshold  # zablokowany
+
+
 def test_best17_a_full_chain_on_real_data(us_data_dir):
     spec = _load_spec()
     spec.base_params["data_loader"]["data_dir"] = str(us_data_dir)
@@ -97,6 +135,6 @@ def test_best17_a_metrics_regression_baseline(us_data_dir):
     equity_curve = daily_equity_curve(final_portfolio, market_data.prices, {})
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
-    assert metrics["cagr"] == pytest.approx(0.1649, abs=0.01)
+    assert metrics["cagr"] == pytest.approx(0.1635, abs=0.01)
     assert metrics["max_drawdown"] == pytest.approx(-0.2947, abs=0.01)
-    assert metrics["sharpe"] == pytest.approx(0.96, abs=0.05)
+    assert metrics["sharpe"] == pytest.approx(0.949, abs=0.05)

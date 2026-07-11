@@ -1,6 +1,6 @@
 {
   "name": "best17_a_v0",
-  "hypothesis": "Odtworzenie realnej strategii uzytkownika 'best17_3m' - strategia bazowa A, BEZ hedge overlay (tlt.us). Uniwersum XLK/IVV/DBC/IAU, kanarek regime na VT+XLK (EMA5/EMA12), ranking wg EMA7/EMA16 na cenach konca miesiaca, top2, wagi 0.8/0.2, asset gates na IAU/DBC (3m momentum > -1%), histereza po roznicy score (0.005), rebound-starter (VT 3m return > 5% gdy cash), koszt 40bps. Odtworzone wg dokladnej analizy engine/build_data.py + engine/backtest_hybrid_search.py + ideas/best17_3m_tlt_dtla_40/hybrid_config.json - NIE zawiera rocznego podatku 19% (jeszcze niezaimplementowany w engine_v2).",
+  "hypothesis": "Odtworzenie realnej strategii uzytkownika 'best17_3m' - strategia bazowa A, BEZ hedge overlay (tlt.us). Uniwersum XLK/IVV/DBC/IAU, kanarek regime na VT+XLK (EMA5/EMA12), ranking wg EMA7/EMA16 na cenach konca miesiaca, top2, wagi 0.8/0.2, asset gates na IAU/DBC (3m momentum > -1%), histereza po roznicy score (0.005), rebound-starter (VT 3m return > 5% gdy cash), koszt 40bps. Odtworzone wg dokladnej analizy engine/build_data.py + engine/backtest_hybrid_search.py + ideas/best17_3m_tlt_dtla_40/hybrid_config.json - NIE zawiera rocznego podatku 19% (jeszcze niezaimplementowany w engine_v2). POPRAWKA 2026-07-11: iau_gate/dbc_gate uzywaly `mom_r3` (momentum_month_end, ceny KONCA miesiaca) - to bylo BLEDNE, stary silnik liczy `min_return_3m` w asset gates przez `trailing_compound_return` na cenach STARTU miesiaca (execution), czyli DOKLADNIE `momentum_monthly` (juz istniejacy blok, uzywany gdzie indziej w repo) - NOWA instancja `mom_r3_gate` (momentum_monthly, window=3) dla obu gate'ow, `mom_r3` (momentum_month_end) zostaje BEZ ZMIAN dla rebound_starter (ten w starym silniku POPRAWNIE uzywa cen konca miesiaca - inny mechanizm, inna podstawa, potwierdzone w kodzie zrodlowym starego silnika). Zweryfikowane na 428 parach (data,aktywo) z prawdziwego CSV starego silnika (2008-2026) - 100% zgodnosci wszedzie, gdzie kanarek NIE wyklucza juz calej grupy (24 pozorne 'niezgodnosci' to miesiace gdzie kanarek i tak juz blokuje wszystko, gate nie ma znaczenia dla wyniku).",
   "universe": ["xlk.us", "ivv.us", "dbc.us", "iau.us", "vt.us"],
 
   "blocks": {
@@ -20,7 +20,8 @@
     "indicators": {
       "ema7_16": {"impl": "ema_ratio_monthly", "fast_span": 7, "slow_span": 16},
       "ema5_12": {"impl": "ema_ratio_monthly", "fast_span": 5, "slow_span": 12},
-      "mom_r3": {"impl": "momentum_month_end", "window": 3}
+      "mom_r3": {"impl": "momentum_month_end", "window": 3},
+      "mom_r3_gate": {"impl": "momentum_monthly", "window": 3}
     },
     "asset_filters": {
       "canary": {
@@ -31,8 +32,8 @@
         "max_bad_count": 0,
         "target_assets": ["xlk.us", "ivv.us", "dbc.us", "iau.us"]
       },
-      "iau_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3", "threshold": -0.01, "assets": ["iau.us"]},
-      "dbc_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3", "threshold": -0.01, "assets": ["dbc.us"]},
+      "iau_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3_gate", "threshold": -0.01, "assets": ["iau.us"]},
+      "dbc_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3_gate", "threshold": -0.01, "assets": ["dbc.us"]},
       "require_positive_score": {"impl": "indicator_positive", "indicator_key": "ema7_16", "threshold": 0.0, "assets": ["xlk.us", "ivv.us", "dbc.us", "iau.us"]},
       "exclude_canary_from_selection": {"impl": "never_eligible", "assets": ["vt.us"]}
     },

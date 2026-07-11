@@ -166,14 +166,16 @@ zwroty strategii, nie tylko ich wagi.
   **Wynik `strategies_v2/best17_a_tlt_hedge/`** (`best17_a` + `tlt_hedge`, sweep `hedge_weight`
   na realnych danych - wszystkie warianty wyraźnie tną MaxDD względem `best17_a` solo; liczby
   PO poprawce z **2026-07-11 (2)** - patrz CHANGELOG, `hedge_on` nie mógł się wcześniej wyłączyć
-  na datach sprzed startu `best17_a`):
+  na datach sprzed startu `best17_a`). Tabela sweepu ponizej NIE jest przeliczona po bugfixie
+  gate'u IAU/DBC z **2026-07-11 (27)** poza wierszem 0.40 (rekomendowanym, zaktualizowanym) - patrz
+  CHANGELOG (27) za pelne wyjasnienie skali/zakresu poprawki:
 
   | hedge_weight | CAGR | MaxDD | Sharpe | Calmar |
   |---|---|---|---|---|
   | 0.00 (best17_a solo) | 16.49% | -29.47% | 0.96 | 0.56 |
   | 0.20 | 13.94% | -22.31% | 0.94 | **0.62** |
   | 0.30 | 14.02% | -22.61% | 0.96 | 0.62 |
-  | 0.40 (jak w starym silniku, wybrane) | 14.10% | -23.70% | 0.97 | 0.59 |
+  | 0.40 (jak w starym silniku, wybrane; PO bugfixie (27): 13.47%/-22.09%/0.920/**0.610**) | 14.10% | -23.70% | 0.97 | 0.59 |
   | 0.50 | 14.16% | -24.96% | 0.98 | 0.57 |
   | 0.60 | 14.20% | -26.20% | **0.99** | 0.54 |
 
@@ -233,6 +235,11 @@ jak `best17_a_tlt_hedge`) - TLT.us dołączony wprost do uniwersum wyboru `best1
   miał RÓWNIEŻ ujemny `mom_12` (znane pęknięcie korelacji akcje-obligacje w cyklu podwyżek stóp),
   więc bramka nie uratowała dokładnie tam, gdzie byłaby najbardziej potrzebna.
 
+  **Po bugfixie gate'u IAU/DBC (2026-07-11 (27), patrz CHANGELOG)**: `synergy_v1` CAGR 13.91%/
+  MaxDD -29.99%/Sharpe 0.822/Calmar 0.464; `synergy_v2` CAGR 15.45%/MaxDD -29.99%/Sharpe 0.878/
+  Calmar 0.515 (obie liczby po podatku) - wniosek bez zmian, obie dalej **nie biją** `best17_a`
+  solo (CAGR 15.93%, Sharpe 0.918 po poprawce).
+
 **Wniosek**: wbudowanie ekspozycji na obligacje w TEN SAM pipeline selekcji (współzawodnictwo albo
 wzajemne wykluczanie binarne) NIE bije już znalezionych kombinacji zbudowanych jako COMBINER
 dwóch osobnych strategii z płynną wagą (`vaa_g4_best17_a`, `best17_a_tlt_hedge`) -
@@ -287,6 +294,11 @@ Dynamiczna realokacja podnosi CAGR (pełniejsze wykorzystanie kapitału), ale TE
 dokładnie w momencie, gdy mogłaby być najbardziej potrzebna) - Sharpe praktycznie bez zmian,
 Calmar nawet nieco gorszy. Sensowny, ale niejednoznaczny kompromis - nie "oczywista poprawa".
 
+**Po bugfixie gate'u IAU/DBC w `best17_a` (2026-07-11 (27), patrz CHANGELOG)**:
+`combined_best2` (fixed) CAGR 12.21%/MaxDD -22.73%/Sharpe 0.902/Calmar 0.537; dynamiczny wariant
+CAGR 13.62%/MaxDD -26.40%/Sharpe 0.910/Calmar 0.516 - wniosek (dynamiczny podnosi CAGR i MaxDD
+razem, Sharpe bez zmian) bez zmian.
+
 **`strategies_v2/combined_triple/`** - user pytanie: strategia z CAGR>10% ale niższym MaxDD niż
 `best17_a` solo (-29.5%)? Sweep wag pokazał, że POŁĄCZENIE TRZECH niezależnie zaprojektowanych
 strategii (zamiast dwóch) daje wyraźnie lepszy kompromis: `best17_a` (45%) + `the_one` (20%) +
@@ -295,6 +307,9 @@ dual-momentum switch; zawsze-w-pełni-zainwestowany) dają więcej dywersyfikacj
 CAGR ~11.5%, MaxDD ~-18.1%, Sharpe ~0.99, Calmar ~0.64 - przy CAGR>10% i najniższym MaxDD ze
 wszystkich konfiguracji z CAGR>10% (**UWAGA** - "najlepszy Sharpe w całym repo" przestało być
 prawdą po pełnym przeglądzie par niżej, `vaa_g4`+`best17_a` ma wyższy Sharpe).
+
+**Po bugfixie gate'u IAU/DBC w `best17_a` (2026-07-11 (27), patrz CHANGELOG)**: `combined_triple`
+CAGR 11.20%/MaxDD -19.65%/Sharpe 0.951/Calmar 0.570 (po podatku) - wniosek bez zmian.
 
 **Wszystkie pary 7 głównych strategii (2026-07-11)** - user: "dołóż brakujące kombinacje".
 Sposrod C(7,2)=21 możliwych par (`dual_momentum`/`vaa_g4`/`the_one`/`best17_a`/`all_weather_4`/
@@ -317,6 +332,12 @@ dwiema strategiami, które nigdy wcześniej nie były razem testowane. Top 6 par
 Wzorzec: KAŻDA z 6 najlepszych par zawiera `best17_a` - potwierdza, że to najsilniejsza
 pojedyncza "noga" w całym repo, dobry kandydat na core niemal każdego portfela. Pary BEZ
 `best17_a` konsekwentnie wypadają słabiej (najlepsza: `vaa_g4`+`the_one`, Sharpe 0.71).
+
+**Po bugfixie gate'u IAU/DBC w `best17_a` (2026-07-11 (27), patrz CHANGELOG za pelna tabele)**:
+`vaa_g4_best17_a` CAGR 11.20%/MaxDD -17.33%/Sharpe 0.987/Calmar 0.646 (nadal #1 wg Sharpe w
+repo); `best17_a_all_weather_4` 11.48%/-22.01%/0.939/0.522; `best17_a_gfm` 11.43%/-28.03%/
+0.851/0.408; `best17_a_best17_b` 10.66%/-29.42%/0.809/0.362; `combined_best2` (=`the_one`+
+`best17_a`) 12.21%/-22.73%/0.902/0.537 - kolejnosc/ranking par bez zmian.
 
 Orchestrator: `combined_pipeline.run_combined_pipeline(combined_spec, base_dir)` -> tabela
 FINAL PORTFOLIO. Przykład: `strategies_v2/combined_example/combined_spec.json`.
@@ -449,6 +470,12 @@ dodatnie lata, ale relatywna KOLEJNOSC strategii prawie sie nie zmienia. Przykla
 | `best17_a_tlt_hedge` | 14.10% | 13.78% | 0.97 | 0.94 |
 
 `vaa_g4_best17_a` pozostaje najlepszym Sharpe w calym repo rowniez PO podatku.
+
+**Powyzsza tabela sprzed bugfixu gate'u IAU/DBC (2026-07-11 (27), patrz CHANGELOG)** - PO
+poprawce numery przesuwaja sie nieznacznie (np. `best17_a` solo: CAGR 15.93% po podatku, Sharpe
+0.918; `vaa_g4_best17_a`: CAGR 11.20%, Sharpe 0.987), ale kolejnosc/wniosek (`vaa_g4_best17_a` =
+najlepszy Sharpe w repo) sie NIE zmienia - pelna zaktualizowana tabela wszystkich 15 dotknietych
+artefaktow w CHANGELOG.md (27).
 
 **Ciekawostka**: MaxDD dla kilku strategii (np. `vaa_g4`: -24.45%->-22.84%) wyszlo LEPSZE po
 podatku - artefakt liczenia MaxDD w procentach: podatek obcina szczyty (peaks) uzywane jako baza
@@ -639,6 +666,11 @@ styl co `metrics_pre_tax` przy braku podatku).
 **\*** `best17_a` dane zaczynaja sie 2008-07 - `gfc_crash` to u niego tylko 9 z 15 miesiecy
 okresu (2008-07 do 2009-03), nieporownywalne 1:1 z resztą (ktore maja pelne 15 miesiecy) -
 zaznaczone jawnie, nie ukryte.
+
+**Uwaga**: powyzsza tabela `named_periods` NIE zostala przeliczona po bugfixie gate'u IAU/DBC w
+`best17_a` (2026-07-11 (27), patrz CHANGELOG) - biorac pod uwage skale zmiany (Sharpe/CAGR w
+granicach kilku procent, MaxDD calosciowy bez zmian), wnioski per-okres pozostaja najprawdopodobniej
+aktualne, ale nie zostaly jawnie zweryfikowane liczbowo.
 
 Potwierdza wczesniejsze ustalenie z porownania rok-po-roku (patrz sekcja `gpm_best17_a` wyzej):
 `gpm` jest realnie DODATNI w GFC (2008-09) i lagodzi `inflation_bear` (2022) najbardziej ze
@@ -832,8 +864,9 @@ selekcji - `never_eligible`). Logika:
    - CALA grupa XLK/IVV/DBC/IAU staje sie nieeligibilna (100% cash), niezaleznie od wlasnych
    scorow. To pierwszy GLOBALNY filtr w silniku (jeden sygnal decyduje o calej grupie, nie o
    pojedynczym tickerze).
-2. **Asset gates**: IAU/DBC wypadaja jesli ich wlasny 3-miesieczny zwrot (na cenach KONCA
-   miesiaca) <= -1% (`indicator_positive` z ujemnym progiem).
+2. **Asset gates**: IAU/DBC wypadaja jesli ich wlasny 3-miesieczny zwrot (na cenach STARTU
+   miesiaca/execution, `momentum_monthly` - POPRAWIONE 2026-07-11 (27), patrz CHANGELOG; wczesniej
+   bledne cenach KONCA miesiaca) <= -1% (`indicator_positive` z ujemnym progiem).
 3. **Ranking**: `EMA(7m)/EMA(16m)-1`, tylko dodatnie (`require_positive_score`), top2, wagi
    0.8/0.2 (`rank_weights` - bez zmian).
 4. **Histereza po SCORE, nie wadze** (`score_gap_hysteresis`, nowy blok EXECUTION): portfel
@@ -856,7 +889,12 @@ logika selekcji, wiec swiadomie odlozone.
 **POPRAWIONO 2026-07-10 (pieciokrotny bugfix tego samego dnia - patrz sekcje nizej)**: po
 wszystkich pieciu poprawkach realny wynik `final` (cala historia, z kosztem 40bps, BEZ podatku
 19% - patrz wyzej) to: **CAGR ~16.5%, MaxDD ~-29.5%, Sharpe ~0.96, Calmar ~0.56, roczny turnover
-~0.82**. To BARDZO blisko oryginalnego, realnego systemu uzytkownika (stary silnik, `US base A`,
+~0.82**. **Po dodatkowym bugfixie gate'u IAU/DBC (2026-07-11 (27), patrz CHANGELOG - podstawa
+cenowa `mom_r3`, nie ta poprawka wyzej): CAGR 16.35%/15.93% (przed/po podatku), MaxDD -29.47%
+(bez zmian), Sharpe 0.949/0.918, Calmar 0.555/0.540, turnover 0.92/rok** - male przesuniecie w
+dol, MaxDD identyczny, `worst_year_return` pogarsza sie do -19.35% (2022, wczesniej -14.99% -
+poprawiony gate poprawnie blokuje IAU/DBC czesciej w realnie zlym momentum). To BARDZO blisko
+oryginalnego, realnego systemu uzytkownika (stary silnik, `US base A`,
 sprawdzone wprost z `ideas_out/*/GLOBAL_SUMMARY.txt` i ponownym uruchomieniem starego
 `run_global_pipeline.py` na tych samych danych): monthly CAGR 15.67-16.23%, Sharpe ~1.00, roczny
 turnover ~1.2 - engine_v2 wypada NIECO WYZEJ, spojnie z brakiem podatku 19% (ktorego stary silnik
@@ -1196,6 +1234,12 @@ User: "dobrze go zmiksowac z czyms agresywnym np best17". `fixed_capital_weights
 Automatycznie odkryty i przetestowany przez `test_all_combined_specs.py` (glob-discovery) - zero
 nowych plikow testowych potrzebnych.
 
+**Po bugfixie gate'u IAU/DBC w `best17_a` (2026-07-11 (27), patrz CHANGELOG)**: `gpm_best17_a`
+(55/45) CAGR 10.82%, MaxDD -15.40% (bez zmian), Sharpe 0.955, Calmar **0.702** - nadal
+**najlepszy Calmar calej sesji** (vs `vaa_g4_best17_a` 0.646 po poprawce), wniosek bez zmian.
+Powyzsza tabela sweepu 35-60% NIE zostala w pelni przeliczona po tym bugfixie (patrz CHANGELOG
+(27) za zakres) - tylko finalny, zapisany punkt 55/45.
+
 **Rekomendacja sesji**: `gpm_best17_a` (55/45) - jesli priorytetem jest MaxDD/Calmar i niski
 turnover; `vaa_g4_best17_a` pozostaje lepszy, jesli priorytetem jest czysty Sharpe.
 
@@ -1266,7 +1310,11 @@ MaxDD -15.40%) - `gtaa_agg6` solo ma glebszy MaxDD (-18.71%) niz `gpm` solo (-15
 mniej skutecznie tlumi drawdown `best17_a`, prawdopodobnie tez wyzsza korelacja sygnalu z
 `best17_a` (oba trend/momentum na tym samym uniwersum akcji USA) niz `gpm` (odrebna koncepcja -
 korelacja do koszyka, nie tylko trend). Zapisane jako dokumentacja eksperymentu, NIE
-rekomendacja - `gpm_best17_a` pozostaje najlepszym znalezionym miksem. Automatycznie odkryte i
+rekomendacja - `gpm_best17_a` pozostaje najlepszym znalezionym miksem.
+
+**Po bugfixie gate'u IAU/DBC w `best17_a` (2026-07-11 (27), patrz CHANGELOG)**: `gtaa_agg6_best17_a`
+(45/55, zapisany punkt) CAGR 10.26%, MaxDD -18.31% (bez zmian), Sharpe 0.903, Calmar 0.560 - dalej
+wyraznie gorzej niz `gpm_best17_a` (Calmar 0.702), wniosek bez zmian. Automatycznie odkryte i
 przetestowane przez `test_all_combined_specs.py` (glob-discovery).
 
 ### Dwunasta strategia: `daa_g4` ("DAA-G4" - Defensive Asset Allocation, Keller & Keuning 2017)

@@ -2,6 +2,93 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (27)
+
+- **BUGFIX (istotny) `best17_a`/`synergy_v1`/`synergy_v2`: `iau_gate`/`dbc_gate` liczyly 3-miesieczny
+  momentum na ZLEJ podstawie cenowej** (user: "Chwila gate na zloto na pewno w 2026 powinien wejsc
+  zobacz sobie wyniki best17 w starym engine" - podejrzenie wziete z realnych danych: w starym
+  silniku IAU byl zablokowany w czerwcu 2026, w engine_v2 nie).
+
+  **Diagnoza**: `iau_gate`/`dbc_gate` czytaly `mom_r3` (`momentum_month_end`, window=3) - wskaznik
+  liczacy 3m momentum na CENACH KONCA MIESIACA. To bylo BLEDNE. Przesledzenie prawdziwego kodu
+  starego silnika (`engine/backtest_hybrid_search.py`) pokazalo, ze `min_return_3m` w asset gates
+  jest liczone przez `trailing_compound_return()` na cenach z pliku
+  `month_start_to_month_start_returns.csv` (execution/start-miesiaca), NIE na cenach konca
+  miesiaca. To INNY mechanizm niz `rebound_starter` (ktory poprawnie uzywa `momentum_r3.csv`,
+  konca-miesiaca, przesuwany przez `align_scores_to_execution_month` - ten kawalek w engine_v2 byl
+  juz poprawny i zostal BEZ ZMIAN).
+
+  Pierwsza proba naprawy (custom indicator `trailing_compound_return_month_start.py`, rolling+shift
+  na log-returns) okazala sie rowniez bledna - 123/428 (28.9%) niezgodnosci przeciw prawdziwemu CSV
+  starego silnika. Przyczyna: bledne zalozenie o konwencji etykietowania dat w pliku returns (w
+  rzeczywistosci `returns.loc[d]` = zwrot ZREALIZOWANY W TRAKCIE miesiaca zaczynajacego sie w `d`,
+  czyli `price(d+1m)/price(d)-1` - etykieta "w przod", nie `pct_change()` "wstecz"). Po poprawnym
+  zrozumieniu konwencji, `trailing_compound_return(dt, months=3)` upraszcza sie do zwyklego
+  `price_exec(dt)/price_exec(dt-3m) - 1` - czyli DOKLADNIE wzoru, ktory juz liczy ISTNIEJACY blok
+  `momentum_monthly` (uzywany gdzie indziej w repo, np. `best17_b`). Zero nowego kodu bloku
+  potrzebne - custom indicator i jego test usuniete, uzyto istniejacego bloku.
+
+  **Naprawa**: nowa instancja wskaznika `"mom_r3_gate": {"impl": "momentum_monthly", "window": 3}`
+  w `strategies_v2/best17_a/strategy_spec.json` (oraz `synergy_v1`/`synergy_v2`, ktore duplikuja
+  ta sama logike gate we WLASNYM pliku spec) - `iau_gate`/`dbc_gate` przelaczone na
+  `mom_r3_gate`. `mom_r3` (`momentum_month_end`) zostaje BEZ ZMIAN, nadal uzywany wylacznie przez
+  `portfolio_risk_engine` (rebound_starter).
+
+  **Walidacja**: 428 par (data, aktywo) z prawdziwego historycznego CSV starego silnika
+  (`ideas_out/best17_3m_tlt_dtla_40/runs/20260710_212803/03_us_backtest_base/monthly/*.csv`,
+  pole `blocked_by_asset_gate`, 216 miesiecy x iau.us/dbc.us, 2008-2026) - PO poprawce **100%
+  zgodnosci wszedzie, gdzie kanarek NIE wyklucza juz calej grupy offensywnej**. Pozostale 24/428
+  (5.6%) pozornych "niezgodnosci" wystepuja WYLACZNIE w miesiacach, gdzie `bad_canaries >= 1` w
+  CSV starego silnika - kanarek juz wtedy sam wyklucza cala grupe (`candidate_assets` puste,
+  portfel w `_CASH`/`vt.us`), wiec wartosc konkretnego gate'u jest bez znaczenia dla wyniku
+  koncowego w tych miesiacach. Potwierdzone rowniez wprost na przejsciu maj->czerwiec 2026: IAU
+  eligibilny w maju (mom_r3_gate ~ -0.97%, > progu -1%), zablokowany w czerwcu (~ -16.05%) -
+  ZGODNIE z prawdziwym wynikiem starego silnika, ktory to wywolal caly ten watek.
+
+  Nowe/zaktualizowane testy: `test_best17_a_strategy_spec.py` -
+  `test_best17_a_asset_gates_use_month_start_momentum_not_month_end` (wiring),
+  `test_best17_a_iau_gate_matches_real_2026_transition` (dokladnie ten scenariusz z real danych,
+  ktory wywolal watek), zaktualizowany `test_best17_a_metrics_regression_baseline` (nowe zamrozone
+  wartosci, patrz tabela nizej). Pelny pakiet testow: bez regresji.
+
+  **Wplyw na metryki - `best17_a` solo i wszystkie 12 portfeli/wariantow, ktore go uzywaja
+  (PRZED/PO poprawce, PO PODATKU gdzie dotyczy)**:
+
+  | | CAGR przed→po | MaxDD przed→po | Sharpe przed→po | Calmar przed→po |
+  |---|---|---|---|---|
+  | `best17_a` solo | 16.07%→15.93% | -29.47%→-29.47% | 0.93→0.918 | 0.545→0.540 |
+  | `synergy_v1` | 14.04%→13.91% | -29.99%→-29.99% | 0.83→0.822 | ~0.47→0.464 |
+  | `synergy_v2` | 15.59%→15.45% | -29.99%→-29.99% | 0.89→0.878 | ~0.52→0.515 |
+  | `best17_a_tlt_hedge` | 13.78%→13.47% | -23.70%→-22.09% | 0.94→0.920 | 0.59→0.610 |
+  | `best17_a_tlt_timing` | ~11.60%→11.24% | ~-23%→-22.31% | ~0.93→0.883 | ~0.52→0.504 |
+  | `combined_best2` | ~12.6%→12.21% | -22.7%→-22.73% | ~0.94→0.902 | ~0.55→0.537 |
+  | `combined_best2_dynamic` | ~14.0%→13.62% | -26.8%→-26.40% | ~0.95→0.910 | ~0.52→0.516 |
+  | `combined_triple` | 11.26%→11.20% | -18.1%→-19.65% | 0.96→0.951 | 0.64→0.570 |
+  | `dual_momentum_best17_a` | ~11.2%→10.87% | ~-21.8%→-21.84% | ~0.90→0.870 | ~0.51→0.498 |
+  | `vaa_g4_best17_a` | 11.25%→11.20% | -17.33%→-17.33% | 0.99→0.987 | 0.649→0.646 |
+  | `best17_a_all_weather_4` | 11.84%→11.48% | -21.84%→-22.01% | 0.98→0.939 | 0.54→0.522 |
+  | `best17_a_gfm` | 11.84%→11.43% | -27.86%→-28.03% | 0.89→0.851 | 0.43→0.408 |
+  | `best17_a_best17_b` | 10.99%→10.66% | -29.42%→-29.42% | 0.84→0.809 | 0.37→0.362 |
+  | `gpm_best17_a` (55/45) | 10.89%→10.82% | -15.40%→-15.40% | 0.962→0.955 | 0.707→0.702 |
+  | `gtaa_agg6_best17_a` (45/55) | 10.31%→10.26% | -18.31%→-18.31% | 0.909→0.903 | 0.563→0.560 |
+
+  **Zmiany male i NIE zmieniaja zadnej z kluczowych konkluzji sesji**: `vaa_g4_best17_a` nadal ma
+  najlepszy Sharpe w repo (0.987, PO poprawce), `gpm_best17_a` (55/45) nadal ma najlepszy Calmar
+  (0.702) - obie rekomendacje z sesji POTWIERDZONE na nowo, nie tylko przeniesione bez sprawdzenia.
+  Najbardziej zauwazalna zmiana: `worst_year_return` dla `best17_a` solo pogarsza sie z -14.99% na
+  **-19.35%** (2022) - poprawka gate'u sprawia, ze IAU/DBC sa CZESCIEJ poprawnie blokowane w
+  okresach realnie zlego momentum (w tym 2022), co lekko obniza sredni CAGR, ale NIE zmienia
+  MaxDD calosciowego dla `best17_a` solo (dokladnie ten sam trough, -29.47%).
+
+  **Uwaga o zakresie tej poprawki**: przeliczone zostaly WSZYSTKIE zapisane, rekomendowane
+  konfiguracje (`combined_spec.json`) uzywajace `best17_a` - to one reprezentuja faktyczne decyzje
+  sesji. Tabele SWEEPOW (np. `gpm_best17_a` waga 35-60%, `gtaa_agg6_best17_a` waga 30-70%,
+  `best17_a_tlt_hedge` waga 20-60%, przeglad C(7,2) par) NIE zostaly w pelni ponownie przeliczone -
+  uzywaja `best17_a` jako jednej z nog, ale skala zmiany (Sharpe -1..-3%, MaxDD w wiekszosci bez
+  zmian) czyni bardzo malo prawdopodobnym, zeby zmienily wybor optymalnego punktu w ktoromkolwiek
+  sweepie. Odnotowane jawnie, nie ukryte - jesli ktos bedzie polegal na dokladnej wartosci
+  konkretnego punktu sweepu (nie na koncowej rekomendacji), warto go przeliczyc osobno.
+
 ## 2026-07-11 (26)
 
 - **KOREKTA: `iau_gate`/`dbc_gate`/`rebound` NIE sa "martwe"** (user: "a powiedz jak czesto

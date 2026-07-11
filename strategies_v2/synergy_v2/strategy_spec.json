@@ -1,6 +1,6 @@
 {
   "name": "synergy_v2_v0",
-  "hypothesis": "Poprawka na synergy_v1 (patrz jego hypothesis) - tam TLT.us konkurowal w RANKINGU caly czas, wiec potrafil wypierac lepsze aktywa ofensywne nawet w risk-on (wynik: gorszy CAGR i MaxDD niz best17_a solo). Tutaj TLT.us jest eligibilny WYLACZNIE gdy oba warunki sa spelnione naraz: (1) ten sam kanarek VT+XLK co w best17_a mowi risk-OFF (nowy param 'invert=true' w canary_regime_gate - patrz engine_v2/blocks/asset_filters/canary_regime_gate.py) ORAZ (2) wlasny 12-miesieczny momentum TLT > 0 (odtwarza GEM/the_one - 'cash zamiast obligacji o ujemnym momentum', np. 2022). Aktywa ofensywne (XLK/IVV/DBC/IAU) i TLT sa wiec WZAJEMNIE WYKLUCZAJACE SIE w kazdym miesiacu (albo risk-on -> 4 ofensywne eligibilne/TLT nie, albo risk-off -> TLT eligibilny (jesli ma dodatni momentum)/4 ofensywne nie) - w przeciwienstwie do synergy_v1, gdzie oba zbiory bywaly eligibilne naraz. Rebound-starter (VT) zostaje jako ostatnia linia obrony gdy oba sety sa puste (risk-off I ujemny momentum TLT). Hipoteza: powinno dac nizszy MaxDD niz best17_a solo BEZ psucia CAGR (bo TLT wchodzi tylko gdy naprawde nie ma nic lepszego), w przeciwienstwie do synergy_v1.",
+  "hypothesis": "Poprawka na synergy_v1 (patrz jego hypothesis) - tam TLT.us konkurowal w RANKINGU caly czas, wiec potrafil wypierac lepsze aktywa ofensywne nawet w risk-on (wynik: gorszy CAGR i MaxDD niz best17_a solo). Tutaj TLT.us jest eligibilny WYLACZNIE gdy oba warunki sa spelnione naraz: (1) ten sam kanarek VT+XLK co w best17_a mowi risk-OFF (nowy param 'invert=true' w canary_regime_gate - patrz engine_v2/blocks/asset_filters/canary_regime_gate.py) ORAZ (2) wlasny 12-miesieczny momentum TLT > 0 (odtwarza GEM/the_one - 'cash zamiast obligacji o ujemnym momentum', np. 2022). Aktywa ofensywne (XLK/IVV/DBC/IAU) i TLT sa wiec WZAJEMNIE WYKLUCZAJACE SIE w kazdym miesiacu (albo risk-on -> 4 ofensywne eligibilne/TLT nie, albo risk-off -> TLT eligibilny (jesli ma dodatni momentum)/4 ofensywne nie) - w przeciwienstwie do synergy_v1, gdzie oba zbiory bywaly eligibilne naraz. Rebound-starter (VT) zostaje jako ostatnia linia obrony gdy oba sety sa puste (risk-off I ujemny momentum TLT). Hipoteza: powinno dac nizszy MaxDD niz best17_a solo BEZ psucia CAGR (bo TLT wchodzi tylko gdy naprawde nie ma nic lepszego), w przeciwienstwie do synergy_v1. POPRAWKA 2026-07-11: iau_gate/dbc_gate przeniesione z mom_r3 (momentum_month_end) na NOWA instancje mom_r3_gate (momentum_monthly) - ten sam blad co w best17_a (patrz jego strategy_spec.json i CHANGELOG.md), mom_r3 zostaje bez zmian dla rebound_starter.",
   "universe": ["xlk.us", "ivv.us", "dbc.us", "iau.us", "vt.us", "tlt.us"],
 
   "blocks": {
@@ -21,6 +21,7 @@
       "ema7_16": {"impl": "ema_ratio_monthly", "fast_span": 7, "slow_span": 16},
       "ema5_12": {"impl": "ema_ratio_monthly", "fast_span": 5, "slow_span": 12},
       "mom_r3": {"impl": "momentum_month_end", "window": 3},
+      "mom_r3_gate": {"impl": "momentum_monthly", "window": 3},
       "mom_12": {"impl": "momentum_month_end", "window": 12}
     },
     "asset_filters": {
@@ -41,8 +42,8 @@
         "target_assets": ["tlt.us"],
         "invert": true
       },
-      "iau_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3", "threshold": -0.01, "assets": ["iau.us"]},
-      "dbc_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3", "threshold": -0.01, "assets": ["dbc.us"]},
+      "iau_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3_gate", "threshold": -0.01, "assets": ["iau.us"]},
+      "dbc_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3_gate", "threshold": -0.01, "assets": ["dbc.us"]},
       "tlt_gate": {"impl": "indicator_positive", "indicator_key": "mom_12", "threshold": 0.0, "assets": ["tlt.us"]},
       "require_positive_score": {"impl": "indicator_positive", "indicator_key": "ema7_16", "threshold": 0.0, "assets": ["xlk.us", "ivv.us", "dbc.us", "iau.us"]},
       "exclude_canary_from_selection": {"impl": "never_eligible", "assets": ["vt.us"]}
