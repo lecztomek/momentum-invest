@@ -70,6 +70,41 @@ def test_validation_mode_end_to_end(patched_example_dir):
     assert set(result["acceptance"]) >= {"min_cagr", "max_drawdown"}
 
 
+def test_final_mode_applies_annual_tax_when_configured(patched_example_dir):
+    from engine_v2.test_spec import TestSpec
+
+    test_spec_path = patched_example_dir / "test_spec.json"
+    test_spec = TestSpec.load(test_spec_path)
+    test_spec.costs.annual_tax_rate = 0.19
+    test_spec.save(test_spec_path)
+
+    run_spec = RunSpec.load(patched_example_dir / "run_spec.json")
+    run_spec.mode = "final"
+
+    result = run(run_spec, patched_example_dir)
+
+    assert "metrics_pre_tax" in result
+    # podatek "high water mark" na dodatnim CAGR nigdy nie podnosi wyniku - po podatku <= przed
+    assert result["metrics"]["cagr"] <= result["metrics_pre_tax"]["cagr"] + 1e-9
+    assert (result["equity_curve"]["tax_amount"] > 0).any()
+
+
+def test_final_mode_without_tax_configured_has_no_pre_tax_key(patched_example_dir):
+    from engine_v2.test_spec import TestSpec
+
+    test_spec_path = patched_example_dir / "test_spec.json"
+    test_spec = TestSpec.load(test_spec_path)
+    test_spec.costs.annual_tax_rate = 0.0
+    test_spec.save(test_spec_path)
+
+    run_spec = RunSpec.load(patched_example_dir / "run_spec.json")
+    run_spec.mode = "final"
+
+    result = run(run_spec, patched_example_dir)
+
+    assert "metrics_pre_tax" not in result
+
+
 def test_search_mode_end_to_end(patched_example_dir):
     run_spec = RunSpec.load(patched_example_dir / "run_spec.json")
     run_spec.mode = "search"

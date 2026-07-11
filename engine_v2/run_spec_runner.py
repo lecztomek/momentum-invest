@@ -9,6 +9,12 @@ Wiaze `RunSpec.mode` z odpowiednim mechanizmem (patrz README, sekcja "Tryby uzyc
   - "validation" -> SINGLE BACKTEST na calej historii, ale METRICS liczone TYLKO na wycinku
                      odpowiadajacym TestSpec.test_window (OOS) - jedna, czysta ocena, BEZ dalszego
                      ciecia na okna (test_window jest "swiete", nie szukamy w nim wielu prob).
+
+`TestSpec.costs.annual_tax_rate` (jesli > 0) jest aplikowany w "final"/"validation" przez
+`annual_tax.apply_annual_tax` - PRZED slice'owaniem do test_window w "validation" (podatek "high
+water mark" musi widziec CALA historie, zeby poprawnie zbudowac baze podatkowa az do momentu
+test_window, inaczej slice zresetowalby ja blednie do 1.0 na starcie okna). Metryki PRZED
+podatkiem sa zachowane w wyniku jako `metrics_pre_tax` (nie ukryte, do porownania).
   - "search"     -> GRID SWEEP (StrategySpec.allowed_param_families) x WALK-FORWARD
                      (TestSpec.train_window) per wariant - zwraca zbiorcze statystyki
                      (srednia/min CAGR, najgorszy drawdown, srednia Sharpe) po oknach, dla kazdej
@@ -30,6 +36,7 @@ import pandas as pd
 
 from engine_v2.acceptance_check import check_criteria
 from engine_v2.acceptance_spec import AcceptanceSpec
+from engine_v2.annual_tax import apply_annual_tax
 from engine_v2.backtest_engine import daily_equity_curve
 from engine_v2.blocks.data_loader import REGISTRY as DATA_LOADER_REGISTRY
 from engine_v2.grid_sweep import run_param_sweep
@@ -49,18 +56,38 @@ def _load_daily_prices(strategy_spec: StrategySpec) -> pd.DataFrame:
     return loader_fn(strategy_spec.universe, daily_params).prices
 
 
-def _run_final(strategy_spec: StrategySpec, acceptance_spec: AcceptanceSpec) -> Dict[str, Any]:
+def _tax_adjusted_equity_curve(equity_curve: pd.DataFrame, final_portfolio: pd.DataFrame, test_spec: TestSpec):
+    """Zwraca (equity_curve_do_metryk, metrics_pre_tax) - jesli `test_spec.costs.annual_tax_rate`
+    > 0, equity_curve_do_metryk jest PO podatku (patrz `annual_tax.py`) i `metrics_pre_tax` niesie
+    metryki liczone na oryginalnej (przed-podatkowej) krzywej, do jawnego porownania. Inaczej
+    equity_curve bez zmian, `metrics_pre_tax=None`."""
+    annual_tax_rate = test_spec.costs.annual_tax_rate
+    if annual_tax_rate <= 0.0:
+        return equity_curve, None
+
+    metrics_pre_tax = compute_metrics(equity_curve, final_portfolio, {})
+    equity_curve_after_tax = apply_annual_tax(equity_curve, annual_tax_rate)
+    return equity_curve_after_tax, metrics_pre_tax
+
+
+def _run_final(
+    strategy_spec: StrategySpec, test_spec: TestSpec, acceptance_spec: AcceptanceSpec
+) -> Dict[str, Any]:
     final_portfolio = run_strategy_pipeline(strategy_spec)
     equity_curve = daily_equity_curve(final_portfolio, _load_daily_prices(strategy_spec), {})
+    equity_curve, metrics_pre_tax = _tax_adjusted_equity_curve(equity_curve, final_portfolio, test_spec)
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
-    return {
+    result = {
         "mode": "final",
         "metrics": metrics,
         "acceptance": check_criteria(metrics, acceptance_spec.global_),
         "equity_curve": equity_curve,
         "final_portfolio": final_portfolio,
     }
+    if metrics_pre_tax is not None:
+        result["metrics_pre_tax"] = metrics_pre_tax
+    return result
 
 
 def _run_validation(
@@ -68,6 +95,9 @@ def _run_validation(
 ) -> Dict[str, Any]:
     final_portfolio = run_strategy_pipeline(strategy_spec)
     equity_curve = daily_equity_curve(final_portfolio, _load_daily_prices(strategy_spec), {})
+    # podatek liczony na CALEJ historii PRZED wycieciem test_window - "high water mark" musi
+    # widziec lata sprzed okna OOS, zeby poprawnie zbudowac baze podatkowa (patrz docstring modulu)
+    equity_curve, _metrics_pre_tax_full_history = _tax_adjusted_equity_curve(equity_curve, final_portfolio, test_spec)
 
     start = pd.Timestamp(test_spec.test_window.start)
     end = pd.Timestamp(test_spec.test_window.end)
@@ -150,7 +180,7 @@ def run(run_spec: RunSpec, base_dir: Path) -> Dict[str, Any]:
             raise ValueError(f"{spec_name} niepoprawny: {spec_problems}")
 
     if run_spec.mode == "final":
-        return _run_final(strategy_spec, acceptance_spec)
+        return _run_final(strategy_spec, test_spec, acceptance_spec)
     if run_spec.mode == "validation":
         return _run_validation(strategy_spec, test_spec, acceptance_spec)
     if run_spec.mode == "search":
