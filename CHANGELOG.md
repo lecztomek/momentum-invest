@@ -2,6 +2,27 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (11)
+
+- **BRAKUJACE TESTY end-to-end dla `best17_a` (solo) i `best17_a_tlt_hedge` (z hedge)** - user
+  pytanie: "a best17 z hedge czy bez sa testy?". Odpowiedz brzmiala NIE dla obu: `best17_a` mial
+  tylko testy komponentow na SYNTETYCZNYCH danych (`test_best17_a_components.py`), zero testu
+  ladujacego faktyczny `strategy_spec.json` i uruchamiajacego go na realnych danych (w
+  odroznieniu od `gfm`/`best17_b`, ktore takie testy juz maja); `best17_a_tlt_hedge` (CombinedSpec
+  z `momentum_hedge_overlay`) nie mial ZADNEGO testu - cala weryfikacja przez cala sesje byla
+  ad-hoc skryptami, bez trwalego testu regresyjnego.
+
+  Dodano:
+  - `test_best17_a_strategy_spec.py` (6 testow): walidacja, resolve_blocks, kanarek VT+XLK,
+    `full_position_size==top_n`, end-to-end na realnych danych (oba rezymy risk-on/cash
+    wystapily), zamrozony baseline metryk (CAGR~16.5%, MaxDD~-29.5%, Sharpe~0.96).
+  - `test_best17_a_tlt_hedge.py` (4 testy): walidacja `combined_spec.json`, end-to-end na
+    realnych danych (hedge faktycznie sie kiedys wlaczyl), REGRESJA dla bugfixu "hedge wlaczal
+    sie przed startem core" (2026-07-11 - sprawdza wprost, ze `_CASH=1.0` na kazdej dacie sprzed
+    startu `best17_a`), zamrozony baseline metryk (CAGR~14.1%, MaxDD~-23.7%, Sharpe~0.97).
+
+  Pelny pakiet testow: **234/234**.
+
 ## 2026-07-11 (10)
 
 - **PARAM STABILITY na WSZYSTKICH strategiach** - user: "trzeba wszystkie strategie tym

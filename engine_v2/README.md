@@ -833,6 +833,19 @@ w `tests/conftest.py`). Kluczowe testy regresyjne:
   co ręczne wywołanie każdego bloku po kolei.
 - `test_combined_pipeline.py` - COMBINER + wspólna histereza na dwóch różnych strategiach.
 
+**Uwaga o pokryciu testami per-strategia**: NIE każda strategia w `strategies_v2/` ma dedykowany
+test end-to-end ładujący jej WŁASNY `strategy_spec.json`/`combined_spec.json` z dysku i
+uruchamiający go na realnych danych - część weryfikacji w tej sesji była robiona ad-hoc skryptami
+bez trwałego śladu w `tests/` (user pytanie 2026-07-11: "a best17 z hedge czy bez są testy?" -
+odpowiedź brzmiała NIE dla obu, dopóki nie dodano `test_best17_a_strategy_spec.py` i
+`test_best17_a_tlt_hedge.py`). Strategie z takim dedykowanym testem (wiring + end-to-end +
+zamrożony baseline metryk): `example_strategy` (`test_pipeline.py`), `the_one`/`vaa_g4`
+(`test_gem_dual_momentum_switch.py`/`test_vaa_canary.py` - tylko blok, nie pełny plik specyfikacji),
+`gfm`, `best17_b`, `best17_a`, `best17_a_tlt_hedge`. Combined portfolio bez dedykowanego testu
+(tylko `combined_example` ma pełny end-to-end w `test_combined_pipeline.py`):
+`combined_best2`/`combined_best2_dynamic`/`combined_triple`/`best17_a_tlt_timing`/
+`the_one_tlt_hedge` - zweryfikowane ad-hoc przy tworzeniu, ale bez trwałej regresji.
+
 ## Co jeszcze nie istnieje
 
 Z pierwotnego planu: **REPORTING**, **UK MAPPING** (mechanizm replikacji tickerów/instrumentów),
