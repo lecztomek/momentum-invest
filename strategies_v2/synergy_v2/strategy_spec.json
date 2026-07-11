@@ -1,0 +1,67 @@
+{
+  "name": "synergy_v2_v0",
+  "hypothesis": "Poprawka na synergy_v1 (patrz jego hypothesis) - tam TLT.us konkurowal w RANKINGU caly czas, wiec potrafil wypierac lepsze aktywa ofensywne nawet w risk-on (wynik: gorszy CAGR i MaxDD niz best17_a solo). Tutaj TLT.us jest eligibilny WYLACZNIE gdy oba warunki sa spelnione naraz: (1) ten sam kanarek VT+XLK co w best17_a mowi risk-OFF (nowy param 'invert=true' w canary_regime_gate - patrz engine_v2/blocks/asset_filters/canary_regime_gate.py) ORAZ (2) wlasny 12-miesieczny momentum TLT > 0 (odtwarza GEM/the_one - 'cash zamiast obligacji o ujemnym momentum', np. 2022). Aktywa ofensywne (XLK/IVV/DBC/IAU) i TLT sa wiec WZAJEMNIE WYKLUCZAJACE SIE w kazdym miesiacu (albo risk-on -> 4 ofensywne eligibilne/TLT nie, albo risk-off -> TLT eligibilny (jesli ma dodatni momentum)/4 ofensywne nie) - w przeciwienstwie do synergy_v1, gdzie oba zbiory bywaly eligibilne naraz. Rebound-starter (VT) zostaje jako ostatnia linia obrony gdy oba sety sa puste (risk-off I ujemny momentum TLT). Hipoteza: powinno dac nizszy MaxDD niz best17_a solo BEZ psucia CAGR (bo TLT wchodzi tylko gdy naprawde nie ma nic lepszego), w przeciwienstwie do synergy_v1.",
+  "universe": ["xlk.us", "ivv.us", "dbc.us", "iau.us", "vt.us", "tlt.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "rebound_starter",
+    "overlays": "none",
+    "execution": "score_gap_hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "ema7_16": {"impl": "ema_ratio_monthly", "fast_span": 7, "slow_span": 16},
+      "ema5_12": {"impl": "ema_ratio_monthly", "fast_span": 5, "slow_span": 12},
+      "mom_r3": {"impl": "momentum_month_end", "window": 3},
+      "mom_12": {"impl": "momentum_month_end", "window": 12}
+    },
+    "asset_filters": {
+      "canary": {
+        "impl": "canary_regime_gate",
+        "canary_assets": ["vt.us", "xlk.us"],
+        "indicator_key": "ema5_12",
+        "bad_threshold": -0.02,
+        "max_bad_count": 0,
+        "target_assets": ["xlk.us", "ivv.us", "dbc.us", "iau.us"]
+      },
+      "tlt_regime": {
+        "impl": "canary_regime_gate",
+        "canary_assets": ["vt.us", "xlk.us"],
+        "indicator_key": "ema5_12",
+        "bad_threshold": -0.02,
+        "max_bad_count": 0,
+        "target_assets": ["tlt.us"],
+        "invert": true
+      },
+      "iau_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3", "threshold": -0.01, "assets": ["iau.us"]},
+      "dbc_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3", "threshold": -0.01, "assets": ["dbc.us"]},
+      "tlt_gate": {"impl": "indicator_positive", "indicator_key": "mom_12", "threshold": 0.0, "assets": ["tlt.us"]},
+      "require_positive_score": {"impl": "indicator_positive", "indicator_key": "ema7_16", "threshold": 0.0, "assets": ["xlk.us", "ivv.us", "dbc.us", "iau.us"]},
+      "exclude_canary_from_selection": {"impl": "never_eligible", "assets": ["vt.us"]}
+    },
+    "asset_scoring": {"weights": {"ema7_16": 1.0}},
+    "selector": {"top_n": 2},
+    "alpha_weighting": {"weights": [0.8, 0.2], "redistribute_if_short": true},
+    "portfolio_risk_engine": {
+      "rebound_ticker": "vt.us",
+      "indicator_key": "mom_r3",
+      "threshold": 0.05
+    },
+    "execution": {"min_score_gap": 0.005, "cost_bps": 40, "full_position_size": 2}
+  },
+
+  "allowed_param_families": {
+    "execution": {"min_score_gap": [0.0, 0.0025, 0.005, 0.0075, 0.01]},
+    "asset_filters": {"canary.bad_threshold": [-0.03, -0.02, -0.01]}
+  },
+
+  "created_at": "2026-07-11"
+}

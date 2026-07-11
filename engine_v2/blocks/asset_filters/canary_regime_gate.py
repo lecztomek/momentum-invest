@@ -31,6 +31,10 @@ params:
     max_bad_count (int, wymagane)        - ile zlych kanarkow jest jeszcze tolerowane (0 = nawet
                                             jeden zly kanarek wywoluje risk-off)
     target_assets (list[str], wymagane)  - ktore aktywa dostaja True/False wg tego gate'u
+    invert (bool, opcjonalnie, domyslnie False) - odwraca wynik (target_assets eligibilne
+        DOKLADNIE gdy regime jest risk-OFF, nie risk-on). Przydatne do budowy defensywnego
+        kandydata (np. obligacja), ktory ma wejsc na miejsce zablokowanych aktyw ofensywnych
+        w TYM SAMYM rankingu SELECTORA, zamiast osobnego combinera - patrz strategies_v2/synergy_v1.
 """
 
 from __future__ import annotations
@@ -71,12 +75,13 @@ def canary_regime_gate(
     bad_count = is_bad.sum(axis=1)
 
     risk_on = bad_count <= max_bad_count  # Series[bool], index = TAKI SAM jak canary_values
+    eligible = ~risk_on if params.get("invert", False) else risk_on
 
     # Maska na indeksie wskaznika (risk_on.index), NIE market_data.prices.index (zawsze dzienny) -
     # patrz uwaga w docstringu modulu.
     universe = list(market_data.prices.columns)
-    mask = pd.DataFrame(True, index=risk_on.index, columns=universe)
+    mask = pd.DataFrame(True, index=eligible.index, columns=universe)
     for ticker in target_assets:
-        mask[ticker] = risk_on
+        mask[ticker] = eligible
 
     return mask

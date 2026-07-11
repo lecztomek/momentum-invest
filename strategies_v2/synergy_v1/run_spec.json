@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "Eksperymentalna synteza pomyslow z best17_a (szkielet: kanarek+rebound+gates+histereza) i the_one/GEM (absolutny momentum na obligacji jako warunek eligibilnosci) - jeden pipeline, bez combinera. Zobacz hypothesis w strategy_spec.json."
+}

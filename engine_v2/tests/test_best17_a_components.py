@@ -81,6 +81,24 @@ def test_canary_regime_gate_blocks_targets_when_bad_canary():
     assert mask.loc[idx[2], "a"] == True  # vt = 0.0, nie <= -0.02
 
 
+def test_canary_regime_gate_invert_flips_eligibility():
+    idx = pd.date_range("2021-01-01", periods=3, freq="MS")
+    prices = pd.DataFrame({"a": 1.0, "b": 1.0, "vt": 1.0}, index=idx)
+    md = MarketData(prices=prices, returns=pd.DataFrame())
+    canary_indicator = pd.DataFrame({"vt": [0.01, -0.05, 0.0]}, index=idx)
+    indicator_set = {"canary": canary_indicator}
+
+    mask = canary_regime_gate(
+        md, indicator_set,
+        {"canary_assets": ["vt"], "indicator_key": "canary", "bad_threshold": -0.02,
+         "max_bad_count": 0, "target_assets": ["a", "b"], "invert": True},
+    )
+
+    assert mask.loc[idx[0], "a"] == False  # noqa: E712 - vt ok -> risk-on -> inverted = ineligible
+    assert mask.loc[idx[1], "a"] == True  # vt zly -> risk-off -> inverted = eligible
+    assert mask.loc[idx[2], "a"] == False  # vt = 0.0 -> risk-on -> inverted = ineligible
+
+
 def test_canary_regime_gate_requires_params():
     md = MarketData(prices=pd.DataFrame({"a": [1.0]}, index=[pd.Timestamp("2021-01-01")]), returns=pd.DataFrame())
     with pytest.raises(ValueError, match="canary_regime_gate"):

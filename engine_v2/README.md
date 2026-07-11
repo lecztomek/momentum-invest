@@ -51,7 +51,7 @@ Orchestrator: `pipeline.run_strategy_pipeline(spec)` -> gotowa tabela FINAL PORT
 | `data_loader` | pojedynczy wybór | `stooq_csv` | Wczytuje ceny z plików stooq, wspiera `daily`/`weekly`/`monthly` |
 | `data_cleaner` | pojedynczy wybór | `trim_and_interpolate` | Równa wspólny zakres dat, uzupełnia luki interpolacją (z limitem `max_gap`) |
 | `indicators` | **wielo-instancyjny** | `sma_daily`, `momentum_monthly`, `volatility_daily`, `ema_ratio_monthly`, `momentum_month_end` | Biblioteka wskaźników - osobna implementacja per wskaźnik+częstotliwość+baza cenowa (start/koniec miesiąca) |
-| `asset_filters` | **wielo-instancyjny** | `price_above_indicator`, `indicator_positive`, `canary_regime_gate`, `never_eligible` | Eliminacja aktywów (AND między instancjami); `canary_regime_gate` to GLOBALNY gate (cała grupa naraz, na podstawie osobnych "kanarków"); `never_eligible` trwale wyklucza tickery z normalnej selekcji |
+| `asset_filters` | **wielo-instancyjny** | `price_above_indicator`, `indicator_positive`, `canary_regime_gate`, `never_eligible` | Eliminacja aktywów (AND między instancjami); `canary_regime_gate` to GLOBALNY gate (cała grupa naraz, na podstawie osobnych "kanarków"), opcjonalny param `invert` (domyślnie `False`) odwraca gate na risk-OFF zamiast risk-on - patrz `strategies_v2/synergy_v2/`; `never_eligible` trwale wyklucza tickery z normalnej selekcji |
 | `asset_scoring` | pojedynczy wybór | `weighted_sum` | Ważona suma wskaźników, maskuje NaN tam gdzie `eligibility_mask=False` |
 | `selector` | pojedynczy wybór | `top_n` | Top-N wg score, nigdy nie wybiera NaN |
 | `alpha_weighting` | pojedynczy wybór | `rank_weights`, `inverse_vol`, `rounded_score_weights` | Wagi wybranych: stałe wg rankingu (reszta do `_CASH`) albo odwrotnie proporcjonalne do zmienności (zawsze w pełni zainwestowane) albo proporcjonalne do score, zaokrąglone do bloku (largest remainder), z gwarantowanym minimum na aktywo |
@@ -206,6 +206,41 @@ Sharpe 0.93 (vs 0.94), Calmar 0.52 (vs 0.62) - wyraźnie gorzej na każdym wymia
 **Wniosek**: przenośność ma swoją cenę - sam absolutny momentum TLT nie ma realnej przewagi,
 przewaga `momentum_hedge_overlay` bierze się WŁAŚNIE z relatywnego porównania do core, nie z
 samego TLT. `best17_a_tlt_hedge/` (relatywny wariant) pozostaje rekomendowanym wyborem.
+
+**`strategies_v2/synergy_v1/` i `strategies_v2/synergy_v2/` - próba złożenia JEDNEGO nowego
+pipeline'u z najlepszych pomysłów sesji** (user: "stwórz wersję strategii biorącą najlepsze rzeczy
+z innych"), zamiast COMBINERA dwóch gotowych strategii. Idea: szkielet `best17_a` (kanarek VT+XLK,
+gates IAU/DBC na 3m momentum, `rebound_starter`, histereza po score) + koncepcja GEM/`the_one`
+(absolutny 12-miesięczny momentum na obligacji jako warunek eligibilności, nie osobny combiner
+jak `best17_a_tlt_hedge`) - TLT.us dołączony wprost do uniwersum wyboru `best17_a`.
+
+- `synergy_v1`: TLT.us eligibilny zawsze, gdy ma dodatni `mom_12` - konkuruje w TYM SAMYM
+  rankingu EMA7/EMA16 co XLK/IVV/DBC/IAU (może wygrać slot top2 nawet w risk-on). Wynik:
+  **gorzej niż `best17_a` solo na każdej metryce** - CAGR/MaxDD/Sharpe/Calmar wszystkie słabsze,
+  po podatku CAGR 14.04% vs 16.07%, MaxDD -29.99% vs -29.47%, Sharpe 0.83 vs 0.93. TLT
+  okazjonalnie wypierał lepsze aktywa ofensywne z rankingu (crowding-out) - dodanie kandydata
+  konkurującego w tej samej puli, nawet z sensownym filtrem absolutnego momentum, nie gwarantuje
+  poprawy, jeśli konkuruje TEŻ wtedy, gdy nie powinien.
+- `synergy_v2`: poprawka - nowy opcjonalny param `invert` w `canary_regime_gate` (patrz tabela
+  bloków wyżej) sprawia, że TLT.us i 4 aktywa ofensywne są WZAJEMNIE WYKLUCZAJĄCE SIĘ (ten sam
+  kanarek VT+XLK, odwrócony dla TLT) - TLT wchodzi TYLKO gdy kanarek mówi risk-off ORAZ własny
+  `mom_12 > 0`. Zweryfikowano testem (`test_synergy_v2_tlt_and_offensive_assets_never_held_together`),
+  że oba zbiory NIGDY nie są trzymane naraz, i że mechanizm faktycznie się aktywuje (TLT 100%
+  wagi przez cały kryzys 2008-09 - `rebound_starter`/kanarek działają jak w `best17_a`, ale zamiast
+  cash portfel wchodzi w TLT). Mimo to wynik dalej **nie bije `best17_a` solo** - CAGR 15.59% vs
+  16.07% po podatku, MaxDD -29.99% vs -29.47% (identyczne jak `synergy_v1` - ten sam trough),
+  Sharpe 0.89 vs 0.93. Najgorszy rok kalendarzowy identyczny jak solo (2022) - akurat wtedy TLT
+  miał RÓWNIEŻ ujemny `mom_12` (znane pęknięcie korelacji akcje-obligacje w cyklu podwyżek stóp),
+  więc bramka nie uratowała dokładnie tam, gdzie byłaby najbardziej potrzebna.
+
+**Wniosek**: wbudowanie ekspozycji na obligacje w TEN SAM pipeline selekcji (współzawodnictwo albo
+wzajemne wykluczanie binarne) NIE bije już znalezionych kombinacji zbudowanych jako COMBINER
+dwóch osobnych strategii z płynną wagą (`vaa_g4_best17_a`, `best17_a_tlt_hedge`) -
+`momentum_hedge_overlay`/`fixed_capital_weights` uśredniają ekspozycję w sposób CIĄGŁY (np. 40%
+TLT + 60% core niezależnie od regime'u), podczas gdy selektor top_n przełącza się BINARNIE (0%
+albo 100%, tylko gdy regime akurat na to pozwala) - to grubsza, mniej wybaczająca kontrola ryzyka.
+Rekomendacja z sesji (`vaa_g4_best17_a`, alternatywnie `best17_a_tlt_hedge` przy niższym
+turnoverze) pozostaje bez zmian.
 
 **Param stability (2026-07-11)**: rodzina `mom_3.window` x `execution.hysteresis_pct` (9
 wariantow) - `relative_drop` = **63.49%**, **FAIL** (prog zaostrzony z pierwotnie luznych 1.0 do
@@ -541,6 +576,8 @@ strategies_v2/
   the_one_tlt_hedge/             # the_one+tlt_hedge, ta sama regula co best17_a - patrz niżej (hedge SZKODZI tu)
   gfm/                           # "Global Factor Model" - patrz niżej (BEZ DANYCH, zaimplementowane "na sucho")
   best17_b/                      # "Strategia B" uzytkownika - rotacja sektorowa - patrz niżej
+  synergy_v1/                    # eksperyment: best17_a+TLT w JEDNYM pipeline (bez combinera) - patrz niżej, gorzej niż best17_a solo
+  synergy_v2/                    # poprawka: TLT wzajemnie wykluczajacy sie z 4 aktywami ofensywnymi - patrz niżej, dalej gorzej niż best17_a solo
   # wszystkie pozostale pary 7 glownych strategii (fixed_capital_weights 50/50) - patrz
   # "Wszystkie pary 7 głównych strategii" wyzej; vaa_g4_best17_a to najlepszy Sharpe w repo
   dual_momentum_vaa_g4/  dual_momentum_the_one/       dual_momentum_best17_a/

@@ -2,6 +2,43 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (14)
+
+- **Eksperyment: `strategies_v2/synergy_v1` i `strategies_v2/synergy_v2`** - user poprosił o próbę
+  złożenia JEDNEGO nowego pipeline'u (nie fixed-weight combinera dwóch gotowych strategii) z
+  najlepszych pomysłów z tej sesji: szkielet `best17_a` (kanarek VT+XLK, gates IAU/DBC, rebound,
+  histereza) + koncepcja GEM/`the_one` (absolutny 12m momentum na obligacji jako warunek
+  eligibilności) + szersze uniwersum (TLT.us jako dodatkowa klasa aktywów, zamiast osobnej
+  strategii hedgującej jak w `best17_a_tlt_hedge`).
+
+  - `synergy_v1`: TLT.us eligibilny ZAWSZE (gdy ma dodatni 12m momentum), konkuruje w TYM SAMYM
+    rankingu EMA7/EMA16 co XLK/IVV/DBC/IAU. Wynik: **gorzej niż `best17_a` solo na każdej
+    metryce** (CAGR 14.04% vs 16.07% po podatku, MaxDD -29.99% vs -29.47%, Sharpe 0.83 vs 0.93) -
+    TLT czasem wypierał lepsze aktywa ofensywne z rankingu nawet w risk-on (crowding-out).
+  - `synergy_v2`: poprawka - TLT.us i 4 aktywa ofensywne są WZAJEMNIE WYKLUCZAJĄCE SIĘ (nowy
+    param `invert` w `canary_regime_gate` - patrz niżej), TLT wchodzi TYLKO gdy kanarek mówi
+    risk-off ORAZ własny 12m momentum > 0. Mechanizm faktycznie się aktywuje (TLT 100% wagi przez
+    cały kryzys 2008-09), ale wynik dalej **nie bije `best17_a` solo** (CAGR 15.59% vs 16.07% po
+    podatku, MaxDD -29.99% vs -29.47%, Sharpe 0.89 vs 0.93) - najgorszy rok kalendarzowy
+    identyczny jak solo (2022), bo akurat wtedy TLT też miał ujemny momentum (znane pęknięcie
+    korelacji akcje-obligacje), więc bramka nie uratowała dokładnie tam, gdzie byłaby najbardziej
+    potrzebna.
+
+  **Wniosek**: wbudowanie ekspozycji na obligacje w TEN SAM pipeline selekcji (czy to przez
+  współzawodnictwo, czy przez wykluczanie się binarne) NIE bije już znalezionych kombinacji
+  (`vaa_g4_best17_a`, `best17_a_tlt_hedge`) zbudowanych jako COMBINER dwóch osobnych strategii z
+  płynną wagą - `momentum_hedge_overlay`/`fixed_capital_weights` uśredniają ekspozycję w sposób
+  ciągły, podczas gdy selektor top_n przełącza się binarnie (0% albo 100%), co jest brutalniejsze
+  i nie łagodzi DD tak samo. Rekomendacja z sesji (`vaa_g4_best17_a`) pozostaje bez zmian.
+
+  **NOWY PARAM `invert` w `engine_v2/blocks/asset_filters/canary_regime_gate.py`** (opcjonalny,
+  domyślnie `False`, wsteczna kompatybilność zachowana - 71 istniejących testów bez zmian) -
+  odwraca wynik gate'u (target_assets eligibilne dokładnie gdy regime jest risk-OFF, nie risk-on).
+  1 nowy test jednostkowy (`test_canary_regime_gate_invert_flips_eligibility`) + 9 nowych testów
+  end-to-end (`test_synergy_strategy_specs.py` - walidacja specs, resolve blocks, pełny łańcuch na
+  realnych danych, wzajemne wykluczanie TLT/aktywa ofensywne w `synergy_v2`, 2 zamrożone baseline'y
+  metryk).
+
 ## 2026-07-11 (13)
 
 - **NOWY MODUL `engine_v2/annual_tax.py` - roczny podatek od zysków (19%, "Belka")** - user
