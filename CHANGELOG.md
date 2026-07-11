@@ -2,6 +2,51 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (24)
+
+- **NOWY MODUL `engine_v2/local_param_stability.py`** - user trafnie skrytykowal
+  `param_stability.compute_param_stability` (pojedynczy `relative_drop`): (1) bierze pod uwage
+  najgorszy SKRAJ calego zakresu, nie sasiadow wartosci domyslnej, (2) nie uwzglednia GDZIE w
+  rodzinie siedzi wartosc domyslna, (3) nie rozroznia PLATEAU od POJEDYNCZEGO MAKSIMUM, (4)
+  traktuje wszystkie testowane wartosci jednakowo. Nowy modul dodaje 3 funkcje:
+  - `describe_1d_sensitivity` - LOKALNY spadek do najblizszych sasiadow (nie do skraju), SZEROKOSC
+    PLATEAU (ile sasiednich punktow w granicy tolerancji od najlepszego), POZYCJA wartosci
+    domyslnej (ranking + luka), ASYMETRIA (pogorszenie w gore vs w dol).
+  - `describe_2d_sensitivity` - to samo dla siatki DWOCH powiazanych parametrow (flood-fill
+    spojnego obszaru wokol komorki domyslnej). WAZNA POPRAWKA w trakcie implementacji: pierwsza
+    wersja flood-fill zawsze zaczynala od komorki domyslnej NIEZALEZNIE czy sama spelniala prog -
+    to mogloby zawyzyc "plateau" przez sasiada, ktory akurat go spelnia, mimo ze SAM default nie
+    jest wystarczajaco dobry. Naprawione: `default_meets_threshold` sprawdzane NAJPIERW, plateau
+    liczony TYLKO jesli default sam spelnia prog (2 nowe testy lapiace ten dokladny scenariusz).
+  - `compute_fold_rank_stability` - Kendall's W (zgodnosc rankingow) miedzy OSOBNYMI oknami
+    walk-forward, nie tylko ich srednia - czy TA SAMA wartosc parametru wygrywa w wiekszosci
+    foldow, czy ranking sie rozjezdza fold-do-foldu (sygnal dopasowania do szumu JEDNEGO okna).
+
+  **Zastosowane do 4 par best17_a wskazanych przez usera** (lokalna siatka 3x3 lub 3x2 wokol
+  wartosci domyslnych, `wf_mean_cagr` z 5 okien walk-forward):
+
+  | Para | default_meets_threshold (3%) | plateau_area | gap_to_best | Kendall's W (5 foldow) |
+  |---|---|---|---|---|
+  | `ema7_16.fast_span` x `slow_span` | **TAK** | 6/9 (67%) | ~0% | 0.86 |
+  | `ema5_12.fast_span` x `slow_span` | **NIE** | 0/9 | 8.2% | 0.95 |
+  | `canary.bad_threshold` x `max_bad_count` | **NIE** | 0/6 | 8.2% | 0.98 |
+  | `min_score_gap` x `alpha_weighting` (top1 share) | **TAK** | 5/9 (56%) | 1.6% | - |
+
+  **Wniosek (bardziej precyzyjny niz poprzedni relative_drop)**: `ema7_16` (scoring) i
+  `min_score_gap`/`alpha_weighting` siedza na SZEROKICH, POTWIERDZONYCH plateau - domyslne
+  wartosci sa NAPRAWDE blisko lokalnego optimum, nie tylko "nie na samym skraju". `ema5_12`
+  (kanarek) i `canary.bad_threshold` NIE spelniaja progu 3% tolerancji w tej lokalnej siatce -
+  istnieje realna, NIE-losowa (Kendall's W 0.95/0.98 - bardzo wysoka zgodnosc rankingu fold-do-
+  foldu, default konsekwentnie NIE wygrywa w ZADNYM z 5 okien) poprawa dostepna w pobliskich
+  wartosciach (fast_span=6 zamiast 5, bad_threshold=-0.03 zamiast -0.02). To NIE jest sygnal
+  overfittingu (odosobniony szczyt otoczony przez szum) - to sygnal NIEDO-strojenia: te 2
+  parametry maja realna, konsekwentnie powtarzalna (nie fold-specyficzna) przestrzen do poprawy,
+  ktora obecna konfiguracja nie wykorzystuje.
+
+  13 nowych testow (`test_local_param_stability.py` - plateau vs szczyt, asymetria, pozycja
+  domyslnej, flood-fill 2D, default ponizej progu nie pozycza od sasiada, zgodnosc/rozbieznosc
+  rankingow miedzy foldami). 389/389 testow przechodzi.
+
 ## 2026-07-11 (23)
 
 - **Analiza overfittingu `best17_a` parametr-po-parametrze** (user: "mam obawy czy ona nie jest

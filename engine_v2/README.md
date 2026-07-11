@@ -531,6 +531,59 @@ nieznaleziony wczesniej bo byly zablokowane brakiem danych) - dodano `cost_bps: 
 CAGR 8.82%->7.98%, `dual_momentum` CAGR 6.98%->6.74% - wszystkie progi `acceptance_spec.json`
 nadal przechodza.
 
+### LOCAL PARAM STABILITY (`local_param_stability.py`) - diagnostyka precyzyjniejsza niz `relative_drop`
+
+User trafnie skrytykowal `param_stability.compute_param_stability` (pojedynczy
+`relative_drop = (best-worst)/abs(best)`): (1) bierze pod uwage najgorszy SKRAJ calego zakresu,
+nie sasiadow wartosci domyslnej, (2) nie uwzglednia GDZIE w rodzinie siedzi wartosc domyslna, (3)
+nie rozroznia PLATEAU (szeroki, bezpieczny obszar) od POJEDYNCZEGO MAKSIMUM (waski, kruchy
+szczyt) - obie sytuacje moga dac ten sam `relative_drop`, (4) traktuje wszystkie testowane
+wartosci jednakowo, niezaleznie od odleglosci od domyslnej.
+
+Nowy modul dodaje 3 funkcje, kazda odpowiadajaca na inna czesc krytyki:
+
+- **`describe_1d_sensitivity`** - LOKALNY spadek do najblizszych SASIADOW wartosci domyslnej (nie
+  do skraju calego zakresu), SZEROKOSC PLATEAU (ile sasiednich punktow siedzi w granicy
+  tolerancji od najlepszego wyniku - liczona TYLKO jesli sama wartosc domyslna rowniez spelnia
+  ten prog, patrz nizej), POZYCJA wartosci domyslnej (ranking + luka do najlepszego), ASYMETRIA
+  (czy pogorszenie idac w gore rozni sie od pogorszenia idac w dol).
+- **`describe_2d_sensitivity`** - to samo dla siatki DWOCH powiazanych parametrow naraz (np.
+  `ema7_16.fast_span` x `slow_span`) - PLATEAU jako SPOJNY obszar (flood-fill 4-sasiedztwa) wokol
+  komorki domyslnej.
+- **`compute_fold_rank_stability`** - Kendall's W (wspolczynnik zgodnosci rankingow, 0-1) miedzy
+  OSOBNYMI oknami walk-forward, nie tylko ich srednia - czy TA SAMA wartosc parametru wygrywa w
+  wiekszosci foldow, czy ranking sie rozjezdza fold-do-foldu (co sugerowaloby dopasowanie do
+  szumu JEDNEGO konkretnego okna, nie prawdziwa, powtarzalna przewage).
+
+**Wazna poprawka znaleziona w trakcie implementacji**: pierwsza wersja flood-fill (2D) zawsze
+zaczynala liczyc plateau od komorki domyslnej NIEZALEZNIE, czy ona SAMA spelniala prog tolerancji
+- to moglo zawyzyc wynik przez sasiada, ktory akurat prog spelnia, mimo ze SAM default nie jest
+"wystarczajaco dobry". Naprawione: `default_meets_threshold` sprawdzane NAJPIERW - plateau liczy
+sie TYLKO jesli default sam przechodzi prog, inaczej `plateau_area_cells=0` (ten sam wzorzec
+zastosowany tez w wersji 1D). 2 nowe testy lapia dokladnie ten scenariusz (default ponizej progu,
+ale sasiadujacy z najlepszym punktem).
+
+**Zastosowane do 4 par `best17_a` wskazanych przez usera** (lokalna siatka 3x3/3x2 wokol
+wartosci domyslnych, `wf_mean_cagr` z 5 okien walk-forward na `train_window`):
+
+| Para | `default_meets_threshold` (3%) | plateau_area | gap_to_best | Kendall's W (5 foldow) |
+|---|---|---|---|---|
+| `ema7_16.fast_span` x `slow_span` | **TAK** | 6/9 (67%) | ~0% | 0.86 |
+| `ema5_12.fast_span` x `slow_span` | **NIE** | 0/9 | 8.2% | 0.95 |
+| `canary.bad_threshold` x `max_bad_count` | **NIE** | 0/6 | 8.2% | 0.98 |
+| `min_score_gap` x `alpha_weighting` (top1 share) | **TAK** | 5/9 (56%) | 1.6% | - |
+
+**Wniosek (bardziej precyzyjny niz sam `relative_drop`)**: `ema7_16` (scoring) i
+`min_score_gap`/`alpha_weighting` siedza na SZEROKICH, POTWIERDZONYCH plateau - domyslne wartosci
+sa NAPRAWDE blisko lokalnego optimum. `ema5_12` (kanarek) i `canary.bad_threshold` NIE spelniaja
+progu 3% tolerancji w tej lokalnej siatce - istnieje realna, NIE-losowa poprawa dostepna w
+pobliskich wartosciach (`fast_span=6` zamiast 5, `bad_threshold=-0.03` zamiast -0.02). Kendall's W
+0.95/0.98 (bardzo wysoka zgodnosc rankingu fold-do-foldu, default konsekwentnie NIE wygrywa w
+ZADNYM z 5 okien) potwierdza, ze ta przewaga jest POWTARZALNA w kazdym oknie, nie efektem jednego
+szczesliwego folda. To NIE jest sygnal overfittingu (odosobniony szczyt otoczony przez szum) - to
+sygnal NIEDO-strojenia: te 2 parametry maja realna, konsekwentnie powtarzalna przestrzen do
+poprawy, ktorej obecna konfiguracja nie wykorzystuje.
+
 ### NAMED PERIODS (`named_periods.py`) - "jak strategia wypada w konkretnym, znanym okresie"
 
 User: "A named periods możesz pokazać?" - `AcceptanceSpec.named_periods` (dict `nazwa_okresu ->
@@ -604,6 +657,7 @@ engine_v2/
   grid_sweep.py                                             # sweep po allowed_param_families -> N wariantow StrategySpec
   acceptance_check.py                                       # METRICS vs AcceptanceSpec.Criteria -> pass/fail
   param_stability.py                                        # sweep -> "jak stabilna jest rodzina parametrow"
+  local_param_stability.py                                  # precyzyjniejsza diagnostyka: lokalny spadek, plateau, pozycja default, asymetria, zgodnosc rankingow miedzy foldami
   annual_tax.py                                             # equity_curve -> equity_curve po rocznym podatku (19%, high-water mark)
   named_periods.py                                          # KNOWN_PERIODS + metryki/checki per znany okres rynkowy (GFC, covid, inflation_bear)
   run_spec_runner.py                                        # RunSpec.mode -> final/validation/search
