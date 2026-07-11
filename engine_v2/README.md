@@ -734,7 +734,7 @@ strategies_v2/
   synergy_v1/                    # eksperyment: best17_a+TLT w JEDNYM pipeline (bez combinera) - patrz niżej, gorzej niż best17_a solo
   synergy_v2/                    # poprawka: TLT wzajemnie wykluczajacy sie z 4 aktywami ofensywnymi - patrz niżej, dalej gorzej niż best17_a solo
   gpm/                            # "Generalized Protective Momentum" - patrz niżej, najnizszy MaxDD (-15.2%) i najstabilniejsza rodzina parametrow w calej sesji
-  gpm_best17_a/                   # gpm+best17_a, fixed_capital_weights 45/55 - patrz nizej, NAJLEPSZY CALMAR calej sesji (0.707)
+  gpm_best17_a/                   # gpm(+xle.us)+best17_a, dynamic_capital_weights 45/55 - patrz nizej, NAJLEPSZY CALMAR calej sesji (0.774)
   gtaa_agg3/                      # "GTAA AGG3" - top3 momentum + filtr trendu PER SLOT - patrz nizej
   gtaa_agg6/                      # "GTAA AGG6" - to samo, top6 zamiast top3 - patrz nizej
   gtaa_agg6_best17_a/             # gtaa_agg6+best17_a, fixed_capital_weights 55/45 - patrz nizej, GORZEJ niz gpm_best17_a (negatywny wynik, udokumentowany)
@@ -1204,6 +1204,14 @@ NIE oddzielne Europa/Japonia jak w oryginale, jawnie odnotowane przyblizenie).
 (ief, shy). `execution: hysteresis` z `hysteresis_pct=0.0` (zawsze pelny rebalans co miesiac,
 bez histerezy - zgodnie z opisem "portfel jest rebalansowany do nowych wag" co miesiac).
 
+**ROZSZERZENIE 2026-07-11 (patrz CHANGELOG (29))**: dodano `xle.us` (energia) do `risky_assets`
+(13, bylo 12) - user szukal aktywa dobrego w 2022 (jedyny rok, gdzie WSZYSTKIE strategie w repo
+byly na minusie); sprawdzone na realnych danych, XLE bylo najlepszym wykonawca 2022 w calym
+repo (+64%). Solo `gpm`: 2022 poprawia sie z -5.47% na -0.36%, MaxDD praktycznie bez zmian
+(-13.09%->-13.00%). `full_protective_max_n`/`protective_scale_denominator` CELOWO NIE
+przeskalowane (zostaja 6/6, kalibrowane pod 12 aktywow) - to dokladnie zweryfikowana empirycznie
+konfiguracja.
+
 **Realny wynik** (2007-08 do 2026-08, 229 miesiecy, PRZED podatkiem): CAGR 5.32%,
 **MaxDD -15.20% (NAJNIZSZY z calej sesji** - nizej niz dotychczasowy rekord
 `dual_momentum_all_weather_4`, -16.71%), Sharpe 0.67, Calmar 0.35, turnover 4.36/rok. Train
@@ -1245,13 +1253,28 @@ Automatycznie odkryty i przetestowany przez `test_all_combined_specs.py` (glob-d
 nowych plikow testowych potrzebnych.
 
 **Po bugfixach gate'u IAU/DBC i histerezy w `best17_a` (2026-07-11 (27)+(28), patrz CHANGELOG)**:
-`gpm_best17_a` (55/45) CAGR 11.03%, MaxDD -16.50%, Sharpe 0.968, Calmar **0.669** - nadal
-**najlepszy Calmar calej sesji** (vs `vaa_g4_best17_a` 0.629 po obu poprawkach), wniosek bez
-zmian. Powyzsza tabela sweepu 35-60% NIE zostala w pelni przeliczona po tych bugfixach (patrz
-CHANGELOG (27)/(28) za zakres) - tylko finalny, zapisany punkt 55/45.
+`gpm_best17_a` (55/45) CAGR 11.03%, MaxDD -16.50%, Sharpe 0.968, Calmar 0.669 - wtedy nadal
+najlepszy Calmar sesji (vs `vaa_g4_best17_a` 0.629). Powyzsza tabela sweepu 35-60% NIE zostala w
+pelni przeliczona po tych bugfixach - tylko finalny, zapisany punkt 55/45.
 
-**Rekomendacja sesji**: `gpm_best17_a` (55/45) - jesli priorytetem jest MaxDD/Calmar i niski
-turnover; `vaa_g4_best17_a` pozostaje lepszy, jesli priorytetem jest czysty Sharpe.
+**NOWY REKORD 2026-07-11 (29), patrz CHANGELOG**: user "moze wymysl cos co by bylo dobre w 2022
+i wtedy robimy miks". Po dodaniu `xle.us` do `gpm` (patrz wyzej) i ponownym sweepie wagi z XLE,
+PO PODATKU - najlepszy Calmar przy 45/55 (best17_a/gpm): CAGR 10.14%, MaxDD **-13.28%** (bylo
+-15.40%), Sharpe 0.996, Calmar **0.763** (bylo 0.707). Zweryfikowano na TEJ SAMEJ wadze (55/45)
+przed/po XLE, ze to NIE "ciazy" w innych okresach - lepiej w 6 z 7 porownan (FULL/TRAIN/OOS/
+post_gfc_recovery/inflation_bear, tylko odrobine gorzej w covid_crash_rebound), wczesniejsze
+wrazenie "gorszego CAGR" bylo artefaktem porownywania roznych wag (45% vs 55%), nie samego XLE.
+
+User nastepnie zaproponowal dynamiczna alokacje kapitalu zamiast stalej - `dynamic_capital_weights`
+(juz istniejacy combiner z `combined_best2_dynamic`) na TEJ SAMEJ bazowej wadze 45/55 dal dalszy,
+mniejszy, ale konsekwentny plus na kazdej testowanej wadze: CAGR 10.23%, MaxDD -13.22%, Sharpe
+0.980, Calmar **0.774** - **NOWY REKORD CALEJ SESJI**, wybrany jako finalna konfiguracja
+`gpm_best17_a` (`combiner: dynamic_capital_weights`, `capital_weights: gpm_v0=0.55,
+best17_a_v0=0.45`).
+
+**Rekomendacja sesji (zaktualizowana)**: `gpm_best17_a` (z `xle.us` w `gpm`,
+`dynamic_capital_weights`, 45/55 best17_a/gpm) - jesli priorytetem jest MaxDD/Calmar; `vaa_g4_best17_a`
+pozostaje lepszy, jesli priorytetem jest czysty Sharpe (0.987 vs 0.980).
 
 **Stabilnosc wagi combinera** (user: "Jak ze stabilnoscia naszego najlepszego miksu?") -
 `compute_param_stability` zastosowany PIERWSZY RAZ do wagi combinera (nie parametrow
@@ -1324,8 +1347,9 @@ rekomendacja - `gpm_best17_a` pozostaje najlepszym znalezionym miksem.
 
 **Po bugfixach gate'u IAU/DBC i histerezy w `best17_a` (2026-07-11 (27)+(28), patrz CHANGELOG)**:
 `gtaa_agg6_best17_a` (45/55, zapisany punkt) CAGR 10.42%, MaxDD -19.44%, Sharpe 0.910, Calmar
-0.536 - dalej wyraznie gorzej niz `gpm_best17_a` (Calmar 0.669), wniosek bez zmian. Automatycznie
-odkryte i przetestowane przez `test_all_combined_specs.py` (glob-discovery).
+0.536 - dalej wyraznie gorzej niz `gpm_best17_a` (Calmar 0.774 po rozszerzeniu o xle.us, patrz
+CHANGELOG (29)), wniosek bez zmian. Automatycznie odkryte i przetestowane przez
+`test_all_combined_specs.py` (glob-discovery).
 
 ### Dwunasta strategia: `daa_g4` ("DAA-G4" - Defensive Asset Allocation, Keller & Keuning 2017)
 

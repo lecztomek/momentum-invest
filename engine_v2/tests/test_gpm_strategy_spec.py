@@ -35,11 +35,15 @@ def test_gpm_spec_resolves_all_blocks():
         assert block_type in resolved
 
 
-def test_gpm_risky_universe_has_12_assets_and_2_protective():
+def test_gpm_risky_universe_has_13_assets_and_2_protective():
+    """POPRAWKA 2026-07-11 (patrz CHANGELOG) - xle.us dolaczony do risky_assets (13, bylo 12) -
+    najlepszy wykonawca 2022 w calym repo (+64%), poprawia solo `gpm` w 2022 (-5.47%->-0.36%)
+    bez pogorszenia MaxDD."""
     spec = _load_spec()
     risky = spec.base_params["portfolio_risk_engine"]["risky_assets"]
     protective = spec.base_params["portfolio_risk_engine"]["protective_assets"]
-    assert len(risky) == 12
+    assert len(risky) == 13
+    assert "xle.us" in risky
     assert len(protective) == 2
     # koszyk korelacji musi byc DOKLADNIE ten sam zestaw co risky_assets (staly koszyk odniesienia)
     assert set(spec.base_params["indicators"]["c"]["basket_assets"]) == set(risky)
@@ -84,7 +88,8 @@ def test_gpm_full_chain_on_real_data(us_data_dir):
 def test_gpm_metrics_regression_baseline(us_data_dir):
     """Zamrozony wynik na realnych danych (2026-07-11, PRZED podatkiem) - lapie regresje w nowych
     blokach (momentum_avg_month_end, corr_to_basket_month_end, momentum_times_decorrelation,
-    gpm_breadth_protective_split). Najnizszy MaxDD z calej sesji."""
+    gpm_breadth_protective_split). Najnizszy MaxDD z calej sesji. Wartosci zaktualizowane po
+    dodaniu xle.us do risky_assets (patrz CHANGELOG)."""
     from engine_v2.backtest_engine import daily_equity_curve
     from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
     from engine_v2.metrics import compute_metrics
@@ -97,6 +102,6 @@ def test_gpm_metrics_regression_baseline(us_data_dir):
     equity_curve = daily_equity_curve(final_portfolio, market_data.prices, {})
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
-    assert metrics["cagr"] == pytest.approx(0.0532, abs=0.01)
-    assert metrics["max_drawdown"] == pytest.approx(-0.1520, abs=0.01)
-    assert metrics["sharpe"] == pytest.approx(0.668, abs=0.05)
+    assert metrics["cagr"] == pytest.approx(0.0553, abs=0.01)
+    assert metrics["max_drawdown"] == pytest.approx(-0.1327, abs=0.01)
+    assert metrics["sharpe"] == pytest.approx(0.697, abs=0.05)

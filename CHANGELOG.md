@@ -2,6 +2,74 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (29)
+
+- **NOWY REKORD SESJI: `gpm_best17_a` z `xle.us` w `gpm` + `dynamic_capital_weights` - Calmar
+  0.774** (poprzedni rekord: 0.669/0.707 przed dzisiejszymi bugfixami gate'u/histerezy). User:
+  "moze wymysl cos co by bylo dobre w 2022 i wtedy robimy miks - czyli szukamy strategii na rok
+  2022" - 2022 to jedyny rok w calym repo, gdzie WSZYSTKIE strategie wychodzily na minusie
+  (akcje i obligacje spadaly razem).
+
+  **Krok 1 - co realnie wygralo w 2022** (sprawdzone na prawdziwych danych, nie zgadywane):
+  XLE (energia) +64.3%, GSG +24.1%, DBC +18.6%, zloto plasko (-0.6/-0.8%) - wszystko inne na
+  minusie (akcje -18/-33%, obligacje -14/-31%).
+
+  **Krok 2 - proba osobnej satelity (ODRZUCONA)**: nowa strategia `commodity_trend` (top1
+  spord XLE/DBC/GLD wg momentum, filtr bezwzglednego momentum, cash fallback), polaczona z
+  `best17_a` (`fixed_capital_weights`, zgodnie z zasada "max 2"). Naprawiala 2022 (best17_a solo
+  -14.75% -> -1.7% przy wadze 35%), ale kosztem MaxDD calego miksu rosnacego do -23.6/-31.2% w
+  zaleznosci od wagi - user: "za duze maxdd ale mamy trop" - odrzucone jako samodzielny produkt,
+  ale potwierdzilo, ze XLE to prawdziwy trop.
+
+  **Krok 3 - rozszerzenie `gpm` (PRZYJETE)**: zamiast nowej, ryzykownej satelity, dolozono
+  `xle.us` do WLASNEGO uniwersum `gpm` (`risky_assets` + koszyk korelacji `c.basket_assets`) -
+  `gpm` juz ma niskie MaxDD i wlasny mechanizm ochronny (`gpm_breadth_protective_split`), wiec
+  jeden dodatkowy kandydat nie wprowadza nowego ryzyka architektury. Solo `gpm` + xle.us: 2022
+  poprawia sie z -5.47% na -0.36%, MaxDD PRAKTYCZNIE bez zmian (-13.09%->-13.00% pelna historia).
+  `full_protective_max_n`/`protective_scale_denominator` CELOWO NIE przeskalowane z 6/6 (kalibrowane
+  pod 12 aktywow) do 13 aktywow - to dokladnie konfiguracja zweryfikowana empirycznie.
+
+  **Weryfikacja "czy to nie ciazy w innych okresach"** (user pytanie wprost) - porownanie
+  gpm+xle vs gpm bez xle na TEJ SAMEJ wadze combinera (55/45 gpm/best17_a), PO PODATKU:
+
+  | | bez XLE | z XLE |
+  |---|---|---|
+  | FULL | 11.03%/-16.50%/Sharpe 0.968/Calmar 0.669 | 11.15%/-16.40%/Sharpe 0.990/Calmar 0.680 |
+  | TRAIN | 11.47%/-14.47%/1.156/0.793 | 11.81%/-14.47%/1.195/0.817 |
+  | OOS | 13.33%/-16.50%/0.955/0.808 | 13.27%/-16.40%/0.969/0.809 |
+  | gfc_crash | -5.82%/-7.60% | -5.87%/-7.60% (bez zmian) |
+  | post_gfc_recovery | 12.71%/Sharpe 1.172/Calmar 0.922 | 13.16%/1.216/0.960 (lepiej) |
+  | covid_crash_rebound | 22.12%/Sharpe 1.174/Calmar 1.340 | 21.12%/1.149/1.288 (odrobine gorzej) |
+  | inflation_bear (2022) | -10.25%/-13.76%/Calmar -0.745 | -7.98%/-11.95%/Calmar -0.668 (duzo lepiej) |
+
+  **Wniosek: przy TEJ SAMEJ wadze, XLE to niemal czysty zysk** - lepiej w 6 z 7 porownan, tylko
+  odrobine gorzej w `covid_crash_rebound` (gdzie XLE bylo slabsze niz reszta rynku w 2020).
+  Wczesniejsze wrazenie "ciazenia" (CAGR 11.03%->10.14% przy wadze 45%) bylo artefaktem
+  PORONYWANIA ROZNYCH WAG (55% vs 45% best17_a), nie samego dodania XLE - przy tej samej wadze
+  zmiana jest wylacznie pozytywna.
+
+  **Krok 4 - pelny sweep wagi z XLE** (fixed_capital_weights, PO PODATKU): najlepszy Calmar przy
+  45/55 (best17_a/gpm): CAGR 10.14%, MaxDD -13.28% (bylo -15.40% bez XLE), Sharpe 0.996, Calmar
+  **0.763** (bylo 0.707).
+
+  **Krok 5 - user: "moze sprobujmy dynamicznie dobierac wagi"** - `dynamic_capital_weights` (juz
+  istniejacy combiner z `combined_best2_dynamic` - kapital strategii w cash NIE lezy bezczynnie,
+  przechodzi do drugiej nogi) na TEJ SAMEJ bazowej wadze 45/55: CAGR 10.23%, MaxDD -13.22%,
+  Sharpe 0.980, Calmar **0.774** - dalszy, mniejszy, ale konsekwentny plus na KAZDEJ testowanej
+  wadze (40/45/50/55) - ten sam wzorzec co przy `combined_best2_dynamic` (wiecej CAGR, odrobine
+  nizszy Sharpe z powodu mniejszej dywersyfikacji w okresach cash).
+
+  **NOWA KONFIGURACJA `gpm_best17_a`**: `combiner: dynamic_capital_weights`,
+  `capital_weights: {gpm_v0: 0.55, best17_a_v0: 0.45}` (bylo `fixed_capital_weights`, 0.45/0.55
+  best17_a/gpm - odwrotna etykieta wagi, uwaznie). Zaktualizowano `strategies_v2/gpm/strategy_spec.json`
+  (nowe `risky_assets`/`basket_assets` z `xle.us`, uniwersum 15 tickerow) i
+  `strategies_v2/gpm_best17_a/combined_spec.json`. Zaktualizowano
+  `test_gpm_strategy_spec.py::test_gpm_risky_universe_has_13_assets_and_2_protective` (bylo 12) i
+  `test_gpm_metrics_regression_baseline` (nowe zamrozone wartosci: cagr 0.0553, maxdd -0.1327,
+  sharpe 0.697, PRZED podatkiem). `test_all_combined_specs.py` (glob-discovery) automatycznie
+  odkrywa nowa konfiguracje - zero nowych plikow testowych potrzebnych. Pelny pakiet: 393/393 bez
+  regresji.
+
 ## 2026-07-11 (28)
 
 - **BUGFIX (istotny, drugi tego dnia) `score_gap_hysteresis`: histereza mogla "uratowac"

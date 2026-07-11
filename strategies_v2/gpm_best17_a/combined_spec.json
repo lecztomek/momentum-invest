@@ -1,15 +1,15 @@
 {
   "name": "gpm_best17_a_v0",
-  "hypothesis": "User: 'teraz dobrze go zmiksowac z czyms agresywnym np best17' - miks defensywnego gpm (MaxDD -15.2% solo, najnizszy w sesji) z agresywnym best17_a (CAGR 16% solo, MaxDD -29.5%). fixed_capital_weights, sweep wagi best17_a w [0.30..0.70] (krok 0.05 wokol optimum) na PELNYM realnym backtescie (nie zgadywane) - najlepszy Calmar PO PODATKU przy 55/45 (best17_a/gpm): CAGR 10.89%, MaxDD -15.40%, Sharpe 0.962, Calmar 0.707 - NAJLEPSZY CALMAR CALEJ SESJI (poprzedni rekord: vaa_g4_best17_a 0.649), przy DUZO nizszym turnover (2.39/rok vs 4.24/rok) i nizszym MaxDD (-15.40% vs -17.33%) kosztem odrobiny Sharpe (0.962 vs 0.993) i CAGR (10.89% vs 11.25%). Pelna tabela sweepu w CHANGELOG.md i README.md.",
+  "hypothesis": "User: 'teraz dobrze go zmiksowac z czyms agresywnym np best17' - miks defensywnego gpm (MaxDD -15.2% solo, najnizszy w sesji) z agresywnym best17_a (CAGR 16% solo, MaxDD -29.5%). fixed_capital_weights, sweep wagi best17_a w [0.30..0.70] (krok 0.05 wokol optimum) na PELNYM realnym backtescie (nie zgadywane) - najlepszy Calmar PO PODATKU przy 55/45 (best17_a/gpm): CAGR 10.89%, MaxDD -15.40%, Sharpe 0.962, Calmar 0.707 - NAJLEPSZY CALMAR CALEJ SESJI (poprzedni rekord: vaa_g4_best17_a 0.649), przy DUZO nizszym turnover (2.39/rok vs 4.24/rok) i nizszym MaxDD (-15.40% vs -17.33%) kosztem odrobiny Sharpe (0.962 vs 0.993) i CAGR (10.89% vs 11.25%). Pelna tabela sweepu w CHANGELOG.md i README.md. ROZSZERZENIE 2026-07-11 (patrz CHANGELOG) - user: 'jakis pomysl co by bylo dobre w 2022'. Zamiast osobnej satelity (przetestowanej i odrzuconej - za duzy MaxDD), dodano xle.us do WLASNEGO uniwersum `gpm` (patrz jego strategy_spec.json) - najlepszy wykonawca 2022 w calym repo (+64%). Ponowny sweep wagi z XLE w gpm: NOWY REKORD Calmar przy 45/55 (best17_a/gpm): CAGR 10.14%, MaxDD -13.28% (bylo -15.40%), Sharpe 0.996, Calmar 0.763 (bylo 0.707). Dodatkowo user zaproponowal dynamiczna alokacje kapitalu zamiast stalej - `dynamic_capital_weights` (juz istniejacy combiner, uzyty wczesniej w `combined_best2_dynamic`) na TEJ SAMEJ bazowej wadze 45/55 dal dalszy, mniejszy, ale konsekwentny plus na kazdej testowanej wadze: CAGR 10.23%, MaxDD -13.22%, Sharpe 0.980, Calmar **0.774** - NOWY REKORD CALEJ SESJI, wybrany jako finalna konfiguracja.",
   "strategy_spec_paths": [
     "../gpm/strategy_spec.json",
     "../best17_a/strategy_spec.json"
   ],
-  "combiner": "fixed_capital_weights",
+  "combiner": "dynamic_capital_weights",
   "combiner_params": {
     "capital_weights": {
-      "gpm_v0": 0.45,
-      "best17_a_v0": 0.55
+      "gpm_v0": 0.55,
+      "best17_a_v0": 0.45
     }
   },
   "created_at": "2026-07-11"
