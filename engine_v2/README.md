@@ -201,6 +201,26 @@ zwroty strategii, nie tylko ich wagi.
   pogorszeniem tylko w `gfc_crash`/`inflation_bear` - brak sygnału dopasowania do jednego okresu.
   11 nowych testów syntetycznych (`test_signal_tilted_capital_weights.py`).
 
+- **`ema_canary_regime_capital_weights`** (2026-07-11 (33), patrz CHANGELOG) - user dostarczył
+  dokładny opis 3-poziomowego reżimu (risk-on/neutralny/risk-off) na bazie DWÓCH sygnałów
+  `best17_a`: `ema7_16` (scoring) i kanarek `ema5_12` (VT+XLK), z regułą "kanarek może obniżyć
+  reżim maksymalnie o jeden poziom" i histerezą POZIOMU (nie wagi) - "bez przejścia bezpośrednio
+  65/35->25/75, maksymalnie jeden poziom na rebalans". W odróżnieniu od `signal_tilted_capital_weights`
+  (sygnał z już wykonanych wag jednej strategii), tu potrzebne są DWA NIEZALEŻNE sygnały binarne,
+  więc combiner SAMODZIELNIE ładuje ceny i liczy `ema_ratio_monthly` (ten sam blok co `best17_a`
+  używa wewnętrznie) - zero zależności od `weights_used` innych strategii. Logika 3-poziomowa i
+  histereza wydzielone jako czyste, testowalne funkcje (`raw_regime_level`/`apply_level_hysteresis`).
+
+  **Zastosowanie do `gpm_best17_a` (65%/45%/25%)**: CAGR 11.97% (wyższy niż mistrz), MaxDD
+  **-19.83%** (wyraźnie gorszy niż mistrz -13.22%), Sharpe 0.970, Calmar 0.604 (gorszy niż
+  mistrz 0.786), turnover 2.28 (niższy). **Inny punkt na krzywej ryzyko/zwrot, nie strzała
+  wygrana/porażka** - poziom "risk-on" (65%) obowiązywał ~76% miesięcy calej historii (prawdziwy
+  RAW risk-off wystąpił TYLKO w 2005, przed startem realnego okna backtestu - risk_off_weight w
+  praktyce nigdy nie zadziałał w oknie 2008-2026), więc efektywna baza `best17_a` jest znacząco
+  wyższa niż w mistrzu (który oscyluje w 50-60%) - stąd wyższy CAGR, ale i wyższy MaxDD. Decyzja
+  o dalszym dostrojeniu/adopcji NIE PODJĘTA jeszcze - `gpm_best17_a` na razie BEZ ZMIAN.
+  13 testów (`test_ema_canary_regime_capital_weights.py`).
+
   **Wynik `strategies_v2/best17_a_tlt_hedge/`** (`best17_a` + `tlt_hedge`, sweep `hedge_weight`
   na realnych danych - wszystkie warianty wyraźnie tną MaxDD względem `best17_a` solo; liczby
   PO poprawce z **2026-07-11 (2)** - patrz CHANGELOG, `hedge_on` nie mógł się wcześniej wyłączyć

@@ -2,6 +2,49 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (33)
+
+- **NOWY COMBINER `ema_canary_regime_capital_weights`** - user dostarczyl DOKLADNY opis
+  3-poziomowego rezimu (risk-on/neutralny/risk-off) na bazie DWOCH sygnalow `best17_a`:
+  `ema7_16` (scoring) i kanarek `ema5_12` (VT+XLK), z reguła "kanarek moze obnizyc rezim
+  maksymalnie o jeden poziom" i histereza "bez przejscia bezposrednio 65/35 -> 25/75,
+  maksymalnie jeden poziom na rebalans".
+
+  **Rozni sie architektonicznie od (30)/(31)**: te uzywaly sygnalu wyprowadzonego z JUZ
+  WYKONANYCH wag jednej strategii (`weights_used`) - tu potrzebne sa DWA NIEZALEZNE sygnaly
+  binarne (zly kanarek vs zle momentum), ktorych NIE da sie odroznic patrzac tylko na finalne
+  wagi `best17_a` (oba moga niezaleznie prowadzic do tego samego wyniku - cash/rebound). Combiner
+  wiec SAMODZIELNIE laduje ceny i liczy `ema_ratio_monthly` (dokladnie ten sam blok co
+  `best17_a` uzywa wewnetrznie) dla obu grup tickerow - zero zaleznosci od `weights_used`/
+  `strategy_returns` innych combinerow w tym pliku.
+
+  Logika (`raw_regime_level`) i histereza poziomu (`apply_level_hysteresis`) wydzielone jako
+  czyste, w pelni testowalne funkcje (bez potrzeby prawdziwych cen) - 9 testow syntetycznych +
+  4 testy integracyjne na prawdziwych danych (`test_ema_canary_regime_capital_weights.py`, 13
+  testow razem).
+
+  **Ciekawostka empiryczna zlapana w tescie integracyjnym**: prawdziwy RAW risk-off (oba sygnaly
+  jednoczesnie zle) wystapil w calej historii `data/us` TYLKO w 2005 (5 miesiecy, PRZED
+  poczatkiem realnego okna backtestu `best17_a` w 2008-07) - w oknie 2008-2026 risk-off NIGDY
+  sie nie zrealizowal, mimo hipotezy usera. Test zaktualizowany, zeby to odzwierciedlac uczciwie
+  (nie wymuszac obecnosci poziomu, ktory empirycznie nie wystepuje w tym oknie).
+
+  **Zastosowanie do `gpm_best17_a`** (65%/45%/25% dla `best17_a`), PO PODATKU: CAGR **11.97%**
+  (wyzszy niz mistrz), MaxDD **-19.83%** (WYRAZNIE gorszy niz mistrz -13.22%), Sharpe 0.970,
+  Calmar **0.604** (gorszy niz mistrz 0.786), turnover 2.28 (nizszy niz mistrz 2.90). **To NIE
+  jest ani wygrana ani porazka wzgledem (31) - to INNY punkt na krzywej ryzyko/zwrot**: poziom
+  "risk-on" (65%) obowiazywal ~76% miesiecy calej historii (poziom "risk-off" nigdy w praktyce
+  nie zadzialal - patrz wyzej), wiec efektywna BAZOWA alokacja `best17_a` jest znaczaco wyzsza
+  niz w mistrzu (ktory oscyluje w waskim zakresie 50-60%) - stad wyzszy CAGR, ale i wyzszy MaxDD.
+  Named periods: `covid_crash_rebound` CAGR 23.30% (bardzo dobrze), ale `inflation_bear` (2022)
+  -9.84% (gorzej niz mistrz -7.31%).
+
+  **Decyzja NIE PODJETA jeszcze** (czeka na usera: dostroic wagi rezimow, zostawic jako
+  udokumentowana alternatywe, czy zignorowac) - `gpm_best17_a` NA RAZIE BEZ ZMIAN
+  (`signal_tilted_capital_weights`, Calmar 0.786 pozostaje aktywna konfiguracja). Nowy combiner
+  nie zapisany jeszcze jako osobny `combined_spec.json` - kod/testy zacommitowane, eksperyment
+  NIE sformalizowany jako produkt do czasu decyzji. Pelny pakiet testow: 427/427, bez regresji.
+
 ## 2026-07-11 (32)
 
 - **Eksperyment: `signal_tilted_capital_weights` z sygnalem `best17_a` zamiast `gpm` - WYNIK
