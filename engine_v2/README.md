@@ -355,7 +355,7 @@ Wspiera bloki jedno-implementacyjne (`allowed_param_families[blok][param]`, np.
 instancji (nie zmienia `impl` ani innych instancji); nieznana instancja albo brak kropki w
 kluczu dla bloku wielo-instancyjnego rzuca czytelny błąd zamiast zgadywania.
 
-## RUN SPEC RUNNER (`run_spec_runner.py`, `acceptance_check.py`, `param_stability.py`)
+## RUN SPEC RUNNER (`run_spec_runner.py`, `acceptance_check.py`, `param_stability.py`, `annual_tax.py`)
 
 Wiaze `RunSpec.mode` z odpowiednim mechanizmem - pierwsze realne uzycie `RunSpec` (dotad tylko
 zdefiniowany, nic go nie czytalo):
@@ -367,6 +367,59 @@ zdefiniowany, nic go nie czytalo):
 - `"search"` - GRID SWEEP x WALK-FORWARD (`TestSpec.train_window`) per wariant, zwraca zbiorcze
   statystyki (srednia/min CAGR, najgorszy drawdown, srednia Sharpe) po oknach, PLUS
   `param_stability` (patrz nizej).
+
+### ANNUAL TAX (`annual_tax.py`) - roczny podatek od zyskow (19%, "Belka")
+
+User pytanie: "czy one maja uwzgledniony podatek od zyskow?" - odpowiedz brzmiala NIE: ZERO
+liczby w calej sesji nie uwzgledniala podatku, mimo ze `TestSpec.CostsSpec.annual_tax_rate` byl
+zdefiniowany OD POCZATKU projektu (jak `param_stability` wczesniej - kolejne "zdefiniowane,
+nigdy nie liczone" pole). Po potwierdzeniu stawki (19%, jak w starym silniku, nie zgadywane 20%)
+- zaimplementowane.
+
+Odtworzone WPROST z `apply_annual_tax_if_year_end` (`engine/backtest_hybrid_search.py`,
+zdublowane w `engine/replay_mapped_monthly.py`) - podatek "high water mark":
+```
+taxable_profit = max(0, equity_przed_podatkiem - tax_base_equity)
+tax_amount = taxable_profit * annual_tax_rate
+equity_po_podatku = equity_przed_podatkiem - tax_amount
+tax_base_equity = max(tax_base_equity, equity_po_podatku)   # nigdy nie spada po stratnym roku
+```
+Liczony RAZ ROCZNIE (ostatni dostepny dzien handlowy grudnia w danych, analogia miesiecznego bara
+"grudzien" w starym silniku), TYLKO od wzrostu equity ponad dotychczasowy szczyt bazy podatkowej -
+rok stratny nie daje zwrotu, ale tez nie "zapomina" poprzedniego szczytu (kolejne zyski sa
+opodatkowane dopiero po odrobieniu strat, nie od zera). Haircut propaguje sie na wszystkie
+kolejne dni do nastepnego poboru - to realne zmniejszenie kapitalu, nie chwilowy spadek. Rok bez
+zadnego grudniowego dnia w danych (backtest konczy sie w polowie roku) NIE jest opodatkowany -
+identyczne uproszczenie jak w starym silniku.
+
+Wpiete w `run_spec_runner.py` (`_run_final`/`_run_validation`) - w `"validation"` podatek jest
+liczony na CALEJ historii PRZED wycieciem do `test_window` (high-water-mark musi widziec lata
+sprzed okna OOS, inaczej zresetowalby sie blednie do punktu startowego okna). Wynik ma
+`metrics_pre_tax` obok `metrics`, jesli `TestSpec.costs.annual_tax_rate > 0` - PRZED i PO widoczne
+razem, nie ukryte.
+
+**`annual_tax_rate` ujednolicone na 0.19 we WSZYSTKICH `test_spec.json`** (2026-07-11) - okazalo
+sie byc niespojnie ustawione JUZ WCZESNIEJ (5 strategii mialo 0.19, 5 mialo 0.0), ale poniewaz
+nigdzie nie bylo faktycznie liczone, ta niespojnosc nigdy nie miala znaczenia.
+
+**Pelne porownanie PRZED/PO podatku** (wszystkie 11 solo + 27 portfeli, pelna tabela w
+CHANGELOG.md 2026-07-11 (13)) - CAGR/MaxDD/Sharpe spadaja wszedzie tam gdzie strategia miala
+dodatnie lata, ale relatywna KOLEJNOSC strategii prawie sie nie zmienia. Przyklady:
+
+| Strategia | CAGR przed | CAGR po | Sharpe przed | Sharpe po |
+|---|---|---|---|---|
+| `best17_a` | 16.49% | 16.07% | 0.96 | 0.93 |
+| `vaa_g4_best17_a` | 11.48% | 11.25% | 1.03 | **0.99** |
+| `combined_triple` | 11.54% | 11.26% | 0.99 | 0.96 |
+| `best17_a_tlt_hedge` | 14.10% | 13.78% | 0.97 | 0.94 |
+
+`vaa_g4_best17_a` pozostaje najlepszym Sharpe w calym repo rowniez PO podatku.
+
+**Ciekawostka**: MaxDD dla kilku strategii (np. `vaa_g4`: -24.45%->-22.84%) wyszlo LEPSZE po
+podatku - artefakt liczenia MaxDD w procentach: podatek obcina szczyty (peaks) uzywane jako baza
+procentowego spadku, wiec ta sama nominalna strata z pozniejszego okresu wyglada jak mniejszy
+procentowy spadek wzgledem nizszego, juz-opodatkowanego szczytu. Nie blad silnika - realny efekt
+uboczny liczenia drawdown na bazie procentowej po opodatkowaniu.
 
 `acceptance_check.check_criteria(metrics, criteria)` porownuje METRICS z progami
 `AcceptanceSpec.Criteria` (tylko pola faktycznie ustawione). Uwaga wewnetrzna: `max_drawdown`
@@ -460,6 +513,7 @@ engine_v2/
   grid_sweep.py                                             # sweep po allowed_param_families -> N wariantow StrategySpec
   acceptance_check.py                                       # METRICS vs AcceptanceSpec.Criteria -> pass/fail
   param_stability.py                                        # sweep -> "jak stabilna jest rodzina parametrow"
+  annual_tax.py                                             # equity_curve -> equity_curve po rocznym podatku (19%, high-water mark)
   run_spec_runner.py                                        # RunSpec.mode -> final/validation/search
   blocks/
     data_loader/, data_cleaner/, indicators/, asset_filters/,
@@ -497,6 +551,12 @@ strategies_v2/
   best17_a_gfm/          best17_a_best17_b/           all_weather_4_gfm/
   all_weather_4_best17_b/                             gfm_best17_b/
 ```
+
+**UWAGA (2026-07-11) o podatku**: wszystkie liczby w poszczegolnych sekcjach strategii nizej
+(chyba ze jawnie oznaczone inaczej) sa SPRZED wdrozenia rocznego podatku (patrz sekcja "ANNUAL
+TAX" wyzej) - PRZED podatkiem. Pelna tabela PRZED/PO dla wszystkich strategii i portfeli jest w
+sekcji "ANNUAL TAX" wyzej i w CHANGELOG.md (2026-07-11 (13)) - nie zduplikowana tutaj przy kazdej
+strategii z osobna.
 
 ### Druga przykładowa strategia: `dual_momentum` (test szerokości silnika)
 

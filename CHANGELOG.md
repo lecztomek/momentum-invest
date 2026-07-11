@@ -2,6 +2,71 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (13)
+
+- **NOWY MODUL `engine_v2/annual_tax.py` - roczny podatek od zysków (19%, "Belka")** - user
+  pytanie: "czy one maja uwzgledniony podatek 20 procent od zyskow?" - odpowiedz brzmiala NIE,
+  ZERO liczby pokazanej w calej sesji dotad nie uwzgledniala podatku (mimo ze
+  `TestSpec.CostsSpec.annual_tax_rate` byl zdefiniowany OD POCZATKU projektu, jak
+  `param_stability` wczesniej - kolejne "zdefiniowane, nigdy nie liczone" pole). Po potwierdzeniu
+  stawki (19%, jak w starym silniku, nie 20%) - zaimplementowane i wpiete.
+
+  Odtworzone WPROST z `apply_annual_tax_if_year_end` (`engine/backtest_hybrid_search.py`,
+  zdublowane w `engine/replay_mapped_monthly.py`) - podatek "high water mark":
+  ```
+  taxable_profit = max(0, equity_przed_podatkiem - tax_base_equity)
+  tax_amount = taxable_profit * annual_tax_rate
+  equity_po_podatku = equity_przed_podatkiem - tax_amount
+  tax_base_equity = max(tax_base_equity, equity_po_podatku)   # nigdy nie spada po stratnym roku
+  ```
+  Liczony RAZ ROCZNIE (ostatni dostepny dzien handlowy grudnia w danych), TYLKO od wzrostu ponad
+  dotychczasowy szczyt (rok stratny nie daje zwrotu, ale tez nie "zapomina" poprzedniego szczytu -
+  kolejne zyski sa opodatkowane dopiero po odrobieniu strat). Haircut propaguje sie na wszystkie
+  kolejne dni do nastepnego poboru - to realne zmniejszenie kapitalu.
+
+  Wpiete w `run_spec_runner.py` (`_run_final`/`_run_validation` - podatek liczony na CALEJ
+  historii PRZED ciecem do `test_window` w `"validation"`, inaczej high-water-mark zresetowalby
+  sie blednie na starcie okna) - wynik ma teraz `metrics_pre_tax` obok `metrics`, jesli
+  `TestSpec.costs.annual_tax_rate > 0` (nie ukryte - oba widoczne).
+
+  **Ujednolicono `annual_tax_rate` na 0.19 we WSZYSTKICH `test_spec.json`** - okazalo sie, ze bylo
+  to niespojnie ustawione JUZ WCZESNIEJ (5 strategii mialo 0.19, 5 mialo 0.0), ale nigdzie nie
+  bylo faktycznie liczone, wiec ta niespojnosc nigdy nie mial znaczenia - teraz ma.
+
+  8 nowych testow jednostkowych (`test_annual_tax.py` - noop przy stawce 0, pelne opodatkowanie
+  pojedynczego zyskownego roku, brak zwrotu w stratnym roku, high-water-mark nie podwaja podatku
+  do nowego szczytu, propagacja haircuta, brak grudnia w danych = brak podatku, duplikaty dat) +
+  2 nowe testy `test_run_spec_runner.py` (podatek stosuje sie gdy skonfigurowany, brak
+  `metrics_pre_tax` gdy nie skonfigurowany).
+
+  **Pelne porownanie PRZED/PO podatku (19%), wszystkie 11 solo + 27 portfeli** - CAGR/MaxDD/Sharpe
+  spadaja wszedzie tam gdzie strategia miala dodatnie lata (oczywiscie), ale relatywna KOLEJNOSC
+  strategii prawie sie nie zmienia:
+
+  | Strategia | CAGR przed | CAGR po | MaxDD przed | MaxDD po | Sharpe przed | Sharpe po |
+  |---|---|---|---|---|---|---|
+  | `best17_a` | 16.49% | 16.07% | -29.47% | -29.47% | 0.96 | 0.93 |
+  | `vaa_g4_best17_a` | 11.48% | 11.25% | -18.21% | -17.33% | 1.03 | **0.99** |
+  | `combined_triple` | 11.54% | 11.26% | -18.08% | -19.65% | 0.99 | 0.96 |
+  | `best17_a_tlt_hedge` | 14.10% | 13.78% | -23.70% | -22.09% | 0.97 | 0.94 |
+  | `combined_best2_dynamic` | 14.02% | 13.71% | -26.75% | -26.40% | 0.95 | 0.92 |
+  | `combined_best2` | 12.58% | 12.27% | -22.73% | -22.73% | 0.94 | 0.91 |
+  | `best17_a_all_weather_4` | 11.84% | 11.53% | -21.84% | -22.01% | 0.98 | 0.95 |
+  | `gfm` | 9.61% | 9.22% | -33.70% | -31.72% | 0.71 | 0.68 |
+  | `the_one` | 8.76% | 8.56% | -23.59% | -22.98% | 0.61 | 0.59 |
+  | `all_weather_4` | 8.87% | 8.63% | -25.54% | -25.54% | 0.82 | 0.79 |
+
+  **Ciekawostka**: MaxDD dla kilku strategii (`vaa_g4`, `dual_momentum_vaa_g4`,
+  `best17_a_tlt_hedge`) wyszlo LEPSZE po podatku (np. `vaa_g4` -24.45%->-22.84%) - artefakt
+  liczenia MaxDD w procentach: podatek obcina szczyty (peaks) uzywane jako baza do liczenia
+  procentowego spadku, wiec ta sama nominalna strata z pozniejszego okresu wyglada jak MNIEJSZY
+  procentowy spadek wzgledem nizszego, juz-opodatkowanego szczytu. Nie blad - realny efekt
+  uboczny liczenia drawdown na bazie procentowej po opodatkowaniu.
+
+  `vaa_g4_best17_a` pozostaje najlepszym Sharpe w repo rowniez PO podatku (0.99).
+
+  Pelny pakiet testow: **299/299**.
+
 ## 2026-07-11 (12)
 
 - **WSZYSTKIE PARY 7 glownych strategii** - user: "dołóż brakujące kombinacje". Sposrod C(7,2)=21
