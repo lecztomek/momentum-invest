@@ -639,6 +639,7 @@ strategies_v2/
   gpm_best17_a/                   # gpm+best17_a, fixed_capital_weights 45/55 - patrz nizej, NAJLEPSZY CALMAR calej sesji (0.707)
   gtaa_agg3/                      # "GTAA AGG3" - top3 momentum + filtr trendu PER SLOT - patrz nizej
   gtaa_agg6/                      # "GTAA AGG6" - to samo, top6 zamiast top3 - patrz nizej
+  gtaa_agg6_best17_a/             # gtaa_agg6+best17_a, fixed_capital_weights 55/45 - patrz nizej, GORZEJ niz gpm_best17_a (negatywny wynik, udokumentowany)
   # wszystkie pozostale pary 7 glownych strategii (fixed_capital_weights 50/50) - patrz
   # "Wszystkie pary 7 głównych strategii" wyzej; vaa_g4_best17_a to najlepszy Sharpe w repo
   dual_momentum_vaa_g4/  dual_momentum_the_one/       dual_momentum_best17_a/
@@ -1124,6 +1125,19 @@ wlasciwego slotu nie calego portfela, cala portfolio do obligacji gdy wszystkie 
 slot o wadze 0 ignorowany) + `test_gtaa_strategy_specs.py` (wiring obu wariantow, top_n==liczba
 wag, bond_fallback wykluczony z selekcji, end-to-end na realnych danych z dowodem na mieszane
 sloty, zamrozone baseline'y metryk).
+
+#### `gtaa_agg6_best17_a` - miks gtaa_agg6+best17_a (negatywny wynik)
+
+User: "Nigdy nie łącz 3 - max 2" (odrzucenie wczesniejszego pomyslu trojki
+gpm+best17_a+vaa_g4). Sweep wagi `best17_a` w [0.30..0.70] na PELNYM realnym backtescie, PO
+PODATKU - najlepszy Calmar przy 45%/55% (best17_a/gtaa_agg6): CAGR 10.31%, MaxDD -18.31%,
+Sharpe 0.909, Calmar 0.563. **Wyraznie gorzej niz `gpm_best17_a`** (55/45: Calmar 0.707,
+MaxDD -15.40%) - `gtaa_agg6` solo ma glebszy MaxDD (-18.71%) niz `gpm` solo (-15.20%), wiec
+mniej skutecznie tlumi drawdown `best17_a`, prawdopodobnie tez wyzsza korelacja sygnalu z
+`best17_a` (oba trend/momentum na tym samym uniwersum akcji USA) niz `gpm` (odrebna koncepcja -
+korelacja do koszyka, nie tylko trend). Zapisane jako dokumentacja eksperymentu, NIE
+rekomendacja - `gpm_best17_a` pozostaje najlepszym znalezionym miksem. Automatycznie odkryte i
+przetestowane przez `test_all_combined_specs.py` (glob-discovery).
 
 ## Testy
 

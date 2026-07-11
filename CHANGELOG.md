@@ -2,6 +2,28 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (19)
+
+- **`strategies_v2/gtaa_agg6_best17_a/` - miks gtaa_agg6+best17_a** (user: "Nigdy nie łącz 3 -
+  max 2" - odrzucenie wczesniejszego pomyslu trojki gpm+best17_a+vaa_g4, tylko pary). Sweep wagi
+  `best17_a` w [0.30..0.70] na PELNYM realnym backtescie, PO PODATKU:
+
+  | best17_a / gtaa_agg6 | CAGR | MaxDD | Sharpe | Calmar | Turnover |
+  |---|---|---|---|---|---|
+  | 40% / 60% | 9.86% | -17.92% | 0.898 | 0.551 | 2.11 |
+  | **45% / 55%** | **10.31%** | -18.31% | 0.909 | **0.563** | 2.00 |
+  | 50% / 50% | 10.76% | -19.03% | 0.918 | 0.565 | 1.89 |
+  | 55% / 45% | 11.20% | -19.90% | 0.923 | 0.563 | 1.77 |
+
+  **UCZCIWY NEGATYWNY WYNIK**: najlepszy Calmar (0.563 przy 45/55) jest WYRAZNIE GORSZY niz
+  `gpm_best17_a` (55/45): Calmar 0.707, MaxDD -15.40% vs -18.31%. `gtaa_agg6` solo ma glebszy
+  MaxDD (-18.71%) niz `gpm` solo (-15.20%), wiec mniej skutecznie tlumi drawdown `best17_a` -
+  prawdopodobnie tez wieksza korelacja sygnalu z `best17_a` (oba trend/momentum na tym samym
+  uniwersum akcji USA) niz `gpm` (odrebna koncepcja - korelacja do koszyka, nie tylko trend).
+  Zapisane jako dokumentacja eksperymentu, NIE jako rekomendacja - `gpm_best17_a` pozostaje
+  lepszym wyborem. Automatycznie odkryte i przetestowane przez `test_all_combined_specs.py`
+  (glob-discovery) - zero nowych plikow testowych.
+
 ## 2026-07-11 (18)
 
 - **NOWE STRATEGIE `strategies_v2/gtaa_agg3/` i `strategies_v2/gtaa_agg6/` - "GTAA AGG3/AGG6"**

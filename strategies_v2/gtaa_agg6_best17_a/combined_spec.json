@@ -1,0 +1,16 @@
+{
+  "name": "gtaa_agg6_best17_a_v0",
+  "hypothesis": "User: miks 2-elementowy (nigdy 3) gtaa_agg6+best17_a. fixed_capital_weights, sweep wagi best17_a w [0.30..0.70] na PELNYM realnym backtescie, PO PODATKU. Najlepszy Calmar przy best17_a=45%/gtaa_agg6=55%: CAGR 10.31%, MaxDD -18.31%, Sharpe 0.909, Calmar 0.563 - WYRAZNIE GORZEJ niz gpm_best17_a (55/45): CAGR 10.89%, MaxDD -15.40%, Sharpe 0.962, Calmar 0.707. gtaa_agg6 solo ma glebszy MaxDD (-18.71%) niz gpm solo (-15.20%), wiec mniej skutecznie tlumi drawdown best17_a - prawdopodobnie tez wieksza korelacja sygnalu z best17_a (oba trend/momentum na tym samym uniwersum akcji USA) niz gpm (odrebna koncepcja korelacji do koszyka). Zapisane jako uczciwy negatywny wynik, NIE rekomendacja - gpm_best17_a pozostaje lepszym wyborem.",
+  "strategy_spec_paths": [
+    "../gtaa_agg6/strategy_spec.json",
+    "../best17_a/strategy_spec.json"
+  ],
+  "combiner": "fixed_capital_weights",
+  "combiner_params": {
+    "capital_weights": {
+      "gtaa_agg6_v0": 0.55,
+      "best17_a_v0": 0.45
+    }
+  },
+  "created_at": "2026-07-11"
+}
