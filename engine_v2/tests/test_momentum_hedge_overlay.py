@@ -113,6 +113,34 @@ def test_hedge_not_triggered_if_already_extended_over_6m():
     assert effective_weights["hedge"].abs().max() < 1e-9
 
 
+def test_hedge_never_triggers_before_core_strategy_existed():
+    """Regresja: core (best17_a) zaczyna dane pozniej niz hedge (tlt_hedge, dluzsza historia
+    tlt.us) - okresy PRZED pierwszym miesiacem core nie moga wlaczac hedge'u, mimo ze
+    `.reindex().fillna(0.0)` w implementacji podstawia tam sztuczny zwrot 0% dla core, ktory
+    latwo "przegrywa" z prawdziwym dodatnim zwrotem hedge'u."""
+    idx = pd.date_range("2021-01-01", periods=10, freq="MS")
+    core_idx = idx[5:]  # core istnieje dopiero od 6. miesiaca
+    hedge_returns = pd.Series(0.05, index=idx)  # hedge caly czas mocno dodatni
+    core_returns = pd.Series(0.0, index=core_idx)  # core: 0% (ale TYLKO tam, gdzie istnieje)
+
+    weights = {
+        "core": _target_weights([[1.0, 0.0]] * len(core_idx), ["x", "_CASH"], core_idx),
+        "hedge": _target_weights([[1.0, 0.0]] * len(idx), ["tlt", "_CASH"], idx),
+    }
+
+    combined, effective_weights = momentum_hedge_overlay(
+        weights, _base_params(), strategy_returns={"core": core_returns, "hedge": hedge_returns}
+    )
+
+    # przed startem core (index 0..4) hedge MUSI zostac wylaczony, mimo spelnionych warunkow
+    # liczbowych na sztucznie dopelnionym zerowym zwrocie core
+    assert effective_weights["hedge"].iloc[:5].abs().max() < 1e-9
+    # a combined w tym oknie to dokladnie to, co zwraca reindex_to_common_shape dla core: pelny
+    # _CASH (core jeszcze nie istnieje) - NIE mieszanka z hedge'em
+    assert (combined["_CASH"].iloc[:5] - 1.0).abs().max() < 1e-9
+    assert combined["tlt"].iloc[:5].abs().max() < 1e-9
+
+
 def test_combined_rows_sum_to_one():
     idx = pd.date_range("2021-01-01", periods=10, freq="MS")
     rng = np.random.default_rng(0)

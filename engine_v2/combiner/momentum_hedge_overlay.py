@@ -22,6 +22,13 @@ Regula (dokladnie jak w starym silniku, na WLASNYCH, juz-wykonanych zwrotach kaz
                                              # sie do juz-trwajacej hossy hedge'u)
 Sygnal liczony na koniec okresu M, dziala od M+1 (shift(1)) - identycznie jak w starym silniku.
 
+WAZNE: sygnal moze byc True TYLKO na datach, gdzie OBIE strategie maja WLASNE (nie sztucznie
+dopelnione) dane zwrotu - poza wlasnym zakresem dat ktoregokolwiek z nich (np. przed pierwszym
+miesiacem core) `hedge_on` jest wymuszony na False, niezaleznie od tego co wyszloby z liczb. Bez
+tej blokady, brak danych core (traktowany do liczenia rolling-return jako 0% zwrotu, patrz nizej)
+potrafilby przypadkiem "przegrac" z prawdziwym zwrotem hedge'u i uruchomic hedge na dlugo PRZED
+faktycznym startem core.
+
 Gdy hedge_on: combined = (1 - hedge_weight) * CORE + hedge_weight * HEDGE.
 W przeciwnym razie: combined = 100% CORE.
 
@@ -101,6 +108,19 @@ def momentum_hedge_overlay(
     all_index, all_columns = common_index_and_columns(strategy_target_weights)
     full_by_name = reindex_to_common_shape(strategy_target_weights, all_index, all_columns)
 
+    # UWAGA: `.reindex(...).fillna(0.0)` ponizej sluzy TYLKO do wygodnego liczenia rolling-return
+    # na wspolnym `all_index` - poza WLASNYM zakresem dat danej strategii (np. przed jej pierwszym
+    # miesiacem) NIE ma prawdziwego zwrotu 0%, tylko brak danych. Bez `_native_dates` ponizej,
+    # taki sztuczny zwrot 0% dla CORE (jeszcze nieistniejacego) potrafilby przypadkiem "przegrac"
+    # z prawdziwym dodatnim zwrotem HEDGE i zaSYGNALizowac hedge_on na dlugo PRZED faktycznym
+    # startem core - realny bug znaleziony przy weryfikacji train/test split (core zaczyna dane
+    # w 2008-07, ale sygnal probowal sie wlaczac juz od 2005).
+    core_native_dates = strategy_returns[core_name].index
+    hedge_native_dates = strategy_returns[hedge_name].index
+    both_native = pd.Series(
+        all_index.isin(core_native_dates) & all_index.isin(hedge_native_dates), index=all_index
+    )
+
     a_returns = strategy_returns[core_name].reindex(all_index).fillna(0.0)
     h_returns = strategy_returns[hedge_name].reindex(all_index).fillna(0.0)
 
@@ -112,7 +132,8 @@ def momentum_hedge_overlay(
     raw_signal = (
         (h_lb > min_hedge_return) & ((h_lb - a_lb) > min_spread_vs_a) & ((h_6m - a_6m) <= 0.0)
     )
-    hedge_on = raw_signal.fillna(False).astype(bool).shift(1).fillna(False).astype(bool)
+    raw_signal = raw_signal.fillna(False).astype(bool) & both_native
+    hedge_on = raw_signal.shift(1).fillna(False).astype(bool) & both_native
 
     wh = float(hedge_weight)
     wa = 1.0 - wh
