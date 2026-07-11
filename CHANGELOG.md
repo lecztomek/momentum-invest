@@ -2,6 +2,43 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11
+
+- **NOWY COMBINER `momentum_hedge_overlay` + strategia `strategies_v2/tlt_hedge/`** - user pytanie:
+  "w starej wersji byl hedge na tlt, ktory tez moze byc zrobiony u nas jako osobna strategia,
+  ktora bedzie mozna z czyms polaczyc". Port hedge'u ze starego silnika
+  (`engine/monthly_hedge_momentum_overlay.py`, regula `hedge_positive_and_beats_a_not_6m_extended`
+  - dokladnie ta uzyta w produkcyjnym `ideas/best17_3m_tlt_dtla_40/idea_config.json`,
+  `selected_hedge_variant`), ale NIE jako wbudowany overlay wewnatrz jednej strategii - jako
+  DWIE, osobne, samodzielne czesci:
+  1. `strategies_v2/tlt_hedge/` - trywialna, jedno-aktywowa "sleeve" (zawsze 100% `tlt.us`) - sama
+     w sobie NIE jest strategia inwestycyjna, to cegielka do combinera.
+  2. `engine_v2/combiner/momentum_hedge_overlay.py` - NOWY combiner (obok `fixed_capital_weights`
+     i `dynamic_capital_weights`), ktory decyduje kiedy i ile hedge'u dolozyc do glownej strategii
+     (core): TLT wchodzi (na `hedge_weight` udzialu, np. 40%) tylko gdy ma dodatni 1-miesieczny
+     zwrot I bije core na tym 1m okresie, ALE NIE bije go juz od 6 miesiecy (guard "not extended" -
+     lapiemy POCZATEK ucieczki do bezpiecznych aktywow, nie dogrywamy sie do juz trwajacej hossy
+     TLT). Liczone na WLASNYCH, juz-wykonanych zwrotach obu strategii (nie na surowych cenach) -
+     wymagalo rozszerzenia kontraktu combinera o trzeci, opcjonalny argument `strategy_returns`
+     (pozostale dwa combinery go ignoruja, ten go wymaga).
+
+  **Nowa konfiguracja `strategies_v2/best17_a_tlt_hedge/`** (`best17_a` + `tlt_hedge`,
+  `hedge_weight=0.40` - jak w starym silniku): sweep `hedge_weight` 0.20-0.60 na realnych danych,
+  wszystkie warianty wyraznie tna MaxDD:
+
+  | hedge_weight | CAGR | MaxDD | Sharpe | Calmar |
+  |---|---|---|---|---|
+  | 0.00 (best17_a solo) | 16.49% | -29.47% | 0.96 | 0.56 |
+  | 0.20 | 14.07% | -22.31% | 0.94 | **0.63** |
+  | 0.30 | 14.23% | -22.61% | 0.97 | 0.63 |
+  | 0.40 (jak w starym silniku, wybrane) | 14.37% | -23.70% | 0.99 | 0.61 |
+  | 0.50 | 14.49% | -24.96% | **1.01** | 0.58 |
+  | 0.60 | 14.60% | -26.20% | 1.01 | 0.56 |
+
+  Zweryfikowane przez faktyczny `run_combined_pipeline()` na pliku `combined_spec.json` (nie tylko
+  ad-hoc skrypt) - identyczne liczby. 8 nowych testow (`test_momentum_hedge_overlay.py`) +
+  pelny pakiet: 195/196 (1 fail niepowiazany - efa/agg/shy dla `vaa_g4`).
+
 ## 2026-07-10
 
 - **KOSZTY: dodano brakujacy `cost_bps` do `the_one`/`example_strategy`/`example_strategy_b`**

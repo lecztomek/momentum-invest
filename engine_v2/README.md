@@ -114,9 +114,13 @@ wag nigdy nie miał). `CombinedSpec` już nie niesie własnego `execution`/`exec
 całości odpowiedzialność każdego `StrategySpec` z osobna.
 
 Implementacje COMBINERA żyją w `combiner/` (analogiczny registry co bloki). Kontrakt:
-`(strategy_target_weights, params) -> (combined_weights, effective_capital_weights)` - drugi
-element to FAKTYCZNY udział kapitału każdej strategii W KAŻDYM OKRESIE (patrz niżej dlaczego to
-osobny wynik, nie tylko `params["capital_weights"]`).
+`(strategy_target_weights, params, strategy_returns=None) -> (combined_weights,
+effective_capital_weights)` - drugi element zwracanej pary to FAKTYCZNY udział kapitału każdej
+strategii W KAŻDYM OKRESIE (patrz niżej dlaczego to osobny wynik, nie tylko
+`params["capital_weights"]`). Trzeci argument (`strategy_returns` - `net_return` KAŻDEJ strategii
+z jej WŁASNEGO solo pipeline, per okres) jest IGNOROWANY przez pierwsze dwa combinery poniżej i
+WYMAGANY przez trzeci (`momentum_hedge_overlay`) - jedyny, który musi porównywać już-osiągnięte
+zwroty strategii, nie tylko ich wagi.
 
 - **`fixed_capital_weights`** - stała alokacja kapitału między strategiami (`capital_weights`),
   waży i sumuje ich JUŻ WYKONANE wagi (unia kolumn dla różnych uniwersów, brakujące tickery = 0).
@@ -133,6 +137,43 @@ osobny wynik, nie tylko `params["capital_weights"]`).
   strategia"), tylko na poziomie COMBINERA zamiast pojedynczej strategii - user zaproponował to
   wprost po zobaczeniu tamtej poprawki. Przykład: `strategies_v2/combined_best2_dynamic/`.
   `effective_capital_weights` tu REALNIE zmienia się okres-po-okresie (0.0 gdy strategia w cash).
+
+- **`momentum_hedge_overlay`** - port TAKTYCZNEGO hedge'u ze starego silnika
+  (`engine/monthly_hedge_momentum_overlay.py`, reguła `hedge_positive_and_beats_a_not_6m_extended`
+  - dokładnie ta użyta w produkcyjnym `ideas/best17_3m_tlt_dtla_40/idea_config.json`,
+  `selected_hedge_variant`). W odróżnieniu od powyższych dwóch, to NIE jest N-strategiowa alokacja
+  kapitału - to dwustronny blend DOKŁADNIE dwóch strategii (`core_strategy` + `hedge_strategy`,
+  nazwy z `params`): w każdym okresie decyduje, czy dołożyć hedge (np. `tlt.us`) do core, na
+  podstawie WZGLĘDNEGO momentum hedge'u wobec core (liczonego na ich WŁASNYCH, już-wykonanych
+  `strategy_returns` - stąd jedyny combiner, który tego argumentu faktycznie wymaga):
+  ```
+  h_lb = skumulowany zwrot HEDGE za ostatnie `lookback` okresów (domyślnie 1)
+  a_lb = skumulowany zwrot CORE za ostatnie `lookback` okresów
+  h_6m, a_6m = to samo za 6 okresów
+  hedge_on(M) = (h_lb > min_hedge_return) AND (h_lb - a_lb > min_spread_vs_a)
+                AND (h_6m - a_6m <= 0)   # "not extended" - łapiemy POCZĄTEK ucieczki do
+                                         # bezpiecznych aktywów, nie dogrywamy się do już
+                                         # trwającej hossy hedge'u
+  ```
+  Sygnał liczony na koniec okresu M, działa od M+1 (`shift(1)`) - identycznie jak w starym
+  silniku. Gdy `hedge_on`: `combined = (1 - hedge_weight) * CORE + hedge_weight * HEDGE`, inaczej
+  100% CORE. `hedge_strategy` to zwykle trywialna, jedno-aktywowa "sleeve" (patrz
+  `strategies_v2/tlt_hedge/` - zawsze 100% `tlt.us`, sama w sobie NIE jest strategią inwestycyjną)
+  - to jest odpowiedź na pytanie użytkownika "hedge na TLT jako osobna strategia, którą będzie
+  można z czymś połączyć": hedge NIE jest wbudowanym overlayem wewnątrz `best17_a`, tylko osobnym
+  `StrategySpec` + osobnym COMBINEREM.
+
+  **Wynik `strategies_v2/best17_a_tlt_hedge/`** (`best17_a` + `tlt_hedge`, sweep `hedge_weight`
+  na realnych danych - wszystkie warianty wyraźnie tną MaxDD względem `best17_a` solo):
+
+  | hedge_weight | CAGR | MaxDD | Sharpe | Calmar |
+  |---|---|---|---|---|
+  | 0.00 (best17_a solo) | 16.49% | -29.47% | 0.96 | 0.56 |
+  | 0.20 | 14.07% | -22.31% | 0.94 | **0.63** |
+  | 0.30 | 14.23% | -22.61% | 0.97 | 0.63 |
+  | 0.40 (jak w starym silniku, wybrane) | 14.37% | -23.70% | 0.99 | 0.61 |
+  | 0.50 | 14.49% | -24.96% | **1.01** | 0.58 |
+  | 0.60 | 14.60% | -26.20% | 1.01 | 0.56 |
 
 Pochodne metryki okresu (`turnover`/`trade_cost`/`gross_return`/`net_return`) są łączone wg
 `effective_capital_weights` (nie statycznego `params["capital_weights"]`, wprost w
@@ -281,6 +322,8 @@ strategies_v2/
   combined_best2_dynamic/       # to samo, ale dynamic_capital_weights - patrz niżej
   all_weather_4/                # 4 klasy aktywow, zawsze wszystkie trzymane - patrz niżej
   combined_triple/               # best17_a+the_one+all_weather_4, 45/20/35 - patrz niżej
+  tlt_hedge/                     # trywialna "zawsze 100% tlt.us" cegielka - patrz niżej
+  best17_a_tlt_hedge/            # best17_a+tlt_hedge, momentum_hedge_overlay - patrz niżej
 ```
 
 ### Druga przykładowa strategia: `dual_momentum` (test szerokości silnika)
