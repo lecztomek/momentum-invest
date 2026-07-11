@@ -326,7 +326,7 @@ Wspiera bloki jedno-implementacyjne (`allowed_param_families[blok][param]`, np.
 instancji (nie zmienia `impl` ani innych instancji); nieznana instancja albo brak kropki w
 kluczu dla bloku wielo-instancyjnego rzuca czytelny błąd zamiast zgadywania.
 
-## RUN SPEC RUNNER (`run_spec_runner.py`, `acceptance_check.py`)
+## RUN SPEC RUNNER (`run_spec_runner.py`, `acceptance_check.py`, `param_stability.py`)
 
 Wiaze `RunSpec.mode` z odpowiednim mechanizmem - pierwsze realne uzycie `RunSpec` (dotad tylko
 zdefiniowany, nic go nie czytalo):
@@ -336,12 +336,48 @@ zdefiniowany, nic go nie czytalo):
   `TestSpec.test_window` (OOS) - jedna, czysta ocena, bez dalszego ciecia (test_window jest
   "swiete").
 - `"search"` - GRID SWEEP x WALK-FORWARD (`TestSpec.train_window`) per wariant, zwraca zbiorcze
-  statystyki (srednia/min CAGR, najgorszy drawdown, srednia Sharpe) po oknach.
+  statystyki (srednia/min CAGR, najgorszy drawdown, srednia Sharpe) po oknach, PLUS
+  `param_stability` (patrz nizej).
 
 `acceptance_check.check_criteria(metrics, criteria)` porownuje METRICS z progami
 `AcceptanceSpec.Criteria` (tylko pola faktycznie ustawione). Uwaga wewnetrzna: `max_drawdown`
 jest ujemny, wiec "nie gorszy niz prog" to numerycznie `wartosc >= prog`, NIE `<=` jak przy
 zwyklych gornych limitach (turnover itp.) - to zostalo raz zle napisane i zlapane testem.
+
+### PARAM STABILITY (`param_stability.py`) - "jak silna jest rodzina strategii"
+
+User pytanie: "brakuje mi czegos w stylu stabilnosci strategii - jak zmiana parametrow zabija
+strategie, jak mocna jest rodzina". `AcceptanceSpec.ParamStabilitySpec.max_relative_metric_drop_
+within_family` byl zdefiniowany w `acceptance_spec.py` OD POCZATKU projektu, ale NIGDZIE nie byl
+faktycznie liczony - `allowed_param_families`/`run_param_sweep` generuja i oceniaja warianty, ale
+nic nie streszczalo tego w JEDNA liczbe "jak stabilna jest ta rodzina". To byl brakujacy kawalek.
+
+`compute_param_stability(sweep_result, metric_key)` bierze tabele z `grid_sweep.run_param_sweep`
+(jeden wiersz per wariant `allowed_param_families`) i liczy WZGLEDNY SPADEK miedzy najlepszym a
+najgorszym wariantem w calej rodzinie, na wybranej metryce (domyslnie `wf_mean_cagr` w trybie
+`"search"` - srednie CAGR z walk-forward per wariant):
+
+```
+relative_drop = (best - worst) / abs(best)
+```
+
+Male `relative_drop` = rodzina STABILNA (kazdy z przetestowanych wariantow daje podobny wynik -
+wybor konkretnego punktu w rodzinie nie jest krytyczny, silnik "nie zgadl" akurat trafionej
+kombinacji). Duze `relative_drop` = rodzina KRUCHA (jeden dobry wariant otoczony znacznie
+gorszymi sasiadami) - klasyczny sygnal ostrzegawczy overfittingu (dopasowanie do szumu w danych,
+nie do prawdziwej struktury rynku). `check_param_stability(stability, param_stability_spec)`
+porownuje `relative_drop` z `AcceptanceSpec.param_stability.max_relative_metric_drop_within_family`
+(ten sam styl co `check_criteria` - dict wynikow, tylko dla faktycznie ustawionych progow).
+
+Wymaga metryki typu "wyzej = lepiej" (`cagr`, `sharpe`, `calmar`, `wf_mean_cagr`) - dla "nizej =
+lepiej" (np. `annual_turnover`) `best`/`worst` wyjdzie odwrocone i strace sens; niezabezpieczone
+w kodzie, tylko udokumentowane.
+
+**Przyklad na realnej strategii** (`best17_b`, rodzina `execution.min_score_gap` x
+`indicators.mom_9.window`, 12 wariantow, 5 okien walk-forward kazdy): `wf_mean_cagr` od 7.63%
+(`min_score_gap=0.0, window=6`) do 11.01% (`min_score_gap=0.05, window=12`) - `relative_drop` =
+**30.7%**, LEKKO przekracza prog `acceptance_spec.json.param_stability.max_relative_metric_drop_
+within_family=0.30` (borderline fail) - rodzina jest umiarkowanie, ale nie idealnie stabilna.
 
 ## Struktura folderów
 
@@ -359,6 +395,7 @@ engine_v2/
   validation.py                                             # walk-forward: tnie krzywa equity na okna, METRICS per okno
   grid_sweep.py                                             # sweep po allowed_param_families -> N wariantow StrategySpec
   acceptance_check.py                                       # METRICS vs AcceptanceSpec.Criteria -> pass/fail
+  param_stability.py                                        # sweep -> "jak stabilna jest rodzina parametrow"
   run_spec_runner.py                                        # RunSpec.mode -> final/validation/search
   blocks/
     data_loader/, data_cleaner/, indicators/, asset_filters/,

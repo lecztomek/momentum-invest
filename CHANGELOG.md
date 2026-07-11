@@ -2,6 +2,36 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (9)
+
+- **NOWY MODUL `engine_v2/param_stability.py` - "jak silna jest rodzina strategii"** - user:
+  "brakuje mi czegos w stylu stabilnosci strategii, czyli parametru mowiacego jak zmiana
+  parametrow zabija strategie, jak mocna jest rodzina strategii". `AcceptanceSpec.
+  ParamStabilitySpec.max_relative_metric_drop_within_family` byl zdefiniowany OD POCZATKU
+  projektu, ale NIGDZIE nie byl faktycznie liczony - `allowed_param_families`/`run_param_sweep`
+  generuja i oceniaja warianty, ale nic nie streszczalo tego w JEDNA liczbe. To byl brakujacy
+  kawalek.
+
+  `compute_param_stability(sweep_result, metric_key)`: bierze tabele z `run_param_sweep` i liczy
+  `relative_drop = (best - worst) / abs(best)` miedzy najlepszym a najgorszym wariantem w calej
+  rodzinie parametrow, na wybranej metryce (domyslnie `wf_mean_cagr` w trybie `"search"`). Male
+  = stabilne plateau (wybor konkretnego punktu nie jest krytyczny). Duze = krucha rodzina (jeden
+  dobry wariant otoczony gorszymi sasiadami - sygnal overfittingu). `check_param_stability`
+  porownuje to z `AcceptanceSpec.param_stability.max_relative_metric_drop_within_family` (ten
+  sam styl co `check_criteria` - dict wynikow, tylko dla ustawionych progow).
+
+  Wpiete w `run_spec_runner.py`'s tryb `"search"` - wynik ma teraz `param_stability` (pelne
+  statystyki: best/worst/relative_drop/nazwy wariantow) i `param_stability_check` (bool wzgledem
+  progu), liczone TYLKO na wariantach z >=1 oknem walk-forward (i tylko gdy zostaly >=2 takie
+  warianty - relative_drop miedzy jednym wariantem a samym soba nic nie mowi).
+
+  **Przyklad na realnej strategii** (`best17_b`, rodzina `min_score_gap` x `mom_9.window`, 12
+  wariantow): `wf_mean_cagr` od 7.63% do 11.01% -> `relative_drop` = **30.7%**, LEKKO przekracza
+  wlasny prog `acceptance_spec.json` (0.30) - borderline fail, uczciwie pokazany, nie ukryty.
+
+  13 nowych testow (`test_param_stability.py`) + zaktualizowany `test_run_spec_runner.py`
+  (`test_search_mode_end_to_end` sprawdza nowe pola). Pelny pakiet testow: **224/224**.
+
 ## 2026-07-11 (8)
 
 - **NOWA STRATEGIA `strategies_v2/best17_b/` - "Strategia B" uzytkownika, rotacja sektorowa**.
