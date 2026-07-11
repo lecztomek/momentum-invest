@@ -21,3 +21,4 @@ from engine_v2.blocks.portfolio_risk_engine import none  # noqa: E402,F401  (rej
 from engine_v2.blocks.portfolio_risk_engine import vaa_canary  # noqa: E402,F401  (rejestruje "vaa_canary")
 from engine_v2.blocks.portfolio_risk_engine import gem_dual_momentum_switch  # noqa: E402,F401  (rejestruje "gem_dual_momentum_switch")
 from engine_v2.blocks.portfolio_risk_engine import rebound_starter  # noqa: E402,F401  (rejestruje "rebound_starter")
+from engine_v2.blocks.portfolio_risk_engine import gfm_risk_switch  # noqa: E402,F401  (rejestruje "gfm_risk_switch")

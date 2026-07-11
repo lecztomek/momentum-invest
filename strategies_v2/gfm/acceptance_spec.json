@@ -1,0 +1,20 @@
+{
+  "global": {
+    "min_cagr": 0.04,
+    "max_drawdown": -0.35,
+    "min_sharpe": 0.3,
+    "min_calmar": 0.15,
+    "max_annual_turnover": 4.0,
+    "max_consecutive_negative_months": 8,
+    "max_time_underwater_months": 36,
+    "min_pct_positive_rolling_windows": 0.5
+  },
+
+  "named_periods": {},
+
+  "param_stability": {
+    "max_relative_metric_drop_within_family": 0.3
+  },
+
+  "uk_mapping": {}
+}

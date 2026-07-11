@@ -1,0 +1,47 @@
+{
+  "name": "gfm_v0",
+  "hypothesis": "Rekonstrukcja 'Global Factor Model' (GFM, inwestujdlugoterminowo.pl/global-factor-model-gfm/) wg opisu dostarczonego przez uzytkownika. Miesieczna strategia, dwa tryby: Risk-On (14 ETF: SPY/VTV/MTUM/QQQ/IJH/IJR/VEA/VWO/EFV/MCHI/GSG/GLD/VNQ/LQD, score=(3M+6M+12M)/3, top_n najlepszych po rowno - tu top_n=4, wariant 'GFM-4' - patrz allowed_param_families dla wariantow GFM-3/5) i Risk-Off (2 ETF: IEF/TLT, score=(1M+3M+6M+12M)/4, caly kapital w lepszym). BRAK DANYCH dla wiekszosci tickerow w data/us w momencie tworzenia tej specyfikacji (mamy tylko spy/vea/vwo/gld->iau/lqd/ief/tlt z istniejacych strategii, brakuje vtv/mtum/qqq/ijh/ijr/efv/mchi/gsg/vnq) - zaimplementowane 'na sucho', do faktycznego uruchomienia po dorzuceniu brakujacych plikow cenowych. NAJWAZNIEJSZE ZASTRZEZENIE: autor JAWNIE nie ujawnia dokladnej reguly wyznaczania sygnalu Risk-On/Risk-Off (`gfm_risk_switch`'s `regime_indicator_key`/`regime_ticker`/`regime_threshold` params) - domyslnie uzyto PLACEHOLDERA (wlasny 12-miesieczny momentum SPY > 0, w stylu prostego canary Faber/GTAA), NIE odtworzenia nieujawnionej reguly - do podmiany, gdy realna regula bedzie znana/dostarczona.",
+  "universe": ["spy.us", "vtv.us", "mtum.us", "qqq.us", "ijh.us", "ijr.us", "vea.us", "vwo.us", "efv.us", "mchi.us", "gsg.us", "gld.us", "vnq.us", "lqd.us", "ief.us", "tlt.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "gfm_risk_switch",
+    "overlays": "none",
+    "execution": "hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "mom_1": {"impl": "momentum_monthly", "window": 1},
+      "mom_3": {"impl": "momentum_monthly", "window": 3},
+      "mom_6": {"impl": "momentum_monthly", "window": 6},
+      "mom_12": {"impl": "momentum_monthly", "window": 12}
+    },
+    "asset_scoring": {"weights": {"mom_12": 1.0}},
+    "selector": {"top_n": 1},
+    "alpha_weighting": {"weights": [1.0]},
+    "portfolio_risk_engine": {
+      "risk_on_assets": ["spy.us", "vtv.us", "mtum.us", "qqq.us", "ijh.us", "ijr.us", "vea.us", "vwo.us", "efv.us", "mchi.us", "gsg.us", "gld.us", "vnq.us", "lqd.us"],
+      "risk_off_assets": ["ief.us", "tlt.us"],
+      "top_n": 4,
+      "risk_on_mom_keys": ["mom_3", "mom_6", "mom_12"],
+      "risk_off_mom_keys": ["mom_1", "mom_3", "mom_6", "mom_12"],
+      "regime_indicator_key": "mom_12",
+      "regime_ticker": "spy.us",
+      "regime_threshold": 0.0
+    },
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 10, "frequency": "monthly"}
+  },
+
+  "allowed_param_families": {
+    "portfolio_risk_engine": {"top_n": [3, 4, 5]}
+  },
+
+  "created_at": "2026-07-11"
+}

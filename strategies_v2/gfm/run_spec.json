@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "NIE URUCHOMIONE na realnych danych - brakuje w data/us/nyse tickerow vtv/mtum/qqq/ijh/ijr/efv/mchi/gsg/vnq (mamy tylko spy/vea/vwo/gld->iau/lqd/ief/tlt). Zaimplementowane 'na sucho' na prosbe uzytkownika (kod + testy jednostkowe teraz, backtest pozniej po dorzuceniu danych). acceptance_spec.json progi SA ZGADYWANE (jeszcze nieskorygowane po realnym wyniku - jak przy all_weather_4 przed pierwszym przebiegiem) - do poprawienia po pierwszym faktycznym uruchomieniu. NAJWAZNIEJSZE: regime_indicator_key/regime_ticker/regime_threshold w portfolio_risk_engine to PLACEHOLDER (wlasny SPY mom_12 > 0) - prawdziwa regula Risk-On/Risk-Off GFM nie jest publiczna (autor to jawnie zastrzega), wiec ten placeholder do podmiany, gdy/jesli realna regula bedzie znana."
+}
