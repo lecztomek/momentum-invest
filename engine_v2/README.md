@@ -1345,6 +1345,15 @@ pozostaje lepszy, jesli priorytetem jest czysty Sharpe (0.987 vs 1.011 - **UWAGA
 poprawce `gpm_best17_a` ma teraz WYZSZY Sharpe niz `vaa_g4_best17_a` - `vaa_g4_best17_a` juz NIE
 jest najlepszym Sharpe w repo, `gpm_best17_a` bije go na OBU frontach).
 
+**Odpornosc parametrow `signal_tilted_capital_weights` (2026-07-11 (34), patrz CHANGELOG)** -
+user: "nie chce robic overfitting, opowiedz o odpornosci". `relative_drop` PO PODATKU:
+`tilt_strength` (zakres -0.05..-0.15): FULL 2.2%, TRAIN 4.7%, OOS 5.0% - bardzo plaskie plateau
+(Calmar 0.768-0.786 na calym zakresie), TRAIN/OOS "chca" przeciwnych kierunkow ale roznica to
+szum, nie konflikt. `base_weight_a` (zakres 0.45..0.65): FULL 6.8%, TRAIN 15.7% (rosnie
+MONOTONICZNIE z waga gpm), OOS 9.7% - lagodne optimum kolo 0.55 na FULL/OOS, nie odosobniony
+szczyt. Obie znacznie ponizej progu 30% ("krucha rodzina") - konfiguracja nie wyglada jak wynik
+nadmiernego dostrajania.
+
 **Stabilnosc wagi combinera** (user: "Jak ze stabilnoscia naszego najlepszego miksu?") -
 `compute_param_stability` zastosowany PIERWSZY RAZ do wagi combinera (nie parametrow
 wewnetrznych pojedynczej strategii), sweep `best17_a_weight` [0.35..0.70] przez walk-forward na

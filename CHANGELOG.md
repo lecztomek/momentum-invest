@@ -2,6 +2,25 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (34)
+
+- **Sprawdzona odporność (param stability) mistrza sesji `gpm_best17_a`
+  (`signal_tilted_capital_weights`)** - user: "nie chce robic overfitting, opowiedz o odpornosci".
+  `relative_drop` (best-worst)/best miedzy najlepszym a najgorszym wariantem w rodzinie, na
+  FULL/TRAIN/OOS, PO PODATKU:
+  - `tilt_strength` (zakres -0.05..-0.15, `base_weight_a=0.55` stale): relative_drop FULL 2.2%,
+    TRAIN 4.7%, OOS 5.0% - BARDZO plaskie plateau (Calmar 0.768-0.786 na calym zakresie). TRAIN i
+    OOS "chca" przeciwnych kierunkow (slabszy vs mocniejszy tilt), ale roznica jest tak mala, ze
+    to szum wokol plateau, nie prawdziwy konflikt.
+  - `base_weight_a` (zakres 0.45..0.65, `tilt_strength=-0.10` stale): relative_drop FULL 6.8%,
+    TRAIN 15.7% (rosnie MONOTONICZNIE z waga gpm - w danych treningowych gpm broniła sie dobrze w
+    kryzysach), OOS 9.7%. FULL/OOS maja lagodne optimum kolo 0.55 - uczciwy kompromis miedzy
+    "co dzialalo w treningu" a "co dziala ogolnie", nie odosobniony szczyt.
+
+  Obie znacznie ponizej progu 30% (`relative_drop`) uzywanego w tej sesji jako granica "krucha
+  rodzina" - konfiguracja nie wyglada jak wynik nadmiernego dostrajania. Analiza ad-hoc (bez
+  zmian kodu/konfiguracji) - `gpm_best17_a` bez zmian.
+
 ## 2026-07-11 (33)
 
 - **NOWY COMBINER `ema_canary_regime_capital_weights`** - user dostarczyl DOKLADNY opis
