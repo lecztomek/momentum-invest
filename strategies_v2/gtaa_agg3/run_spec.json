@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "Odtworzenie 'GTAA AGG3' wg opisu usera - top3 wg srednia momentum 1/3/6/12m, filtr trendu per slot (6m SMA), fallback IEF (zamiennik VGIT). Patrz hypothesis w strategy_spec.json."
+}

@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "Wariant AGG6 tej samej strategii co gtaa_agg3 - top6 zamiast top3, wagi 16.67%. Patrz hypothesis w strategy_spec.json."
+}

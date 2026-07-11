@@ -23,3 +23,4 @@ from engine_v2.blocks.portfolio_risk_engine import gem_dual_momentum_switch  # n
 from engine_v2.blocks.portfolio_risk_engine import rebound_starter  # noqa: E402,F401  (rejestruje "rebound_starter")
 from engine_v2.blocks.portfolio_risk_engine import gfm_risk_switch  # noqa: E402,F401  (rejestruje "gfm_risk_switch")
 from engine_v2.blocks.portfolio_risk_engine import gpm_breadth_protective_split  # noqa: E402,F401  (rejestruje "gpm_breadth_protective_split")
+from engine_v2.blocks.portfolio_risk_engine import gtaa_trend_bond_reroute  # noqa: E402,F401  (rejestruje "gtaa_trend_bond_reroute")

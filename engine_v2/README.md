@@ -55,7 +55,7 @@ Orchestrator: `pipeline.run_strategy_pipeline(spec)` -> gotowa tabela FINAL PORT
 | `asset_scoring` | pojedynczy wybór | `weighted_sum`, `momentum_times_decorrelation` | `weighted_sum` - ważona SUMA wskaźników; `momentum_times_decorrelation` - ILOCZYN dwóch konkretnych wskaźników (`momentum * (1 - korelacja)`, dla `strategies_v2/gpm/` - suma by tego nie wyraziła). Oba maskują NaN tam gdzie `eligibility_mask=False` |
 | `selector` | pojedynczy wybór | `top_n` | Top-N wg score, nigdy nie wybiera NaN |
 | `alpha_weighting` | pojedynczy wybór | `rank_weights`, `inverse_vol`, `rounded_score_weights` | Wagi wybranych: stałe wg rankingu (reszta do `_CASH`) albo odwrotnie proporcjonalne do zmienności (zawsze w pełni zainwestowane) albo proporcjonalne do score, zaokrąglone do bloku (largest remainder), z gwarantowanym minimum na aktywo |
-| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch`, `gpm_breadth_protective_split` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku); `gpm_breadth_protective_split` skaluje udział ochronny CIĄGLE wg liczby dodatnich aktywów ryzykownych, zamiast binarnego przełączenia jak `vaa_canary` |
+| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch`, `gpm_breadth_protective_split`, `gtaa_trend_bond_reroute` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku); `gpm_breadth_protective_split` skaluje udział ochronny CIĄGLE wg liczby dodatnich aktywów ryzykownych, zamiast binarnego przełączenia jak `vaa_canary`; `gtaa_trend_bond_reroute` ocenia KAŻDY SLOT niezależnie (nie globalnie) - część portfela może być w akcjach a część w obligacjach jednocześnie |
 | `overlays` | pojedynczy wybór | `none` | Pass-through (rebound/vol-target - gdy będzie potrzebny) |
 | `execution` | pojedynczy wybór | `hysteresis`, `score_gap_hysteresis` | Rebalans tylko gdy przekroczony próg - na różnicy WAGI (`hysteresis`) albo różnicy SCORE między najsłabszym trzymanym a najlepszym wyzwaniowcem (`score_gap_hysteresis`, wymaga `ExecutionContext.score_row`) |
 
@@ -637,6 +637,8 @@ strategies_v2/
   synergy_v2/                    # poprawka: TLT wzajemnie wykluczajacy sie z 4 aktywami ofensywnymi - patrz niżej, dalej gorzej niż best17_a solo
   gpm/                            # "Generalized Protective Momentum" - patrz niżej, najnizszy MaxDD (-15.2%) i najstabilniejsza rodzina parametrow w calej sesji
   gpm_best17_a/                   # gpm+best17_a, fixed_capital_weights 45/55 - patrz nizej, NAJLEPSZY CALMAR calej sesji (0.707)
+  gtaa_agg3/                      # "GTAA AGG3" - top3 momentum + filtr trendu PER SLOT - patrz nizej
+  gtaa_agg6/                      # "GTAA AGG6" - to samo, top6 zamiast top3 - patrz nizej
   # wszystkie pozostale pary 7 glownych strategii (fixed_capital_weights 50/50) - patrz
   # "Wszystkie pary 7 głównych strategii" wyzej; vaa_g4_best17_a to najlepszy Sharpe w repo
   dual_momentum_vaa_g4/  dual_momentum_the_one/       dual_momentum_best17_a/
@@ -1078,6 +1080,50 @@ nowych plikow testowych potrzebnych.
 
 **Rekomendacja sesji**: `gpm_best17_a` (55/45) - jesli priorytetem jest MaxDD/Calmar i niski
 turnover; `vaa_g4_best17_a` pozostaje lepszy, jesli priorytetem jest czysty Sharpe.
+
+### Dziesiata/jedenasta strategia: `gtaa_agg3` / `gtaa_agg6` ("GTAA AGG3/AGG6", opis dostarczony przez usera)
+
+User (w trakcie sweepu gpm+best17_a+vaa_g4) zmienil plan i dostarczyl opis nowej strategii do
+odtworzenia. Mechanizm: (1) `score = srednia zwrotow 1/3/6/12m` - reuzyty ISTNIEJACY
+`indicators.momentum_avg_month_end` (zbudowany dla `gpm`, identyczny wzor - zero duplikacji);
+(2) top3 (AGG3) albo top6 (AGG6) wg `score`; (3) rowne wagi (33.33%/16.67%); (4) filtr trendu
+PER SLOT (nie globalny) - cena konca miesiaca ponizej 6-miesiecznej SMA -> TA CZESC kapitalu
+(nie caly portfel) trafia do obligacji zamiast do aktywa; (5) rebalans co miesiac, bez histerezy.
+
+**Nowy blok**: `portfolio_risk_engine/gtaa_trend_bond_reroute.py` - w odroznieniu od
+`canary_regime_gate` (globalny gate na cala grupe naraz) i `gpm_breadth_protective_split`
+(ciagle skalowanie globalnego udzialu), tu KAZDY SLOT jest oceniany NIEZALEZNIE - czesc portfela
+moze byc w akcjach a czesc rownoczesnie w obligacjach w tym samym miesiacu. Zweryfikowano na
+realnych danych (2008, 2022) - mieszane sloty (np. `{"dbc.us": 0.333, "ief.us": 0.667}`)
+faktycznie wystepuja w historii, nie tylko binarne 0%/100% jak w `gpm`/`vaa_canary`.
+
+**Brakujace dane**: user wskazuje VGIT (US)/IUSM (UCITS) jako fallback obligacyjny - oba
+NIEDOSTEPNE w naszych danych, zastapione IEF (7-10Y skarbowe, najblizszy zamiennik - user wybral
+przez `AskUserQuestion`). Uniwersum ryzykowne (10, "klasyczne GTAA na dostepnych danych"): IVV,
+IJR, EFA, VWO, VNQ, DBC, GLD, HYG, LQD, TLT.
+
+**Realny wynik** (2007-05 do 2026-08, 232 miesiace, PRZED podatkiem):
+
+| | CAGR | MaxDD | Sharpe | Calmar | Turnover |
+|---|---|---|---|---|---|
+| `gtaa_agg3` (top3, 33.33%) | 6.99% | -19.69% | 0.58 | 0.35 | 3.81 |
+| `gtaa_agg6` (top6, 16.67%) | 6.30% | -18.71% | 0.66 | 0.34 | 3.00 |
+
+AGG6 wyraznie lepszy Sharpe (szersza dywersyfikacja tlumi szum), AGG3 wyzszy CAGR
+(koncentracja na najlepszym momentum). Named periods: OBIE odmiany DODATNIE przez `gfc_crash`
+(+4.86%/+2.04% CAGR) - trend-following + rotacja do obligacji dziala jak zaprojektowano w
+klasycznym kryzysie (podobnie jak `gpm`, ale mechanizmem PER SLOT zamiast globalnego).
+
+**Param stability** (sweep `sma_window` 3-9, 7 wariantow): `gtaa_agg3` relative_drop=17.1%
+(PASS, prog 0.30), `gtaa_agg6` relative_drop=30.3% (borderline **FAIL** - najlepszy wariant w
+tescie to `sma_window=9`, nie domyslne 6 z opisu - odnotowane uczciwie, prog NIE poluzowany zeby
+to ukryc).
+
+17 nowych testow: `test_gtaa_components.py` (nowy blok na danych syntetycznych - reroute tylko
+wlasciwego slotu nie calego portfela, cala portfolio do obligacji gdy wszystkie sloty slabe,
+slot o wadze 0 ignorowany) + `test_gtaa_strategy_specs.py` (wiring obu wariantow, top_n==liczba
+wag, bond_fallback wykluczony z selekcji, end-to-end na realnych danych z dowodem na mieszane
+sloty, zamrozone baseline'y metryk).
 
 ## Testy
 

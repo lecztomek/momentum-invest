@@ -2,6 +2,46 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (18)
+
+- **NOWE STRATEGIE `strategies_v2/gtaa_agg3/` i `strategies_v2/gtaa_agg6/` - "GTAA AGG3/AGG6"**
+  (user zmienil plan w trakcie sweepu gpm+best17_a+vaa_g4 - zamiast tego dostarczyl opis nowej
+  strategii do odtworzenia). Mechanizm: (1) `score = srednia zwrotow 1/3/6/12m` - reuzyty
+  ISTNIEJACY `indicators.momentum_avg_month_end` (zbudowany wczesniej dla `gpm`, identyczny
+  wzor); (2) top3 (AGG3) albo top6 (AGG6) wg `score`; (3) rowne wagi (33.33%/16.67%); (4) filtr
+  trendu PER SLOT (nie globalny) - cena konca miesiaca ponizej 6-miesiecznej SMA -> TA CZESC
+  kapitalu (nie caly portfel) trafia do obligacji zamiast do aktywa; (5) rebalans co miesiac,
+  bez histerezy.
+
+  Wymagal 1 NOWEGO bloku: `portfolio_risk_engine/gtaa_trend_bond_reroute.py` - w odroznieniu od
+  `canary_regime_gate` (globalny gate na cala grupe) i `gpm_breadth_protective_split` (ciagle
+  skalowanie globalnego udzialu), tu KAZDY SLOT jest oceniany NIEZALEZNIE - czesc portfela moze
+  byc w akcjach a czesc rownoczesnie w obligacjach w tym samym miesiacu. Zweryfikowano na
+  realnych danych (2008, 2022) - mieszane sloty (np. `{"dbc.us": 0.333, "ief.us": 0.667}`)
+  faktycznie wystepuja w historii, nie tylko binarne 0%/100%.
+
+  **Brakujace dane**: user wskazuje VGIT (US)/IUSM (UCITS) jako fallback obligacyjny - oba
+  NIEDOSTEPNE w naszych danych, zastapione IEF (7-10Y skarbowe, najblizszy zamiennik). Uniwersum
+  ryzykowne (10, user: "klasyczne GTAA na dostepnych danych"): IVV, IJR, EFA, VWO, VNQ, DBC, GLD,
+  HYG, LQD, TLT.
+
+  **Wynik (2007-05 do 2026-08, PRZED podatkiem)**: `gtaa_agg3` CAGR 6.99%, MaxDD -19.69%, Sharpe
+  0.58, Calmar 0.35, turnover 3.81/rok; `gtaa_agg6` CAGR 6.30%, MaxDD -18.71%, Sharpe 0.66,
+  Calmar 0.34, turnover 3.00/rok - AGG6 wyraznie lepszy Sharpe (szersza dywersyfikacja), AGG3
+  wyzszy CAGR (koncentracja). Named periods: OBIE odmiany DODATNIE przez `gfc_crash`
+  (+4.86%/+2.04% CAGR) - trend-following + rotacja do obligacji dziala jak zaprojektowano w
+  klasycznym kryzysie.
+
+  **Param stability** (sweep `sma_window` 3-9, 7 wariantow): `gtaa_agg3` relative_drop=17.1%
+  (PASS, prog 0.30), `gtaa_agg6` relative_drop=30.3% (borderline **FAIL** - najlepszy wariant
+  `sma_window=9`, nie domyslne 6 - odnotowane uczciwie, prog NIE poluzowany zeby to ukryc).
+
+  17 nowych testow (`test_gtaa_components.py` - reroute tylko wlasciwego slotu, cala portfolio
+  do obligacji gdy wszystkie slabe, slot o wadze 0 ignorowany; `test_gtaa_strategy_specs.py` -
+  wiring obu wariantow, top_n==liczba wag, bond_fallback wykluczony z selekcji, end-to-end na
+  realnych danych z dowodem na mieszane sloty, zamrozone baseline'y metryk). 351/351 testow
+  przechodzi.
+
 ## 2026-07-11 (17)
 
 - **NOWY MODUL `engine_v2/named_periods.py` - `AcceptanceSpec.named_periods` faktycznie

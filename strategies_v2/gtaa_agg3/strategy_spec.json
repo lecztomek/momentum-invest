@@ -1,0 +1,38 @@
+{
+  "name": "gtaa_agg3_v0",
+  "hypothesis": "Odtworzenie 'GTAA AGG3' wg opisu dostarczonego przez usera: (1) score = srednia zwrotow 1/3/6/12m (ten sam wzor co 'r' w gpm - reuzyty istniejacy indicators.momentum_avg_month_end); (2) selekcja top3 wg score; (3) rowne wagi 33.33% na kazda z 3 pozycji; (4) filtr trendu PER SLOT (nie globalny) - jesli cena wybranego aktywa na koniec miesiaca jest PONIZEJ jego wlasnej 6-miesiecznej SMA (rowniez na cenach konca miesiaca), TA CZESC kapitalu (nie caly portfel) trafia do obligacji zamiast do aktywa; (5) rebalans co miesiac, bez histerezy. WYMAGA 1 NOWEGO BLOKU: portfolio_risk_engine.gtaa_trend_bond_reroute (per-slot reroute, w odroznieniu od globalnego gpm_breadth_protective_split/canary_regime_gate). Obligacyjny fallback: user wskazuje VGIT (US) / IUSM (UCITS) - oba NIEDOSTEPNE w naszych danych, zastapione przez IEF (7-10Y skarbowe, najblizszy zamiennik z tego co mamy - decyzja usera przy wyborze uniwersum). Uniwersum ryzykowne (10, user: 'klasyczne GTAA na dostepnych danych'): IVV (US large), IJR (US small), EFA (rozwiniete), VWO (EM), VNQ (REIT), DBC (surowce), GLD (zloto), HYG (high yield), LQD (IG corp), TLT (dlugie skarbowe). cost_bps=10 (zalozenie, plynne ETFy jak w gpm/vaa_g4) - brak zrodla realnych kosztow.",
+  "universe": ["ivv.us", "ijr.us", "efa.us", "vwo.us", "vnq.us", "dbc.us", "gld.us", "hyg.us", "lqd.us", "tlt.us", "ief.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "gtaa_trend_bond_reroute",
+    "overlays": "none",
+    "execution": "hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "r": {"impl": "momentum_avg_month_end", "windows": [1, 3, 6, 12]}
+    },
+    "asset_filters": {
+      "exclude_bond_from_selection": {"impl": "never_eligible", "assets": ["ief.us"]}
+    },
+    "asset_scoring": {"weights": {"r": 1.0}},
+    "selector": {"top_n": 3},
+    "alpha_weighting": {"weights": [0.3333333333333333, 0.3333333333333333, 0.3333333333333333], "redistribute_if_short": true},
+    "portfolio_risk_engine": {"sma_window": 6, "bond_fallback_asset": "ief.us"},
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 10}
+  },
+
+  "allowed_param_families": {
+    "portfolio_risk_engine": {"sma_window": [3, 4, 5, 6, 7, 8, 9]}
+  },
+
+  "created_at": "2026-07-11"
+}
