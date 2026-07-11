@@ -189,6 +189,24 @@ zwroty strategii, nie tylko ich wagi.
   | Sharpe | 1.08 | **1.22** | 0.89 | **0.98** |
   | Calmar | 0.67 | **1.02** | 0.61 | 0.77 |
 
+**`strategies_v2/tlt_timing/` - próba PRAWDZIWIE samodzielnej (przenosnej) strategii na TLT.**
+User uwaga: warunek wejścia `momentum_hedge_overlay` porównuje TLT do `best17_a` (`a_lb`/`a_6m`),
+więc `tlt_hedge` nie jest "osobną strategią" w sensie zachowania - samo `tlt_hedge` zawsze trzyma
+100% TLT, cała decyzja żyje w COMBINERZE i zależy od tego, z czym go połączysz. `tlt_timing`
+naprawia to: sama decyduje, wyłącznie na WŁASNYM, absolutnym 3-miesięcznym momentum (`mom_3 > 0`
+przez istniejący blok `indicator_positive`) - zero odniesienia do żadnej innej strategii, więc
+działa identycznie z DOWOLNYM combinerem/DOWOLNĄ inną strategią. Zero nowego kodu bloku - tylko
+nowa konfiguracja z już istniejących bloków.
+
+Uczciwy wynik (sweep okna 1/3/6/12, window=3 najlepszy): CAGR 1.59%, MaxDD -41.38%, Sharpe 0.20 -
+GORZEJ niż zwykły buy&hold `tlt.us` solo (CAGR 2.10%, MaxDD -47.76%, Sharpe 0.22). W połączeniu z
+`best17_a` (`strategies_v2/best17_a_tlt_timing/`, `fixed_capital_weights` 20% - dobrane na TEN SAM
+MaxDD co `momentum_hedge_overlay` 20%, dla porównania jabłko-do-jabłka): CAGR 11.60% (vs 13.94%),
+Sharpe 0.93 (vs 0.94), Calmar 0.52 (vs 0.62) - wyraźnie gorzej na każdym wymiarze poza MaxDD.
+**Wniosek**: przenośność ma swoją cenę - sam absolutny momentum TLT nie ma realnej przewagi,
+przewaga `momentum_hedge_overlay` bierze się WŁAŚNIE z relatywnego porównania do core, nie z
+samego TLT. `best17_a_tlt_hedge/` (relatywny wariant) pozostaje rekomendowanym wyborem.
+
 Pochodne metryki okresu (`turnover`/`trade_cost`/`gross_return`/`net_return`) są łączone wg
 `effective_capital_weights` (nie statycznego `params["capital_weights"]`, wprost w
 `combined_pipeline.py`, nie przez generyczny kontrakt COMBINERA) - inaczej strategia, która
@@ -338,6 +356,8 @@ strategies_v2/
   combined_triple/               # best17_a+the_one+all_weather_4, 45/20/35 - patrz niżej
   tlt_hedge/                     # trywialna "zawsze 100% tlt.us" cegielka - patrz niżej
   best17_a_tlt_hedge/            # best17_a+tlt_hedge, momentum_hedge_overlay - patrz niżej
+  tlt_timing/                    # samodzielny, przenosny timing na tlt.us (wlasny momentum) - patrz niżej
+  best17_a_tlt_timing/           # best17_a+tlt_timing, fixed_capital_weights - patrz niżej
 ```
 
 ### Druga przykładowa strategia: `dual_momentum` (test szerokości silnika)

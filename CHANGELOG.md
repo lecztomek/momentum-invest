@@ -2,6 +2,40 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (3)
+
+- **NOWA STRATEGIA `strategies_v2/tlt_timing/`** - user uwaga: "warunek wejscia hedge'u (patrz
+  `momentum_hedge_overlay`) bazuje na best17_a, wiec to nie jest prawdziwie osobna strategia" - i
+  "ma to wiekszy sens logiczny zeby sprobowac zrobic osobna strategie na tlt". Zbudowano PRAWDZIWIE
+  przenosna, samodzielna strategie: sama decyduje kiedy byc w `tlt.us` a kiedy w cash, WYLACZNIE
+  na WLASNYM, absolutnym 3-miesiecznym momentum (`indicator_positive` na `mom_3 > 0`) - zero
+  odniesienia do jakiejkolwiek innej strategii, wiec mozna ja polaczyc z DOWOLNA inna (zwyklym
+  `fixed_capital_weights`/`dynamic_capital_weights`) bez zmiany WLASNEGO zachowania.
+
+  **Uczciwy wynik (nie ukryty mimo ze slabszy)**: sweep okna momentum (1/3/6/12 miesiecy) solo -
+  window=3 najlepszy, ale WCIAZ gorszy niz zwykly buy&hold `tlt.us`:
+
+  | | CAGR | MaxDD | Sharpe |
+  |---|---|---|---|
+  | buy&hold tlt.us | 2.10% | -47.76% | 0.22 |
+  | tlt_timing window=1 | -0.53% | -36.39% | 0.00 |
+  | tlt_timing window=3 (wybrane) | 1.59% | -41.38% | 0.20 |
+  | tlt_timing window=6 | -0.71% | -32.56% | -0.01 |
+  | tlt_timing window=12 | 0.61% | -36.51% | 0.11 |
+
+  W polaczeniu z `best17_a` (`strategies_v2/best17_a_tlt_timing/`, `fixed_capital_weights` 20%,
+  na TYM SAMYM MaxDD co `momentum_hedge_overlay` 20% dla porownania jablko-do-jablka): CAGR
+  11.60% (vs 13.94% dla `momentum_hedge_overlay`), Sharpe 0.93 (vs 0.94), Calmar 0.52 (vs 0.62) -
+  WYRAZNIE gorzej na kazdym wymiarze poza MaxDD (identyczny, bo tak dobrano wage). **Wniosek**:
+  przenosnosc (dziala z dowolna strategia bez zmiany zachowania) ma swoja cene - sam absolutny
+  momentum TLT nie ma realnej przewagi (nawet gorszy niz zwykly buy&hold), przewaga
+  `momentum_hedge_overlay` bierze sie WLASNIE z relatywnego porownania do core, nie z samego TLT.
+  `strategies_v2/best17_a_tlt_hedge/` (relatywny wariant) pozostaje rekomendowanym wyborem.
+
+  Zero nowego kodu bloku - `tlt_timing` sklada sie wylacznie z JUZ istniejacych blokow
+  (`indicator_positive`, `momentum_monthly`, `weighted_sum`, `top_n`, `rank_weights`,
+  `hysteresis`). Pelny pakiet testow: 188/189 (1 fail niepowiazany - efa/agg/shy dla `vaa_g4`).
+
 ## 2026-07-11 (2)
 
 - **BUGFIX `momentum_hedge_overlay`: sygnal wlaczal sie PRZED startem core** - user pytanie
