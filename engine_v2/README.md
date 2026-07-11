@@ -55,7 +55,7 @@ Orchestrator: `pipeline.run_strategy_pipeline(spec)` -> gotowa tabela FINAL PORT
 | `asset_scoring` | pojedynczy wybór | `weighted_sum` | Ważona suma wskaźników, maskuje NaN tam gdzie `eligibility_mask=False` |
 | `selector` | pojedynczy wybór | `top_n` | Top-N wg score, nigdy nie wybiera NaN |
 | `alpha_weighting` | pojedynczy wybór | `rank_weights`, `inverse_vol`, `rounded_score_weights` | Wagi wybranych: stałe wg rankingu (reszta do `_CASH`) albo odwrotnie proporcjonalne do zmienności (zawsze w pełni zainwestowane) albo proporcjonalne do score, zaokrąglone do bloku (largest remainder), z gwarantowanym minimum na aktywo |
-| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku) |
+| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku) |
 | `overlays` | pojedynczy wybór | `none` | Pass-through (rebound/vol-target - gdy będzie potrzebny) |
 | `execution` | pojedynczy wybór | `hysteresis`, `score_gap_hysteresis` | Rebalans tylko gdy przekroczony próg - na różnicy WAGI (`hysteresis`) albo różnicy SCORE między najsłabszym trzymanym a najlepszym wyzwaniowcem (`score_gap_hysteresis`, wymaga `ExecutionContext.score_row`) |
 
@@ -384,6 +384,7 @@ strategies_v2/
   tlt_timing/                    # samodzielny, przenosny timing na tlt.us (wlasny momentum) - patrz niżej
   best17_a_tlt_timing/           # best17_a+tlt_timing, fixed_capital_weights - patrz niżej
   the_one_tlt_hedge/             # the_one+tlt_hedge, ta sama regula co best17_a - patrz niżej (hedge SZKODZI tu)
+  gfm/                           # "Global Factor Model" - patrz niżej (BEZ DANYCH, zaimplementowane "na sucho")
 ```
 
 ### Druga przykładowa strategia: `dual_momentum` (test szerokości silnika)
@@ -604,6 +605,38 @@ Sharpe ~0.82, Calmar ~0.35, roczny turnover ~1.74 - najnizszy turnover ze wszyst
 tym repo (mniej "wchodzenia/wychodzenia", tylko przewazanie juz posiadanych 4 klas). MaxDD -25.5%
 przekroczyl pierwotnie zgadywany prog `acceptance_spec.max_drawdown=-0.20` - prog skorygowany
 transparentnie do -0.28 PO zobaczeniu wyniku (nie ukryte - patrz `run_spec.json.notes`).
+
+### Siodma strategia: `gfm` (Global Factor Model, inwestujdlugoterminowo.pl) - BEZ DANYCH
+
+Zaimplementowana "na sucho" na prosbe uzytkownika (dolozyc kod + testy teraz, backtest na
+realnych danych pozniej) - w `data/us/nyse` brakuje wiekszosci wymaganych tickerow (mamy tylko
+`spy`/`vea`/`vwo`/`iau`(=gld)/`lqd`/`ief`/`tlt` z istniejacych strategii, brakuje
+`vtv`/`mtum`/`qqq`/`ijh`/`ijr`/`efv`/`mchi`/`gsg`/`vnq`).
+
+Miesieczna strategia, dwa tryby:
+- **Risk-On** (14 ETF: SPY/VTV/MTUM/QQQ/IJH/IJR/VEA/VWO/EFV/MCHI/GSG/GLD/VNQ/LQD): score =
+  (zwrot_3M + zwrot_6M + zwrot_12M)/3, top_n najlepszych po rowno miedzy soba (GFM-3/GFM-4/GFM-5
+  - `portfolio_risk_engine.top_n` w `allowed_param_families`, domyslnie 4).
+- **Risk-Off** (2 ETF: IEF/TLT): score = (zwrot_1M+3M+6M+12M)/4, caly kapital w lepszym.
+
+Nowy blok `portfolio_risk_engine.gfm_risk_switch` - w odroznieniu od `gem_dual_momentum_switch`
+(gdzie risk-on i risk-off dziela TEN SAM score 13612W), tu obie strony maja WLASNE, ROZNE formuly
+scoringu na ROZNYCH podzbiorach uniwersum - czego jeden, wspolny `asset_scoring.weighted_sum` na
+cala strategie nie potrafi wyrazic. Blok sam liczy obie srednie wprost z `indicator_set`,
+ignorujac przekazany `score` (jak `gem_dual_momentum_switch` uzywa `mom_12_key` niezaleznie od
+`score`).
+
+**WAZNE ZASTRZEZENIE**: autor GFM JAWNIE nie ujawnia dokladnej reguly wyznaczania sygnalu
+Risk-On/Risk-Off. W implementacji ten sygnal jest w pelni PLUGGOWALNY
+(`regime_indicator_key`/`regime_ticker`/`regime_threshold` w params) - domyslnie ustawiony na
+PLACEHOLDER (wlasny 12-miesieczny momentum SPY > 0, prosty canary w stylu Faber/GTAA), NIE
+odtworzenie nieujawnionej reguly - do podmiany, gdy realna regula bedzie znana/dostarczona.
+
+10 testow jednostkowych bloku (`test_gfm_risk_switch.py`) + 4 testy strukturalne specyfikacji
+(`test_gfm_strategy_spec.py`) - CELOWO bez testu end-to-end na realnych danych, analogicznie do
+`vaa_g4`/`dual_momentum` (patrz wyzej), ktore rowniez czekaja na brakujace tickery.
+`acceptance_spec.json` progi sa na razie ZGADYWANE (jak przy `all_weather_4` przed pierwszym
+przebiegiem) - do skorygowania po dorzuceniu danych i pierwszym faktycznym backteście.
 
 ## Testy
 

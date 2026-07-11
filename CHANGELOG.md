@@ -2,6 +2,41 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (6)
+
+- **NOWA STRATEGIA `strategies_v2/gfm/` - "Global Factor Model" (inwestujdlugoterminowo.pl) -
+  zaimplementowana BEZ DANYCH** (user: "dołóż tylko na razie nie na danych więc zaimplementuj,
+  testy będą później"). Miesieczna strategia dwóch trybów:
+  - **Risk-On** (14 ETF: SPY/VTV/MTUM/QQQ/IJH/IJR/VEA/VWO/EFV/MCHI/GSG/GLD/VNQ/LQD): score =
+    (zwrot_3M + zwrot_6M + zwrot_12M)/3, top_n najlepszych po rowno (GFM-3/4/5 - `top_n` w
+    `allowed_param_families`, domyslnie 4).
+  - **Risk-Off** (2 ETF: IEF/TLT): score = (zwrot_1M+3M+6M+12M)/4, caly kapital w lepszym.
+
+  Nowy blok `engine_v2/blocks/portfolio_risk_engine/gfm_risk_switch.py` (rejestrowany w
+  `__init__.py`) - musial liczyc DWIE ROZNE formuly scoringu na DWOCH ROZNYCH podzbiorach
+  uniwersum (czego jeden `asset_scoring.weighted_sum` na cala strategie nie potrafi wyrazic),
+  wiec sam bierze wskazniki z `indicator_set`, ignorujac przekazany `score` (jak
+  `gem_dual_momentum_switch` uzywa `mom_12_key` niezaleznie od `score`).
+
+  **WAZNE ZASTRZEZENIE**: autor GFM JAWNIE nie ujawnia dokladnej reguly wyznaczania sygnalu
+  Risk-On/Risk-Off - w implementacji ten sygnal jest w pelni PLUGGOWALNY
+  (`regime_indicator_key`/`regime_ticker`/`regime_threshold` w params), domyslnie ustawiony na
+  PLACEHOLDER (wlasny 12-miesieczny momentum SPY > 0, prosty canary w stylu Faber/GTAA) - NIE
+  odtworzenie nieujawnionej reguly, do podmiany gdy realna regula bedzie znana.
+
+  **Brak danych**: w `data/us/nyse` mamy tylko `spy`/`vea`/`vwo`/`iau`(=gld)/`lqd`/`ief`/`tlt` z
+  istniejacych strategii - brakuje `vtv`/`mtum`/`qqq`/`ijh`/`ijr`/`efv`/`mchi`/`gsg`/`vnq`. Strategia
+  NIE URUCHOMIONA jeszcze na realnych danych - `acceptance_spec.json` progi sa ZGADYWANE (jak przy
+  `all_weather_4` przed pierwszym przebiegiem), do skorygowania po dorzuceniu brakujacych plikow.
+
+  10 nowych testow jednostkowych bloku (`test_gfm_risk_switch.py`, synteczne dane - top_n
+  wybor/rownowaga, risk-off wybor lepszej obligacji, próg rezimu, NaN -> cash/risk-off) + 4 testy
+  strukturalne specyfikacji (`test_gfm_strategy_spec.py` - walidacja, rozwiazywanie blokow,
+  spojnosc uniwersum, sweep top_n=3/4/5) - CELOWO bez testu end-to-end na realnych danych
+  (analogiczna sytuacja jak `vaa_g4`/`dual_momentum`, ktore tez czekaja na brakujace tickery).
+
+  Pelny pakiet testow: 204/205 (1 fail niepowiazany, ten sam co zawsze - efa/agg/shy dla `vaa_g4`).
+
 ## 2026-07-11 (5)
 
 - **NOWE METRYKI `best_year_return`/`worst_year_return`** - user pytanie: "brakuje mi jeszcze w
