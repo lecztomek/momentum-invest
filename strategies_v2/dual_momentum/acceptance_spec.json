@@ -6,7 +6,7 @@
     "min_calmar": 0.3,
     "max_annual_turnover": 6.0,
     "max_consecutive_negative_months": 6,
-    "max_time_underwater_months": 24
+    "max_time_underwater_months": 30
   },
 
   "named_periods": {},

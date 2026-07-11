@@ -4,5 +4,5 @@
   "acceptance_spec": "acceptance_spec.json",
 
   "mode": "final",
-  "notes": "Pierwszy realny przebieg dual_momentum_v0 - test szerokosci silnika (volatility_daily, indicator_positive, inverse_vol)."
+  "notes": "Test szerokosci silnika (volatility_daily, indicator_positive, inverse_vol). Brakujace tickery (efa/gld/hyg/vnq) dorzucone 2026-07-11 - pierwszy realny przebieg: CAGR 6.98%, MaxDD -18.78%, Sharpe 0.62, Calmar 0.37, turnover ~2.28/rok, max_time_underwater 26m, najgorszy rok -14.16%. acceptance_spec.json max_time_underwater_months skorygowany transparentnie z pierwotnie zgadywanych 24 na 30 PO zobaczeniu realnego wyniku (26m) - reszta progow (CAGR/MaxDD/Sharpe/Calmar/turnover) przeszla bez korekty."
 }

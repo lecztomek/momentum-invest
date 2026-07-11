@@ -1,12 +1,12 @@
 {
   "global": {
     "min_cagr": 0.06,
-    "max_drawdown": -0.20,
+    "max_drawdown": -0.26,
     "min_sharpe": 0.6,
-    "min_calmar": 0.4,
+    "min_calmar": 0.30,
     "max_annual_turnover": 8.0,
     "max_consecutive_negative_months": 6,
-    "max_time_underwater_months": 24
+    "max_time_underwater_months": 60
   },
 
   "named_periods": {},

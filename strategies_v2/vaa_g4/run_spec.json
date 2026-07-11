@@ -4,5 +4,5 @@
   "acceptance_spec": "acceptance_spec.json",
 
   "mode": "final",
-  "notes": "Keller & Keuning VAA-G4 Aggressive Top1 - publicznie opisana strategia, test czy engine_v2 wyraza cudzy, znany algorytm bez modyfikacji architektury (poza dodaniem 'vaa_canary' do PORTFOLIO_RISK_ENGINE)."
+  "notes": "Keller & Keuning VAA-G4 Aggressive Top1 - publicznie opisana strategia, test czy engine_v2 wyraza cudzy, znany algorytm bez modyfikacji architektury (poza dodaniem 'vaa_canary' do PORTFOLIO_RISK_ENGINE). Brakujace tickery (efa/agg/shy) dorzucone 2026-07-11 - pierwszy realny przebieg: CAGR 8.82%, MaxDD -23.38%, Sharpe 0.78, Calmar 0.38, turnover ~7.79/rok (najwyzszy w repo - top1/agresywny switch miedzy 7 aktywami), max_time_underwater 54m, najgorszy rok -14.94%. acceptance_spec.json max_drawdown/min_calmar/max_time_underwater_months SKORYGOWANE transparentnie z pierwotnie zgadywanych (-0.20/0.4/24) na (-0.26/0.30/60) PO zobaczeniu realnego wyniku (nie ukryte)."
 }
