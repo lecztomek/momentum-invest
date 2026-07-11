@@ -164,16 +164,30 @@ zwroty strategii, nie tylko ich wagi.
   `StrategySpec` + osobnym COMBINEREM.
 
   **Wynik `strategies_v2/best17_a_tlt_hedge/`** (`best17_a` + `tlt_hedge`, sweep `hedge_weight`
-  na realnych danych - wszystkie warianty wyraźnie tną MaxDD względem `best17_a` solo):
+  na realnych danych - wszystkie warianty wyraźnie tną MaxDD względem `best17_a` solo; liczby
+  PO poprawce z **2026-07-11 (2)** - patrz CHANGELOG, `hedge_on` nie mógł się wcześniej wyłączyć
+  na datach sprzed startu `best17_a`):
 
   | hedge_weight | CAGR | MaxDD | Sharpe | Calmar |
   |---|---|---|---|---|
   | 0.00 (best17_a solo) | 16.49% | -29.47% | 0.96 | 0.56 |
-  | 0.20 | 14.07% | -22.31% | 0.94 | **0.63** |
-  | 0.30 | 14.23% | -22.61% | 0.97 | 0.63 |
-  | 0.40 (jak w starym silniku, wybrane) | 14.37% | -23.70% | 0.99 | 0.61 |
-  | 0.50 | 14.49% | -24.96% | **1.01** | 0.58 |
-  | 0.60 | 14.60% | -26.20% | 1.01 | 0.56 |
+  | 0.20 | 13.94% | -22.31% | 0.94 | **0.62** |
+  | 0.30 | 14.02% | -22.61% | 0.96 | 0.62 |
+  | 0.40 (jak w starym silniku, wybrane) | 14.10% | -23.70% | 0.97 | 0.59 |
+  | 0.50 | 14.16% | -24.96% | 0.98 | 0.57 |
+  | 0.60 | 14.20% | -26.20% | **0.99** | 0.54 |
+
+  **Train/test split** (train: 2010-06 do 2019-12, test/OOS: 2020-01 do 2026-06, wg
+  `strategies_v2/best17_a/test_spec.json`) - hedge poprawia metryki na OBU niezależnie
+  ocenianych oknach, nie tylko na pełnej historii (user pytanie: "jak wypada na train a potem
+  drugim okresie?"):
+
+  | | TRAIN best17_a solo | TRAIN +hedge 40% | TEST/OOS best17_a solo | TEST/OOS +hedge 40% |
+  |---|---|---|---|---|
+  | CAGR | 16.24% | 17.46% | 18.01% | 18.23% |
+  | MaxDD | -24.40% | **-17.18%** | -29.47% | **-23.70%** |
+  | Sharpe | 1.08 | **1.22** | 0.89 | **0.98** |
+  | Calmar | 0.67 | **1.02** | 0.61 | 0.77 |
 
 Pochodne metryki okresu (`turnover`/`trade_cost`/`gross_return`/`net_return`) są łączone wg
 `effective_capital_weights` (nie statycznego `params["capital_weights"]`, wprost w

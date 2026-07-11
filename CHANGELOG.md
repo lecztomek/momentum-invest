@@ -2,6 +2,42 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (2)
+
+- **BUGFIX `momentum_hedge_overlay`: sygnal wlaczal sie PRZED startem core** - user pytanie
+  "jak wypada na train a potem drugim okresie" (train/test split) skłonilo do sprawdzenia
+  `best17_a_tlt_hedge` osobno na train_window i test_window - co ujawnilo, ze combiner mieszal
+  TLT do portfela juz od 2005-03 (poczatku danych `tlt.us`), mimo ze `best17_a` (core) ma dane
+  dopiero od 2008-07. Przyczyna: `strategy_returns[core_name].reindex(all_index).fillna(0.0)`
+  podstawial SZTUCZNY zwrot 0% dla core na datach sprzed jego startu - a taki "zwrot" latwo
+  "przegrywal" z prawdziwym dodatnim zwrotem TLT, wlaczajac hedge na okresy, gdzie core JESZCZE
+  NIE ISTNIAL. Naprawiono: `hedge_on` jest teraz wymuszony na `False` na kazdej dacie, gdzie
+  ktoraskolwiek z dwoch strategii (core LUB hedge) nie ma WLASNYCH danych (nie tylko sztucznie
+  dopelnionych `fillna(0.0)`). Nowy test regresyjny
+  `test_hedge_never_triggers_before_core_strategy_existed`.
+
+  **Wplyw na `strategies_v2/best17_a_tlt_hedge/`** (pelna historia, hedge_weight=0.40): CAGR
+  14.37% -> 14.10%, MaxDD bez zmian (-23.70%, najgorszy spadek i tak byl w tescie/OOS, nie w tym
+  wczesnym oknie), Sharpe 0.99 -> 0.97. Efekt niewielki w skali calego backtestu (blad dotyczyl
+  tylko ~8 z 40 miesiecy sprzed startu core), ale REALNY i koncepcyjnie wazny - bez tej poprawki
+  combiner potrafilby "wlaczac hedge" dla strategii, ktora jeszcze nie istnieje.
+
+  **Train/test split `best17_a_tlt_hedge`** (train: 2010-06 do 2019-12, test/OOS: 2020-01 do
+  2026-06, wg `strategies_v2/best17_a/test_spec.json`) - hedge poprawia WSZYSTKIE metryki na OBU
+  oknach, nie tylko na pelnej historii:
+
+  | | TRAIN best17_a solo | TRAIN +hedge 40% | TEST/OOS best17_a solo | TEST/OOS +hedge 40% |
+  |---|---|---|---|---|
+  | CAGR | 16.24% | 17.46% | 18.01% | 18.23% |
+  | MaxDD | -24.40% | **-17.18%** | -29.47% | **-23.70%** |
+  | Sharpe | 1.08 | **1.22** | 0.89 | **0.98** |
+  | Calmar | 0.67 | **1.02** | 0.61 | 0.77 |
+
+  Hedge NIE jest przypadkowym dopasowaniem do jednego okna - dziala spojnie na obu, niezaleznie
+  ocenianych oknach (train i test/OOS), w tym akurat na tym samym oknie, gdzie best17_a solo ma
+  swoj najwiekszy spadek (-29.47%, test/OOS) - dokladnie tam, gdzie hedge mial pomoc wg
+  zalozenia starego silnika.
+
 ## 2026-07-11
 
 - **NOWY COMBINER `momentum_hedge_overlay` + strategia `strategies_v2/tlt_hedge/`** - user pytanie:
