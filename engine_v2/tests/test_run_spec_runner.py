@@ -81,3 +81,12 @@ def test_search_mode_end_to_end(patched_example_dir):
     assert len(sweep) == 5  # 5 wartosci hysteresis_pct
     assert (sweep["wf_windows"] > 0).all()
     assert sweep["wf_mean_cagr"].notna().all()
+
+    # param_stability - wzgledny spadek wf_mean_cagr miedzy najlepszym a najgorszym wariantem
+    stability = result["param_stability"]
+    assert stability is not None
+    assert stability["metric_key"] == "wf_mean_cagr"
+    assert stability["n_variants"] == 5
+    assert stability["best"] >= stability["worst"]
+    assert stability["relative_drop"] >= 0.0
+    assert isinstance(result["param_stability_check"], dict)

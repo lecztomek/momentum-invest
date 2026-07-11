@@ -12,7 +12,11 @@ Wiaze `RunSpec.mode` z odpowiednim mechanizmem (patrz README, sekcja "Tryby uzyc
   - "search"     -> GRID SWEEP (StrategySpec.allowed_param_families) x WALK-FORWARD
                      (TestSpec.train_window) per wariant - zwraca zbiorcze statystyki
                      (srednia/min CAGR, najgorszy drawdown, srednia Sharpe) po oknach, dla kazdej
-                     kombinacji parametrow.
+                     kombinacji parametrow, PLUS `param_stability` (patrz `param_stability.py`) -
+                     wzgledny spadek `wf_mean_cagr` miedzy najlepszym a najgorszym wariantem w
+                     calej rodzinie (male = stabilne plateau, duze = krucha, podatna na
+                     overfitting kombinacja parametrow), sprawdzony wzgledem
+                     `AcceptanceSpec.param_stability.max_relative_metric_drop_within_family`.
 
 Samodzielna implementacja - nie importuje niczego z `engine/` (starego kodu).
 """
@@ -30,6 +34,7 @@ from engine_v2.backtest_engine import daily_equity_curve
 from engine_v2.blocks.data_loader import REGISTRY as DATA_LOADER_REGISTRY
 from engine_v2.grid_sweep import run_param_sweep
 from engine_v2.metrics import compute_metrics
+from engine_v2.param_stability import check_param_stability, compute_param_stability
 from engine_v2.pipeline import run_strategy_pipeline
 from engine_v2.run_spec import RunSpec
 from engine_v2.spec import StrategySpec
@@ -84,7 +89,9 @@ def _run_validation(
     }
 
 
-def _run_search(strategy_spec: StrategySpec, test_spec: TestSpec) -> Dict[str, Any]:
+def _run_search(
+    strategy_spec: StrategySpec, test_spec: TestSpec, acceptance_spec: AcceptanceSpec
+) -> Dict[str, Any]:
     daily_prices = _load_daily_prices(strategy_spec)
 
     def evaluate(variant_spec: StrategySpec) -> Dict[str, Any]:
@@ -103,7 +110,24 @@ def _run_search(strategy_spec: StrategySpec, test_spec: TestSpec) -> Dict[str, A
             "wf_mean_sharpe": wf_result["sharpe"].mean(),
         }
 
-    return {"mode": "search", "sweep": run_param_sweep(strategy_spec, evaluate)}
+    sweep = run_param_sweep(strategy_spec, evaluate)
+
+    # rodzina stabilna? liczone TYLKO na wariantach z >=1 oknem walk-forward (bez tego
+    # "wf_mean_cagr" jest NaN - nie ma czego porownywac) i tylko gdy zostalo >=2 takie warianty
+    # (relative_drop miedzy jednym wariantem a samym soba nie mowi nic o stabilnosci rodziny).
+    valid_sweep = sweep[sweep["wf_windows"] > 0]
+    param_stability = None
+    param_stability_check: Dict[str, bool] = {}
+    if len(valid_sweep) >= 2:
+        param_stability = compute_param_stability(valid_sweep, "wf_mean_cagr")
+        param_stability_check = check_param_stability(param_stability, acceptance_spec.param_stability)
+
+    return {
+        "mode": "search",
+        "sweep": sweep,
+        "param_stability": param_stability,
+        "param_stability_check": param_stability_check,
+    }
 
 
 def run(run_spec: RunSpec, base_dir: Path) -> Dict[str, Any]:
@@ -130,6 +154,6 @@ def run(run_spec: RunSpec, base_dir: Path) -> Dict[str, Any]:
     if run_spec.mode == "validation":
         return _run_validation(strategy_spec, test_spec, acceptance_spec)
     if run_spec.mode == "search":
-        return _run_search(strategy_spec, test_spec)
+        return _run_search(strategy_spec, test_spec, acceptance_spec)
 
     raise NotImplementedError(f"run_spec_runner: nieobslugiwany mode '{run_spec.mode}'.")
