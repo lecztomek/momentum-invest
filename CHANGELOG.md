@@ -2,6 +2,32 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (16)
+
+- **`strategies_v2/gpm_best17_a/` - miks defensywnego `gpm` z agresywnym `best17_a`** (user: "dobrze
+  go zmiksować z czymś agresywnym np best17"). `fixed_capital_weights`, sweep wagi `best17_a` na
+  PEŁNYM realnym backteście (nie zgadywane) w [0.30..0.70], krok 0.05 wokół optimum, PO PODATKU:
+
+  | best17_a / gpm | CAGR | MaxDD | Sharpe | Calmar | Turnover |
+  |---|---|---|---|---|---|
+  | 35% / 65% | 8.86% | -13.98% | 0.942 | 0.634 | 3.11 |
+  | 40% / 60% | 9.37% | -14.27% | 0.954 | 0.657 | 2.93 |
+  | 45% / 55% | 9.88% | -14.56% | 0.960 | 0.678 | 2.75 |
+  | 50% / 50% | 10.39% | -14.87% | 0.963 | 0.699 | 2.57 |
+  | **55% / 45%** | **10.89%** | **-15.40%** | 0.962 | **0.707** | **2.39** |
+  | 60% / 40% | 11.38% | -17.04% | 0.959 | 0.668 | 2.21 |
+
+  **55/45 (best17_a/gpm) zapisane jako oficjalny `combined_spec.json`** - **NAJLEPSZY CALMAR
+  CAŁEJ SESJI** (0.707, poprzedni rekord `vaa_g4_best17_a` 0.649), przy DUŻO niższym turnowerze
+  (2.39/rok vs 4.24/rok) i niższym MaxDD (-15.40% vs -17.33%) niż dotychczasowa rekomendacja
+  `vaa_g4_best17_a`, kosztem odrobiny Sharpe (0.962 vs 0.993) i CAGR (10.89% vs 11.25%).
+  Automatycznie odkryty i przetestowany przez istniejący `test_all_combined_specs.py`
+  (glob-discovery) - zero nowych plików testowych potrzebnych.
+
+  **Nowa rekomendacja sesji**: `gpm_best17_a` (55/45) zastępuje `vaa_g4_best17_a` jako
+  najsensowniejszy wybór, jeśli priorytetem jest MaxDD/Calmar i niski turnover; `vaa_g4_best17_a`
+  pozostaje lepszy, jeśli priorytetem jest czysty Sharpe.
+
 ## 2026-07-11 (15)
 
 - **NOWA STRATEGIA `strategies_v2/gpm/` - "Generalized Protective Momentum"** (user poprosił o

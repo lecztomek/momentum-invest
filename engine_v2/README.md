@@ -579,6 +579,7 @@ strategies_v2/
   synergy_v1/                    # eksperyment: best17_a+TLT w JEDNYM pipeline (bez combinera) - patrz niżej, gorzej niż best17_a solo
   synergy_v2/                    # poprawka: TLT wzajemnie wykluczajacy sie z 4 aktywami ofensywnymi - patrz niżej, dalej gorzej niż best17_a solo
   gpm/                            # "Generalized Protective Momentum" - patrz niżej, najnizszy MaxDD (-15.2%) i najstabilniejsza rodzina parametrow w calej sesji
+  gpm_best17_a/                   # gpm+best17_a, fixed_capital_weights 45/55 - patrz nizej, NAJLEPSZY CALMAR calej sesji (0.707)
   # wszystkie pozostale pary 7 glownych strategii (fixed_capital_weights 50/50) - patrz
   # "Wszystkie pary 7 głównych strategii" wyzej; vaa_g4_best17_a to najlepszy Sharpe w repo
   dual_momentum_vaa_g4/  dual_momentum_the_one/       dual_momentum_best17_a/
@@ -996,6 +997,30 @@ okien, korelacja idealna/odwrotna, iloczyn+maskowanie, pelna/czesciowa ochrona, 
 `_CASH` przy braku kandydatow) + `test_gpm_strategy_spec.py` (walidacja realnego
 `strategy_spec.json`, oba rezymy - pelna ochrona i ekspozycja ryzykowna - realnie wystepuja w
 historii, nigdy wiecej niz `top_n_risky` aktywow naraz, zamrozony baseline metryk).
+
+#### `gpm_best17_a` - miks defensywnego `gpm` z agresywnym `best17_a`
+
+User: "dobrze go zmiksowac z czyms agresywnym np best17". `fixed_capital_weights`, sweep wagi
+`best17_a` w [0.30..0.70] (krok 0.05 wokol optimum) na PELNYM realnym backteście, PO PODATKU:
+
+| best17_a / gpm | CAGR | MaxDD | Sharpe | Calmar | Turnover |
+|---|---|---|---|---|---|
+| 35% / 65% | 8.86% | -13.98% | 0.942 | 0.634 | 3.11 |
+| 40% / 60% | 9.37% | -14.27% | 0.954 | 0.657 | 2.93 |
+| 45% / 55% | 9.88% | -14.56% | 0.960 | 0.678 | 2.75 |
+| 50% / 50% | 10.39% | -14.87% | 0.963 | 0.699 | 2.57 |
+| **55% / 45%** | **10.89%** | **-15.40%** | 0.962 | **0.707** | **2.39** |
+| 60% / 40% | 11.38% | -17.04% | 0.959 | 0.668 | 2.21 |
+
+**55/45 (best17_a/gpm) zapisane jako `combined_spec.json`** - **NAJLEPSZY CALMAR CALEJ SESJI**
+(0.707, poprzedni rekord `vaa_g4_best17_a` 0.649), przy DUZO nizszym turnowerze (2.39/rok vs
+4.24/rok) i nizszym MaxDD (-15.40% vs -17.33%) niz dotychczasowa rekomendacja
+`vaa_g4_best17_a`, kosztem odrobiny Sharpe (0.962 vs 0.993) i CAGR (10.89% vs 11.25%).
+Automatycznie odkryty i przetestowany przez `test_all_combined_specs.py` (glob-discovery) - zero
+nowych plikow testowych potrzebnych.
+
+**Rekomendacja sesji**: `gpm_best17_a` (55/45) - jesli priorytetem jest MaxDD/Calmar i niski
+turnover; `vaa_g4_best17_a` pozostaje lepszy, jesli priorytetem jest czysty Sharpe.
 
 ## Testy
 
