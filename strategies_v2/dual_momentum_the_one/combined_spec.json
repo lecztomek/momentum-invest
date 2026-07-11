@@ -1,0 +1,16 @@
+{
+  "name": "dual_momentum_the_one_v0",
+  "hypothesis": "Systematyczny przeglad WSZYSTKICH par sposrod 7 glownych strategii (C(7,2)=21 par) - user: \"dolóz brakujace kombinacje\". dual_momentum + the_one, fixed_capital_weights 50/50 (STANDARDOWY split, NIE indywidualnie strojony - dla uczciwego porownania wszystkich par na tych samych zasadach). Realny wynik: CAGR 7.93%, MaxDD -18.81%, Sharpe 0.70, Calmar 0.42, turnover 4.35/rok.",
+  "strategy_spec_paths": [
+    "../dual_momentum/strategy_spec.json",
+    "../the_one/strategy_spec.json"
+  ],
+  "combiner": "fixed_capital_weights",
+  "combiner_params": {
+    "capital_weights": {
+      "dual_momentum_v0": 0.5,
+      "the_one_v0": 0.5
+    }
+  },
+  "created_at": "2026-07-11"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "all_weather_4_gfm_v0",
+  "hypothesis": "Systematyczny przeglad WSZYSTKICH par sposrod 7 glownych strategii (C(7,2)=21 par) - user: \"dolóz brakujace kombinacje\". all_weather_4 + gfm, fixed_capital_weights 50/50 (STANDARDOWY split, NIE indywidualnie strojony - dla uczciwego porownania wszystkich par na tych samych zasadach). Realny wynik: CAGR 7.64%, MaxDD -20.83%, Sharpe 0.81, Calmar 0.37, turnover 2.00/rok.",
+  "strategy_spec_paths": [
+    "../all_weather_4/strategy_spec.json",
+    "../gfm/strategy_spec.json"
+  ],
+  "combiner": "fixed_capital_weights",
+  "combiner_params": {
+    "capital_weights": {
+      "all_weather_4_v0": 0.5,
+      "gfm_v0": 0.5
+    }
+  },
+  "created_at": "2026-07-11"
+}
