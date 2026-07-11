@@ -814,6 +814,44 @@ mieszanka buga #1 [zaniza turnover, zawyza CAGR] - patrz nizej. `validation`/swe
 NIEPRZELICZONE po zadnym z trzech bugfixow - traktowac jako nieaktualne do czasu ponownego
 uruchomienia.)
 
+**Analiza overfittingu, parametr-po-parametrze (2026-07-11)** - user: "mam obawy czy ona nie jest
+overfitting". Dotychczasowy `param_stability` (26.7% relative_drop, patrz sekcja PARAM STABILITY
+wyzej) liczy TYLKO 2D siatke `canary.bad_threshold` x `min_score_gap` razem - nie mowi KTORY z
+nich odpowiada za ten spadek, ani czy ksztalt krzywej to gladkie plateau (bezpieczne) czy
+odosobniony szczyt (sygnal overfittingu). Rozbite na 12 OSOBNYCH sweepow "jeden-parametr-naraz"
+(reszta trzymana na wartosci domyslnej), `wf_mean_cagr` z walk-forward na `train_window`:
+
+| Parametr | relative_drop | Ksztalt |
+|---|---|---|
+| `ema7_16.fast_span` (scoring) | 30.8% | **PLATEAU** - 5→9.65%, 6→13.40%, 7→13.91% (domyslne), 8→13.91% (IDENTYCZNE), 9→13.93% - rosnie, potem plaskie od 7 w gore |
+| `ema7_16.slow_span` (scoring) | 30.7% | **PLATEAU** - 12→9.65%, 14→10.26%, 16→13.91% (domyslne), 18→13.91%, 20→13.91% (3 IDENTYCZNE) |
+| `ema5_12.fast_span` (kanarek) | 28.8% | rosnie MONOTONICZNIE, domyslne (5, 13.91%) NIE jest najlepsze - 7 daje 15.15% (niewykorzystany zapas, nie overfitting) |
+| `canary.bad_threshold` | 23.2% | **NIE-MONOTONICZNY** (-0.04→15.15%, -0.03→15.15%, -0.02→13.91% domyslne, -0.01→11.63%, 0.00→12.20% - dolek przy -0.01, czesciowy odbior przy 0.00) - jedyny parametr z realnym "wygladem szumu" |
+| `mom_r3.window` | 12.2% | umiarkowana, domyslne (3) przy/blisko najlepszego |
+| `canary.max_bad_count` | 8.2% | niska, domyslne (0) blisko najlepszego |
+| `ema5_12.slow_span` (kanarek) | 8.2% | niska |
+| `alpha_weighting.weights` (split top2) | 5.6% | niska, domyslne (0.8/0.2) blisko najlepszego |
+| `execution.min_score_gap` | 3.9% | niska - spojne z wczesniejszym 2D sweepem |
+| `iau_gate.threshold` | **0.0%** | MARTWY - gate prawie nigdy nie binduje w oknach WF |
+| `dbc_gate.threshold` | **0.0%** | MARTWY - jw. |
+| `rebound.threshold` | **0.0%** | MARTWY - rebound prawie nigdy sie nie aktywuje w oknach WF |
+
+**Wniosek**: NIE widac klasycznego sygnalu ciezkiego overfittingu (odosobniony szczyt otoczony
+przez znacznie gorszych sasiadow) na GLOWNYCH parametrach scoringu - oba `ema7_16` (fast/slow,
+uzywane do rankingu top2 I do gate'u `require_positive_score`) maja WYSOKI `relative_drop`, ale to
+dlatego, ze jeden EKSTREMALNY koniec zakresu (zbyt krotkie okno, 5/12) jest po prostu gorszy - od
+wartosci domyslnej W GORE (7-9 dla fast, 16-20 dla slow) wynik jest PLASKI (czesciowo identyczny
+co do 6 miejsca po przecinku - to samo zaokraglenie sygnalu). To jest "bezpieczny" ksztalt
+krzywej (szeroki plateau), nie "kruchy" (waski szczyt). Jedyny parametr z prawdziwie
+nie-monotonicznym, "szumowym" wygladem to `canary.bad_threshold` - i co ciekawe, wartosc domyslna
+(-0.02) NIE siedzi na lokalnym optimum (-0.03/-0.04 dalyby lepszy wynik w tym oknie) - gdyby to
+byl overfitting, spodziewalibysmy sie domyslnej wartosci DOKLADNIE na szczycie, nie w srodku.
+3 parametry (`iau_gate`/`dbc_gate`/`rebound` thresholds) sa calkowicie MARTWE w testowanym
+zakresie okien WF - ich mechanizmy prawie nigdy nie binduja inaczej, wiec redukuja realna
+"efektywna" liczbe strojonych parametrow (mniejsza powierzchnia do overfittingu niz sugerowalaby
+pelna lista 12 parametrow), ale tez ich realna wartosc "na przyszlosc" jest niepotwierdzona w
+tym oknie danych.
+
 ### Znane, naprawione bugi (2026-07-10) - piec osobnych, znalezionych jeden po drugim
 
 Wszystkie znalezione przy weryfikacji `best17_a` przeciw REALNEMU, staremu silnikowi (`engine/`,

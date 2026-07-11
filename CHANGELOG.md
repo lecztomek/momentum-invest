@@ -2,6 +2,40 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (23)
+
+- **Analiza overfittingu `best17_a` parametr-po-parametrze** (user: "mam obawy czy ona nie jest
+  overfitting"). Dotychczasowy `param_stability` liczyl TYLKO 2D siatke
+  `canary.bad_threshold`×`min_score_gap` razem (26.7% relative_drop) - nie mowilo to KTORY z nich
+  za to odpowiada, ani czy ksztalt krzywej to gladkie plateau (bezpieczne) czy odosobniony szczyt
+  (sygnal overfittingu). Rozbite na 12 osobnych sweepow "jeden-parametr-naraz" (`wf_mean_cagr` z
+  walk-forward na `train_window`, reszta parametrow trzymana na domyslnej wartosci):
+
+  | Parametr | relative_drop | Ksztalt |
+  |---|---|---|
+  | `ema7_16.fast_span` (scoring) | 30.8% | PLATEAU - rosnie do 7 (domyslne), potem PLASKIE (7=8 identyczne) |
+  | `ema7_16.slow_span` (scoring) | 30.7% | PLATEAU - rosnie do 16 (domyslne), potem PLASKIE (16=18=20 identyczne) |
+  | `ema5_12.fast_span` (kanarek) | 28.8% | monotoniczny, domyslne (5) NIE najlepsze - 7 daje lepszy wynik (zapas, nie overfitting) |
+  | `canary.bad_threshold` | 23.2% | NIE-MONOTONICZNY (dolek przy -0.01) - jedyny param z "szumowym" wygladem |
+  | `mom_r3.window` | 12.2% | umiarkowana, domyslne blisko najlepszego |
+  | `canary.max_bad_count` | 8.2% | niska |
+  | `ema5_12.slow_span` | 8.2% | niska |
+  | `alpha_weighting.weights` | 5.6% | niska, domyslne blisko najlepszego |
+  | `execution.min_score_gap` | 3.9% | niska - spojne z wczesniejszym 2D sweepem |
+  | `iau_gate.threshold` | **0.0%** | MARTWY - gate prawie nigdy nie binduje w oknach WF |
+  | `dbc_gate.threshold` | **0.0%** | MARTWY - jw. |
+  | `rebound.threshold` | **0.0%** | MARTWY - rebound prawie nigdy sie nie aktywuje |
+
+  **Wniosek**: BRAK klasycznego sygnalu ciezkiego overfittingu na glownych parametrach scoringu -
+  wysoki `relative_drop` `ema7_16` (fast/slow) wynika z tego, ze jeden EKSTREMALNY koniec zakresu
+  (zbyt krotkie okno) jest gorszy, a od wartosci domyslnej W GORE wynik jest PLASKI (czesciowo
+  identyczny) - to "bezpieczny" ksztalt (szeroki plateau), nie "kruchy" (waski szczyt). Jedyny
+  parametr z prawdziwie nie-monotonicznym wygladem to `canary.bad_threshold` - i co ciekawe,
+  wartosc domyslna (-0.02) NIE siedzi na lokalnym optimum (gdyby to byl overfitting,
+  spodziewalibysmy sie domyslnej wartosci DOKLADNIE na szczycie). 3 parametry sa calkowicie
+  martwe w testowanym zakresie okien WF - mniejsza realna powierzchnia do overfittingu niz
+  sugerowalaby pelna lista 12 parametrow, ale ich wartosc "na przyszlosc" niepotwierdzona.
+
 ## 2026-07-11 (22)
 
 - **Eksperyment: `strategies_v2/vaa_g4_ema/` i `strategies_v2/daa_g4_ema/`** (user, reagujac na
