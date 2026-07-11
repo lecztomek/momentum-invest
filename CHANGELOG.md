@@ -2,6 +2,43 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (5)
+
+- **NOWE METRYKI `best_year_return`/`worst_year_return`** - user pytanie: "brakuje mi jeszcze w
+  danych wyjsciowych zwrot najgorszego roku oraz najlepszego". Dodano do `compute_metrics()`
+  (`engine_v2/metrics.py`) - zwrot NAJLEPSZEGO i NAJGORSZEGO roku KALENDARZOWEGO w zakresie
+  danych (pierwszy/ostatni rok moze byc czesciowy, liczony tak jak wypada, bez doannualizowania).
+  2 nowe testy (`test_best_and_worst_year_return_known_values`,
+  `..._single_partial_year`) + zaktualizowano `test_validation.py` (hardkodowana lista kolumn
+  `run_walk_forward` wyniku).
+
+  **Ciekawa obserwacja z realnych danych**: `best17_a_tlt_hedge` ma GORSZY najgorszy rok niz
+  `best17_a` solo (-22.09% vs -19.35%, oba to rok 2022!), mimo NIZSZEGO calosciowego MaxDD
+  (-23.70% vs -29.47%) - bo MaxDD to miara peak-to-trough (moze rozciagac sie na wiele lat), nie
+  to samo co zwrot pojedynczego roku kalendarzowego. 2022 byl jednym z niewielu lat, gdy obligacje
+  (TLT) spadaly RAZEM z akcjami (koniec ery zerowych stop procentowych) - stad hedge w TLT akurat
+  w TYM konkretnym roku nie pomogl, mimo ze pomaga na wiekszosci pozostalych spadkow w historii.
+
+  Pelna tabela porownawcza (wszystkie zapisane strategie/kombinacje w repo, z nowymi kolumnami):
+
+  | Strategia | CAGR | MaxDD | Sharpe | Calmar | Najlepszy rok | Najgorszy rok |
+  |---|---|---|---|---|---|---|
+  | example_strategy | 8.19% | -36.16% | 0.54 | 0.23 | 33.34% | -11.57% |
+  | example_strategy_b | 7.37% | -38.62% | 0.46 | 0.19 | 35.01% | -20.32% |
+  | the_one | 8.76% | -23.59% | 0.61 | 0.37 | 34.89% | -15.15% |
+  | best17_a | 16.49% | -29.47% | 0.96 | 0.56 | 49.17% | -19.35% |
+  | all_weather_4 | 8.87% | -25.54% | 0.82 | 0.35 | 26.22% | -8.63% |
+  | tlt_timing | 1.59% | -41.38% | 0.20 | 0.04 | 28.97% | -14.12% |
+  | combined_example | 7.96% | -36.86% | 0.52 | 0.22 | 34.03% | -14.97% |
+  | combined_best2 | 12.58% | -22.73% | 0.94 | 0.55 | 34.69% | -17.09% |
+  | combined_best2_dynamic | 14.02% | -26.75% | 0.95 | 0.52 | 36.35% | -20.97% |
+  | combined_triple | 11.54% | -18.08% | 0.99 | 0.64 | 32.80% | -13.90% |
+  | best17_a_tlt_hedge | 14.10% | -23.70% | 0.97 | 0.59 | 55.12% | -22.09% |
+  | best17_a_tlt_timing | 11.60% | -22.31% | 0.93 | 0.52 | 42.64% | -17.15% |
+  | the_one_tlt_hedge | 7.34% | -25.15% | 0.57 | 0.29 | 29.14% | -17.75% |
+
+  Pelny pakiet testow: 190/191 (1 fail niepowiazany - efa/agg/shy dla `vaa_g4`).
+
 ## 2026-07-11 (4)
 
 - **`strategies_v2/the_one_tlt_hedge/` - ta sama regula hedge'u, ale core=`the_one`** - user

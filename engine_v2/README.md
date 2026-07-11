@@ -282,6 +282,19 @@ prefiksu `min_`/`max_`), zeby przyszly VALIDATION mogl je bezposrednio porownac 
 Nie liczy jeszcze `min_pct_positive_rolling_windows` (brakuje zdefiniowanej dlugosci okna -
 dolaczymy przy budowie VALIDATION, gdzie to bedzie realnie potrzebne).
 
+**`best_year_return`/`worst_year_return`** (dodane 2026-07-11, user pytanie: "brakuje mi jeszcze
+w danych wyjsciowych zwrot najgorszego roku oraz najlepszego") - zwrot NAJLEPSZEGO i
+NAJGORSZEGO roku KALENDARZOWEGO w zakresie danych. Nie maja odpowiednika w
+`acceptance_spec.Criteria` (to tylko raportowana metryka, nie prog akceptacji). Pierwszy/ostatni
+rok w danych moga byc CZESCIOWE (backtest rzadko zaczyna/konczy sie dokladnie 1 stycznia/31
+grudnia) - liczone tak jak wypadaja, bez doannualizowania. Ciekawy przyklad z realnych danych:
+`best17_a_tlt_hedge` ma GORSZY najgorszy rok niz `best17_a` solo (-22.09% vs -19.35%, oba to rok
+2022), mimo NIZSZEGO calosciowego MaxDD (-23.70% vs -29.47%) - MaxDD to miara peak-to-trough (moze
+obejmowac wiele lat), NIE to samo co zwrot pojedynczego roku kalendarzowego. 2022 byl rzadkim
+rokiem, gdy obligacje (TLT) spadaly RAZEM z akcjami (koniec ery zerowych stop procentowych) -
+wlasnie dlatego hedge w TLT akurat w TYM roku nie pomogl, mimo ze pomaga na wiekszosci pozostalych
+spadkow.
+
 ## VALIDATION / WALK-FORWARD (`validation.py`)
 
 Bierze GOTOWA dzienna krzywa equity (BACKTEST ENGINE) + FINAL PORTFOLIO i **tnie je** na rolujace
