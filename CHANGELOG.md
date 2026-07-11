@@ -2,6 +2,42 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (21)
+
+- **NOWA STRATEGIA `strategies_v2/daa_g4/` - "DAA-G4" (Defensive Asset Allocation, Keller &
+  Keuning 2017)** (user: "Brakuje nam DAA Kellera" - zaimplementowane z wiedzy o publikacji,
+  user zdecydowal nie podawac wlasnego opisu). Rozni sie od naszego `vaa_g4` (Keller VAA) na 2
+  sposoby: (1) kanarek to OSOBNE, MALE uniwersum (`VWO`+`AGG` - tylko 2 z 4 aktywow ofensywnych,
+  nie wszystkie 4 jak w VAA); (2) udzial ochronny jest CIAGLY (0%/50%/100% dla 2 kanarkow), nie
+  binarny (VAA: jeden zly kanarek = 100% ochrony natychmiast). Uniwersum (identyczne jak
+  `vaa_g4`): 4 ofensywne (SPY/EFA/VWO/AGG), 3 obronne (SHY/IEF/LQD). Score = 13612W momentum
+  (12*r1+4*r3+2*r6+1*r12)/19 - REUZYTE identyczne `indicators`/`asset_scoring` co `vaa_g4`, zero
+  nowego kodu tam.
+
+  **NOWY BLOK**: `portfolio_risk_engine/daa_canary_breadth_switch.py` - kanarek jako OSOBNY
+  parametr (nie `offensive_assets` caly) + ciagly udzial ochronny (B/len(canary), nie binarne
+  przelaczenie). Top1 ofensywny + top1 obronny, zawsze NAJLEPSZY DOSTEPNY (bez wzgledu na znak -
+  udzial ochronny juz kompensuje slaby rynek). Zweryfikowano na realnych danych (2008, 2009,
+  2020) - mieszane sloty 50/50 (np. `{"agg.us": 0.5, "ief.us": 0.5}`) faktycznie wystepuja.
+
+  **Wynik (2006-02 do 2026-07, 246 miesiecy, PRZED podatkiem)**: CAGR 6.62%, MaxDD -25.50%,
+  Sharpe 0.54, Calmar 0.26, turnover 7.64/rok - **UCZCIWIE GORZEJ niz nasz `vaa_g4`** (CAGR
+  7.98%, MaxDD -24.45%, Sharpe 0.71, Calmar 0.33) w TYM konkretnym zestawie danych, mimo ze
+  opublikowana praca Kellera&Keuninga twierdzi ze DAA generalnie bije VAA - prawdopodobnie
+  dataset-specyficzne (inny okres/uniwersum niz oryginalna publikacja). Train/test spojne (brak
+  train/test blowup): CAGR 4.55%/4.72%, Sharpe 0.48/0.44.
+
+  Param stability (sweep `hysteresis_pct`, 5 wariantow): `relative_drop = 0.0%` - ten sam
+  "martwy parametr" wzorzec co `vaa_g4`/`the_one` (top1 binarny wybor, histereza wagowa nigdy
+  nie blokuje przelaczenia w tym zakresie) - odnotowane jako ograniczenie sweepa, nie prawdziwa
+  stabilnosc.
+
+  13 nowych testow (`test_daa_components.py` - 0%/50%/100% udzial ochronny, NaN kanarek liczy
+  sie jako zly, ofensywny wybiera najlepszego dostepnego nawet przy ujemnym score, top_n>1
+  dzieli po rowno, fallback do `_CASH`; `test_daa_g4_strategy_spec.py` - kanarek WLASCIWYM
+  podzbiorem ofensywnych (nie rownym), end-to-end z dowodem na wszystkie 3 poziomy udzialu
+  ochronnego, zamrozony baseline). 366/366 testow przechodzi.
+
 ## 2026-07-11 (20)
 
 - **Stabilnosc wagi combinera dla `gpm_best17_a`** (user: "Jak ze stabilnoscia naszego

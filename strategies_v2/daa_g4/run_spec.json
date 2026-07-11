@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "Odtworzenie 'DAA-G4' (Keller & Keuning 2017) z mojej wiedzy o publikacji - kanarek osobny (VWO+AGG), udzial ochronny ciagly (0/50/100%). Patrz hypothesis w strategy_spec.json."
+}

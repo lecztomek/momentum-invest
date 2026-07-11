@@ -1,0 +1,46 @@
+{
+  "name": "daa_g4_v0",
+  "hypothesis": "Odtworzenie 'DAA-G4' (Defensive Asset Allocation, Keller & Keuning 2017, 'Breadth Momentum and the Canary Universe') z mojej wiedzy o publikacji (user: 'zaimplementuj klasyczne DAA-G4'). Rozni sie od naszego vaa_g4 (Keller VAA) na 2 sposoby: (1) kanarek to OSOBNE, MALE uniwersum (VWO+AGG - tylko 2 z 4 ofensywnych, nie wszystkie 4 jak w VAA); (2) udzial ochronny jest CIAGLY (0/50/100% dla 2 kanarkow), nie binarny (VAA: jeden zly kanarek = 100% ochrony). Uniwersum: 4 ofensywne (SPY/EFA/VWO/AGG - IDENTYCZNE jak vaa_g4), 3 obronne (SHY/IEF/LQD - IDENTYCZNE jak vaa_g4), kanarek = 2 z ofensywnych (VWO, AGG). Score = 13612W momentum (12*r1+4*r3+2*r6+1*r12)/19 - IDENTYCZNY wzor i wagi co vaa_g4 (reuzyte te same indicators/asset_scoring, zero nowego kodu tam). WYMAGA 1 NOWEGO BLOKU: portfolio_risk_engine.daa_canary_breadth_switch (kanarek jako OSOBNY parametr + ciagly udzial ochronny, w odroznieniu od vaa_canary). Top1 ofensywny + top1 obronny, zawsze wybierany NAJLEPSZY DOSTEPNY (bez wzgledu na znak score - udzial ochronny juz kompensuje slaby rynek).",
+  "universe": ["spy.us", "efa.us", "vwo.us", "agg.us", "shy.us", "ief.us", "lqd.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "daa_canary_breadth_switch",
+    "overlays": "none",
+    "execution": "hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "mom_1": {"impl": "momentum_monthly", "window": 1},
+      "mom_3": {"impl": "momentum_monthly", "window": 3},
+      "mom_6": {"impl": "momentum_monthly", "window": 6},
+      "mom_12": {"impl": "momentum_monthly", "window": 12}
+    },
+    "asset_scoring": {
+      "weights": {"mom_1": 0.6316, "mom_3": 0.2105, "mom_6": 0.1053, "mom_12": 0.0526}
+    },
+    "selector": {"top_n": 1},
+    "alpha_weighting": {"weights": [1.0]},
+    "portfolio_risk_engine": {
+      "offensive_assets": ["spy.us", "efa.us", "vwo.us", "agg.us"],
+      "defensive_assets": ["shy.us", "ief.us", "lqd.us"],
+      "canary_assets": ["vwo.us", "agg.us"],
+      "top_n_offensive": 1,
+      "top_n_defensive": 1
+    },
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 10, "frequency": "monthly"}
+  },
+
+  "allowed_param_families": {
+    "execution": {"hysteresis_pct": [0.0, 0.01, 0.02, 0.03, 0.05]}
+  },
+
+  "created_at": "2026-07-11"
+}

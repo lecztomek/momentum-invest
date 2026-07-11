@@ -55,7 +55,7 @@ Orchestrator: `pipeline.run_strategy_pipeline(spec)` -> gotowa tabela FINAL PORT
 | `asset_scoring` | pojedynczy wybór | `weighted_sum`, `momentum_times_decorrelation` | `weighted_sum` - ważona SUMA wskaźników; `momentum_times_decorrelation` - ILOCZYN dwóch konkretnych wskaźników (`momentum * (1 - korelacja)`, dla `strategies_v2/gpm/` - suma by tego nie wyraziła). Oba maskują NaN tam gdzie `eligibility_mask=False` |
 | `selector` | pojedynczy wybór | `top_n` | Top-N wg score, nigdy nie wybiera NaN |
 | `alpha_weighting` | pojedynczy wybór | `rank_weights`, `inverse_vol`, `rounded_score_weights` | Wagi wybranych: stałe wg rankingu (reszta do `_CASH`) albo odwrotnie proporcjonalne do zmienności (zawsze w pełni zainwestowane) albo proporcjonalne do score, zaokrąglone do bloku (largest remainder), z gwarantowanym minimum na aktywo |
-| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch`, `gpm_breadth_protective_split`, `gtaa_trend_bond_reroute` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku); `gpm_breadth_protective_split` skaluje udział ochronny CIĄGLE wg liczby dodatnich aktywów ryzykownych, zamiast binarnego przełączenia jak `vaa_canary`; `gtaa_trend_bond_reroute` ocenia KAŻDY SLOT niezależnie (nie globalnie) - część portfela może być w akcjach a część w obligacjach jednocześnie |
+| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch`, `gpm_breadth_protective_split`, `gtaa_trend_bond_reroute`, `daa_canary_breadth_switch` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku); `gpm_breadth_protective_split` skaluje udział ochronny CIĄGLE wg liczby dodatnich aktywów ryzykownych, zamiast binarnego przełączenia jak `vaa_canary`; `gtaa_trend_bond_reroute` ocenia KAŻDY SLOT niezależnie (nie globalnie) - część portfela może być w akcjach a część w obligacjach jednocześnie; `daa_canary_breadth_switch` - kanarek to OSOBNE, małe uniwersum (nie cały `offensive_assets` jak `vaa_canary`) + ciągły udział ochronny (0/50/100% dla 2 kanarków) zamiast binarnego |
 | `overlays` | pojedynczy wybór | `none` | Pass-through (rebound/vol-target - gdy będzie potrzebny) |
 | `execution` | pojedynczy wybór | `hysteresis`, `score_gap_hysteresis` | Rebalans tylko gdy przekroczony próg - na różnicy WAGI (`hysteresis`) albo różnicy SCORE między najsłabszym trzymanym a najlepszym wyzwaniowcem (`score_gap_hysteresis`, wymaga `ExecutionContext.score_row`) |
 
@@ -640,6 +640,7 @@ strategies_v2/
   gtaa_agg3/                      # "GTAA AGG3" - top3 momentum + filtr trendu PER SLOT - patrz nizej
   gtaa_agg6/                      # "GTAA AGG6" - to samo, top6 zamiast top3 - patrz nizej
   gtaa_agg6_best17_a/             # gtaa_agg6+best17_a, fixed_capital_weights 55/45 - patrz nizej, GORZEJ niz gpm_best17_a (negatywny wynik, udokumentowany)
+  daa_g4/                         # "DAA-G4" (Keller & Keuning) - patrz nizej, kanarek osobny + ciagly udzial ochronny
   # wszystkie pozostale pary 7 glownych strategii (fixed_capital_weights 50/50) - patrz
   # "Wszystkie pary 7 głównych strategii" wyzej; vaa_g4_best17_a to najlepszy Sharpe w repo
   dual_momentum_vaa_g4/  dual_momentum_the_one/       dual_momentum_best17_a/
@@ -1151,6 +1152,42 @@ mniej skutecznie tlumi drawdown `best17_a`, prawdopodobnie tez wyzsza korelacja 
 korelacja do koszyka, nie tylko trend). Zapisane jako dokumentacja eksperymentu, NIE
 rekomendacja - `gpm_best17_a` pozostaje najlepszym znalezionym miksem. Automatycznie odkryte i
 przetestowane przez `test_all_combined_specs.py` (glob-discovery).
+
+### Dwunasta strategia: `daa_g4` ("DAA-G4" - Defensive Asset Allocation, Keller & Keuning 2017)
+
+User: "Brakuje nam DAA Kellera" - zaimplementowane z wiedzy o publikacji (user zdecydowal nie
+podawac wlasnego opisu, jak dla `gpm`/`gtaa`). Rozni sie od naszego `vaa_g4` (Keller VAA) na 2
+sposoby: (1) kanarek to OSOBNE, MALE uniwersum (`VWO`+`AGG` - tylko 2 z 4 aktywow ofensywnych,
+nie wszystkie 4 jak w VAA); (2) udzial ochronny jest CIAGLY (0%/50%/100% dla 2 kanarkow), nie
+binarny (VAA: jeden zly kanarek = 100% ochrony natychmiast). Uniwersum (identyczne jak `vaa_g4`):
+4 ofensywne (SPY/EFA/VWO/AGG), 3 obronne (SHY/IEF/LQD). Score = 13612W momentum
+(12*r1+4*r3+2*r6+1*r12)/19 - REUZYTE identyczne `indicators`/`asset_scoring` co `vaa_g4`, zero
+nowego kodu tam.
+
+**Nowy blok**: `portfolio_risk_engine/daa_canary_breadth_switch.py` - kanarek jako OSOBNY
+parametr (nie caly `offensive_assets`) + ciagly udzial ochronny (B/len(canary), nie binarne
+przelaczenie jak `vaa_canary`). Top1 ofensywny + top1 obronny, zawsze NAJLEPSZY DOSTEPNY (bez
+wzgledu na znak - udzial ochronny juz kompensuje slaby rynek). Zweryfikowano na realnych danych
+(2008, 2009, 2020) - mieszane sloty 50/50 (np. `{"agg.us": 0.5, "ief.us": 0.5}` - top1 ofensywny
++ top1 obronny naraz) faktycznie wystepuja.
+
+**Realny wynik** (2006-02 do 2026-07, 246 miesiecy, PRZED podatkiem): CAGR 6.62%, MaxDD -25.50%,
+Sharpe 0.54, Calmar 0.26, turnover 7.64/rok - **uczciwie gorzej niz nasz `vaa_g4`** (CAGR 7.98%,
+MaxDD -24.45%, Sharpe 0.71, Calmar 0.33) w TYM konkretnym zestawie danych, mimo ze opublikowana
+praca Kellera i Keuninga twierdzi ze DAA generalnie bije VAA - prawdopodobnie
+dataset-specyficzne (inny okres/uniwersum niz oryginalna publikacja), nie blad implementacji
+(mechanizm zweryfikowany jednostkowo i na wagach z historii). Train/test spojne, bez blowupu:
+CAGR 4.55%/4.72%, Sharpe 0.48/0.44.
+
+Param stability (sweep `hysteresis_pct`, 5 wariantow): `relative_drop = 0.0%` - ten sam "martwy
+parametr" wzorzec co `vaa_g4`/`the_one` (top1 binarny wybor, histereza wagowa nigdy nie blokuje
+przelaczenia w tym zakresie) - odnotowane jako ograniczenie sweepa, nie prawdziwa stabilnosc.
+
+13 nowych testow: `test_daa_components.py` (nowy blok na danych syntetycznych - 0%/50%/100%
+udzial ochronny, NaN kanarek liczy sie jako zly, ofensywny wybiera najlepszego dostepnego nawet
+przy ujemnym score, top_n>1 dzieli po rowno, fallback do `_CASH`) + `test_daa_g4_strategy_spec.py`
+(kanarek WLASCIWYM podzbiorem ofensywnych - nie rownym, end-to-end z dowodem na wszystkie 3
+poziomy udzialu ochronnego, zamrozony baseline metryk).
 
 ## Testy
 
