@@ -2,6 +2,37 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (32)
+
+- **Eksperyment: `signal_tilted_capital_weights` z sygnalem `best17_a` zamiast `gpm` - WYNIK
+  NEGATYWNY, konfiguracja BEZ ZMIAN** (user: "doróbmy teraz wersję bazującą na sygnale risk z
+  best17 a nie gpm"). Zero nowego kodu potrzebne - ten sam combiner (30)/(31), inne `params`:
+  `strategy_a=best17_a_v0`, `signal_assets=["_CASH", "vt.us"]` (udzial poza normalna 2-aktywowa
+  selekcja - kanarek zablokowal albo trwa rebound do VT).
+
+  **Kluczowa roznica vs sygnal `gpm`**: `protective_share` gpm jest CIAGLY, 7 poziomow, w miare
+  zbalansowany rozklad (srednia ~0.57). Sygnal `best17_a` jest praktycznie BINARNY i mocno
+  skosny - `0` w 194/218 miesiacach, `1` tylko w 24/218 (kanarek VT+XLK rzadko blokuje, i gdy juz
+  blokuje to krotko). Przy `center=0.5` (stala, jak w (31)) to oznacza, ze WIEKSZOSC czasu tilt
+  dziala w JEDNYM, stalym kierunku (bo signal-center = -0.5 przez 194/218 miesiecy), nie
+  neutralnie wokol bazowej wagi - de facto przesuwa BAZOWA alokacje, nie reaguje selektywnie na
+  rzadkie zdarzenia.
+
+  Sprawdzone OBA kierunki tiltu (PO PODATKU, base_weight_a=0.45 dla best17_a):
+  - "wiecej best17_a gdy ONA SAMA jest risk-off" (tilt dodatni): Calmar spada monotonicznie z
+    tiltem (0.730 przy 0.1, 0.665 przy 0.3) - gorzej niz baza (0.763).
+  - "mniej best17_a gdy ONA SAMA jest risk-off" (tilt ujemny, logiczniejszy kierunek): CAGR
+    rosnie (10.49%->12.08%), ale MaxDD gwaltownie sie pogarsza (-14.70%->-21.51%), Calmar spada
+    (0.714->0.561) - bo asymetria 194/24 sprawia, ze przez WIEKSZOSC historii `best17_a` dostaje
+    WIECEJ wagi niz baza 0.45 (nie mniej), zwiekszajac ogolna zmiennosc miksu.
+
+  **Wniosek**: ten combiner dziala dobrze na sygnale CIAGLYM i ZBALANSOWANYM (jak breadth `gpm`),
+  ale zle na sygnale RZADKIM/SKOSNYM (jak binarny kanarek `best17_a`) - `center` jako stala 0.5
+  zaklada w miare symetryczny rozklad sygnalu wokol niego, co nie jest prawda dla rzadko
+  bindujacych gate'ow. `gpm_best17_a` NIE zmienia konfiguracji - `signal_tilted_capital_weights`
+  wg `protective_share` gpm (Calmar 0.786) pozostaje mistrzem sesji. Eksperyment nie zapisany
+  jako osobny `combined_spec.json` (jednoznacznie gorszy na kazdym sprawdzonym wariancie).
+
 ## 2026-07-11 (31)
 
 - **NOWY REKORD SESJI (drugi z rzedu): `gpm_best17_a` z `signal_tilted_capital_weights` - Calmar
