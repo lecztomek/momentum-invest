@@ -1,0 +1,29 @@
+{
+  "train_window": {"start": "2010-06-01", "end": "2019-12-31"},
+  "test_window": {"start": "2020-01-01", "end": "2026-06-30"},
+
+  "walk_forward": {
+    "enabled": true,
+    "window_months": 60,
+    "step_months": 12
+  },
+
+  "ablation": {
+    "enabled": false,
+    "modules_to_test": []
+  },
+
+  "sensitivity": {
+    "enabled": true,
+    "blocks": ["execution", "indicators"]
+  },
+
+  "costs": {
+    "transaction_cost_bps_one_way": 10.0,
+    "annual_tax_rate": 0.0
+  },
+
+  "uk_mapping": {
+    "enabled": false
+  }
+}

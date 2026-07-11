@@ -1,0 +1,52 @@
+{
+  "name": "best17_b_v0",
+  "hypothesis": "Strategia B uzytkownika - rotacja sektorowa na 6 ETF (XLP/XLV/XLF/XLE/XLI/RSP). Kanarek: EMA7>EMA16 na XLI ORAZ XLP jednoczesnie (oba warunki musza byc spelnione, inaczej 100% cash) - w odroznieniu od best17_a (kanarek na VT+XLK, szeroki rynek), tu kanarek to para cykliczny-vs-defensywny (Industrials=wzrost/cykl, Staples=defensywa) - klasyczny sygnal 'ryzyko wlaczone tylko gdy oba przemysly potwierdzaja trend'. Gdy risk-on: scoring = 9-miesieczny momentum, tylko ETF-y z DODATNIM momentum sa eligibilne, top2 po 50/50. Histereza na roznicy score (min_score_gap=0.03, jak opisane przez uzytkownika: 'zmienia ETF tylko gdy nowy ma wynik lepszy o co najmniej 3%'), dziala tylko gdy pozycja jest juz PELNA (full_position_size=2, jak w best17_a). Rebalans miesieczny. Zero nowego kodu bloku - w calosci zlozone z istniejacych blokow (momentum_monthly, ema_ratio_monthly, canary_regime_gate, indicator_positive, weighted_sum, top_n, rank_weights, score_gap_hysteresis) - identyczna architektura co best17_a, inne tickery/progi.",
+  "universe": ["xlp.us", "xlv.us", "xlf.us", "xle.us", "xli.us", "rsp.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "none",
+    "overlays": "none",
+    "execution": "score_gap_hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "mom_9": {"impl": "momentum_monthly", "window": 9},
+      "ema7_16": {"impl": "ema_ratio_monthly", "fast_span": 7, "slow_span": 16}
+    },
+    "asset_filters": {
+      "canary": {
+        "impl": "canary_regime_gate",
+        "canary_assets": ["xli.us", "xlp.us"],
+        "indicator_key": "ema7_16",
+        "bad_threshold": 0.0,
+        "max_bad_count": 0,
+        "target_assets": ["xlp.us", "xlv.us", "xlf.us", "xle.us", "xli.us", "rsp.us"]
+      },
+      "positive_momentum": {
+        "impl": "indicator_positive",
+        "indicator_key": "mom_9",
+        "threshold": 0.0,
+        "assets": ["xlp.us", "xlv.us", "xlf.us", "xle.us", "xli.us", "rsp.us"]
+      }
+    },
+    "asset_scoring": {"weights": {"mom_9": 1.0}},
+    "selector": {"top_n": 2},
+    "alpha_weighting": {"weights": [0.5, 0.5]},
+    "execution": {"min_score_gap": 0.03, "full_position_size": 2, "cost_bps": 10, "frequency": "monthly"}
+  },
+
+  "allowed_param_families": {
+    "execution": {"min_score_gap": [0.0, 0.01, 0.03, 0.05]},
+    "indicators": {"mom_9.window": [6, 9, 12]}
+  },
+
+  "created_at": "2026-07-11"
+}

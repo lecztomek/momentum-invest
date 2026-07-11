@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "Pierwszy realny przebieg (cala historia, 2005-12 do 2026-07, 248 miesiecy): CAGR 7.11%, MaxDD -29.71%, Sharpe 0.52, Calmar 0.24, turnover ~2.21/rok, max_time_underwater 35 miesiecy, najgorszy rok -15.51%. Wszystkie progi acceptance_spec.json (zgadywane przed przebiegiem) przeszly bez korekty. Sweep min_score_gap (0.00/0.01/0.03/0.05): 0.01 dal odrobine lepszy Sharpe/Calmar (0.56/0.26) niz opisane przez uzytkownika 0.03 (0.52/0.24), ale 0.03 pozostawione jako domyslne - to dokladnie tak jak uzytkownik opisal regule, nie wynik strojenia. Sweep mom_9.window (6/9/12): 9 WYRAZNIE najlepsze (CAGR 7.11% vs 4.66%/4.81%, MaxDD -29.71% vs -38.39%/-41.51%) - potwierdza, ze wybor uzytkownika (9 miesiecy) byl juz dobrze dostrojony, nie przypadkowy."
+}
