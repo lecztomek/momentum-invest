@@ -163,6 +163,20 @@ zwroty strategii, nie tylko ich wagi.
   można z czymś połączyć": hedge NIE jest wbudowanym overlayem wewnątrz `best17_a`, tylko osobnym
   `StrategySpec` + osobnym COMBINEREM.
 
+- **`relative_strength_capital_weights`** (2026-07-11 (30), patrz CHANGELOG) - user: "chodzi mi o
+  bardziej inteligentne dobieranie - ta która jest mocniejsza dostaje większy udział". Ciągłe
+  przechylanie udziału (nie binarne cash/risk jak `dynamic_capital_weights`) wg własnego,
+  zrealizowanego zwrotu każdej strategii za ostatnie `lookback` miesięcy względem średniej
+  wszystkich strategii, `tilt_strength` na jednostkę różnicy, przycięte do
+  `min_weight`/`max_weight` PRZED renormalizacją (żeby uniknąć całkowitej koncentracji), ta sama
+  konwencja `shift(1)` co `momentum_hedge_overlay`. **Wynik przy zastosowaniu do `gpm_best17_a`:
+  NEGATYWNY** na całym sprawdzonym sweepie (lookback 3/6/12 × tilt_strength 0.3-2.0) - `best17_a`
+  ma dużo wyższą zmienność własnego zwrotu niż `gpm`, więc tilt na SUROWYM zwrocie (nie
+  risk-adjusted) łapie jej epizodyczne wybicia (szum), nie trwałą przewagę - im silniejszy tilt,
+  tym gorszy Calmar (do 0.562 przy najbardziej agresywnym wariancie, vs 0.774 dla
+  `dynamic_capital_weights`). Blok zostaje w repo jako przetestowany, ogólny mechanizm (10 testów
+  syntetycznych) - `gpm_best17_a` NIE zmienia konfiguracji.
+
   **Wynik `strategies_v2/best17_a_tlt_hedge/`** (`best17_a` + `tlt_hedge`, sweep `hedge_weight`
   na realnych danych - wszystkie warianty wyraźnie tną MaxDD względem `best17_a` solo; liczby
   PO poprawce z **2026-07-11 (2)** - patrz CHANGELOG, `hedge_on` nie mógł się wcześniej wyłączyć

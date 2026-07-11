@@ -2,6 +2,36 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (30)
+
+- **NOWY COMBINER `relative_strength_capital_weights`** (user: "chodzi mi o bardziej inteligentne
+  dobieranie - ta ktora jest mocniejsza dostaje wiekszy udzial", po `dynamic_capital_weights`
+  ktory tylko realokuje MARTWA gotowke, nie tilt wg sily). Ciagle przechylanie udzialu kapitalu
+  wg wlasnego, zrealizowanego zwrotu kazdej strategii za ostatnie `lookback` miesiecy wzgledem
+  sredniej wszystkich strategii (`tilt_strength` na jednostke roznicy), przyciete do
+  `min_weight`/`max_weight` PRZED renormalizacja - zeby uniknac calkowitej koncentracji przy
+  przypadkowym, krotkotrwalym wyprzedzeniu. Konwencja `shift(1)` (decyzja na okres M+1 z danych
+  do M wlacznie, jak `momentum_hedge_overlay`) i ta sama ochrona przed "wygrana przez brak
+  historii" (aktyw spoza wlasnego zakresu dat traktowany jako najslabszy, nie neutralny 0%).
+  10 nowych testow syntetycznych (`test_relative_strength_capital_weights.py`) - w tym
+  `test_stronger_strategy_gets_bigger_share` (rdzen wymagania) i `test_min_max_weight_caps_extreme_tilt`.
+
+  **Zastosowanie do `gpm_best17_a`** (gpm z xle.us, patrz (29)) - sweep `lookback` (3/6/12) x
+  `tilt_strength` (0.3/0.5/1.0/2.0) x `min_weight`/`max_weight` ((0.20,0.80)/(0.30,0.70)), PO
+  PODATKU, wzgledem base_weights 45/55 (best17_a/gpm) - **WYNIK NEGATYWNY**: KAZDY testowany
+  wariant wypada GORZEJ niz obecny mistrz (`dynamic_capital_weights`, Calmar 0.774) i wiekszosc
+  gorzej niz nawet prosty `fixed_capital_weights` (Calmar 0.763) - najlepszy znaleziony wariant
+  (lookback=3, tilt=0.3) dawal Calmar 0.754, a im silniejszy tilt/dluzszy lookback, tym gorzej
+  (np. lookback=12, tilt=2.0: MaxDD -18.65%, Calmar 0.562 - WYRAZNIE gorzej). Przyczyna:
+  `best17_a` ma dużo wyzsza zmiennosc wlasnego zwrotu niz `gpm` (koncentrowany top2 momentum vs
+  szeroko zdywersyfikowany, ochronny mechanizm) - tilt oparty na SUROWYM zwrocie (nie
+  risk-adjusted) reaguje na EPIZODYCZNE wybicia `best17_a` (szum), przeksztalcajac sie w
+  "kupowanie po duzym ruchu" tuz przed jego kolejnymi drawdownami, zamiast lapac realna,
+  trwala przewage. Combiner ZOSTAJE w repo (przetestowany, dziala poprawnie, ogolny/reuzywalny
+  dla par o PODOBNEJ zmiennosci), ale `gpm_best17_a` NIE zmienia konfiguracji -
+  `dynamic_capital_weights` (Calmar 0.774) pozostaje mistrzem sesji. Pelny pakiet testow:
+  403/403 (393 + 10 nowych), bez regresji.
+
 ## 2026-07-11 (29)
 
 - **NOWY REKORD SESJI: `gpm_best17_a` z `xle.us` w `gpm` + `dynamic_capital_weights` - Calmar
