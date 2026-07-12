@@ -1665,6 +1665,25 @@ test w `test_run_spec_runner.py` z tymczasowo skopiowanymi danymi USA pod nowymi
 + 2 end-to-end testy na PRAWDZIWYCH danych US+UK w `test_best17_a_strategy_spec.py`/
 `test_gpm_mid_10_strategy_spec.py`, nowy fixture `uk_data_dir` w `conftest.py`).
 
+**Kandydat produkcyjny (miks 50/50)** - user: "sprawdź naszego produkcyjnego kandydata wersja
+50/50" (2026-07-12 (40)). W odróżnieniu od sesyjnego rekordu Calmar `gpm_best17_a`
+(`signal_tilted_capital_weights`, pełne 13 aktywów w `gpm`), kandydat do wdrożenia to
+NAJPROSTSZY mozliwy miks - `gpm_mid_10` (10 aktywow, latwiejszy do replikacji w XTB) +
+`best17_a`, `fixed_capital_weights` 50/50 bez tiltu. Zapisany jako
+`strategies_v2/gpm_mid_10_best17_a/combined_spec.json` (+ zmergowany `uk_ticker_mapping.json`).
+Portfele LACZONE nie maja wlasnego `test_spec.json`/`run_spec.json`, wiec UK mapping dla miksu
+jest wolany bezposrednio na wyniku `run_combined_pipeline` (nowy plik
+`engine_v2/tests/test_gpm_mid_10_best17_a_uk_mapping.py`), tym samym mechanizmem co powyzej:
+
+| | okno | US: CAGR/MaxDD/Sharpe/Calmar | UK: CAGR/MaxDD/Sharpe/Calmar | korelacja miesieczna | mismatch |
+|---|---|---|---|---|---|
+| `gpm_mid_10_best17_a` (50/50) | 2018-05 do 2026-07 (99 mies.) | 11.56%/-14.65%/0.952/0.789 | 11.82%/-14.98%/1.034/0.789 | **0.9575** | 2/99 (2.0%) |
+
+Zgodnosc tego samego rzedu co oba testy solo - gap CAGR +0.26pp, gap MaxDD -0.33pp. Mismatch to
+te same 2 miesiace (styczen/luty 2023, `rebound_starter`->`vt.us`) co w solo `best17_a`; jedyny
+formalny fail progu akceptacji to `max_single_month_return_diff` (0.044 > 0.03), z tej samej,
+w pelni zrozumianej przyczyny (VT bez mapowania UK).
+
 ### Gdzie w tym wszystkim jest train/test window i walk-forward?
 
 Cały pipeline opisany wyżej (`data_loader` -> ... -> `backtest_engine`) liczy się na **całej

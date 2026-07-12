@@ -2,6 +2,45 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-12 (40)
+
+- **"OSTATECZNY TEST" na kandydacie produkcyjnym (miks 50/50)** - user: "no tak wrzuć i sprawdź
+  naszego produkcyjnego kandydata wersja 50/50". W odróżnieniu od sesyjnego rekordu
+  Calmar (`gpm_best17_a`, `signal_tilted_capital_weights`, pełne 13 aktywów ryzykownych w
+  `gpm`), kandydat produkcyjny to NAJPROSTSZY możliwy miks - `gpm_mid_10` (10 aktywów, usunięte
+  IJR/EFA/VEA - trudne do jednoznacznego odwzorowania w XTB) + `best17_a`, `fixed_capital_weights`
+  50/50, zero tiltu/sygnału. Zapisany jako nowy, trwały artefakt:
+  `strategies_v2/gpm_mid_10_best17_a/combined_spec.json` + zmergowany
+  `uk_ticker_mapping.json` (15 wpisów - `dbc.us`/`gld.us`/`ivv.us`/`igln.uk` etc. współdzielone
+  między obiema składowymi strategiami tam gdzie mapowanie jest identyczne).
+
+  Portfele ŁĄCZONE nie mają własnego `test_spec.json`/`run_spec.json` (mechanizm UK mapping w
+  `run_spec_runner` jest wpięty tylko dla pojedynczej `StrategySpec`) - test UK mapping dla
+  miksu woła `run_combined_pipeline` bezpośrednio i uruchamia `remap_final_portfolio` /
+  `find_uk_window_start` / `compare_us_vs_uk` "ręcznie", identycznie jak dla pojedynczej
+  strategii. Nowy plik: `engine_v2/tests/test_gpm_mid_10_best17_a_uk_mapping.py`.
+
+  **Wynik "ostatecznego testu" na PRAWDZIWYCH danych US+UK** (okno 2018-05 do 2026-07, 99 mies. -
+  wyznaczone przez `dtla.uk`/TLT, najpóźniejszy debiut ze wszystkich trzymanych tickerów):
+
+  | | CAGR | MaxDD | Sharpe | Calmar | roczny turnover |
+  |---|---|---|---|---|---|
+  | US | 11.56% | -14.65% | 0.952 | 0.789 | 2.74 |
+  | UK | 11.82% | -14.98% | 1.034 | 0.789 | 2.74 |
+
+  Korelacja miesięczna **0.9575**, gap CAGR +0.26pp, gap MaxDD -0.33pp - zgodność tego samego
+  rzędu co oba testy solo (39). Mismatch wag: 2/99 miesięcy (2.02%) - te same daty
+  (styczeń/luty 2023, `rebound_starter`->`vt.us`) i ta sama, w pełni zrozumiana przyczyna co w
+  solo teście `best17_a` (VT celowo bez mapowania UK - "signal only"). Jedyny formalny fail progu
+  akceptacji: `max_single_month_return_diff` (0.044 > próg 0.03 użyty w testach) - identyczny,
+  oczekiwany efekt VT-rebound, nie ukryta wada mapowania. Wszystkie pozostałe progi
+  (`min_monthly_return_correlation`, `max_cagr_gap_vs_us`, `max_drawdown_gap_vs_us`,
+  `max_weights_mismatch_months_pct`) PASS.
+
+  Pełny pakiet testów: 463/463 (nowy plik testowy z 2 testami, + `test_all_combined_specs.py`
+  automatycznie odkrywa nowy `combined_spec.json`, +2 do jego parametrycznych testów), bez
+  regresji.
+
 ## 2026-07-12 (39)
 
 - **PRAWDZIWE DANE UK + "OSTATECZNY TEST"** - user: "Na main powinieneś mieć już dane uk trzeba

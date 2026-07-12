@@ -1,0 +1,16 @@
+{
+  "name": "gpm_mid_10_best17_a_v0",
+  "hypothesis": "User: 'nasz produkcyjny kandydat, wersja 50/50' - PROSTSZA alternatywa dla sesyjnego rekordu `gpm_best17_a` (signal_tilted_capital_weights, gpm PELNE 13 aktywow, Calmar 0.786). Tutaj: `gpm_mid_10` (10 aktywow ryzykownych zamiast 13 - usuniete IJR/EFA/VEA, najtrudniejsze do jednoznacznego odwzorowania w XTB) + `best17_a`, zmiksowane NAJPROSTSZYM mozliwym combinerem `fixed_capital_weights` 50/50 (bez tiltu, bez sygnalu - latwiejsze do wdrozenia i zrozumienia niz signal_tilted). Wybrany jako kandydat produkcyjny wlasnie dla prostoty wdrozenia (gpm_mid_10 eliminuje aktywa trudne do zmapowania na UK/XTB) kosztem odrobiny jakosci wzgledem sesyjnego rekordu. Zweryfikowany 'ostatecznym testem' UK mapping (zob. CHANGELOG) na realnych danych US+UK: monthly_return_correlation 0.9575, cagr_gap +0.26pp, max_drawdown_gap -0.33pp - mapowanie na tickery UK dziala poprawnie takze dla miksu.",
+  "strategy_spec_paths": [
+    "../gpm_mid_10/strategy_spec.json",
+    "../best17_a/strategy_spec.json"
+  ],
+  "combiner": "fixed_capital_weights",
+  "combiner_params": {
+    "capital_weights": {
+      "gpm_mid_10_v0": 0.5,
+      "best17_a_v0": 0.5
+    }
+  },
+  "created_at": "2026-07-12"
+}
