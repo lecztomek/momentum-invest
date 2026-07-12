@@ -2,6 +2,33 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-12 (37)
+
+- **NOWA STRATEGIA `strategies_v2/gpm_mid_10/`** - user: "gpm_mid_10 - posrednia, uproszczona
+  wersja defensywnego GPM". Cel: "zachowac wiekszosc dywersyfikacji i ochrony pelnego GPM,
+  jednoczesnie usuwajac aktywa najtrudniejsze do jednoznacznego odwzorowania w XTB" - 10 aktywow
+  ryzykownych (SPY, QQQ, VWO, VNQ, DBC, GLD, HYG, LQD, TLT, XLE) zamiast 13, usuniete IJR/EFA/VEA.
+  Ochrona bez zmian (IEF/SHY). Zero nowego kodu bloku - identyczna architektura co pelny `gpm`.
+  `top_n_risky=3` (user potwierdzil), `full_protective_max_n=5`/`protective_scale_denominator=5`
+  (polowa z 10, ta sama konwencja `denominator=len(risky)-full_protective_max_n` co oryginal).
+
+  **Wynik na realnych danych (2007-05 do 2026-08, po podatku)**: CAGR 5.30%, MaxDD -13.04%,
+  Sharpe 0.683, Calmar 0.406, turnover 4.39/rok - PRAKTYCZNIE IDENTYCZNY z pelnym `gpm` (CAGR
+  5.39%, MaxDD -13.00%, Sharpe 0.675, Calmar 0.414, turnover 4.34/rok). Znacznie blizej pelnej
+  wersji niz `gpm_lite_7` (7 aktywow, patrz (36)) - usuniete EFA/VEA byly juz wczesniej opisane w
+  hipotezie `gpm` jako "znaczaco nakladajace sie" (oba 'developed ex-US'), wiec ich usuniecie
+  kosztuje bardzo malo realnej dywersyfikacji; IJR (US small cap) rowniez nie byl kluczowy obok
+  SPY/QQQ. **Ten uproszczony wariant realnie zachowuje niemal cala jakosc pelnego gpm, w
+  przeciwienstwie do bardziej agresywnego ciecia w `gpm_lite_7`.**
+
+  **Param stability** (sweep `top_n_risky` x `full_protective_max_n`, [2,3,4]x[4,5,6]):
+  `relative_drop = 26.7%` - PASS (prog 30%), ksztalt gladki/monotoniczny (CAGR maleje wraz ze
+  wzrostem `top_n_risky`), zero dzwigni (max suma wag = 1.0, zweryfikowane wprost - patrz bugfix
+  (35)).
+
+  5 nowych testow: `test_gpm_mid_10_strategy_spec.py` (wiring, 10+2 uniwersum, end-to-end na
+  realnych danych, zamrozony baseline metryk). Pelny pakiet testow: 438/438, bez regresji.
+
 ## 2026-07-12 (36)
 
 - **NOWA STRATEGIA `strategies_v2/gpm_lite_7/`** - user: "gpm_lite_7 - uproszczona defensywna

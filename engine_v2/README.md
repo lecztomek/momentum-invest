@@ -793,6 +793,7 @@ strategies_v2/
   synergy_v2/                    # poprawka: TLT wzajemnie wykluczajacy sie z 4 aktywami ofensywnymi - patrz niżej, dalej gorzej niż best17_a solo
   gpm/                            # "Generalized Protective Momentum" - patrz niżej, najnizszy MaxDD (-15.2%) i najstabilniejsza rodzina parametrow w calej sesji
   gpm_lite_7/                     # gpm uproszczony do 7 aktywow ryzykownych - patrz nizej, podobne wyniki, nieco nizszy turnover
+  gpm_mid_10/                     # gpm uproszczony do 10 aktywow (usuniete IJR/EFA/VEA) - patrz nizej, PRAWIE IDENTYCZNY z pelnym gpm
   gpm_best17_a/                   # gpm(+xle.us)+best17_a, signal_tilted_capital_weights - patrz nizej, NAJLEPSZY CALMAR (0.786) I SHARPE (1.011) calej sesji
   gtaa_agg3/                      # "GTAA AGG3" - top3 momentum + filtr trendu PER SLOT - patrz nizej
   gtaa_agg6/                      # "GTAA AGG6" - to samo, top6 zamiast top3 - patrz nizej
@@ -1327,6 +1328,36 @@ Odnotowane uczciwie.
 
 5 nowych testow: `test_gpm_lite_7_strategy_spec.py` (wiring, 7+2 uniwersum, end-to-end na
 realnych danych - oba rezymy, zero dzwigni po bugfixie (35), zamrozony baseline metryk).
+
+#### `gpm_mid_10` - posrednia, uproszczona wersja `gpm` na 10 aktywach ryzykownych
+
+User: "gpm_mid_10 - posrednia, uproszczona wersja defensywnego GPM". Cel: "zachowac wiekszosc
+dywersyfikacji i ochrony pelnego GPM, jednoczesnie usuwajac aktywa najtrudniejsze do
+jednoznacznego odwzorowania w XTB". Zero nowego kodu bloku - identyczna architektura co pelny
+`gpm`:
+
+- **10 aktywow ryzykownych**: SPY (akcje USA), QQQ (Nasdaq100), VWO (rynki wschodzace), VNQ
+  (nieruchomosci), DBC (surowce), GLD (zloto), HYG (obligacje high yield), LQD (obligacje IG),
+  TLT (dlugoterminowe Treasury), XLE (energia) - z pelnego 13-aktywowego `gpm` usuniete IJR (US
+  small cap) i EFA/VEA (oba "developed ex-US", opisane juz w hipotezie `gpm` jako "znaczaco
+  nakladajace sie").
+- **2 ochronne**: IEF/SHY, bez zmian.
+- `top_n_risky=3`, `full_protective_max_n=5`/`protective_scale_denominator=5` (polowa z 10, ta
+  sama konwencja `denominator = len(risky_assets) - full_protective_max_n` co w oryginale).
+
+**Realny wynik** (2007-05 do 2026-08, po podatku): CAGR 5.30%, MaxDD -13.04%, Sharpe 0.683,
+Calmar 0.406, turnover 4.39/rok - **PRAKTYCZNIE IDENTYCZNY z pelnym `gpm`** (CAGR 5.39%, MaxDD
+-13.00%, Sharpe 0.675, Calmar 0.414, turnover 4.34/rok). Znacznie blizej pelnej wersji niz
+`gpm_lite_7` (7 aktywow) - usuniete EFA/VEA i tak byly redundantne, wiec ich usuniecie kosztuje
+bardzo malo realnej dywersyfikacji. **Ten uproszczony wariant realnie zachowuje niemal cala
+jakosc pelnego `gpm`**, w przeciwienstwie do bardziej agresywnego ciecia w `gpm_lite_7`.
+
+**Param stability** (sweep `top_n_risky` x `full_protective_max_n`, [2,3,4]x[4,5,6]):
+`relative_drop = 26.7%` - PASS (prog 30%), ksztalt gladki/monotoniczny, zero dzwigni
+(zweryfikowane wprost, patrz bugfix (35)).
+
+5 nowych testow: `test_gpm_mid_10_strategy_spec.py` (wiring, 10+2 uniwersum, end-to-end na
+realnych danych, zamrozony baseline metryk).
 
 #### `gpm_best17_a` - miks defensywnego `gpm` z agresywnym `best17_a`
 
