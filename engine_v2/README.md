@@ -792,6 +792,7 @@ strategies_v2/
   synergy_v1/                    # eksperyment: best17_a+TLT w JEDNYM pipeline (bez combinera) - patrz niżej, gorzej niż best17_a solo
   synergy_v2/                    # poprawka: TLT wzajemnie wykluczajacy sie z 4 aktywami ofensywnymi - patrz niżej, dalej gorzej niż best17_a solo
   gpm/                            # "Generalized Protective Momentum" - patrz niżej, najnizszy MaxDD (-15.2%) i najstabilniejsza rodzina parametrow w calej sesji
+  gpm_lite_7/                     # gpm uproszczony do 7 aktywow ryzykownych - patrz nizej, podobne wyniki, nieco nizszy turnover
   gpm_best17_a/                   # gpm(+xle.us)+best17_a, signal_tilted_capital_weights - patrz nizej, NAJLEPSZY CALMAR (0.786) I SHARPE (1.011) calej sesji
   gtaa_agg3/                      # "GTAA AGG3" - top3 momentum + filtr trendu PER SLOT - patrz nizej
   gtaa_agg6/                      # "GTAA AGG6" - to samo, top6 zamiast top3 - patrz nizej
@@ -1294,6 +1295,38 @@ okien, korelacja idealna/odwrotna, iloczyn+maskowanie, pelna/czesciowa ochrona, 
 `_CASH` przy braku kandydatow) + `test_gpm_strategy_spec.py` (walidacja realnego
 `strategy_spec.json`, oba rezymy - pelna ochrona i ekspozycja ryzykowna - realnie wystepuja w
 historii, nigdy wiecej niz `top_n_risky` aktywow naraz, zamrozony baseline metryk).
+
+#### `gpm_lite_7` - uproszczona wersja `gpm` na 7 aktywach ryzykownych
+
+User: "gpm_lite_7 - uproszczona defensywna strategia momentum", pelny opis mechanizmu
+dostarczony wprost. Cel: "zachowac mechanike GPM przy mniejszej liczbie tickerow, nizszym
+turnoverze i prostszym wdrozeniu". **Zero nowego kodu bloku** - identyczna architektura co
+pelny `gpm` (`momentum_avg_month_end`/`corr_to_basket_month_end`/`momentum_times_decorrelation`/
+`gpm_breadth_protective_split`), tylko rekonfiguracja na mniejsze uniwersum:
+
+- **7 aktywow ryzykownych**: VT (globalne akcje), QQQ (Nasdaq100), VWO (rynki wschodzace), VNQ
+  (nieruchomosci), DBC (surowce), GLD (zloto), XLE (energia) - zamiast 13 w pelnym `gpm`.
+- **2 ochronne**: IEF/SHY, bez zmian.
+- `top_n_risky=3` (user potwierdzil wprost: "czesc ryzykowna trafia do top 3 aktywow").
+- `full_protective_max_n=3`/`protective_scale_denominator=4` (zamiast 6/6) - przeskalowane
+  proporcjonalnie do 7-aktywowego uniwersum, ta sama konwencja
+  `denominator = len(risky_assets) - full_protective_max_n` co w oryginale (6=12-6).
+
+**Realny wynik** (2008-07 do 2026-08, po podatku 19%): CAGR 5.47%, MaxDD -13.91%, Sharpe 0.627,
+Calmar 0.393, turnover 4.07/rok. Blisko pelnego `gpm` (CAGR 5.39%, MaxDD -13.00%, Sharpe 0.675,
+Calmar 0.414, turnover 4.34/rok) - odrobine gorzej na kazdej metryce ryzyka, ale turnover NIZSZY
+(~6%) - cel usera CZESCIOWO spelniony: mniej tickerow i prostsze wdrozenie tak, "nizszy
+turnover" tylko w niewielkim stopniu (koncentracja top3 z mniejszej puli 7 kandydatow nadal
+generuje sporo przelaczen).
+
+**Param stability** (sweep `top_n_risky` x `full_protective_max_n`, [2,3,4]x[2,3,4]):
+`relative_drop = 36.7%` - **FAIL** (prog 30%), ale ksztalt GLADKI i MONOTONICZNY (CAGR rosnie
+gdy `top_n_risky` MALEJE, konsekwentnie w kazdym wierszu) - NIE chaotyczny/losowy szczyt,
+`top_n_risky=3` to swiadomy, posrodku zakresu wybor usera, nie przypadkowo trafiony punkt.
+Odnotowane uczciwie.
+
+5 nowych testow: `test_gpm_lite_7_strategy_spec.py` (wiring, 7+2 uniwersum, end-to-end na
+realnych danych - oba rezymy, zero dzwigni po bugfixie (35), zamrozony baseline metryk).
 
 #### `gpm_best17_a` - miks defensywnego `gpm` z agresywnym `best17_a`
 

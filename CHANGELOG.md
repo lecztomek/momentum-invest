@@ -2,6 +2,39 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-12 (36)
+
+- **NOWA STRATEGIA `strategies_v2/gpm_lite_7/`** - user: "gpm_lite_7 - uproszczona defensywna
+  strategia momentum", dokladny opis mechanizmu dostarczony przez usera. Uproszczona wersja
+  `gpm` (patrz (29)/(35)) - 7 aktywow ryzykownych zamiast 13 (VT globalne akcje, QQQ Nasdaq100,
+  VWO rynki wschodzace, VNQ nieruchomosci, DBC surowce, GLD zloto, XLE energia) + 2 ochronne
+  (IEF/SHY, bez zmian). Cel usera: "zachowac mechanike GPM przy mniejszej liczbie tickerow,
+  nizszym turnoverze i prostszym wdrozeniu". **Zero nowego kodu bloku** - identyczna architektura
+  co pelny `gpm` (`momentum_avg_month_end`/`corr_to_basket_month_end`/
+  `momentum_times_decorrelation`/`gpm_breadth_protective_split`), tylko rekonfiguracja. Jedyna
+  swiadoma decyzja projektowa: `full_protective_max_n=3`/`protective_scale_denominator=4`
+  (zamiast 6/6 w pelnym gpm) - przeskalowane proporcjonalnie do 7-aktywowego uniwersum, ta sama
+  konwencja `denominator = len(risky_assets) - full_protective_max_n` co w oryginale (6=12-6).
+  `top_n_risky=3` (user potwierdzil wprost: "czesc ryzykowna trafia do top 3 aktywow").
+
+  **Wynik na realnych danych (2008-07 do 2026-08, po podatku 19%)**: CAGR 5.47%, MaxDD -13.91%,
+  Sharpe 0.627, Calmar 0.393, turnover 4.07/rok. Blisko pelnego `gpm` (CAGR 5.39%, MaxDD -13.00%,
+  Sharpe 0.675, Calmar 0.414, turnover 4.34/rok, 13 aktywow) - odrobine gorzej na kazdej
+  metryce ryzyka, ale turnover NIZSZY (4.07 vs 4.34, ~6%) - czesciowo spelnia cel usera
+  (mniej tickerow i prostsze wdrozenie potwierdzone, "nizszy turnover" tylko czesciowo -
+  koncentracja top3 z mniejszej puli 7 kandydatow nadal generuje sporo przelaczen).
+
+  **Param stability** (sweep `top_n_risky` x `full_protective_max_n`, [2,3,4]x[2,3,4], 9
+  wariantow): `relative_drop = 36.7%` - **FAIL** (prog 30%), ale ksztalt jest gladki,
+  MONOTONICZNY (CAGR rosnie gdy `top_n_risky` MALEJE, 2>3>4 konsekwentnie w kazdym wierszu) - NIE
+  chaotyczny/losowy szczyt, wybrana wartosc domyslna (`top_n_risky=3`) to swiadomy, posrodku
+  zakresu wybor usera (potwierdzony wprost: "top 3 aktywow"), nie przypadkowo trafiony punkt.
+  Odnotowane uczciwie, bez ukrywania.
+
+  5 nowych testow (`test_gpm_lite_7_strategy_spec.py`): wiring, 7+2 uniwersum, end-to-end na
+  realnych danych (oba rezymy, zero dzwigni - patrz bugfix (35)), zamrozony baseline metryk.
+  Pelny pakiet testow: 433/433, bez regresji.
+
 ## 2026-07-11 (35)
 
 - **BUGFIX `gpm_breadth_protective_split`: `protective_share` nie byl przyciety do [0.0, 1.0] -
