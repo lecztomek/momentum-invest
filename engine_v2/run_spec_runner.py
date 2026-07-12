@@ -73,6 +73,7 @@ from engine_v2.test_spec import TestSpec
 from engine_v2.uk_mapping import (
     check_uk_mapping_criteria,
     compare_us_vs_uk,
+    find_uk_window_start,
     load_ticker_mapping,
     remap_final_portfolio,
 )
@@ -105,31 +106,45 @@ def _run_uk_mapping_check(
     test_spec: TestSpec,
     acceptance_spec: AcceptanceSpec,
     us_final_portfolio: pd.DataFrame,
-    us_equity_curve: pd.DataFrame,
     base_dir: Path,
 ) -> Dict[str, Any]:
     """Odtwarza `us_final_portfolio` na brytyjskich odpowiednikach ETF (patrz uk_mapping.py -
     "US decyduje o wszystkim", UK tylko replikuje juz wyliczone wagi) i porownuje wynikowa krzywa
     equity z oryginalna, USA-owa. Wymaga `test_spec.uk_mapping.enabled=True` i realnych danych
     cenowych pod `uk_mapping.uk_data_dir` (ten sam `stooq_csv` loader co dla USA, inny data_dir) -
-    jesli danych jeszcze nie ma, wywolujacy dostanie czytelny blad z loadera, nie cichy pomin."""
+    jesli danych jeszcze nie ma, wywolujacy dostanie czytelny blad z loadera, nie cichy pomin.
+
+    Porownanie jest PRZYCIETE do `find_uk_window_start` (user: "okres uk bedzie krotszy do
+    testow - wiekszosc danych zaczyna sie pozniej") - obie strony (US i UK) licza WLASNA krzywa
+    equity OD NOWA na tym samym, krotszym oknie (nie na calej historii US), zeby porownanie bylo
+    uczciwe (ta sama liczba miesiecy po obu stronach) i zeby uniknac NaN sprzed debiutu
+    ktoregos UK ETF."""
     uk_cfg = test_spec.uk_mapping
     mapping_path = base_dir / uk_cfg.ticker_mapping_file
     ticker_mapping = load_ticker_mapping(mapping_path)
 
-    uk_final_portfolio, diagnostics = remap_final_portfolio(us_final_portfolio, ticker_mapping)
+    uk_final_portfolio_full, _ = remap_final_portfolio(us_final_portfolio, ticker_mapping)
 
     uk_tickers = sorted(set(ticker_mapping.values()))
     loader_fn = DATA_LOADER_REGISTRY[strategy_spec.blocks["data_loader"]]
     uk_daily_prices = loader_fn(uk_tickers, {"data_dir": uk_cfg.uk_data_dir, "frequency": "daily"}).prices
 
-    uk_equity_curve = daily_equity_curve(uk_final_portfolio, uk_daily_prices, {})
+    uk_window_start = find_uk_window_start(uk_final_portfolio_full, uk_daily_prices)
+
+    us_slice = us_final_portfolio[us_final_portfolio["date"] >= uk_window_start].reset_index(drop=True)
+    uk_slice, diagnostics = remap_final_portfolio(us_slice, ticker_mapping)
+
+    us_equity_curve = daily_equity_curve(us_slice, _load_daily_prices(strategy_spec), {})
+    uk_equity_curve = daily_equity_curve(uk_slice, uk_daily_prices, {})
     if test_spec.costs.annual_tax_rate > 0.0:
+        us_equity_curve = apply_annual_tax(us_equity_curve, test_spec.costs.annual_tax_rate)
         uk_equity_curve = apply_annual_tax(uk_equity_curve, test_spec.costs.annual_tax_rate)
 
-    comparison = compare_us_vs_uk(us_final_portfolio, us_equity_curve, uk_final_portfolio, uk_equity_curve)
+    comparison = compare_us_vs_uk(us_slice, us_equity_curve, uk_slice, uk_equity_curve)
 
     return {
+        "uk_window_start": uk_window_start.isoformat(),
+        "n_periods_in_window": len(us_slice),
         "diagnostics": diagnostics,
         "comparison": comparison,
         "acceptance": check_uk_mapping_criteria(comparison, diagnostics["mismatch_pct"], acceptance_spec.uk_mapping),
@@ -167,7 +182,7 @@ def _run_final(
                 "(folder strategii, do rozwiazania ticker_mapping_file)."
             )
         result["uk_mapping"] = _run_uk_mapping_check(
-            strategy_spec, test_spec, acceptance_spec, final_portfolio, equity_curve, base_dir
+            strategy_spec, test_spec, acceptance_spec, final_portfolio, base_dir
         )
     return result
 

@@ -1590,8 +1590,8 @@ portfel. `best17_a_tlt_hedge` ma DODATKOWO własny, bardziej szczegółowy test
 
 Z pierwotnego planu: **REPORTING**, **FORWARD TEST/PAPER** (na wieksza odlegloscie). Budowane
 etapami, blok po bloku, każdy z własnym design-review przed kodem. **UK MAPPING** juz ISTNIEJE
-(patrz sekcja "UK MAPPING" nizej) - zbudowany 2026-07-12 (38), zero danych UK w repo jeszcze,
-ale mechanizm w pelni gotowy i przetestowany.
+(patrz sekcja "UK MAPPING" nizej) - zbudowany 2026-07-12 (38), zweryfikowany na prawdziwych
+danych `data/uk/` (39) - dobra zgodnosc US/UK (korelacja miesieczna ~0.955-0.957).
 
 ### Tryby uzycia pipeline'u (docelowo)
 
@@ -1602,7 +1602,7 @@ ale mechanizm w pelni gotowy i przetestowany.
 | RISK/OVERLAY/EXECUTION SEARCH | walk-forward | ✅ mechanizm gotowy (uzycie zalezy od strategii) |
 | FINAL VALIDATION | walk-forward na `test_window` (OOS) | ✅ mechanizm gotowy |
 | FINAL REPORT | single backtest + REPORTING | single ✅, reporting ❌ |
-| UK MAPPING | single backtest + mapowanie tickerow | ✅ mechanizm gotowy (`uk_mapping.py`), czeka na prawdziwe dane `data/uk/` |
+| UK MAPPING | single backtest + mapowanie tickerow | ✅ gotowe, zweryfikowane na prawdziwych danych `data/uk/` |
 | PAPER/LIVE | forward test | ❌ |
 
 ### UK MAPPING (`engine_v2/uk_mapping.py`) - "ostateczny test" wdrożenia na koncie UK
@@ -1612,36 +1612,58 @@ to ostateczny test [...] bardzo prosto - usa decyduje o wszystkim na uk zwykly m
 logika (sygnaly/selekcja/wagi/histereza) liczy sie WYLACZNIE na danych USA - UK strona NIE ma
 wlasnej logiki decyzyjnej, tylko REPLIKUJE juz wyliczone wagi 1:1 na brytyjskie odpowiedniki ETF.
 
-**Mechanizm** (2 funkcje + 1 helper do progow akceptacji, zero zmian w `pipeline.py`/
-`backtest_engine.py` - `daily_equity_curve` juz jest w pelni generyczny wzgledem tickerow):
+**Mechanizm** (4 funkcje, zero zmian w `pipeline.py`/`backtest_engine.py` - `daily_equity_curve`
+juz jest w pelni generyczny wzgledem tickerow):
 
 - `remap_final_portfolio(final_portfolio, ticker_mapping)` - podmienia klucze tickerow w
   `weights_used_json` kazdego okresu. Ticker BEZ mapowania z niezerowa waga (np. `vt.us` w
-  `best17_a` - "signal only", bez brytyjskiego odpowiednika) trafia w `_CASH`, a ten okres jest
-  JAWNIE zliczony jako "mismatch" (mierzone przez `AcceptanceSpec.uk_mapping.max_weights_
-  mismatch_months_pct`) - nie ukryte, nie zgadywany zastepczy instrument.
+  `best17_a` - "signal only", celowo bez brytyjskiego odpowiednika mimo ze dane by na to
+  pozwalaly, decyzja usera uszanowana) trafia w `_CASH`, a ten okres jest JAWNIE zliczony jako
+  "mismatch" (mierzone przez `AcceptanceSpec.uk_mapping.max_weights_mismatch_months_pct`).
+- `find_uk_window_start(uk_final_portfolio, uk_daily_prices)` - user mial racje: "okres uk bedzie
+  krotszy do testow, wiekszosc danych zaczyna sie pozniej" - potwierdzone na prawdziwych danych
+  (`vwra.uk` od 2019-07, `dtla.uk` od 2018-05, vs `vt.us`/`tlt.us` od 2005-2008). Znajduje
+  najpozniejsza date, od ktorej WSZYSTKIE kiedykolwiek trzymane UK tickery maja juz prawdziwe
+  ceny - bez tego `daily_equity_curve` mnozylby przez NaN sprzed debiutu ETF.
 - `compare_us_vs_uk(...)` - METRICS NIEZALEZNIE na obu krzywych equity (kazda na WLASNYCH
-  dziennych cenach), porownanie: korelacja MIESIECZNYCH zwrotow (resampling, NIE dokladne dni
-  handlowe - kalendarze gield USA/UK sie ROZNIA), najwiekszy pojedynczy rozjazd miesieczny, gap
-  CAGR/MaxDD (na WARTOSCI BEZWZGLEDNEJ - rozjazd w KTORAKOLWIEK strone sie liczy).
+  dziennych cenach, na TYM SAMYM, przycietym oknie), porownanie: korelacja MIESIECZNYCH zwrotow
+  (resampling, NIE dokladne dni handlowe - kalendarze gield USA/UK sie ROZNIA), najwiekszy
+  pojedynczy rozjazd miesieczny, gap CAGR/MaxDD (na WARTOSCI BEZWZGLEDNEJ).
 - `check_uk_mapping_criteria(...)` - progi z `AcceptanceSpec.uk_mapping`.
 
 **Wpiete w `run_spec_runner._run_final`**: `TestSpec.uk_mapping.enabled=True` dolicza
-`result["uk_mapping"]` (diagnostics + comparison + acceptance) do zwyklego wyniku "final". Loader
-`stooq_csv` juz umial czytac `data/uk` (wspomniane w jego docstringu OD POCZATKU) - nowe pole
-`TestSpec.UkMappingSpec.uk_data_dir` (domyslnie `"data/uk"`) tylko to wykorzystuje.
+`result["uk_mapping"]` do zwyklego wyniku "final". Loader `stooq_csv` juz umial czytac `data/uk`
+(wspomniane w jego docstringu OD POCZATKU) - nowe pole `TestSpec.UkMappingSpec.uk_data_dir`
+(domyslnie `"data/uk"`) tylko to wykorzystuje.
 
-**Przygotowane mapowania** (dokladnie wg specyfikacji usera, oba `enabled: false` do czasu
-prawdziwych danych):
+**PRAWDZIWY WYNIK "ostatecznego testu"** (2026-07-12 (39), patrz CHANGELOG - 15 plikow danych
+`*.uk.txt` zmergowanych z `main`, przeniesionych do `data/uk/`):
+
+| | okno (krotsze niz US) | US: CAGR/MaxDD/Sharpe/Calmar | UK: CAGR/MaxDD/Sharpe/Calmar | korelacja miesieczna | mismatch |
+|---|---|---|---|---|---|
+| `best17_a` | 2017-07 do 2026-07 (109 mies.) | 18.13%/-31.19%/0.899/0.581 | 18.49%/-31.10%/0.984/0.594 | **0.955** | 2/109 (1.8%) |
+| `gpm_mid_10` | 2018-05 do 2026-07 (99 mies.) | 5.46%/-7.79%/0.738/0.701 | 6.21%/-7.46%/0.856/0.832 | **0.957** | 0/99 (0%) |
+
+**Bardzo dobra zgodnosc** - gap CAGR/MaxDD ponizej 1 p.p. w obu przypadkach. `best17_a`'s 2
+miesiace mismatch (styczen/luty 2023) to dokladnie moment, gdy `rebound_starter` wszedl w 100%
+`vt.us` (bez mapowania) - stad tez NAJWIEKSZY pojedynczy rozjazd miesieczny calego testu (8.75%,
+luty 2023, jedyny check formalnie ponizej progu `max_single_month_return_diff` w
+`acceptance_spec.json` - przyczyna w pelni zrozumiana, nie ukryta wada). Drugi najwiekszy rozjazd
+(4.67%, pazdziernik 2024, XLK/IVV oba zmapowane) to juz PRAWDZIWY szum sledzenia US ETF vs UCITS,
+nie luka w mapowaniu.
+
+**Mapowania** (zweryfikowane wprost na danych - np. `hyg.us`->`ihyg.uk` NIE `ihya.uk`, bo IHYA to
+udzialowa klasa AKUMULACYJNA/total-return, ktora dalaby sztucznie zawyzony gap wobec `hyg.us`,
+liczonego bez reinwestycji dywidend - potwierdzone porownaniem rocznych stop wzrostu obu klas):
 - `strategies_v2/best17_a/uk_ticker_mapping.json`: XLK->IUIT.UK, IVV->CSPX.UK, DBC->ICOM.UK,
-  IAU->IGLN.UK (VT celowo pominiety - "signal only").
+  IAU->IGLN.UK (VT celowo pominiety - "signal only", mimo ze `vwra.uk` istnieje w danych).
 - `strategies_v2/gpm_mid_10/uk_ticker_mapping.json`: pelne pokrycie wszystkich 12 tickerow
-  (10 ryzykownych + IEF/SHY) - oczekiwany mismatch 0%.
+  (10 ryzykownych + IEF/SHY) - potwierdzony mismatch 0%.
 
-24 nowe testy (`test_uk_mapping.py` - 14 syntetycznych + integration test w
-`test_run_spec_runner.py` z tymczasowo skopiowanymi danymi USA pod nowymi tickerami "*.uk" -
-identyczne ceny pod inna nazwa dają korelacje 1.0/zerowe gapy, dowod poprawnosci przewodowania).
-Gotowy do uruchomienia na prawdziwych danych, jak tylko traf do `data/uk/`.
+30 testow (`test_uk_mapping.py` - 18 syntetycznych, w tym `find_uk_window_start` + integration
+test w `test_run_spec_runner.py` z tymczasowo skopiowanymi danymi USA pod nowymi tickerami "*.uk"
++ 2 end-to-end testy na PRAWDZIWYCH danych US+UK w `test_best17_a_strategy_spec.py`/
+`test_gpm_mid_10_strategy_spec.py`, nowy fixture `uk_data_dir` w `conftest.py`).
 
 ### Gdzie w tym wszystkim jest train/test window i walk-forward?
 

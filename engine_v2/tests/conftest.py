@@ -23,3 +23,11 @@ def us_data_dir() -> Path:
 @pytest.fixture
 def us_universe():
     return ["ivv.us", "xlk.us", "iau.us", "dbc.us", "tlt.us"]
+
+
+@pytest.fixture
+def uk_data_dir() -> Path:
+    path = REPO_ROOT / "data" / "uk"
+    if not path.exists():
+        pytest.skip(f"Brak folderu z danymi UK: {path} (dane nie sa w repo).")
+    return path

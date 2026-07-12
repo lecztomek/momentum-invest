@@ -138,3 +138,32 @@ def test_best17_a_metrics_regression_baseline(us_data_dir):
     assert metrics["cagr"] == pytest.approx(0.1674, abs=0.01)
     assert metrics["max_drawdown"] == pytest.approx(-0.3119, abs=0.01)
     assert metrics["sharpe"] == pytest.approx(0.961, abs=0.05)
+
+
+def test_best17_a_uk_mapping_end_to_end(us_data_dir, uk_data_dir):
+    """"Ostateczny test" (user) - realny `run_spec.json` (uk_mapping.enabled=true) na
+    PRAWDZIWYCH danych US i UK. Zamrozony baseline (2026-07-12): okno UK jest KROTSZE niz US
+    (VT/`vwra.uk` debiutuje najpozniej ze wszystkich uzywanych tickerow), mismatch tylko przy
+    rzadkim rebound_starter->VT (VT celowo bez mapowania UK - "signal only")."""
+    from engine_v2.run_spec import RunSpec
+    from engine_v2.run_spec_runner import run
+    from engine_v2.test_spec import TestSpec
+
+    strategy_dir = REPO_ROOT / "strategies_v2" / "best17_a"
+    test_spec = TestSpec.load(strategy_dir / "test_spec.json")
+    test_spec.uk_mapping.uk_data_dir = str(uk_data_dir)
+
+    original_text = (strategy_dir / "test_spec.json").read_text(encoding="utf-8-sig")
+    test_spec.save(strategy_dir / "test_spec.json")
+    try:
+        run_spec = RunSpec.load(strategy_dir / "run_spec.json")
+        run_spec.mode = "final"
+        result = run(run_spec, strategy_dir)
+    finally:
+        (strategy_dir / "test_spec.json").write_text(original_text, encoding="utf-8")
+
+    uk_result = result["uk_mapping"]
+    assert uk_result["diagnostics"]["unmapped_tickers_used"] == ["vt.us"]
+    assert uk_result["comparison"]["monthly_return_correlation"] > 0.9
+    assert abs(uk_result["comparison"]["cagr_gap"]) < 0.05
+    assert abs(uk_result["comparison"]["max_drawdown_gap"]) < 0.05

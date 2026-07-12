@@ -2,6 +2,66 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-12 (39)
+
+- **PRAWDZIWE DANE UK + "OSTATECZNY TEST"** - user: "Na main powinieneś mieć już dane uk trzeba
+  je włożyć do folderu uk. Niektóre tickery trochę inne ale wybierz najbardziej pasujące
+  mappingi. Pamiętaj że okres uk będzie krótszy - większość danych zaczyna się później."
+  Zmergowano commit "uk data" z `main` (15 plikow `*.uk.txt`), przeniesiono z `data/` do
+  `data/uk/` (konwencja loadera, patrz `csv_loader.py`).
+
+  **Weryfikacja mapowan wprost na danych** (nie zgadywane): `data/uk/ihyg.uk.txt` (2015-03,
+  wzrost ~0.7%/rok) vs `data/uk/ihya.uk.txt` (2017-04, wzrost ~4.6%/rok) - porownanie z realnym
+  `hyg.us` (~1.5%/rok, 2007-2026) potwierdza IHYG jako WLASCIWY odpowiednik (ta sama konwencja
+  "cena bez reinwestycji dywidend" co dane US) - IHYA to udzialowa klasa AKUMULACYJNA (total
+  return), ktora dalaby SZTUCZNIE zawyzony gap vs US. Naprawiono zgadywany wczesniej
+  `gpm_mid_10/uk_ticker_mapping.json` (`hyg.us` bylo blednie `ihzu.uk` - nieistniejacy ticker
+  wymyslony PRZED przyjsciem prawdziwych danych - teraz `ihyg.uk`). Podobnie zweryfikowano
+  `dtla.uk` (TLT, tylko od 2018-05) - jego ujemny zwrot (~-0.89%/rok) NIE jest bledem mapowania,
+  tylko realnym zachowaniem `tlt.us` w TYM SAMYM okresie (~-1.18%/rok, cykl podwyzek stop
+  2018-2026) - potwierdzone bezposrednio.
+
+  **NOWA FUNKCJA `find_uk_window_start`** (`engine_v2/uk_mapping.py`) - user mial racje: "okres
+  uk bedzie krotszy do testow, wiekszosc danych zaczyna sie pozniej" potwierdzilo sie na
+  realnych danych (`vwra.uk` od 2019-07, `dtla.uk` od 2018-05, vs `vt.us`/`tlt.us` od
+  2005-2008). Znajduje najpozniejsza date, od ktorej WSZYSTKIE kiedykolwiek trzymane UK tickery
+  maja juz prawdziwe ceny - bez tego `daily_equity_curve` probowaloby mnozyc przez NaN sprzed
+  debiutu ETF (ten sam typ buga co wczesniejszy, juz naprawiony "0.0 * NaN" - patrz README,
+  "Znany, naprawiony bug (4)"). `run_spec_runner._run_uk_mapping_check` teraz PRZYCINA oba
+  `final_portfolio` (US i UK) do tego okna i liczy OBIE krzywe equity OD NOWA na TYM SAMYM,
+  krotszym oknie - uczciwe porownanie (ta sama liczba miesiecy po obu stronach), nie caly US
+  vs okrojony UK.
+
+  **PRAWDZIWY WYNIK "ostatecznego testu"** (`uk_mapping.enabled: true` w obu strategiach):
+
+  | | okno | US: CAGR/MaxDD/Sharpe/Calmar | UK: CAGR/MaxDD/Sharpe/Calmar | korelacja miesieczna | mismatch |
+  |---|---|---|---|---|---|
+  | `best17_a` | 2017-07 do 2026-07 (109 mies.) | 18.13%/-31.19%/0.899/0.581 | 18.49%/-31.10%/0.984/0.594 | **0.955** | 2/109 (1.8%) |
+  | `gpm_mid_10` | 2018-05 do 2026-07 (99 mies.) | 5.46%/-7.79%/0.738/0.701 | 6.21%/-7.46%/0.856/0.832 | **0.957** | 0/99 (0%) |
+
+  **Bardzo dobra zgodnosc** - korelacja miesieczna ~0.955-0.957, gap CAGR/MaxDD w obu przypadkach
+  ponizej 1 punktu procentowego. `gpm_mid_10` ma PELNE pokrycie (0% mismatch, wszystkie 12
+  tickerow zmapowane). `best17_a` ma 2 miesiace mismatch - dokladnie zdiagnozowane: styczen/luty
+  2023, kiedy `rebound_starter` wszedl w 100% `vt.us` (bez mapowania UK - "signal only") - UK
+  strona w tych miesiacach siedziala w `_CASH` zamiast realnego zwrotu VT, stad NAJWIEKSZY
+  pojedynczy rozjazd miesieczny w calym teście (8.75% w lutym 2023 - jedyny checks, ktory
+  formalnie NIE spelnia progu `max_single_month_return_diff` w acceptance_spec, ale przyczyna
+  jest w pelni zrozumiana i oczekiwana, nie ukryta wada). Drugi najwiekszy rozjazd (4.67%,
+  pazdziernik 2024) to juz PRAWDZIWY szum sledzenia (XLK/IVV byly wtedy trzymane, oba zmapowane)
+  - naturalna roznica miedzy funduszami US i UCITS, nie luka w mapowaniu.
+
+  **Zaktualizowane mapowania** (pelne, zweryfikowane wprost na danych):
+  - `strategies_v2/best17_a/uk_ticker_mapping.json`: XLK->IUIT.UK, IVV->CSPX.UK, DBC->ICOM.UK,
+    IAU->IGLN.UK (VT nadal celowo pominiety, "signal only" - `vwra.uk` istnieje w danych i
+    moglby to pokryc, ale user to jawnie wykluczyl, decyzja uszanowana).
+  - `strategies_v2/gpm_mid_10/uk_ticker_mapping.json`: pelne 12/12, `hyg.us`->`ihyg.uk`
+    (poprawione z bledngo `ihzu.uk`).
+
+  Oba `test_spec.json` maja teraz `uk_mapping.enabled: true` (byly `false` do czasu danych).
+  6 nowych testow (`find_uk_window_start` - 4 syntetyczne w `test_uk_mapping.py`, + 2 end-to-end
+  na PRAWDZIWYCH danych US+UK w `test_best17_a_strategy_spec.py`/`test_gpm_mid_10_strategy_spec.py`,
+  nowy fixture `uk_data_dir` w `conftest.py`). Pelny pakiet testow: 459/459, bez regresji.
+
 ## 2026-07-12 (38)
 
 - **NOWY MECHANIZM: UK MAPPING** (`engine_v2/uk_mapping.py`) - user: "brakuje nam teraz części

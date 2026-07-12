@@ -9,7 +9,7 @@ tickery (ten sam procent kapitalu, inny instrument/gielda/waluta wykonania). Rea
 czy strategia da sie faktycznie wdrozyc na koncie UK (np. XTB) instrumentami dostepnymi tam,
 zamiast tylko na papierze na danych USA.
 
-Mechanizm (2 kroki, oba samodzielne funkcje w tym module):
+Mechanizm (4 samodzielne funkcje w tym module):
 
 1. `remap_final_portfolio(final_portfolio, ticker_mapping)` - dla kazdego okresu, kazdy
    ticker USA z niezerowa waga jest zastapiony jego odpowiednikiem UK z `ticker_mapping`. Jesli
@@ -20,12 +20,21 @@ Mechanizm (2 kroki, oba samodzielne funkcje w tym module):
    dokladnie to mierzy `AcceptanceSpec.UkMappingAcceptance.max_weights_mismatch_months_pct`).
    Zwraca (uk_final_portfolio, diagnostics).
 
-2. `compare_us_vs_uk(...)` - liczy METRICS niezaleznie na obu krzywych equity (US i UK, kazda na
+2. `find_uk_window_start(uk_final_portfolio, uk_daily_prices)` - user: "okres uk bedzie krotszy
+   do testow - wiekszosc danych zaczyna sie pozniej" (potwierdzone na realnych danych: `vwra.uk`
+   od 2019-07, `dtla.uk` od 2018-05, vs `vt.us`/`tlt.us` od 2005-2008). Najpozniejsza data, od
+   ktorej WSZYSTKIE kiedykolwiek trzymane UK tickery maja juz prawdziwe ceny - wywolujacy
+   powinien PRZYCIAC oba `final_portfolio` (US i UK) do tej daty PRZED policzeniem
+   `daily_equity_curve`, inaczej NaN sprzed debiutu danego ETF zarazi cala krzywa equity.
+
+3. `compare_us_vs_uk(...)` - liczy METRICS niezaleznie na obu krzywych equity (US i UK, kazda na
    WLASNYCH, dziennych cenach - `daily_equity_curve`/`compute_metrics` bez zmian, uk_final_portfolio
    ma po prostu inne klucze tickerow w `weights_used_json`) i porownuje: korelacje MIESIECZNYCH
    zwrotow (resampling do miesiecznych punktow zamiast probowac dopasowac dokladne dni handlowe -
    kalendarze gield USA/UK sie ROZNIA, wiec dzienne daty nigdy nie beda idealnie wyrownane),
    najwiekszy pojedynczy rozjazd miesieczny, oraz gap CAGR/MaxDD miedzy wersjami.
+
+4. `check_uk_mapping_criteria(...)` - progi z `AcceptanceSpec.uk_mapping`.
 
 Samodzielna implementacja - nie importuje niczego z `engine/` (starego kodu). Nie laduje
 UK-owych cen samodzielnie - to robi wywolujacy (ten sam `stooq_csv` loader co dla USA, wskazany
@@ -36,8 +45,12 @@ Kontrakt:
     load_ticker_mapping(path: Path) -> Dict[str, str]
     remap_final_portfolio(final_portfolio: pd.DataFrame, ticker_mapping: Dict[str, str])
         -> Tuple[pd.DataFrame, Dict[str, Any]]
+    find_uk_window_start(uk_final_portfolio: pd.DataFrame, uk_daily_prices: pd.DataFrame)
+        -> pd.Timestamp
     compare_us_vs_uk(us_final_portfolio, us_equity_curve, uk_final_portfolio, uk_equity_curve)
         -> Dict[str, Any]
+    check_uk_mapping_criteria(comparison: dict, mismatch_pct: float, criteria: UkMappingAcceptance)
+        -> Dict[str, bool]
 """
 
 from __future__ import annotations
@@ -104,6 +117,42 @@ def remap_final_portfolio(
         "unmapped_tickers_used": sorted(unmapped_tickers_used),
     }
     return uk_final_portfolio, diagnostics
+
+
+def find_uk_window_start(uk_final_portfolio: pd.DataFrame, uk_daily_prices: pd.DataFrame) -> pd.Timestamp:
+    """Najpozniejsza data, od ktorej WSZYSTKIE UK tickery kiedykolwiek faktycznie trzymane
+    (niezerowa waga w ktoromkolwiek okresie) maja juz PRAWDZIWE dane cenowe. User: "okres uk
+    bedzie krotszy do testow - wiekszosc danych zaczyna sie pozniej" - potwierdzone na
+    prawdziwych danych (np. `vwra.uk` zaczyna sie dopiero 2019-07, `dtla.uk` 2018-05, podczas gdy
+    odpowiadajace `vt.us`/`tlt.us` maja dane od 2005-2008).
+
+    Bez tego przyciecia, `daily_equity_curve` probowaloby mnozyc przez CENE SPRZED pierwszego
+    notowania danego UK ETF (NaN w danych zaladowanych przez `stooq_csv`, ktore samo NIE robi
+    zadnego wypelniania wstecz) - `.ffill()` wewnatrz `daily_equity_curve` wypelnia TYLKO w
+    PRZOD, wiec NaN sprzed debiutu tickera zostalby i zarazil cala krzywa equity od tego
+    momentu, dokladnie jak wczesniejszy, juz naprawiony bug '0.0 * NaN' w tym samym module
+    (patrz README, sekcja "Znany, naprawiony bug (4)")."""
+    held_tickers = set()
+    for weights_json in uk_final_portfolio["weights_used_json"]:
+        weights = json.loads(weights_json)
+        held_tickers.update(t for t, w in weights.items() if t != "_CASH" and abs(w) > 1e-12)
+
+    if not held_tickers:
+        raise ValueError(
+            "find_uk_window_start: uk_final_portfolio nigdy nie trzyma zadnego aktywa (same _CASH?) - "
+            "nie ma czego porownywac."
+        )
+
+    starts = []
+    for ticker in held_tickers:
+        if ticker not in uk_daily_prices.columns:
+            raise ValueError(f"find_uk_window_start: brak danych cenowych dla '{ticker}' w uk_daily_prices.")
+        first_valid = uk_daily_prices[ticker].first_valid_index()
+        if first_valid is None:
+            raise ValueError(f"find_uk_window_start: '{ticker}' nie ma ANI JEDNEJ prawdziwej ceny w uk_daily_prices.")
+        starts.append(first_valid)
+
+    return max(starts)
 
 
 def _monthly_returns(equity_curve: pd.DataFrame) -> pd.Series:

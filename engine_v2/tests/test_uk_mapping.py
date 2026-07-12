@@ -15,6 +15,7 @@ from engine_v2.acceptance_spec import UkMappingAcceptance
 from engine_v2.uk_mapping import (
     check_uk_mapping_criteria,
     compare_us_vs_uk,
+    find_uk_window_start,
     load_ticker_mapping,
     remap_final_portfolio,
 )
@@ -132,6 +133,64 @@ def test_remap_diagnostics_counts_across_multiple_periods():
 def test_remap_empty_final_portfolio_raises():
     with pytest.raises(ValueError, match="pusty final_portfolio"):
         remap_final_portfolio(pd.DataFrame(columns=["date", "weights_used_json", "trade_cost"]), {})
+
+
+# ---------------------------------------------------------------- find_uk_window_start
+
+def _uk_prices(columns_first_dates):
+    """columns_first_dates: dict ticker -> pierwsza data z prawdziwa cena. Kazdy ticker dostaje
+    NaN przed swoja wlasna data, potem staly szereg cen."""
+    idx = pd.date_range("2015-01-01", periods=4000, freq="D")
+    df = pd.DataFrame(index=idx)
+    for ticker, first_date in columns_first_dates.items():
+        series = pd.Series(100.0, index=idx)
+        series[series.index < pd.Timestamp(first_date)] = float("nan")
+        df[ticker] = series
+    return df
+
+
+def test_find_uk_window_start_is_latest_debut_among_held_tickers():
+    """User: 'okres uk bedzie krotszy do testow - wiekszosc danych zaczyna sie pozniej' -
+    rdzen wymagania: jesli KTORYKOLWIEK trzymany ticker debiutuje pozno (np. odpowiednik VT),
+    to on wyznacza start calego porownania, nie najwczesniejszy z grupy."""
+    fp = _final_portfolio(
+        [
+            ("2021-01-01", {"iuit.uk": 0.5, "vwra.uk": 0.5}, 0.0),
+            ("2021-02-01", {"iuit.uk": 1.0}, 0.0),
+        ]
+    )
+    prices = _uk_prices({"iuit.uk": "2015-12-04", "vwra.uk": "2019-07-26"})
+
+    start = find_uk_window_start(fp, prices)
+
+    assert start == pd.Timestamp("2019-07-26")
+
+
+def test_find_uk_window_start_ignores_tickers_never_held():
+    """Ticker BEZ realnej ceny wczesnie, ale ktory NIGDY nie jest trzymany w portfelu, nie
+    powinien ograniczac okna - tylko FAKTYCZNIE uzywane tickery sie licza."""
+    fp = _final_portfolio([("2021-01-01", {"iuit.uk": 1.0}, 0.0)])
+    prices = _uk_prices({"iuit.uk": "2015-12-04", "vwra.uk": "2019-07-26"})  # vwra.uk nigdy nie trzymany
+
+    start = find_uk_window_start(fp, prices)
+
+    assert start == pd.Timestamp("2015-12-04")
+
+
+def test_find_uk_window_start_missing_ticker_raises():
+    fp = _final_portfolio([("2021-01-01", {"brak.uk": 1.0}, 0.0)])
+    prices = _uk_prices({"iuit.uk": "2015-12-04"})
+
+    with pytest.raises(ValueError, match="brak danych cenowych"):
+        find_uk_window_start(fp, prices)
+
+
+def test_find_uk_window_start_all_cash_raises():
+    fp = _final_portfolio([("2021-01-01", {"_CASH": 1.0}, 0.0)])
+    prices = _uk_prices({"iuit.uk": "2015-12-04"})
+
+    with pytest.raises(ValueError, match="nigdy nie trzyma zadnego aktywa"):
+        find_uk_window_start(fp, prices)
 
 
 # ---------------------------------------------------------------- compare_us_vs_uk
