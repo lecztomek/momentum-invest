@@ -1588,10 +1588,46 @@ portfel. `best17_a_tlt_hedge` ma DODATKOWO własny, bardziej szczegółowy test
 
 ## Co jeszcze nie istnieje
 
-Z pierwotnego planu: **REPORTING**, **FORWARD TEST/PAPER** (na wieksza odlegloscie). Budowane
-etapami, blok po bloku, każdy z własnym design-review przed kodem. **UK MAPPING** juz ISTNIEJE
-(patrz sekcja "UK MAPPING" nizej) - zbudowany 2026-07-12 (38), zweryfikowany na prawdziwych
-danych `data/uk/` (39) - dobra zgodnosc US/UK (korelacja miesieczna ~0.955-0.957).
+Z pierwotnego planu: **FORWARD TEST/PAPER** (na wieksza odlegloscie). Budowane etapami, blok po
+bloku, każdy z własnym design-review przed kodem. **UK MAPPING** juz ISTNIEJE (patrz sekcja "UK
+MAPPING" nizej) - zbudowany 2026-07-12 (38), zweryfikowany na prawdziwych danych `data/uk/` (39) -
+dobra zgodnosc US/UK (korelacja miesieczna ~0.955-0.969). **REPORTING** rowniez juz ISTNIEJE -
+patrz sekcja "Wygenerowane pliki wynikowe (`results/`)" nizej (2026-07-12 (42)).
+
+### Wygenerowane pliki wynikowe (`results/`)
+
+User: "Dlaczego w repo nie mamy zadnych plikow wynikowych z testow strategii - powinny byc
+wrzucone zeby nie trzeba bylo tego odpalac co chwile ponownie". Dotad KAZDA liczba w tym pliku i
+w CHANGELOG.md pochodzila z ad-hoc skryptu uruchamianego recznie na zywo i wklejanego jako proza -
+brak jednego, wygenerowanego, maszynowo czytelnego zrodla prawdy per strategia.
+
+`engine_v2/generate_results.py` generuje:
+- `results/<strategia>.json` - dla KAZDEJ zapisanej strategii (pojedynczej - uruchomionej przez
+  `run_spec_runner.run()`, mode "final"; laczonej - `run_combined_pipeline` + metryki z zalozonym
+  rocznym podatkiem 19%, ta sama konwencja co uzywana w calej sesji dla headline'owych wynikow
+  portfeli laczonych) podsumowanie liczbowe: `metrics`/`metrics_pre_tax`/`acceptance`/
+  `named_periods`/`uk_mapping` - BEZ surowych `equity_curve`/`final_portfolio` (te da sie
+  odtworzyc z kodu w kazdej chwili, tu chodzi o zamrozenie WYNIKU, nie duplikowanie danych
+  wejsciowych).
+- `results/SUMMARY.md` - jedna zbiorcza tabela (CAGR/MaxDD/Sharpe/Calmar/turnover/UK mapping pass,
+  posortowane wg Calmar) do przegladania bez odpalania czegokolwiek.
+
+Pomija foldery-szkielety bez wlasnego `run_spec.json`/`combined_spec.json` (np. `vaa_g4_ema`,
+uzywane tylko jako skladnik innej strategii) oraz jawne przyklady demo (`example_strategy`,
+`example_strategy_b`, `combined_example`).
+
+NIE jest czescia pytest/CI (pelny backtest + UK mapping na ~46 strategiach jest wolny, ~1-2 min) -
+`engine_v2/tests/test_generate_results.py` sprawdza tylko strukture (serializacja JSON,
+dyskretyzacja folderow demo) bez pelnego przebiegu. Nalezy uruchomic recznie po kazdej zmianie
+strategii/bloku silnika, ktora wplywa na wyniki, i zacommitowac nowy wynik:
+
+```
+.venv/bin/python3 -m engine_v2.generate_results
+```
+
+Uruchomienie 2026-07-12 (42) potwierdza znane liczby sesji - `gpm_best17_a` (sesyjny rekord
+Calmar) wychodzi na #1 w `results/SUMMARY.md` (Calmar 0.786), zaraz za nim `gpm_mid_10_best17_a`
+(kandydat produkcyjny, Calmar 0.716).
 
 ### Tryby uzycia pipeline'u (docelowo)
 

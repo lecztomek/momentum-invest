@@ -1,0 +1,26 @@
+{
+  "annual_tax_rate_assumed": 0.19,
+  "metrics": {
+    "annual_turnover": 4.349370688530686,
+    "best_year_return": 0.18920704582811876,
+    "cagr": 0.07727249127967029,
+    "calmar": 0.4083303258493033,
+    "max_consecutive_negative_months": 5,
+    "max_drawdown": -0.18924014795851374,
+    "max_time_underwater_months": 29,
+    "sharpe": 0.6737615115950107,
+    "worst_year_return": -0.12195038646888745
+  },
+  "metrics_pre_tax": {
+    "annual_turnover": 4.349370688530686,
+    "best_year_return": 0.21038930484823304,
+    "cagr": 0.07933348380124716,
+    "calmar": 0.42165633547010933,
+    "max_consecutive_negative_months": 5,
+    "max_drawdown": -0.1881472591009391,
+    "max_time_underwater_months": 31,
+    "sharpe": 0.695741413680682,
+    "worst_year_return": -0.14717155684999272
+  },
+  "mode": "combined_final"
+}

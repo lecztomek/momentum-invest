@@ -2,6 +2,36 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-12 (42)
+
+- **WYGENEROWANE PLIKI WYNIKOWE (`results/`)** - user: "Dlaczego w repo nie mamy zadnych plikow
+  wynikowych z testow strategii - powinny byc wrzucone zeby nie trzeba bylo tego odpalac co
+  chwile ponownie". Trafna obserwacja - dotad KAZDA liczba w tym pliku i w README.md pochodzila z
+  ad-hoc skryptu uruchamianego na zywo i wklejanego recznie jako proza; README od poczatku
+  oznaczal "FINAL REPORT: reporting ❌" jako niezbudowana czesc pipeline'u.
+
+  Nowy `engine_v2/generate_results.py` - skrypt (NIE test, NIE czesc CI - pelny backtest+UK
+  mapping na ~46 strategiach jest wolny, ~1-2 min) generujacy:
+  - `results/<strategia>.json` per zapisana strategia (17 pojedynczych przez
+    `run_spec_runner.run()`, 29 laczonych przez `run_combined_pipeline` + metryki z zalozonym
+    rocznym podatkiem 19% - ta sama konwencja co dla headline'owych wynikow portfeli laczonych
+    w tej sesji) - `metrics`/`metrics_pre_tax`/`acceptance`/`named_periods`/`uk_mapping`, BEZ
+    surowych `equity_curve`/`final_portfolio` (zamrozony WYNIK, nie duplikat danych wejsciowych).
+  - `results/SUMMARY.md` - jedna zbiorcza tabela CAGR/MaxDD/Sharpe/Calmar/turnover/UK mapping,
+    posortowana wg Calmar.
+
+  Pomija foldery-szkielety (`vaa_g4_ema`, `daa_g4_ema`, `example_strategy_b` - brak
+  `run_spec.json`/`combined_spec.json`, uzywane tylko jako skladnik innej strategii) i jawne demo
+  (`example_strategy`, `combined_example`).
+
+  Uruchomienie potwierdza znane liczby sesji bez rozjazdow - `gpm_best17_a` (sesyjny rekord
+  Calmar 0.786) wychodzi na #1 w `SUMMARY.md`, `gpm_mid_10_best17_a` (kandydat produkcyjny,
+  Calmar 0.716) na #2. Nowy plik testowy `engine_v2/tests/test_generate_results.py` (4 testy -
+  serializacja JSON numpy->natywne typy, `_summary_row`, dyskretyzacja folderow demo) - CELOWO
+  bez pelnego przebiegu `main()` w pytest (duplikowaloby juz istniejace
+  `test_all_combined_specs.py`/`test_*_strategy_spec.py`, tylko wolniej). Pelny pakiet testow:
+  467/467, bez regresji.
+
 ## 2026-07-12 (41)
 
 - **VT dostaje mapowanie UK (`vwra.uk`)** - user zapytal: "Czemu celowo bez mapowania vt mapujemy

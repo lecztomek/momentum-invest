@@ -1,0 +1,70 @@
+{
+  "acceptance": {
+    "max_annual_turnover": true,
+    "max_consecutive_negative_months": true,
+    "max_drawdown": true,
+    "max_time_underwater_months": true,
+    "min_cagr": true,
+    "min_calmar": true,
+    "min_sharpe": true
+  },
+  "metrics": {
+    "annual_turnover": 3.8090159271899884,
+    "best_year_return": 0.2102224558572301,
+    "cagr": 0.06766773662330716,
+    "calmar": 0.34361804826462244,
+    "max_consecutive_negative_months": 4,
+    "max_drawdown": -0.19692718984072632,
+    "max_time_underwater_months": 35,
+    "sharpe": 0.5626950400082587,
+    "worst_year_return": -0.10335373376383028
+  },
+  "metrics_pre_tax": {
+    "annual_turnover": 3.8090159271899884,
+    "best_year_return": 0.2470336994430442,
+    "cagr": 0.06989431500470777,
+    "calmar": 0.35492465545889285,
+    "max_consecutive_negative_months": 6,
+    "max_drawdown": -0.19692718984072632,
+    "max_time_underwater_months": 36,
+    "sharpe": 0.581433659149319,
+    "worst_year_return": -0.12073735709751043
+  },
+  "mode": "final",
+  "named_periods": {
+    "gfc_crash": {
+      "checks": {
+        "min_cagr": true
+      },
+      "covered": true,
+      "metrics": {
+        "annual_turnover": 3.724117647058823,
+        "best_year_return": 0.0890650233646153,
+        "cagr": 0.0486289785594014,
+        "calmar": 0.32393622293780616,
+        "max_consecutive_negative_months": 4,
+        "max_drawdown": -0.15011898983812588,
+        "max_time_underwater_months": 9,
+        "sharpe": 0.4032176018856899,
+        "worst_year_return": -0.02595542709337817
+      }
+    },
+    "inflation_bear": {
+      "checks": {
+        "max_drawdown": true
+      },
+      "covered": true,
+      "metrics": {
+        "annual_turnover": 4.374251497005988,
+        "best_year_return": -0.06894370423458507,
+        "cagr": -0.06972639347875909,
+        "calmar": -0.3540719467695316,
+        "max_consecutive_negative_months": 3,
+        "max_drawdown": -0.19692718984072632,
+        "max_time_underwater_months": 9,
+        "sharpe": -0.463720537221673,
+        "worst_year_return": -0.06894370423458507
+      }
+    }
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "acceptance": {
+    "max_annual_turnover": true,
+    "max_consecutive_negative_months": true,
+    "max_drawdown": true,
+    "max_time_underwater_months": true,
+    "min_cagr": true,
+    "min_calmar": true,
+    "min_sharpe": true
+  },
+  "metrics": {
+    "annual_turnover": 4.387293799772469,
+    "best_year_return": 0.13251071807038528,
+    "cagr": 0.052992691747332676,
+    "calmar": 0.40644963507699383,
+    "max_consecutive_negative_months": 5,
+    "max_drawdown": -0.1303794792122135,
+    "max_time_underwater_months": 28,
+    "sharpe": 0.6829189153715706,
+    "worst_year_return": -0.03130744482202974
+  },
+  "metrics_pre_tax": {
+    "annual_turnover": 4.387293799772469,
+    "best_year_return": 0.1493472511610936,
+    "cagr": 0.0544809720370556,
+    "calmar": 0.4178646238368473,
+    "max_consecutive_negative_months": 5,
+    "max_drawdown": -0.13037947921221338,
+    "max_time_underwater_months": 28,
+    "sharpe": 0.7067368441915961,
+    "worst_year_return": -0.04209110586578224
+  },
+  "mode": "final",
+  "uk_mapping": {
+    "acceptance": {
+      "max_cagr_gap_vs_us": true,
+      "max_drawdown_gap_vs_us": true,
+      "max_single_month_return_diff": false,
+      "max_weights_mismatch_months_pct": true,
+      "min_monthly_return_correlation": true
+    },
+    "comparison": {
+      "cagr_gap": 0.007470963597945746,
+      "max_drawdown_gap": 0.0032523551033186715,
+      "max_single_month_return_diff": 0.03224735810567958,
+      "monthly_return_correlation": 0.9573748664924968,
+      "n_common_months": 97,
+      "uk_metrics": {
+        "annual_turnover": 4.301860543077439,
+        "best_year_return": 0.13500617145719507,
+        "cagr": 0.062069975900346464,
+        "calmar": 0.8319977824157472,
+        "max_consecutive_negative_months": 3,
+        "max_drawdown": -0.07460353526438879,
+        "max_time_underwater_months": 21,
+        "sharpe": 0.8564852706803144,
+        "worst_year_return": -0.00038459984618399723
+      },
+      "us_metrics": {
+        "annual_turnover": 4.301860543077439,
+        "best_year_return": 0.13250930945099126,
+        "cagr": 0.05459901230240072,
+        "calmar": 0.7012829991993378,
+        "max_consecutive_negative_months": 3,
+        "max_drawdown": -0.07785589036770746,
+        "max_time_underwater_months": 28,
+        "sharpe": 0.7384775458896818,
+        "worst_year_return": -0.007828258532176502
+      }
+    },
+    "diagnostics": {
+      "mismatch_dates": [],
+      "mismatch_pct": 0.0,
+      "mismatch_periods": 0,
+      "total_periods": 99,
+      "unmapped_tickers_used": []
+    },
+    "n_periods_in_window": 99,
+    "uk_window_start": "2018-05-15T00:00:00"
+  }
+}
