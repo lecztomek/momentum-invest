@@ -2,6 +2,60 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-11 (35)
+
+- **BUGFIX `gpm_breadth_protective_split`: `protective_share` nie byl przyciety do [0.0, 1.0] -
+  niezamierzona dzwignia** - znalezione przy sprawdzaniu odpornosci OBU strategii skladowych
+  mistrza sesji (user: "pokaz wszystkie odpornosci rodziny zarowno jedna i druga strategie").
+
+  **Jak znalezione**: ponowne uruchomienie oficjalnego `param_stability` (`top_n_risky` x
+  `full_protective_max_n`, ten sam sweep co wczesniej w sesji) na AKTUALNYM `gpm` (13 aktywow
+  ryzykownych po dodaniu `xle.us`, patrz (29)) dalo `relative_drop = 73.5%` - DRASTYCZNIE gorsze
+  niz wczesniej udokumentowane 9.6% ("najbardziej stabilna rodzina w repo"). Zbadanie pelnej
+  tabeli sweepu pokazalo ostry "urwisko" dokladnie miedzy `full_protective_max_n=5` (CAGR solo
+  `gpm` **17.95%**, Sharpe 1.060) a `full_protective_max_n=6` (domyslne, CAGR 5.39%, Sharpe
+  0.675) - roznica NIEWSPOLMIERNA do zmiany parametru o "1".
+
+  **Przyczyna**: wzor `protective_share = (len(risky_assets) - n) / protective_scale_denominator`
+  (gałąź "n > full_protective_max_n") nie jest matematycznie ograniczony do 1.0. Przy 13 aktywach
+  ryzykownych, `full_protective_max_n=5`, `protective_scale_denominator=6`: dla `n=6` (tuz powyzej
+  progu) wychodzi `(13-6)/6 = 1.1667` - **wieksze niz 1.0**. Bez przyciecia caly udzial trafial w
+  jedno aktywo ochronne z waga 116.67% (suma wag portfela w tym miesiacu > 1.0 - bezplatna,
+  niezamierzona dzwignia). Potwierdzone bezposrednio: 14/229 miesiecy z suma wag > 1.0 (max
+  1.1667). To NIE byla "lepsza" wartosc parametru - to byl backtest wykorzystujacy dzwignie,
+  ktorej realnie nie ma.
+
+  Z 12 aktywami (PRZED `xle.us`, cala sesja do (29)) ten sam sweep `full_protective_max_n=[5,6,7]`
+  PRZYPADKIEM nigdy nie trafial w strefe przepelnienia (przy 12 aktywach przedzial "n scisle
+  miedzy full_protective_max_n a `len(risky)-denominator`" wychodzi pusty dla calkowitych `n`,
+  wiec bug byl DOTAD NIEWYKRYTY - dopiero 13. aktywo (`xle.us`) przesunelo te granice na liczbe
+  calkowita i ujawnilo dziure).
+
+  **Naprawa**: `protective_share = max(0.0, min(1.0, protective_share))` w gałęzi "else"
+  (`engine_v2/blocks/portfolio_risk_engine/gpm_breadth_protective_split.py`). Nowy test
+  regresyjny `test_gpm_protective_share_clipped_to_one_no_implicit_leverage`
+  (`test_gpm_components.py`) odtwarza dokladnie ten scenariusz (13 aktywow, `n=6`,
+  `full_protective_max_n=5` -> bez poprawki 1.1667, z poprawka dokladnie 1.0).
+
+  **Wplyw na WDROZONA konfiguracje: ZERO.** Domyslny `gpm`/`gpm_best17_a`
+  (`full_protective_max_n=6`) NIGDY nie wchodzil w strefe przepelnienia (przy 6 przedzial jest
+  rowniez pusty dla liczb calkowitych) - zweryfikowane bezposrednio, `gpm_best17_a`
+  (`signal_tilted_capital_weights`) daje DOKLADNIE te same liczby co przed poprawka: CAGR 10.38%,
+  MaxDD -13.22%, Sharpe 1.011, Calmar 0.786. Mistrz sesji NIE zalezal od tego buga.
+
+  **Odpornosc PO poprawce (prawdziwa, nieskorumpowana)**: `gpm` `relative_drop = 8.5%`
+  (`top_n_risky` x `full_protective_max_n`) - domyslna konfiguracja (`top_n_risky=3`,
+  `full_protective_max_n=6`) okazuje sie FAKTYCZNIE NAJLEPSZA w calej rodzinie (nie tylko blisko
+  plateau, `gap_to_best=0.0`), plateau obejmuje 3/9 wariantow (caly wiersz `top_n_risky=3`) -
+  wniosek "najbardziej stabilna rodzina w repo" NADAL AKTUALNY, teraz na prawdziwych, poprawnych
+  liczbach.
+
+  **Odpornosc `best17_a`** (ten sam oficjalny sweep, `min_score_gap` x `canary.bad_threshold`,
+  PO bugfixach gate'u/histerezy z tej samej sesji): `relative_drop = 23.7%` (PASS, prog 30%,
+  blisko wczesniej udokumentowanych 26.7% sprzed tamtych bugfixow - stabilne, spojny wniosek).
+
+  Pelny pakiet testow: 428/428 (427 + 1 nowy), bez regresji.
+
 ## 2026-07-11 (34)
 
 - **Sprawdzona odporność (param stability) mistrza sesji `gpm_best17_a`

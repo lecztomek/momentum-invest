@@ -1281,8 +1281,13 @@ opisano: 100% w IEF przez caly 2008 i marzec-czerwiec 2020, ciagle skalowanie wi
 (0.167/0.333/0.5/0.833/1.0), nie tylko binarne 0%/100%.
 
 **Param stability** (sweep `top_n_risky` x `full_protective_max_n`, 9 wariantow):
-`relative_drop = 9.6%` - **NAJBARDZIEJ STABILNA rodzina parametrow w calym repo** (dla
-porownania: `best17_a` 26.7%, `all_weather_4` 46.1%, `best17_b` 30.7%).
+`relative_drop = 9.6%` (na 12-aktywowym uniwersum, PRZED dodaniem `xle.us`) -
+**NAJBARDZIEJ STABILNA rodzina parametrow w calym repo** (dla porownania: `best17_a` 26.7%,
+`all_weather_4` 46.1%, `best17_b` 30.7%). **Ponownie zweryfikowane 2026-07-11 (35), patrz
+CHANGELOG, na 13-aktywowym uniwersum (po `xle.us`) i PO bugfixie `gpm_breadth_protective_split`**
+(patrz nizej) - `relative_drop = 8.5%`, konfiguracja domyslna (`top_n_risky=3`,
+`full_protective_max_n=6`) faktycznie NAJLEPSZA w calej rodzinie (nie tylko blisko plateau) -
+wniosek "najbardziej stabilna rodzina w repo" NADAL AKTUALNY.
 
 16 nowych testow: `test_gpm_components.py` (4 nowe bloki na danych syntetycznych - usrednianie
 okien, korelacja idealna/odwrotna, iloczyn+maskowanie, pelna/czesciowa ochrona, fallback do

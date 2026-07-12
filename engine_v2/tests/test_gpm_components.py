@@ -161,6 +161,34 @@ def test_gpm_partial_protection_scales_with_breadth_and_splits_risky_equally():
     assert out.loc[idx[0]].sum() == pytest.approx(1.0)
 
 
+def test_gpm_protective_share_clipped_to_one_no_implicit_leverage():
+    """BUGFIX 2026-07-11 (patrz CHANGELOG) - (len(risky_assets)-n)/protective_scale_denominator
+    NIE jest matematycznie ograniczony do 1.0 (np. n tuz powyzej full_protective_max_n, gdy
+    denominator < len(risky_assets)-full_protective_max_n) - bez przyciecia dawalo wage aktywa
+    ochronnego > 100% (niezamierzona dzwignia, suma wag portfela > 1.0). Zlapane przy sprawdzaniu
+    odpornosci parametrow gpm (13 aktywow po dodaniu xle.us, sweep full_protective_max_n=5)."""
+    idx = pd.date_range("2021-01-01", periods=1, freq="MS")
+    risky = [f"r{i}" for i in range(1, 14)]  # 13 aktywow ryzykownych, jak gpm PO dodaniu xle.us
+    protective = ["p1"]
+    prices = pd.DataFrame({t: 1.0 for t in risky + protective}, index=idx)
+    md = MarketData(prices=prices, returns=pd.DataFrame())
+    # n=6 dodatnich z 13 (r1..r6), full_protective_max_n=5 (n=6 > 5, wiec branch "else"),
+    # protective_scale_denominator=6 -> surowy wzor (13-6)/6 = 1.1667 (> 1.0 bez przyciecia)
+    scores = {f"r{i}": (0.1 if i <= 6 else -0.1) for i in range(1, 14)}
+    scores["p1"] = 0.05
+    score = pd.DataFrame({k: [v] for k, v in scores.items()}, index=idx)
+    target_weights = _make_target_weights(idx, risky + protective)
+
+    out = gpm_breadth_protective_split(
+        target_weights, md, {}, score,
+        {"risky_assets": risky, "protective_assets": protective, "top_n_risky": 3,
+         "full_protective_max_n": 5, "protective_scale_denominator": 6},
+    )
+
+    assert out.loc[idx[0], "p1"] == pytest.approx(1.0)  # przyciete do 1.0, NIE 1.1667
+    assert out.loc[idx[0]].sum() == pytest.approx(1.0)  # zero niezamierzonej dzwigni
+
+
 def test_gpm_falls_back_to_cash_when_no_valid_protective_candidate():
     idx = pd.date_range("2021-01-01", periods=1, freq="MS")
     risky = ["r1", "r2"]

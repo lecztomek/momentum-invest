@@ -20,6 +20,24 @@ Brak wystarczajacej historii (NaN) - bezpiecznie: aktywa z NaN score nigdy nie l
 i najlepsze aktywo ochronne pomijaja NaN); jesli brak JAKIEGOKOLWIEK uzywalnego kandydata w danej
 czesci (ochronnej albo ryzykownej), ta czesc kapitalu idzie w "_CASH" zamiast zgadywac.
 
+**BUGFIX (2026-07-11, patrz CHANGELOG)**: `protective_share` musi byc PRZYCIETY do [0.0, 1.0].
+Wzor `(len(risky_assets) - n) / protective_scale_denominator` NIE jest matematycznie ograniczony
+do 1.0 - gdy `full_protective_max_n < len(risky_assets) - protective_scale_denominator`, dla `n`
+tuz powyzej `full_protective_max_n` wychodzi > 1.0 (np. 13 aktywow ryzykownych,
+`full_protective_max_n=5`, `protective_scale_denominator=6`, `n=6`: `(13-6)/6 = 1.1667`).
+Bez przyciecia to dawalo NIEISTNIEJACA DZWIGNIE (waga aktywa ochronnego > 100%, suma wag portfela
+> 1.0) - zlapane przy sprawdzaniu odpornosci parametrow `gpm` (user: "pokaz odpornosc rodziny") -
+sweep `full_protective_max_n=[5,6,7]` na 13-aktywowym uniwersum (po dodaniu `xle.us`, patrz (29))
+dawal absurdalnie "lepszy" wynik dla `full_protective_max_n=5` (CAGR 17.95% vs realistyczne 5.39%
+dla domyslnego 6) - okazalo sie to bezplatna, niezamierzona dzwignia w 14/229 miesiecy (max suma
+wag 1.1667), nie prawdziwa przewaga parametru. Z 12 aktywami (PRZED `xle.us`) ten sam sweep
+przypadkiem NIGDY nie trafial w strefe przepelnienia (przy `full_protective_max_n=5` przedzial
+"n w (5,6)" jest pusty dla liczb calkowitych) - stad bug byl dotad NIEWYKRYTY. Domyslna
+konfiguracja `gpm` (`full_protective_max_n=6`) NIGDY nie wchodzila w strefe przepelnienia (przy
+niej przedzial przepelnienia "n w (6,7)" tez jest pusty) - wiec ten bugfix NIE zmienia wyniku
+`gpm`/`gpm_best17_a` w ich faktycznie uzywanej konfiguracji, tylko koryguje wynik dla WARTOSCI
+PARAMETRU spoza domyslnej (w tym przypadku `allowed_param_families` sweep).
+
 Samodzielna implementacja - nie importuje niczego z `engine/` (starego kodu).
 
 Kontrakt: (target_weights, market_data, indicator_set, score, params) -> TargetWeights.
@@ -76,6 +94,7 @@ def gpm_breadth_protective_split(
             protective_share = 1.0
         else:
             protective_share = (len(risky_assets) - n) / protective_scale_denominator
+            protective_share = max(0.0, min(1.0, protective_share))
 
         protective_scores = score.loc[date, protective_assets].dropna()
         best_protective = protective_scores.idxmax() if not protective_scores.empty else None
