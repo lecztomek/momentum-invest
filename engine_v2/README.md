@@ -1606,17 +1606,38 @@ brak jednego, wygenerowanego, maszynowo czytelnego zrodla prawdy per strategia.
   `run_spec_runner.run()`, mode "final"; laczonej - `run_combined_pipeline` + metryki z zalozonym
   rocznym podatkiem 19%, ta sama konwencja co uzywana w calej sesji dla headline'owych wynikow
   portfeli laczonych) podsumowanie liczbowe: `metrics`/`metrics_pre_tax`/`acceptance`/
-  `named_periods`/`uk_mapping` - BEZ surowych `equity_curve`/`final_portfolio` (te da sie
-  odtworzyc z kodu w kazdej chwili, tu chodzi o zamrozenie WYNIKU, nie duplikowanie danych
-  wejsciowych).
+  `uk_mapping` - BEZ surowych `equity_curve`/`final_portfolio` (te da sie odtworzyc z kodu w
+  kazdej chwili, tu chodzi o zamrozenie WYNIKU, nie duplikowanie danych wejsciowych). PLUS
+  (2026-07-12 (43), user: "brakuje wynikow np named periods danych o stabilnosci"):
+  - `named_periods_all` - metryki na WSZYSTKICH 4 `KNOWN_PERIODS`, niezaleznie od tego, co
+    strategia deklaruje w swoim (czesto pustym) `acceptance_spec.json` - porownywalne 1:1 miedzy
+    WSZYSTKIMI strategiami.
+  - `train_oos` - metryki osobno na `train_window`/`test_window`. Dla portfeli LACZONYCH (brak
+    wlasnego `TestSpec`) - okna skladowych strategii, TYLKO gdy WSZYSTKIE identyczne, inaczej
+    `null`.
+  - `param_stability_full` (TYLKO pojedyncze strategie z `allowed_param_families`) - PELNY grid
+    sweep x walk-forward (`run_spec_runner._run_search`), nie tylko pojedynczy `relative_drop` -
+    user wczesniej w sesji: "a nie pokazales pelnej tabeli odpornosci".
+  - `capital_weight_sensitivity` (TYLKO portfele laczone `fixed_capital_weights` z DOKLADNIE 2
+    skladowymi, 25/29) - sweep udzialu kapitalu pierwszej skladowej w [0.30..0.70], ten sam
+    wzorzec co recznie liczony sweep dla `gpm_best17_a` (CHANGELOG (31)).
 - `results/SUMMARY.md` - jedna zbiorcza tabela (CAGR/MaxDD/Sharpe/Calmar/turnover/UK mapping pass,
   posortowane wg Calmar) do przegladania bez odpalania czegokolwiek.
+
+**Odkryta przy okazji obserwacja** - sweep wagi dla `gpm_mid_10_best17_a` (kandydat produkcyjny)
+pokazuje, ze zapisane 50/50 NIE jest lokalnym optimum Calmar w prostym `fixed_capital_weights`:
+najlepszy Calmar w sweepie wychodzi przy **40/60** (best17_a/gpm_mid_10) - Calmar 0.770 vs
+zapisane 50/50 - Calmar 0.716. User wybral 50/50 swiadomie dla PROSTOTY wdrozenia, nie dla
+maksimum Calmar (to i tak nalezy do `gpm_best17_a`/`signal_tilted_capital_weights`) - odnotowane
+jako obserwacja, nie zmienione automatycznie. Pelny sweep w `results/gpm_mid_10_best17_a.json`
+(`capital_weight_sensitivity`).
 
 Pomija foldery-szkielety bez wlasnego `run_spec.json`/`combined_spec.json` (np. `vaa_g4_ema`,
 uzywane tylko jako skladnik innej strategii) oraz jawne przyklady demo (`example_strategy`,
 `example_strategy_b`, `combined_example`).
 
-NIE jest czescia pytest/CI (pelny backtest + UK mapping na ~46 strategiach jest wolny, ~1-2 min) -
+NIE jest czescia pytest/CI (pelny backtest + UK mapping + param stability sweep na ~46
+strategiach jest wolny, ~kilkanascie minut po rozszerzeniu (43), bylo ~1-2 min) -
 `engine_v2/tests/test_generate_results.py` sprawdza tylko strukture (serializacja JSON,
 dyskretyzacja folderow demo) bez pelnego przebiegu. Nalezy uruchomic recznie po kazdej zmianie
 strategii/bloku silnika, ktora wplywa na wyniki, i zacommitowac nowy wynik:

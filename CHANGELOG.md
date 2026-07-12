@@ -2,6 +2,46 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-12 (43)
+
+- **`results/` ROZSZERZONE** - user (zaraz po (42)): "Brakuje wyników dla gpm_mid_10_best17_a np
+  named periods danych o stabilności etc". Trafne - `_generate_combined` liczyl dotad TYLKO
+  `metrics`/`metrics_pre_tax`, a `_generate_single` polegal WYLACZNIE na `run_spec_runner`'s mode
+  "final" (brak `param_stability` - to wymaga mode "search"; `named_periods` byl pusty `{}` w
+  acceptance_spec.json wiekszosci strategii, wiec i tak nigdy nie liczony).
+
+  Kazdy `results/<strategia>.json` ma teraz DODATKOWO:
+  - `named_periods_all` - metryki na WSZYSTKICH 4 `KNOWN_PERIODS` (gfc_crash/post_gfc_recovery/
+    covid_crash_rebound/inflation_bear), niezaleznie od tego, co strategia deklarowala w swoim
+    (czesto pustym) `acceptance_spec.json` - porownywalne 1:1 miedzy WSZYSTKIMI strategiami.
+  - `train_oos` - metryki osobno na `train_window`/`test_window` z `test_spec.json`. Dla portfeli
+    LACZONYCH (nie maja wlasnego `TestSpec`) - uzywa okien skladowych strategii, TYLKO gdy
+    WSZYSTKIE sa identyczne (inaczej `null`, z jasnym powodem w kodzie generatora).
+  - `param_stability_full` (TYLKO pojedyncze strategie z `allowed_param_families`) - PELNY grid
+    sweep x walk-forward (`run_spec_runner._run_search`), nie tylko pojedynczy `relative_drop` -
+    user wczesniej w tej sesji: "a nie pokazales pelnej tabeli odpornosci". Potwierdza znane
+    liczby: `gpm_mid_10` relative_drop 26.7%, `gpm_lite_7` 36.7%, `best17_a` 23.7% (nowa - nie
+    liczona wczesniej w tej formie).
+  - `capital_weight_sensitivity` (TYLKO portfele laczone `fixed_capital_weights` z DOKLADNIE 2
+    skladowymi, 25/29 - inne combinery jak `dynamic_capital_weights`/`signal_tilted_capital_weights`/
+    `momentum_hedge_overlay` nie maja jednego, ciaglego parametru wagi do sweepowania w ten sam
+    sposob) - sweep udzialu kapitalu pierwszej skladowej w [0.30..0.70] co 0.05, ten sam wzorzec
+    co recznie liczony sweep dla `gpm_best17_a` (CHANGELOG (31)).
+
+  **Nieoczekiwana, uczciwie odnotowana obserwacja** - sweep wagi dla kandydata produkcyjnego
+  `gpm_mid_10_best17_a` pokazuje, ze zapisane 50/50 NIE jest lokalnym optimum Calmar w prostym
+  `fixed_capital_weights`: najlepszy Calmar w sweepie wychodzi przy **40/60** (best17_a/gpm_mid_10)
+  - Calmar 0.770 (CAGR 9.49%, MaxDD -12.33%, Sharpe 0.998) vs zapisane 50/50 - Calmar 0.716 (CAGR
+  10.49%, MaxDD -14.65%, Sharpe 0.997). Nie zmieniono konfiguracji - user wybral 50/50 swiadomie
+  jako "produkcyjny kandydat" dla PROSTOTY (nie dla maksimum Calmar, ktore i tak zajmuje
+  `gpm_best17_a` z `signal_tilted_capital_weights`) - to obserwacja do rozwazenia, nie
+  automatyczna zmiana.
+
+  Test suite bez zmian liczbowych - to rozszerzenie generatora, nie nowa logika silnika. Pelny
+  pakiet testow: 467/467, bez regresji (czas generacji `results/` wzrosl z ~2 min do ~kilkunastu
+  minut - `param_stability_full`/`capital_weight_sensitivity` to pelne grid sweepy, nie
+  pojedyncze backtesty).
+
 ## 2026-07-12 (42)
 
 - **WYGENEROWANE PLIKI WYNIKOWE (`results/`)** - user: "Dlaczego w repo nie mamy zadnych plikow
