@@ -59,6 +59,44 @@ def test_final_mode_end_to_end(patched_example_dir):
     assert "min_cagr" in result["acceptance"]  # z global criteria w acceptance_spec.json
 
 
+def test_final_mode_with_uk_mapping_enabled_end_to_end(patched_example_dir, us_data_dir, us_universe):
+    """Test przewodowania `uk_mapping` w `_run_final` - user: 'to bedzie ostateczny test'. Zamiast
+    prawdziwych danych UK (jeszcze nie w repo), kopiujemy TE SAME pliki cenowe pod NOWYMI
+    tickerami ("<ticker>.uk") - jesli mechanizm dziala poprawnie, wynik UK powinien byc niemal
+    IDENTYCZNY z US (korelacja ~1.0, gapy ~0), bo to dokladnie te same ceny pod innym symbolem."""
+    uk_dir = patched_example_dir / "uk_data"
+    uk_dir.mkdir()
+    ticker_mapping = {}
+    for us_ticker in us_universe:
+        base = us_ticker.split(".")[0]
+        uk_ticker = f"{base}.uk"
+        ticker_mapping[us_ticker] = uk_ticker
+        (uk_dir / f"{uk_ticker}.txt").write_text(
+            (Path(us_data_dir) / "nyse" / f"{us_ticker}.txt").read_text(), encoding="utf-8"
+        )
+    (patched_example_dir / "ticker_mapping.json").write_text(json.dumps(ticker_mapping), encoding="utf-8")
+
+    from engine_v2.test_spec import TestSpec
+
+    test_spec_path = patched_example_dir / "test_spec.json"
+    test_spec = TestSpec.load(test_spec_path)
+    test_spec.uk_mapping.enabled = True
+    test_spec.uk_mapping.ticker_mapping_file = "ticker_mapping.json"
+    test_spec.uk_mapping.uk_data_dir = str(uk_dir)
+    test_spec.save(test_spec_path)
+
+    run_spec = RunSpec.load(patched_example_dir / "run_spec.json")
+    run_spec.mode = "final"
+
+    result = run(run_spec, patched_example_dir)
+
+    assert "uk_mapping" in result
+    uk_result = result["uk_mapping"]
+    assert uk_result["diagnostics"]["mismatch_periods"] == 0  # kazdy ticker byl zmapowany
+    assert uk_result["comparison"]["monthly_return_correlation"] == pytest.approx(1.0, abs=1e-6)
+    assert uk_result["comparison"]["cagr_gap"] == pytest.approx(0.0, abs=1e-6)
+
+
 def test_validation_mode_end_to_end(patched_example_dir):
     run_spec = RunSpec.load(patched_example_dir / "run_spec.json")
     run_spec.mode = "validation"

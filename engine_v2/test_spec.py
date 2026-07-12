@@ -49,6 +49,7 @@ class CostsSpec:
 class UkMappingSpec:
     enabled: bool = False
     ticker_mapping_file: Optional[str] = None
+    uk_data_dir: str = "data/uk"
     uk_benchmark: Optional[str] = None
     run_once_at_end: bool = True
     checks: Dict[str, Dict[str, Any]] = field(default_factory=dict)

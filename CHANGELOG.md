@@ -2,6 +2,72 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-12 (38)
+
+- **NOWY MECHANIZM: UK MAPPING** (`engine_v2/uk_mapping.py`) - user: "brakuje nam teraz części
+  która pokaże wyniki zmapowanej strategii na tickery uk - będzie to ostateczny test [...] bardzo
+  prosto - usa decyduje o wszystkim na uk zwykly mapping". Dotad tylko SZKIELET
+  (`TestSpec.UkMappingSpec`/`AcceptanceSpec.UkMappingAcceptance`, zdefiniowany OD POCZATKU
+  projektu, nigdy nie liczony - to samo co wczesniej `param_stability`/`annual_tax`, kolejne
+  "zdefiniowane, nigdy nie dzialajace" pole - patrz README "Co jeszcze nie istnieje").
+
+  **Filozofia**: CALA logika (sygnaly, selekcja, wagi, execution, histereza) liczy sie WYLACZNIE
+  na danych USA (dokladnie ten sam FINAL PORTFOLIO co zawsze) - strona UK NIE ma wlasnej logiki
+  decyzyjnej, tylko REPLIKUJE juz wyliczone wagi 1:1 na brytyjskie odpowiedniki (ten sam procent
+  kapitalu, inny instrument/gielda). Realny test, czy strategia da sie faktycznie wdrozyc na
+  koncie UK (np. XTB) dostepnymi tam instrumentami, nie tylko na papierze na danych USA.
+
+  **Mechanizm** (2 funkcje, zero nowego kodu w `pipeline.py`/`backtest_engine.py`):
+  - `remap_final_portfolio(final_portfolio, ticker_mapping)` - podmienia klucze tickerow w
+    `weights_used_json` kazdego okresu wg mapowania. Ticker BEZ mapowania z niezerowa waga (np.
+    `vt.us` w `best17_a` - jawnie oznaczony przez usera jako "signal only", bez brytyjskiego
+    odpowiednika) trafia w `_CASH` zamiast zgadywac zastepczy instrument, a ten okres jest
+    JAWNIE zliczony jako "mismatch" (nie ukryte) - dokladnie to mierzy nowe pole
+    `AcceptanceSpec.UkMappingAcceptance.max_weights_mismatch_months_pct`.
+  - `compare_us_vs_uk(...)` - liczy METRICS NIEZALEZNIE na obu krzywych equity (kazda na WLASNYCH
+    dziennych cenach - `daily_equity_curve`/`compute_metrics` bez zmian, `uk_final_portfolio` ma
+    po prostu inne klucze tickerow) i porownuje: korelacje MIESIECZNYCH zwrotow (resampling, NIE
+    probowanie dopasowac dokladne dni handlowe - kalendarze gield USA/UK sie ROZNIA), najwiekszy
+    pojedynczy rozjazd miesieczny, gap CAGR/MaxDD (sprawdzany na WARTOSCI BEZWZGLEDNEJ - "jak
+    daleko UK odjechalo od US" w KTORAKOLWIEK strone).
+  - `check_uk_mapping_criteria(...)` - progi z `AcceptanceSpec.uk_mapping` (ta sama konwencja co
+    `acceptance_check.check_criteria`).
+
+  **Wpiete w `run_spec_runner._run_final`**: jesli `TestSpec.uk_mapping.enabled=True`, po
+  policzeniu normalnego wyniku USA dolicza `result["uk_mapping"]` (diagnostics + comparison +
+  acceptance). Wymaga `base_dir` (folder strategii, do rozwiazania `ticker_mapping_file` wzgledem
+  niego) - `run()` (top-level dispatcher) go juz mial i teraz przekazuje dalej do `_run_final`.
+  `TestSpec.UkMappingSpec` dostal nowe pole `uk_data_dir` (domyslnie `"data/uk"` - loader
+  `stooq_csv` juz UMIAL czytac ten format, `data/uk` bylo wspomniane w jego docstringu OD
+  POCZATKU, ale zaden kod nigdy tam nie sięgał).
+
+  **NAPRAWIONY martwy placeholder**: `strategies_v2/example_strategy/test_spec.json` mial
+  `uk_mapping.enabled: true` OD POCZATKU projektu jako ASPIRACYJNY przyklad konfiguracji (nigdy
+  nie dzialal, bo mechanizm nie istnial) - teraz, gdy mechanizm NAPRAWDE dziala, ten placeholder
+  zaczal probowac czytac nieistniejacy `ticker_mapping.json` i wywalac test. Poprawione na
+  `enabled: false` (ten strategy folder nie ma prawdziwego mapowania UK, nigdy nie mial).
+
+  **Dane UK jeszcze NIE sa w repo** - `data/uk/` nie istnieje. Mechanizm w pelni zbudowany i
+  przetestowany (24 nowe testy: 14 syntetycznych w `test_uk_mapping.py` + end-to-end integration
+  test w `test_run_spec_runner.py` z tymczasowymi, SKOPIOWANYMI danymi USA pod nowymi tickerami
+  "*.uk" - potwierdzone: identyczne ceny pod inna nazwa dają korelacje 1.0 i zerowe gapy, dowod
+  poprawnosci przewodowania) - gotowy do uruchomienia na PRAWDZIWYCH danych, jak tylko traf
+  do `data/uk/`.
+
+  **Przygotowane mapowania dla 2 strategii** (dokladnie wg specyfikacji usera):
+  - `strategies_v2/best17_a/uk_ticker_mapping.json`: XLK->IUIT.UK, IVV->CSPX.UK, DBC->ICOM.UK,
+    IAU->IGLN.UK (VT celowo POMINIETY - "signal only").
+  - `strategies_v2/gpm_mid_10/uk_ticker_mapping.json`: SPY->CSPX.UK, QQQ->CNDX.UK, VWO->EIMI.UK,
+    VNQ->IDUP.UK, DBC->ICOM.UK, GLD->IGLN.UK, HYG->IHZU.UK, LQD->LQDA.UK, TLT->DTLA.UK,
+    XLE->IUES.UK, IEF->CBU0.UK, SHY->IBTA.UK (pelne pokrycie, 0% oczekiwanego mismatch).
+
+  Oba `test_spec.json` maja teraz `uk_mapping.ticker_mapping_file`/`uk_data_dir` wypelnione, ale
+  `enabled: false` do czasu realnych danych. Progi w `acceptance_spec.json` (obu strategii)
+  ustawione jako rozsadne domyslne (korelacja >=0.95, max rozjazd miesieczny 3%, max gap CAGR/
+  MaxDD 3%/5%) - do przestrojenia po zobaczeniu prawdziwego wyniku.
+
+  Pelny pakiet testow: 453/453, bez regresji.
+
 ## 2026-07-12 (37)
 
 - **NOWA STRATEGIA `strategies_v2/gpm_mid_10/`** - user: "gpm_mid_10 - posrednia, uproszczona

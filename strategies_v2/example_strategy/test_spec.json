@@ -24,7 +24,7 @@
   },
 
   "uk_mapping": {
-    "enabled": true,
+    "enabled": false,
     "ticker_mapping_file": "ticker_mapping.json",
     "uk_benchmark": "vwra.uk",
     "run_once_at_end": true,

@@ -70,6 +70,12 @@ from engine_v2.pipeline import run_strategy_pipeline
 from engine_v2.run_spec import RunSpec
 from engine_v2.spec import MULTI_INSTANCE_BLOCKS, StrategySpec
 from engine_v2.test_spec import TestSpec
+from engine_v2.uk_mapping import (
+    check_uk_mapping_criteria,
+    compare_us_vs_uk,
+    load_ticker_mapping,
+    remap_final_portfolio,
+)
 from engine_v2.validation import run_walk_forward
 
 
@@ -94,8 +100,47 @@ def _tax_adjusted_equity_curve(equity_curve: pd.DataFrame, final_portfolio: pd.D
     return equity_curve_after_tax, metrics_pre_tax
 
 
+def _run_uk_mapping_check(
+    strategy_spec: StrategySpec,
+    test_spec: TestSpec,
+    acceptance_spec: AcceptanceSpec,
+    us_final_portfolio: pd.DataFrame,
+    us_equity_curve: pd.DataFrame,
+    base_dir: Path,
+) -> Dict[str, Any]:
+    """Odtwarza `us_final_portfolio` na brytyjskich odpowiednikach ETF (patrz uk_mapping.py -
+    "US decyduje o wszystkim", UK tylko replikuje juz wyliczone wagi) i porownuje wynikowa krzywa
+    equity z oryginalna, USA-owa. Wymaga `test_spec.uk_mapping.enabled=True` i realnych danych
+    cenowych pod `uk_mapping.uk_data_dir` (ten sam `stooq_csv` loader co dla USA, inny data_dir) -
+    jesli danych jeszcze nie ma, wywolujacy dostanie czytelny blad z loadera, nie cichy pomin."""
+    uk_cfg = test_spec.uk_mapping
+    mapping_path = base_dir / uk_cfg.ticker_mapping_file
+    ticker_mapping = load_ticker_mapping(mapping_path)
+
+    uk_final_portfolio, diagnostics = remap_final_portfolio(us_final_portfolio, ticker_mapping)
+
+    uk_tickers = sorted(set(ticker_mapping.values()))
+    loader_fn = DATA_LOADER_REGISTRY[strategy_spec.blocks["data_loader"]]
+    uk_daily_prices = loader_fn(uk_tickers, {"data_dir": uk_cfg.uk_data_dir, "frequency": "daily"}).prices
+
+    uk_equity_curve = daily_equity_curve(uk_final_portfolio, uk_daily_prices, {})
+    if test_spec.costs.annual_tax_rate > 0.0:
+        uk_equity_curve = apply_annual_tax(uk_equity_curve, test_spec.costs.annual_tax_rate)
+
+    comparison = compare_us_vs_uk(us_final_portfolio, us_equity_curve, uk_final_portfolio, uk_equity_curve)
+
+    return {
+        "diagnostics": diagnostics,
+        "comparison": comparison,
+        "acceptance": check_uk_mapping_criteria(comparison, diagnostics["mismatch_pct"], acceptance_spec.uk_mapping),
+    }
+
+
 def _run_final(
-    strategy_spec: StrategySpec, test_spec: TestSpec, acceptance_spec: AcceptanceSpec
+    strategy_spec: StrategySpec,
+    test_spec: TestSpec,
+    acceptance_spec: AcceptanceSpec,
+    base_dir: Path | None = None,
 ) -> Dict[str, Any]:
     final_portfolio = run_strategy_pipeline(strategy_spec)
     equity_curve = daily_equity_curve(final_portfolio, _load_daily_prices(strategy_spec), {})
@@ -114,6 +159,15 @@ def _run_final(
     if acceptance_spec.named_periods:
         result["named_periods"] = compute_named_period_metrics(
             equity_curve, final_portfolio, acceptance_spec.named_periods
+        )
+    if test_spec.uk_mapping.enabled:
+        if base_dir is None:
+            raise ValueError(
+                "run_spec_runner: test_spec.uk_mapping.enabled=True wymaga base_dir "
+                "(folder strategii, do rozwiazania ticker_mapping_file)."
+            )
+        result["uk_mapping"] = _run_uk_mapping_check(
+            strategy_spec, test_spec, acceptance_spec, final_portfolio, equity_curve, base_dir
         )
     return result
 
@@ -260,7 +314,7 @@ def run(run_spec: RunSpec, base_dir: Path) -> Dict[str, Any]:
             raise ValueError(f"{spec_name} niepoprawny: {spec_problems}")
 
     if run_spec.mode == "final":
-        return _run_final(strategy_spec, test_spec, acceptance_spec)
+        return _run_final(strategy_spec, test_spec, acceptance_spec, base_dir)
     if run_spec.mode == "validation":
         return _run_validation(strategy_spec, test_spec, acceptance_spec)
     if run_spec.mode == "search":

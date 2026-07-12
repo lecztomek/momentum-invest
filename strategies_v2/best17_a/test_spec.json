@@ -24,6 +24,8 @@
   },
 
   "uk_mapping": {
-    "enabled": false
+    "enabled": false,
+    "ticker_mapping_file": "uk_ticker_mapping.json",
+    "uk_data_dir": "data/uk"
   }
 }

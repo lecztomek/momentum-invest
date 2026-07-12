@@ -15,5 +15,11 @@
     "max_relative_metric_drop_within_family": 0.30
   },
 
-  "uk_mapping": {}
+  "uk_mapping": {
+    "max_weights_mismatch_months_pct": 0.02,
+    "min_monthly_return_correlation": 0.95,
+    "max_single_month_return_diff": 0.03,
+    "max_cagr_gap_vs_us": 0.03,
+    "max_drawdown_gap_vs_us": 0.05
+  }
 }
