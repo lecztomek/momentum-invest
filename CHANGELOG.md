@@ -2,6 +2,45 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-12 (41)
+
+- **VT dostaje mapowanie UK (`vwra.uk`)** - user zapytal: "Czemu celowo bez mapowania vt mapujemy
+  na vwra" - kwestionujac wczesniejsza decyzje "VT -> signal only". Odpowiedz: VT w `best17_a`
+  pelni DWIE role - (1) kanarek (EMA na cenie, nigdy nie trzymany) i (2) `rebound_starter`
+  (`rebound_ticker: "vt.us"`), gdzie REALNIE kupuje 100% VT gdy portfel byl w cash i 3m zwrot VT
+  > 5%. Brak mapowania oznaczal, ze w tych miesiacach strona UK siedziala w `_CASH` zamiast
+  realnej ekspozycji - to byl PRAWDZIWY koszt "signal only", nie neutralna decyzja. Zweryfikowano
+  `vwra.uk` (Vanguard FTSE All-World UCITS, jedyna dostepna klasa - Accumulating): CAGR ~13.17%/rok
+  na wspolnym oknie 2019-07-26 do 2026-07 vs `vt.us` ~12.05%/rok - gap ~1.1pp/rok (mniejszy niz
+  juz zaakceptowany IVV->CSPX ~3.7pp/rok), brak w danych odpowiednika Distributing (typu VWRL).
+
+  Zaktualizowano `strategies_v2/best17_a/uk_ticker_mapping.json` i
+  `strategies_v2/gpm_mid_10_best17_a/uk_ticker_mapping.json` (dodane `"vt.us": "vwra.uk"`).
+  Konsekwencja: okno testu UK dla `best17_a` i miksu SKRACA SIE (2019-07-26, `vwra.uk` debiutuje
+  najpozniej ze wszystkich uzywanych tickerow, pozniej niz `dtla.uk`).
+
+  **Nowe wyniki "ostatecznego testu"** (PRZED vs PO tej poprawce):
+
+  | | mismatch PRZED | mismatch PO | korelacja PRZED | korelacja PO |
+  |---|---|---|---|---|
+  | `best17_a` solo | 2/109 (1.8%) | **0/85 (0%)** | 0.955 | **0.969** |
+  | `gpm_mid_10_best17_a` (50/50) | 2/99 (2.0%) | **0/85 (0%)** | 0.9575 | **0.967** |
+
+  `best17_a` solo PO: CAGR 18.07%/-31.19%/0.879/0.579 (US) vs 18.65%/-31.10%/0.966/0.600 (UK).
+  Miks PO: CAGR 11.89%/-14.65%/0.955/0.811 (US) vs 12.43%/-14.98%/1.050/0.830 (UK), gap CAGR
+  +0.54pp, gap MaxDD -0.33pp. Jedyny formalny fail progu akceptacji w obu przypadkach to teraz
+  `max_single_month_return_diff` (4.67% dla `best17_a` solo, 3.2% dla miksu, obie tuz nad progiem
+  0.03) - realny tracking noise XLK/IVV vs UCITS (pazdziernik 2024), NIE luka w mapowaniu (byla
+  to juz wczesniej zidentyfikowana "druga najwieksza" rozbieznosc w (39), teraz staje sie
+  najwieksza, bo VT-driven mismatch znikl).
+
+  Zaktualizowane testy: `test_best17_a_strategy_spec.py::test_best17_a_uk_mapping_end_to_end`
+  (asercja `unmapped_tickers_used == []` zamiast `["vt.us"]`) i
+  `test_gpm_mid_10_best17_a_uk_mapping.py` (analogicznie). Pelny pakiet testow: 463/463, bez
+  regresji.
+
+  Pchniete na `main` na wyrazna prosbe uzytkownika ("dodaj i wszystko wrzuc na main").
+
 ## 2026-07-12 (40)
 
 - **"OSTATECZNY TEST" na kandydacie produkcyjnym (miks 50/50)** - user: "no tak wrzuć i sprawdź

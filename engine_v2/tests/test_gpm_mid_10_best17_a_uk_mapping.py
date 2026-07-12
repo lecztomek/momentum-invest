@@ -45,9 +45,10 @@ def test_gpm_mid_10_best17_a_combined_spec_is_valid():
 
 def test_gpm_mid_10_best17_a_uk_mapping_end_to_end(us_data_dir, uk_data_dir):
     """"Ostateczny test" (user) na kandydacie produkcyjnym. Zamrozony baseline (2026-07-12):
-    okno UK jest krotsze niz US (TLT/`dtla.uk` debiutuje najpozniej ze wszystkich uzywanych
-    tickerow, 2018-05-15), jedyny mismatch to rzadki rebound_starter->VT (VT celowo bez mapowania
-    UK - "signal only", ta sama przyczyna co w solo tescie best17_a)."""
+    VT->`vwra.uk` teraz zmapowane (VT nie jest tylko sygnalem kanarka - `rebound_starter` REALNIE
+    go trzyma), wiec okno UK jest teraz krotsze niz poprzednio (`vwra.uk` debiutuje najpozniej ze
+    wszystkich uzywanych tickerow, 2019-07-26, pozniej niz `dtla.uk`/TLT) - pelne pokrycie, zero
+    mismatch oczekiwane."""
     combined_spec = CombinedSpec.load(STRATEGY_DIR / "combined_spec.json")
     us_final_portfolio = run_combined_pipeline(combined_spec, STRATEGY_DIR)
 
@@ -70,7 +71,8 @@ def test_gpm_mid_10_best17_a_uk_mapping_end_to_end(us_data_dir, uk_data_dir):
 
     comparison = compare_us_vs_uk(us_slice, us_equity_curve, uk_slice, uk_equity_curve)
 
-    assert diagnostics["unmapped_tickers_used"] == ["vt.us"]
+    assert diagnostics["unmapped_tickers_used"] == []
+    assert diagnostics["mismatch_pct"] == 0.0
     assert comparison["monthly_return_correlation"] > 0.9
     assert abs(comparison["cagr_gap"]) < 0.05
     assert abs(comparison["max_drawdown_gap"]) < 0.05

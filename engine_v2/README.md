@@ -1616,10 +1616,11 @@ wlasnej logiki decyzyjnej, tylko REPLIKUJE juz wyliczone wagi 1:1 na brytyjskie 
 juz jest w pelni generyczny wzgledem tickerow):
 
 - `remap_final_portfolio(final_portfolio, ticker_mapping)` - podmienia klucze tickerow w
-  `weights_used_json` kazdego okresu. Ticker BEZ mapowania z niezerowa waga (np. `vt.us` w
-  `best17_a` - "signal only", celowo bez brytyjskiego odpowiednika mimo ze dane by na to
-  pozwalaly, decyzja usera uszanowana) trafia w `_CASH`, a ten okres jest JAWNIE zliczony jako
-  "mismatch" (mierzone przez `AcceptanceSpec.uk_mapping.max_weights_mismatch_months_pct`).
+  `weights_used_json` kazdego okresu. Ticker BEZ mapowania z niezerowa waga trafia w `_CASH`, a
+  ten okres jest JAWNIE zliczony jako "mismatch" (mierzone przez
+  `AcceptanceSpec.uk_mapping.max_weights_mismatch_months_pct`) - patrz nizej, dlaczego `vt.us`
+  (poczatkowo celowo pominiety jako "signal only") ostatecznie DOSTAL mapowanie (`vwra.uk`), bo w
+  praktyce nie byl tylko sygnalem.
 - `find_uk_window_start(uk_final_portfolio, uk_daily_prices)` - user mial racje: "okres uk bedzie
   krotszy do testow, wiekszosc danych zaczyna sie pozniej" - potwierdzone na prawdziwych danych
   (`vwra.uk` od 2019-07, `dtla.uk` od 2018-05, vs `vt.us`/`tlt.us` od 2005-2008). Znajduje
@@ -1636,27 +1637,33 @@ juz jest w pelni generyczny wzgledem tickerow):
 (wspomniane w jego docstringu OD POCZATKU) - nowe pole `TestSpec.UkMappingSpec.uk_data_dir`
 (domyslnie `"data/uk"`) tylko to wykorzystuje.
 
-**PRAWDZIWY WYNIK "ostatecznego testu"** (2026-07-12 (39), patrz CHANGELOG - 15 plikow danych
-`*.uk.txt` zmergowanych z `main`, przeniesionych do `data/uk/`):
+**PRAWDZIWY WYNIK "ostatecznego testu", PO dodaniu VT->`vwra.uk`** (2026-07-12 (41), patrz
+CHANGELOG - user: "dlaczego celowo bez mapowania VT, skoro `vwra.uk` istnieje w danych?"; poprzednia
+wersja tabeli z VT bez mapowania - patrz CHANGELOG (39)):
 
 | | okno (krotsze niz US) | US: CAGR/MaxDD/Sharpe/Calmar | UK: CAGR/MaxDD/Sharpe/Calmar | korelacja miesieczna | mismatch |
 |---|---|---|---|---|---|
-| `best17_a` | 2017-07 do 2026-07 (109 mies.) | 18.13%/-31.19%/0.899/0.581 | 18.49%/-31.10%/0.984/0.594 | **0.955** | 2/109 (1.8%) |
+| `best17_a` | 2019-07 do 2026-07 (85 mies.) | 18.07%/-31.19%/0.879/0.579 | 18.65%/-31.10%/0.966/0.600 | **0.969** | 0/85 (0%) |
 | `gpm_mid_10` | 2018-05 do 2026-07 (99 mies.) | 5.46%/-7.79%/0.738/0.701 | 6.21%/-7.46%/0.856/0.832 | **0.957** | 0/99 (0%) |
 
-**Bardzo dobra zgodnosc** - gap CAGR/MaxDD ponizej 1 p.p. w obu przypadkach. `best17_a`'s 2
-miesiace mismatch (styczen/luty 2023) to dokladnie moment, gdy `rebound_starter` wszedl w 100%
-`vt.us` (bez mapowania) - stad tez NAJWIEKSZY pojedynczy rozjazd miesieczny calego testu (8.75%,
-luty 2023, jedyny check formalnie ponizej progu `max_single_month_return_diff` w
-`acceptance_spec.json` - przyczyna w pelni zrozumiana, nie ukryta wada). Drugi najwiekszy rozjazd
-(4.67%, pazdziernik 2024, XLK/IVV oba zmapowane) to juz PRAWDZIWY szum sledzenia US ETF vs UCITS,
-nie luka w mapowaniu.
+**VT nie jest tylko sygnalem kanarka** - `rebound_starter` REALNIE go trzyma (100% VT, gdy portfel
+byl w cash i 3m zwrot VT > 5%). Brak mapowania oznaczal, ze UK strona w tych miesiacach siedziala
+w `_CASH` zamiast sledzic realny rebound - to byl PRAWDZIWY koszt "signal only", nie neutralna
+decyzja. Po dodaniu `vt.us`->`vwra.uk`: mismatch spada do 0% (bylo 1.8%), korelacja rosnie do
+0.969 (bylo 0.955). Cena: okno testu SKRACA SIE do 2019-07-26 (`vwra.uk` debiutuje najpozniej ze
+wszystkich uzywanych tickerow, pozniej niz `dtla.uk`) i pozostaje pewien, mniejszy tracking noise
+(NAJWIEKSZY pojedynczy rozjazd miesieczny to teraz 4.67%, pazdziernik 2024, XLK/IVV oba zmapowane
+- realny szum US ETF vs UCITS, nie luka w mapowaniu - jedyny check formalnie ponizej progu
+`max_single_month_return_diff` w `acceptance_spec.json`, przyczyna w pelni zrozumiana).
 
 **Mapowania** (zweryfikowane wprost na danych - np. `hyg.us`->`ihyg.uk` NIE `ihya.uk`, bo IHYA to
 udzialowa klasa AKUMULACYJNA/total-return, ktora dalaby sztucznie zawyzony gap wobec `hyg.us`,
 liczonego bez reinwestycji dywidend - potwierdzone porownaniem rocznych stop wzrostu obu klas):
 - `strategies_v2/best17_a/uk_ticker_mapping.json`: XLK->IUIT.UK, IVV->CSPX.UK, DBC->ICOM.UK,
-  IAU->IGLN.UK (VT celowo pominiety - "signal only", mimo ze `vwra.uk` istnieje w danych).
+  IAU->IGLN.UK, VT->VWRA.UK (jedyna dostepna w danych klasa Vanguard FTSE All-World, tylko
+  Accumulating - brak Distributing odpowiednika typu VWRL w `data/uk/` - gap ~1.1pp/rok wobec
+  `vt.us` na wspolnym oknie 2019-2026, mniejszy niz np. IVV->CSPX ~3.7pp/rok, zaakceptowany z tego
+  samego powodu).
 - `strategies_v2/gpm_mid_10/uk_ticker_mapping.json`: pelne pokrycie wszystkich 12 tickerow
   (10 ryzykownych + IEF/SHY) - potwierdzony mismatch 0%.
 
@@ -1670,19 +1677,20 @@ test w `test_run_spec_runner.py` z tymczasowo skopiowanymi danymi USA pod nowymi
 (`signal_tilted_capital_weights`, pełne 13 aktywów w `gpm`), kandydat do wdrożenia to
 NAJPROSTSZY mozliwy miks - `gpm_mid_10` (10 aktywow, latwiejszy do replikacji w XTB) +
 `best17_a`, `fixed_capital_weights` 50/50 bez tiltu. Zapisany jako
-`strategies_v2/gpm_mid_10_best17_a/combined_spec.json` (+ zmergowany `uk_ticker_mapping.json`).
-Portfele LACZONE nie maja wlasnego `test_spec.json`/`run_spec.json`, wiec UK mapping dla miksu
-jest wolany bezposrednio na wyniku `run_combined_pipeline` (nowy plik
-`engine_v2/tests/test_gpm_mid_10_best17_a_uk_mapping.py`), tym samym mechanizmem co powyzej:
+`strategies_v2/gpm_mid_10_best17_a/combined_spec.json` (+ zmergowany `uk_ticker_mapping.json`,
+teraz z VT->VWRA.UK - patrz wyzej). Portfele LACZONE nie maja wlasnego
+`test_spec.json`/`run_spec.json`, wiec UK mapping dla miksu jest wolany bezposrednio na wyniku
+`run_combined_pipeline` (`engine_v2/tests/test_gpm_mid_10_best17_a_uk_mapping.py`), tym samym
+mechanizmem co powyzej:
 
 | | okno | US: CAGR/MaxDD/Sharpe/Calmar | UK: CAGR/MaxDD/Sharpe/Calmar | korelacja miesieczna | mismatch |
 |---|---|---|---|---|---|
-| `gpm_mid_10_best17_a` (50/50) | 2018-05 do 2026-07 (99 mies.) | 11.56%/-14.65%/0.952/0.789 | 11.82%/-14.98%/1.034/0.789 | **0.9575** | 2/99 (2.0%) |
+| `gpm_mid_10_best17_a` (50/50) | 2019-07 do 2026-07 (85 mies.) | 11.89%/-14.65%/0.955/0.811 | 12.43%/-14.98%/1.050/0.830 | **0.967** | 0/85 (0%) |
 
-Zgodnosc tego samego rzedu co oba testy solo - gap CAGR +0.26pp, gap MaxDD -0.33pp. Mismatch to
-te same 2 miesiace (styczen/luty 2023, `rebound_starter`->`vt.us`) co w solo `best17_a`; jedyny
-formalny fail progu akceptacji to `max_single_month_return_diff` (0.044 > 0.03), z tej samej,
-w pelni zrozumianej przyczyny (VT bez mapowania UK).
+Po dodaniu VT->VWRA: mismatch spada do 0% (bylo 2.0%), korelacja rosnie do 0.967 (bylo 0.9575),
+gap CAGR +0.54pp, gap MaxDD -0.33pp - tego samego rzedu co oba testy solo. Jedyny formalny fail
+progu akceptacji to nadal `max_single_month_return_diff` (0.032, tuz nad progiem 0.03) - realny
+tracking noise US ETF vs UCITS, ten sam efekt co w solo `best17_a`.
 
 ### Gdzie w tym wszystkim jest train/test window i walk-forward?
 

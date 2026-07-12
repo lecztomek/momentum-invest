@@ -142,9 +142,11 @@ def test_best17_a_metrics_regression_baseline(us_data_dir):
 
 def test_best17_a_uk_mapping_end_to_end(us_data_dir, uk_data_dir):
     """"Ostateczny test" (user) - realny `run_spec.json` (uk_mapping.enabled=true) na
-    PRAWDZIWYCH danych US i UK. Zamrozony baseline (2026-07-12): okno UK jest KROTSZE niz US
-    (VT/`vwra.uk` debiutuje najpozniej ze wszystkich uzywanych tickerow), mismatch tylko przy
-    rzadkim rebound_starter->VT (VT celowo bez mapowania UK - "signal only")."""
+    PRAWDZIWYCH danych US i UK. Zamrozony baseline (2026-07-12): VT->`vwra.uk` teraz zmapowane
+    (user: "dlaczego celowo bez mapowania, skoro vwra istnieje?" - VT to nie tylko sygnal kanarka,
+    `rebound_starter` REALNIE go trzyma, brak mapowania oznaczal cash zamiast ekspozycji w tych
+    miesiacach). Okno UK jest KROTSZE niz US (`vwra.uk` debiutuje najpozniej ze wszystkich
+    uzywanych tickerow, 2019-07-26) - zero mismatch oczekiwane (pelne pokrycie 5/5 tickerow)."""
     from engine_v2.run_spec import RunSpec
     from engine_v2.run_spec_runner import run
     from engine_v2.test_spec import TestSpec
@@ -163,7 +165,8 @@ def test_best17_a_uk_mapping_end_to_end(us_data_dir, uk_data_dir):
         (strategy_dir / "test_spec.json").write_text(original_text, encoding="utf-8")
 
     uk_result = result["uk_mapping"]
-    assert uk_result["diagnostics"]["unmapped_tickers_used"] == ["vt.us"]
+    assert uk_result["diagnostics"]["unmapped_tickers_used"] == []
+    assert uk_result["diagnostics"]["mismatch_pct"] == 0.0
     assert uk_result["comparison"]["monthly_return_correlation"] > 0.9
     assert abs(uk_result["comparison"]["cagr_gap"]) < 0.05
     assert abs(uk_result["comparison"]["max_drawdown_gap"]) < 0.05
