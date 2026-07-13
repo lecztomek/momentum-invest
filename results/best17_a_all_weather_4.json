@@ -5,125 +5,125 @@
     "sweep": [
       {
         "annual_turnover": 1.240028157683025,
-        "best_year_return": 0.34864069212876747,
-        "cagr": 0.1276017670469911,
-        "calmar": 0.4864604980325877,
+        "best_year_return": 0.3153552303512248,
+        "cagr": 0.1073079588247896,
+        "calmar": 0.40934317069544307,
         "max_consecutive_negative_months": 7,
-        "max_drawdown": -0.2623065337536269,
-        "max_time_underwater_months": 20,
-        "sharpe": 0.9309711480860737,
+        "max_drawdown": -0.26214669379357547,
+        "max_time_underwater_months": 26,
+        "sharpe": 0.7983356587748996,
         "weight_all_weather_4_v0": 0.3,
-        "worst_year_return": -0.11032457251826877
+        "worst_year_return": -0.15463803475017468
       },
       {
         "annual_turnover": 1.275289621882542,
-        "best_year_return": 0.3403637888599378,
-        "cagr": 0.12489842487629366,
-        "calmar": 0.49018885020847225,
+        "best_year_return": 0.3044709348442336,
+        "cagr": 0.10505081410228767,
+        "calmar": 0.4141742027344875,
         "max_consecutive_negative_months": 7,
-        "max_drawdown": -0.2547965438691142,
-        "max_time_underwater_months": 20,
-        "sharpe": 0.9379986238960517,
+        "max_drawdown": -0.2536392015937121,
+        "max_time_underwater_months": 22,
+        "sharpe": 0.8040068152649716,
         "weight_all_weather_4_v0": 0.35,
-        "worst_year_return": -0.10451323075441832
+        "worst_year_return": -0.14819078797327578
       },
       {
         "annual_turnover": 1.3105510860820597,
-        "best_year_return": 0.33212072337147647,
-        "cagr": 0.12215584743698837,
-        "calmar": 0.49408014337114,
+        "best_year_return": 0.29715944720867005,
+        "cagr": 0.10276503695026262,
+        "calmar": 0.41804018558704753,
         "max_consecutive_negative_months": 7,
-        "max_drawdown": -0.24723893294620447,
-        "max_time_underwater_months": 20,
-        "sharpe": 0.9436181911754079,
+        "max_drawdown": -0.2458257375566687,
+        "max_time_underwater_months": 22,
+        "sharpe": 0.8085848785734346,
         "weight_all_weather_4_v0": 0.4,
-        "worst_year_return": -0.0987414966648873
+        "worst_year_return": -0.14175452849278658
       },
       {
         "annual_turnover": 1.345812550281577,
-        "best_year_return": 0.3239114955158715,
-        "cagr": 0.11937437954017405,
-        "calmar": 0.49815430236388814,
+        "best_year_return": 0.28988616721748395,
+        "cagr": 0.10045092824296442,
+        "calmar": 0.4217402988195046,
         "max_consecutive_negative_months": 7,
-        "max_drawdown": -0.23963334046039075,
-        "max_time_underwater_months": 21,
-        "sharpe": 0.947486223810657,
+        "max_drawdown": -0.23818195350109328,
+        "max_time_underwater_months": 22,
+        "sharpe": 0.8117896043668011,
         "weight_all_weather_4_v0": 0.45,
-        "worst_year_return": -0.09301058694706998
+        "worst_year_return": -0.13532995979860707
       },
       {
         "annual_turnover": 1.3810740144810942,
-        "best_year_return": 0.31573609897132826,
-        "cagr": 0.11655436643551931,
-        "calmar": 0.5024270981556556,
+        "best_year_return": 0.28265095140864704,
+        "cagr": 0.09810879019401786,
+        "calmar": 0.42568967320073514,
         "max_consecutive_negative_months": 7,
-        "max_drawdown": -0.23198264357829268,
-        "max_time_underwater_months": 21,
-        "sharpe": 0.9493113493769966,
+        "max_drawdown": -0.23047021426745862,
+        "max_time_underwater_months": 22,
+        "sharpe": 0.813316366368583,
         "weight_all_weather_4_v0": 0.5,
-        "worst_year_return": -0.08732177978868005
+        "worst_year_return": -0.12891778750902605
       },
       {
         "annual_turnover": 1.4163354786806115,
-        "best_year_return": 0.3075945250515646,
-        "cagr": 0.11369615376658859,
-        "calmar": 0.5069237161026869,
+        "best_year_return": 0.27545365656124066,
+        "cagr": 0.09573892633806746,
+        "calmar": 0.42992189946199666,
         "max_consecutive_negative_months": 7,
-        "max_drawdown": -0.22428651521910115,
-        "max_time_underwater_months": 21,
-        "sharpe": 0.9487225729207212,
+        "max_drawdown": -0.22268911273855774,
+        "max_time_underwater_months": 22,
+        "sharpe": 0.8128460753252942,
         "weight_all_weather_4_v0": 0.55,
-        "worst_year_return": -0.08167631836374234
+        "worst_year_return": -0.12251871928864189
       },
       {
         "annual_turnover": 1.4515969428801287,
-        "best_year_return": 0.2994867630718243,
-        "cagr": 0.11080008754888415,
-        "calmar": 0.5095963641571986,
+        "best_year_return": 0.2682941396967504,
+        "cagr": 0.09334164151247437,
+        "calmar": 0.4326735067977017,
         "max_consecutive_negative_months": 5,
-        "max_drawdown": -0.21742715478775454,
-        "max_time_underwater_months": 21,
-        "sharpe": 0.9455424644599904,
+        "max_drawdown": -0.2157322786026662,
+        "max_time_underwater_months": 23,
+        "sharpe": 0.8100599078989306,
         "weight_all_weather_4_v0": 0.6,
-        "worst_year_return": -0.0760754008657013
+        "worst_year_return": -0.1161334647656923
       },
       {
         "annual_turnover": 1.4868584070796462,
-        "best_year_return": 0.29141279656217156,
-        "cagr": 0.10786651417766913,
-        "calmar": 0.509290834907581,
+        "best_year_return": 0.2611722580803948,
+        "cagr": 0.09091387723260458,
+        "calmar": 0.4329368961006006,
         "max_consecutive_negative_months": 5,
-        "max_drawdown": -0.21179747755964085,
-        "max_time_underwater_months": 22,
-        "sharpe": 0.9393227780855643,
+        "max_drawdown": -0.2099933686674723,
+        "max_time_underwater_months": 23,
+        "sharpe": 0.8046546791004388,
         "weight_all_weather_4_v0": 0.65,
-        "worst_year_return": -0.07052028454229897
+        "worst_year_return": -0.10976273544877946
       },
       {
         "annual_turnover": 1.5221198712791635,
-        "best_year_return": 0.2833726052203358,
-        "cagr": 0.1048957803950572,
-        "calmar": 0.4861303240002694,
+        "best_year_return": 0.25408786922241533,
+        "cagr": 0.08845749341821496,
+        "calmar": 0.40994852008055443,
         "max_consecutive_negative_months": 5,
         "max_drawdown": -0.2157770770847841,
-        "max_time_underwater_months": 22,
-        "sharpe": 0.9295832612937682,
+        "max_time_underwater_months": 23,
+        "sharpe": 0.7963796404852652,
         "weight_all_weather_4_v0": 0.7,
-        "worst_year_return": -0.06501223697294378
+        "worst_year_return": -0.10340724464302276
       }
     ],
     "weight_axis": "weight_all_weather_4_v0"
   },
   "metrics": {
     "annual_turnover": 1.3810740144810942,
-    "best_year_return": 0.31573609897132826,
-    "cagr": 0.11655436643551931,
-    "calmar": 0.5024270981556556,
+    "best_year_return": 0.28265095140864704,
+    "cagr": 0.09810879019401786,
+    "calmar": 0.42568967320073514,
     "max_consecutive_negative_months": 7,
-    "max_drawdown": -0.23198264357829268,
-    "max_time_underwater_months": 21,
-    "sharpe": 0.9493113493769966,
-    "worst_year_return": -0.08732177978868005
+    "max_drawdown": -0.23047021426745862,
+    "max_time_underwater_months": 22,
+    "sharpe": 0.813316366368583,
+    "worst_year_return": -0.12891778750902605
   },
   "metrics_pre_tax": {
     "annual_turnover": 1.3810740144810942,
@@ -143,14 +143,14 @@
       "covered": true,
       "metrics": {
         "annual_turnover": 0.8410361842105262,
-        "best_year_return": 0.21296831047621745,
-        "cagr": 0.2366506446488399,
-        "calmar": 1.0391572206389654,
+        "best_year_return": 0.166234995977123,
+        "cagr": 0.18433546520788813,
+        "calmar": 0.809435909100782,
         "max_consecutive_negative_months": 2,
-        "max_drawdown": -0.22773324377549553,
+        "max_drawdown": -0.22773324377549542,
         "max_time_underwater_months": 3,
-        "sharpe": 1.0471048277088117,
-        "worst_year_return": 0.21296831047621745
+        "sharpe": 0.8512820148408531,
+        "worst_year_return": 0.166234995977123
       }
     },
     "gfc_crash": {
@@ -158,14 +158,14 @@
       "covered": true,
       "metrics": {
         "annual_turnover": 1.4180294117647059,
-        "best_year_return": -0.009628439639250197,
-        "cagr": -0.018464058124949556,
-        "calmar": -0.09747212731365729,
+        "best_year_return": -0.009628439639250308,
+        "cagr": -0.03209278161487705,
+        "calmar": -0.1694184276417427,
         "max_consecutive_negative_months": 4,
-        "max_drawdown": -0.18942910792881062,
+        "max_drawdown": -0.18942910792881051,
         "max_time_underwater_months": 9,
-        "sharpe": -0.142044420103341,
-        "worst_year_return": -0.013399383754814087
+        "sharpe": -0.2903217725603974,
+        "worst_year_return": -0.030398257705732457
       }
     },
     "inflation_bear": {
@@ -173,14 +173,14 @@
       "covered": true,
       "metrics": {
         "annual_turnover": 1.859056886227545,
-        "best_year_return": -0.08718485751730765,
-        "cagr": -0.08816464176897498,
-        "calmar": -0.46801120239820104,
+        "best_year_return": -0.1287871055748625,
+        "cagr": -0.13020003330324414,
+        "calmar": -0.6911509298502034,
         "max_consecutive_negative_months": 7,
-        "max_drawdown": -0.18838147744583533,
+        "max_drawdown": -0.18838147744583522,
         "max_time_underwater_months": 9,
-        "sharpe": -0.5150966042516169,
-        "worst_year_return": -0.08718485751730765
+        "sharpe": -0.86854284461872,
+        "worst_year_return": -0.1287871055748625
       }
     },
     "post_gfc_recovery": {
@@ -188,14 +188,14 @@
       "covered": true,
       "metrics": {
         "annual_turnover": 1.8807649253731347,
-        "best_year_return": 0.19634899307221776,
-        "cagr": 0.14988889297362307,
-        "calmar": 1.0230843627691628,
+        "best_year_return": 0.19974563435281523,
+        "cagr": 0.12699801358959562,
+        "calmar": 0.8814185651685079,
         "max_consecutive_negative_months": 2,
-        "max_drawdown": -0.14650687512017257,
-        "max_time_underwater_months": 9,
-        "sharpe": 1.1186126238119076,
-        "worst_year_return": 0.0664086918229927
+        "max_drawdown": -0.14408366082613244,
+        "max_time_underwater_months": 11,
+        "sharpe": 0.9677322406072614,
+        "worst_year_return": 0.0431859216235877
       }
     }
   },

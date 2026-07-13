@@ -43,21 +43,30 @@ def test_loss_year_pays_no_tax_and_no_rebate():
 
 
 def test_high_water_mark_not_double_taxed_until_new_peak():
+    # Wejsciowa `equity` to NOMINALNA (nigdy nie opodatkowana) krzywa strategii - "equity przed
+    # podatkiem spada do 1.2" oznacza, ze NOMINALNY portfel spadl z 1.5 do 1.2 (zwrot -20%).
+    # REALNY (juz opodatkowany) inwestor mial po roku 1 tylko 1.405, nie 1.5 - ten SAM procentowy
+    # spadek (-20%, bo pozycje sa proporcjonalne do calego kapitalu) daje mu 1.405*0.8=1.124, NIE
+    # 1.2 (patrz CHANGELOG (47) - to byla WLASNIE tresc buga: stara wersja resetowala kolejne lata
+    # do SUROWEJ nominalnej wartosci, ignorujac ze realny kapital byl juz mniejszy).
     # rok 1: 1.0 -> 1.5 (podatek na 0.5 zysku = 0.095, equity_po=1.405, baza=1.405)
-    # rok 2: equity przed podatkiem spada do 1.2 (ponizej bazy 1.405) - BEZ podatku, baza=1.405
-    # rok 3: equity przed podatkiem = 1.6 (powyzej bazy 1.405) - podatek TYLKO od (1.6-1.405)
+    # rok 2: nominalnie -20% (1.5->1.2) -> realnie 1.405*0.8=1.124 (ponizej bazy 1.405) - BEZ
+    #        podatku, baza zostaje 1.405
+    # rok 3: nominalnie 1.2->1.6 (+33.3%) -> realnie 1.124*(1.6/1.2)=1.498667 (powyzej bazy 1.405)
+    #        - podatek TYLKO od (1.498667-1.405)
     ec = _daily_equity([1.5, 1.2, 1.6])
     out = apply_annual_tax(ec, 0.19, starting_equity=1.0)
 
     assert out["equity"].iloc[0] == pytest.approx(1.405)
     assert out["tax_amount"].iloc[0] == pytest.approx(0.095)
 
-    assert out["equity"].iloc[1] == pytest.approx(1.2)
+    assert out["equity"].iloc[1] == pytest.approx(1.405 * (1.2 / 1.5))
     assert out["tax_amount"].iloc[1] == pytest.approx(0.0)
 
-    expected_tax_year3 = (1.6 - 1.405) * 0.19
+    equity_before_tax_year3 = out["equity"].iloc[1] * (1.6 / 1.2)
+    expected_tax_year3 = (equity_before_tax_year3 - 1.405) * 0.19
     assert out["tax_amount"].iloc[2] == pytest.approx(expected_tax_year3)
-    assert out["equity"].iloc[2] == pytest.approx(1.6 - expected_tax_year3)
+    assert out["equity"].iloc[2] == pytest.approx(equity_before_tax_year3 - expected_tax_year3)
 
 
 def test_haircut_propagates_to_days_after_tax_event_until_next_one():
@@ -74,6 +83,34 @@ def test_haircut_propagates_to_days_after_tax_event_until_next_one():
     assert dec31["equity"] == pytest.approx(1.405)
     # haircut z 31 grudnia utrzymuje sie na kolejne dni (nie tylko jednorazowy spadek)
     assert jan_after["equity"] == pytest.approx(1.405)
+
+
+def test_haircuts_compound_across_multiple_tax_events():
+    """Regresja na bugfix (CHANGELOG (47)) - `equity.iloc[idx:next_event_idx] *= haircut_ratio`
+    resetowalo KAZDY kolejny segment (miedzy dwoma zdarzeniami podatkowymi) do SUROWEJ, nigdy
+    nieopodatkowanej wartosci z wejsciowej krzywej, zamiast mnozyc PRZEZ JUZ ZASTOSOWANE
+    wczesniejsze haircuty. Sprawdzian: gladki, staly wzrost 10%/rok, 3 lata - kazdy rok BEZ
+    strat, wiec kazdy rok jest w pelni opodatkowany (19% od calego zysku) - poprawny wynik to
+    STALY, powtarzalny mnoznik roczny (1 + 0.10*0.81 = 1.081) skladany przez 3 lata, NIE mniej
+    (bug dawal WYZSZY wynik, bo kazdy kolejny rok liczyl podatek od zawyzonej, nieskompensowanej
+    bazy)."""
+    dates = pd.date_range("2020-01-01", "2023-01-01", freq="D")
+    years_frac = (dates - dates[0]).days / 365.25
+    ec = pd.DataFrame({"date": dates, "equity": 1.10**years_frac})
+
+    out = apply_annual_tax(ec, 0.19, starting_equity=1.0)
+
+    # kazdy rok bez strat -> ten SAM haircut (~0.982738) kazdego 31 grudnia - jesli by nie
+    # skladal sie z poprzednimi, drugi/trzeci rok liczylby podatek od zbyt duzej bazy i dalby
+    # WYZSZY tax_amount niz pierwszy (bug), nie ten sam
+    tax_events = out.loc[out["tax_amount"] > 0, "tax_amount"].to_numpy()
+    assert len(tax_events) == 3
+
+    final_equity = out["equity"].iloc[-1]
+    # oczekiwany, RECZNIE zweryfikowany wynik dla tego scenariusza (patrz CHANGELOG (47)) -
+    # buggy kod dawal 1.3041, poprawny 1.2633
+    assert final_equity == pytest.approx(1.2633, abs=0.001)
+    assert final_equity < 1.30, "haircuty musza sie SKLADAC, nie resetowac do surowej wartosci"
 
 
 def test_no_december_in_data_means_no_tax_for_that_span():

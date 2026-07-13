@@ -2,6 +2,79 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-13 (47)
+
+- **BUGFIX `engine_v2/annual_tax.py` - podatek "Belki" byl NIEDOSZACOWANY na wielu latach.** User:
+  "Czy nie mamy Buga z podatkiem belki cos za maly ma wplyw na CAGR trzeba to sprawdzic" - trafna
+  intuicja, potwierdzony REALNY bug, obecny od PIERWSZEGO wdrozenia mechanizmu (2026-07-11 (13)),
+  przez CALA sesje.
+
+  **Diagnoza** - relatywny spadek CAGR z 19% podatku wynosil konsekwentnie ~2.3-2.7% we
+  WSZYSTKICH strategiach (agresywnych i defensywnych, wysokiej i niskiej zmiennosci) - podejrzanie
+  jednolite, mimo ze mechanizm high-water-mark powinien dawac WIEKSZE zroznicowanie miedzy
+  strategiami o roznym profilu obsuniec. Zweryfikowano na czystym, syntetycznym przykladzie
+  (staly wzrost 10%/rok, 3 lata, bez zadnej straty - kazdy rok w pelni opodatkowany): oczekiwany
+  wynik to STALY mnoznik roczny `1 + 0.10*0.81 = 1.081` skladany 3x = **1.2632**, kod dawal
+  **1.3041** - o ~3% za wysoko.
+
+  **Przyczyna**: `equity.iloc[idx:next_event_idx] *= haircut_ratio` (haircut aplikowany TYLKO do
+  nastepnego zdarzenia podatkowego, WYLACZNIE) - `equity` jest mutowana W MIEJSCU, petla idzie
+  chronologicznie, ale KAZDY kolejny segment (miedzy dwoma zdarzeniami) byl mnozony TYLKO przez
+  WLASNY, tegoroczny haircut, nigdy przez ZLOZENIE wszystkich wczesniejszych haircutow. Efekt:
+  kazdy kolejny rok liczyl podatek od zysku wzgledem SUROWEJ (nigdy nieopodatkowanej) wartosci z
+  wejsciowej krzywej, jakby wczesniejsze podatki nigdy nie mialy miejsca - `tax_base_equity`
+  (poprawnie ratchetowany po KAZDYM podatku) byl porownywany z BLEDNIE zbyt wysokim
+  `equity_before_tax`, co w TEORII powinno dawac WYZSZY tax_amount kazdego roku - ale poniewaz
+  ROWNOCZESNIE kazdy segment resetowal sie do surowej wartosci (gubiac skumulowany spadek
+  kapitalu z lat wczesniejszych), NETTO efekt byl NIZSZY calkowity podatek na dlugiej historii
+  (patrz przyklad wyzej: 1.3041 > 1.2632 - bug dawal WYZSZA, nie nizsza, koncowa wartosc).
+
+  **Naprawa**: `equity.iloc[idx:] *= haircut_ratio` (DO KONCA serii, nie tylko do nastepnego
+  zdarzenia) - petla juz idzie chronologicznie i mutuje `equity` w miejscu, wiec kolejne
+  mnozenia NATURALNIE sie skladaja (kazdy kolejny rok odczytuje juz poprawnie skumulowany
+  wczesniejszy haircut, zanim doda WLASNY).
+
+  **Zaktualizowany test** `test_high_water_mark_not_double_taxed_until_new_peak`
+  (`test_annual_tax.py`) - stary asercja `out["equity"].iloc[1] == 1.2` bylo TRESCIA buga (rok
+  strat kopiowal SUROWA nominalna wartosc 1.2, ignorujac ze realny kapital byl juz mniejszy po
+  podatku roku 1) - poprawiona na `1.405 * (1.2/1.5) = 1.124` (ten sam PROCENTOWY spadek -20%
+  zaaplikowany do REALNEGO, mniejszego kapitalu - matematycznie poprawne dla portfela o
+  zwrotach proporcjonalnych do calego kapitalu). Nowy test
+  `test_haircuts_compound_across_multiple_tax_events` - regresja na syntetycznym przykladzie
+  wyzej (3 lata staly wzrost, oczekiwany skumulowany mnoznik 1.2632, NIE 1.3041).
+
+  **PRAWDZIWY wplyw na wyniki** (relatywny spadek CAGR z podatku, PRZED vs PO naprawie):
+
+  | strategia | rel. spadek PRZED (bug) | rel. spadek PO (naprawione) |
+  |---|---|---|
+  | `best17_a` | 2.5% | **18.1%** |
+  | `gpm_mid_10` | 2.7% | **17.8%** |
+  | `gpm` | 2.7% | **18.0%** |
+  | `the_one` | 2.3% | **17.5%** |
+  | `tlt_hedge` | 0.0% | **34.9%** (outlier - niska baza CAGR, male zmiany bardzo widoczne relatywnie) |
+
+  Po naprawie relatywny spadek jest konsekwentnie ~18% - bardzo bliskie nominalnej stawce 19%
+  (jak nalezy, bo wiekszosc strategii ma wiecej dodatnich niz ujemnych lat - efektywna stawka
+  troche NIZSZA niz nominalna, bo high-water-mark daje realna ulge w latach odrabiania strat, ale
+  NIE o rzad wielkosci jak przy bugu). Na przykladzie `best17_a` (pelna historia, 2008-2026):
+  equity koncowe PRZED podatkiem 16.16, PO POPRAWNYM podatku **10.06** (bylo blednie 15.15) -
+  calkowity zebrany podatek to teraz 13.6% zysku nominalnego (bylo blednie ~21%, co samo w sobie
+  bylo dodatkowym artefaktem tego samego buga, nie niezaleznym zjawiskiem).
+
+  **Konsekwencje dla rankingu sesji** - `gpm_best17_a` (dotychczasowy "sesyjny rekord Calmar
+  0.786") spada do Calmar **0.585**. `gpm_mid_10_best17_a` (kandydat produkcyjny) spada do Calmar
+  **0.601** - PRZEJMUJE #1 miejsce w `results/SUMMARY.md` (bylo #2). Wzgledna kolejnosc strategii
+  w duzej mierze zachowana (obie pozostaly na samym szczycie, tylko zamienily sie miejscami) -
+  poprawka dziala z grubsza proporcjonalnie na strategie o podobnym profilu zysku/straty, ale
+  WSZYSTKIE liczby "PO PODATKU" cytowane w CHANGELOG.md PRZED tym wpisem sa NIEAKTUALNE.
+  Aktualne, poprawione liczby: `results/*.json` (regenerowane w calosci) i zaktualizowana sekcja
+  "ANNUAL TAX" w README.md.
+
+  Pelna regeneracja `results/` (wszystkie 46 plikow + `SUMMARY.md`). Pelny pakiet testow:
+  468/468 (dodany 1 nowy test), bez regresji - ZERO innych zamrozonych baseline'ow sie zlamalo,
+  bo wiekszosc z nich sprawdza metryki PRZED podatkiem (`metrics_pre_tax`) albo uzywa szerokich
+  progow tolerancji (`correlation > 0.9`, `gaps < 0.05`), nie precyzyjnych liczb PO podatku.
+
 ## 2026-07-13 (46)
 
 - **VNQ mapping: `idup.uk` -> `xres.uk`** - user: "Wymienimy uk dup na xres jest akumulacyjny" -

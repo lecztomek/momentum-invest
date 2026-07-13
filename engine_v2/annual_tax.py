@@ -72,8 +72,17 @@ def apply_annual_tax(
 
         if tax_amount > 0.0:
             haircut_ratio = equity_after_tax / equity_before_tax
-            next_event_idx = tax_events_idx[i + 1] if i + 1 < len(tax_events_idx) else len(equity)
-            equity.iloc[idx:next_event_idx] *= haircut_ratio
+            # DO KONCA serii, nie tylko do nastepnego zdarzenia - `equity` jest mutowana W MIEJSCU
+            # i petla idzie chronologicznie, wiec kolejne lata MUSZA odczytac skumulowany efekt
+            # WSZYSTKICH wczesniejszych podatkow, nie tylko tego jednego bezposrednio przed nimi.
+            # Ograniczenie do `iloc[idx:next_event_idx]` (a nawet `next_event_idx+1`) resetowalo
+            # dni miedzy dwoma zdarzeniami do SUROWEJ, nieopodatkowanej wartosci wyjsciowej -
+            # kazdy kolejny rok liczyl podatek jakby poprzednie podatki nigdy nie mialy miejsca
+            # (kazdy segment miedzy zdarzeniami mnozony TYLKO przez WLASNY haircut, nie przez
+            # zlozenie wszystkich wczesniejszych). Patrz CHANGELOG (47) - realny wplyw: efektywny
+            # skumulowany podatek na dlugich historiach byl NIEDOSZACOWANY, CAGR po podatku
+            # zawyzony.
+            equity.iloc[idx:] *= haircut_ratio
             tax_amounts.iloc[idx] = tax_amount
 
         tax_base_equity = max(tax_base_equity, equity_after_tax)

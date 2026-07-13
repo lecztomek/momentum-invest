@@ -516,16 +516,45 @@ razem, nie ukryte.
 sie byc niespojnie ustawione JUZ WCZESNIEJ (5 strategii mialo 0.19, 5 mialo 0.0), ale poniewaz
 nigdzie nie bylo faktycznie liczone, ta niespojnosc nigdy nie miala znaczenia.
 
-**Pelne porownanie PRZED/PO podatku** (wszystkie 11 solo + 27 portfeli, pelna tabela w
-CHANGELOG.md 2026-07-11 (13)) - CAGR/MaxDD/Sharpe spadaja wszedzie tam gdzie strategia miala
-dodatnie lata, ale relatywna KOLEJNOSC strategii prawie sie nie zmienia. Przyklady:
+**⚠️ BUGFIX 2026-07-13 (47) - tabela nizej byla POLICZONA NA BUGU, patrz CHANGELOG (47).** User:
+"Czy nie mamy Buga z podatkiem belki, cos za maly ma wplyw na CAGR". Mial racje - `equity.iloc[
+idx:next_event_idx] *= haircut_ratio` resetowalo KAZDY kolejny rok do SUROWEJ, nigdy
+nieopodatkowanej wartosci z wejsciowej krzywej, zamiast mnozyc PRZEZ JUZ zastosowane wczesniejsze
+haircuty - efektywnie kazdy kolejny rok liczyl podatek jakby wczesniejsze podatki NIGDY nie
+mialy miejsca. Naprawione na `equity.iloc[idx:] *= haircut_ratio` (do konca serii, kompounduje
+naturalnie przez chronologiczna petle). Efekt: relatywny spadek CAGR z podatku byl ~2.5%
+(oczywisty niedoszacowanie wzgledem nominalnej stawki 19%) - PO naprawie jest ~18% (bardzo
+bliskie nominalnej stawce, jak nalezy dla mark-to-market podatku na w wiekszosci dodatniej
+historii). WSZYSTKIE liczby "PO PODATKU" w CHANGELOG.md przed (47) i w tabeli nizej sa
+NIEAKTUALNE - aktualne, poprawione liczby sa w `results/*.json` (regenerowane, patrz sekcja
+"Wygenerowane pliki wynikowe" nizej).
 
-| Strategia | CAGR przed | CAGR po | Sharpe przed | Sharpe po |
+**Pelne porownanie PRZED/PO podatku (NIEAKTUALNE, pochodzi z (13), PRZED bugfixem (47))** -
+zachowane dla historii, zobacz **poprawiona wersja tej samej tabeli nizej**:
+
+| Strategia | CAGR przed | CAGR po (BUG) | Sharpe przed | Sharpe po (BUG) |
 |---|---|---|---|---|
 | `best17_a` | 16.49% | 16.07% | 0.96 | 0.93 |
 | `vaa_g4_best17_a` | 11.48% | 11.25% | 1.03 | **0.99** |
 | `combined_triple` | 11.54% | 11.26% | 0.99 | 0.96 |
 | `best17_a_tlt_hedge` | 14.10% | 13.78% | 0.97 | 0.94 |
+
+**Ta sama tabela, PO bugfixie (47)** - spadek CAGR teraz ~18% relatywnie (bylo ~2.5%):
+
+| Strategia | CAGR przed | CAGR po (poprawione) | Sharpe przed | Sharpe po (poprawione) |
+|---|---|---|---|---|
+| `best17_a` | 16.74% | **13.71%** | 0.96 | **0.80** |
+| `vaa_g4_best17_a` | 11.60% | **9.48%** | 1.03 | **0.84** |
+| `combined_triple` | 11.65% | **9.56%** | 1.00 | **0.82** |
+| `best17_a_tlt_hedge` | 14.08% | **11.58%** | 0.96 | **0.80** |
+
+**Konsekwencje dla rankingu sesji** - `gpm_best17_a` (dotychczasowy "sesyjny rekord Calmar 0.786")
+spada do Calmar **0.585**; `gpm_mid_10_best17_a` (kandydat produkcyjny) spada do Calmar **0.601**
+- PRZEJMUJE #1 w `results/SUMMARY.md` (byl #2). Wzgledna KOLEJNOSC strategii jest w duzej mierze
+zachowana (obie top-2 pozycje sie zamienily miejscami, ale pozostaly na samej gorze) - Calmar
+absolutnie NIZSZY wszedzie, ale mechanika "co jest lepsze od czego" prawie bez zmian, bo
+poprawka dziala (z grubsza) proporcjonalnie na wszystkie strategie z podobnym profilem
+zysku/straty.
 
 `vaa_g4_best17_a` pozostaje najlepszym Sharpe w calym repo rowniez PO podatku.
 
@@ -1646,9 +1675,10 @@ strategii/bloku silnika, ktora wplywa na wyniki, i zacommitowac nowy wynik:
 .venv/bin/python3 -m engine_v2.generate_results
 ```
 
-Uruchomienie 2026-07-12 (42) potwierdza znane liczby sesji - `gpm_best17_a` (sesyjny rekord
-Calmar) wychodzi na #1 w `results/SUMMARY.md` (Calmar 0.786), zaraz za nim `gpm_mid_10_best17_a`
-(kandydat produkcyjny, Calmar 0.716).
+Uruchomienie 2026-07-12 (42) potwierdzilo znane liczby sesji (`gpm_best17_a` #1, Calmar 0.786) -
+NIEAKTUALNE po bugfixie podatku (47), patrz sekcja "ANNUAL TAX" wyzej. Po (47):
+`gpm_mid_10_best17_a` (kandydat produkcyjny) jest teraz #1 w `results/SUMMARY.md` (Calmar 0.601),
+`gpm_best17_a` (dotychczasowy sesyjny rekord) #2 (Calmar 0.585).
 
 **UK mapping dla portfeli LACZONYCH** (2026-07-12 (45)) - user zauwazyl, ze poprawka HYG
 EUR->USD (44) nie zmienila `results/gpm_mid_10_best17_a.json`, bo generator NIGDY nie liczyl UK
@@ -1705,12 +1735,14 @@ juz jest w pelni generyczny wzgledem tickerow):
 
 **PRAWDZIWY WYNIK "ostatecznego testu", PO dodaniu VT->`vwra.uk`** (2026-07-12 (41), patrz
 CHANGELOG - user: "dlaczego celowo bez mapowania VT, skoro `vwra.uk` istnieje w danych?"; poprzednia
-wersja tabeli z VT bez mapowania - patrz CHANGELOG (39)):
+wersja tabeli z VT bez mapowania - patrz CHANGELOG (39)). **⚠️ Liczby PONIZEJ zaktualizowane
+2026-07-13 (47) po bugfixie `annual_tax` (patrz sekcja "ANNUAL TAX" wyzej) - podatek byl
+niedoszacowany, korelacja/mismatch/mechanizm bez zmian, zmieniaja sie tylko CAGR/MaxDD/Sharpe/Calmar:**
 
 | | okno (krotsze niz US) | US: CAGR/MaxDD/Sharpe/Calmar | UK: CAGR/MaxDD/Sharpe/Calmar | korelacja miesieczna | mismatch |
 |---|---|---|---|---|---|
-| `best17_a` | 2019-07 do 2026-07 (85 mies.) | 18.07%/-31.19%/0.879/0.579 | 18.65%/-31.10%/0.966/0.600 | **0.969** | 0/85 (0%) |
-| `gpm_mid_10` | 2018-05 do 2026-07 (99 mies.) | 5.46%/-7.79%/0.738/0.701 | 6.21%/-7.46%/0.856/0.832 | **0.957** | 0/99 (0%) |
+| `best17_a` | 2019-07 do 2026-07 (85 mies.) | 15.74%/-31.19%/0.784/0.505 | 16.30%/-31.10%/0.860/0.524 | **0.970** | 0/85 (0%) |
+| `gpm_mid_10` | 2018-05 do 2026-07 (99 mies.) | 4.85%/-9.14%/0.659/0.531 | 5.56%/-8.24%/0.775/0.675 | **0.958** | 0/99 (0%) |
 
 **VT nie jest tylko sygnalem kanarka** - `rebound_starter` REALNIE go trzyma (100% VT, gdy portfel
 byl w cash i 3m zwrot VT > 5%). Brak mapowania oznaczal, ze UK strona w tych miesiacach siedziala
@@ -1768,9 +1800,12 @@ teraz z VT->VWRA.UK - patrz wyzej). Portfele LACZONE nie maja wlasnego
 `run_combined_pipeline` (`engine_v2/tests/test_gpm_mid_10_best17_a_uk_mapping.py`), tym samym
 mechanizmem co powyzej:
 
+**⚠️ Liczby PONIZEJ zaktualizowane 2026-07-13 (47) po bugfixie `annual_tax`** (patrz sekcja
+"ANNUAL TAX" wyzej):
+
 | | okno | US: CAGR/MaxDD/Sharpe/Calmar | UK: CAGR/MaxDD/Sharpe/Calmar | korelacja miesieczna | mismatch |
 |---|---|---|---|---|---|
-| `gpm_mid_10_best17_a` (50/50) | 2019-07 do 2026-07 (85 mies.) | 11.89%/-14.65%/0.955/0.811 | 12.43%/-14.98%/1.050/0.830 | **0.967** | 0/85 (0%) |
+| `gpm_mid_10_best17_a` (50/50) | 2019-07 do 2026-07 (85 mies.) | 10.42%/-14.65%/0.843/0.711 | 10.94%/-14.98%/0.929/0.731 | **0.967** | 0/85 (0%) |
 
 Po dodaniu VT->VWRA: mismatch spada do 0% (bylo 2.0%), korelacja rosnie do 0.967 (bylo 0.9575),
 gap CAGR +0.54pp, gap MaxDD -0.33pp - tego samego rzedu co oba testy solo. Jedyny formalny fail
