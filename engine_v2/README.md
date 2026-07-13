@@ -1713,16 +1713,27 @@ wszystkich uzywanych tickerow, pozniej niz `dtla.uk`) i pozostaje pewien, mniejs
 - realny szum US ETF vs UCITS, nie luka w mapowaniu - jedyny check formalnie ponizej progu
 `max_single_month_return_diff` w `acceptance_spec.json`, przyczyna w pelni zrozumiana).
 
-**Mapowania** (zweryfikowane wprost na danych - np. `hyg.us`->`ihyg.uk` NIE `ihya.uk`, bo IHYA to
-udzialowa klasa AKUMULACYJNA/total-return, ktora dalaby sztucznie zawyzony gap wobec `hyg.us`,
-liczonego bez reinwestycji dywidend - potwierdzone porownaniem rocznych stop wzrostu obu klas):
+**Mapowania** (KAZDY z 15 tickerow w `data/uk/` zweryfikowany wprost wzgledem realnej
+dokumentacji funduszu - ISIN, fact sheet iShares/Vanguard - NIE z pamieci/zgadywania, patrz
+CHANGELOG (44) po tym, jak user zlapal jeden bledny przypadek):
 - `strategies_v2/best17_a/uk_ticker_mapping.json`: XLK->IUIT.UK, IVV->CSPX.UK, DBC->ICOM.UK,
   IAU->IGLN.UK, VT->VWRA.UK (jedyna dostepna w danych klasa Vanguard FTSE All-World, tylko
   Accumulating - brak Distributing odpowiednika typu VWRL w `data/uk/` - gap ~1.1pp/rok wobec
   `vt.us` na wspolnym oknie 2019-2026, mniejszy niz np. IVV->CSPX ~3.7pp/rok, zaakceptowany z tego
   samego powodu).
 - `strategies_v2/gpm_mid_10/uk_ticker_mapping.json`: pelne pokrycie wszystkich 12 tickerow
-  (10 ryzykownych + IEF/SHY) - potwierdzony mismatch 0%.
+  (10 ryzykownych + IEF/SHY) - potwierdzony mismatch 0%. `hyg.us`->`ihya.uk` (2026-07-12 (44),
+  POPRAWIONE z `ihyg.uk` - user: "ihyg jest notowany w EUR, nie chce tak, wszystkie tickery
+  powinny byc w USD"). `ihyg.uk` to naprawde **iShares € High Yield Corp Bond UCITS ETF EUR**
+  (zla waluta - wprowadzalaby szum EUR/USD niepowiazany ze strategia); `ihya.uk` to **iShares $
+  High Yield Corp Bond UCITS ETF USD (Acc)** - poprawna waluta, ale Acc (reinwestycja dywidend
+  podbija CAGR o ~3.4pp/rok wobec `hyg.us` na wspolnym oknie 2017-2026 - WIEKSZY gap niz
+  jakikolwiek inny zaakceptowany w tym mapowaniu, ale brak w danych alternatywy "USD + Dist" -
+  prawdziwy `IHYU` istnieje, ale nie mamy jego cen w `data/uk/`). Wybrano poprawna WALUTE: gap
+  Acc/Dist jest gladkim, przewidywalnym dryfem CAGR (ta sama kategoria co juz zaakceptowany
+  IVV->CSPX), podczas gdy zla waluta wprowadzalaby prawdziwy SZUM w zwrotach miesiecznych.
+  Wplyw na cale portfele (`gpm_mid_10`/`gpm_mid_10_best17_a`) praktycznie zaden - HYG to jeden z
+  10 aktywow ryzykownych, top-3 na raz.
 
 30 testow (`test_uk_mapping.py` - 18 syntetycznych, w tym `find_uk_window_start` + integration
 test w `test_run_spec_runner.py` z tymczasowo skopiowanymi danymi USA pod nowymi tickerami "*.uk"

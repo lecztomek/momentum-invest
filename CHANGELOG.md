@@ -2,6 +2,59 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-12 (44)
+
+- **HYG mapping: EUR -> USD (`ihyg.uk` -> `ihya.uk`)** - user: "W mappingu uzywamy tickera ihyg
+  ktory jest notowany w EUR - nie chce tak, powinnismy miec wszystkie notowane na gieldzie w
+  europie ale w USD". Zweryfikowano PRZEZ WYSZUKIWANIE (nie z pamieci) wszystkie 15 tickerow z
+  `data/uk/` wzgledem realnej dokumentacji funduszu (ISIN, iShares/Vanguard fact sheets,
+  Yahoo/justETF/Bloomberg):
+
+  | ticker | fundusz | waluta |
+  |---|---|---|
+  | `ihyg.uk` | iShares **€** High Yield Corp Bond UCITS ETF **EUR** (Dist) | **EUR** ❌ |
+  | `ihya.uk` | iShares **$** High Yield Corp Bond UCITS ETF **USD** (Acc) | USD ✅ |
+  | `cbu0`/`cndx`/`cspx`/`dtla`/`eimi`/`ibta`/`icom`/`idup`/`igln`/`iues`/`iuit`/`lqda`/`vwra` | (odpowiednio IEF/QQQ/SPY,IVV/TLT/VWO,VWO/SHY/DBC/VNQ/GLD,IAU/XLE/XLK/LQD/VT) | wszystkie **USD** ✅ |
+
+  Trafna obserwacja usera - `ihyg.uk` bylo JEDYNYM zle dobranym tickerem w calym mapowaniu (14/15
+  poprawnych od poczatku). Powod bledu: wczesniejsza weryfikacja (38)/(39) sprawdzala TYLKO
+  Acc-vs-Dist (polityke dywidend) przez porownanie rocznych stop wzrostu, NIE walute - `ihyg.uk`
+  "wygladalo" poprawnie (niska stopa wzrostu, zgodna z Dist/brakiem reinwestycji), ale niska
+  stopa wzrostu byla RESZTA dwoch efektow razem (Dist + osobna dryfujaca ekspozycja EUR/USD), nie
+  tylko Dist.
+
+  **Prawdziwy dylemat, brak idealnej opcji w `data/uk/`**: nie ma tickera "USD + Dist" dla tego
+  funduszu w naszych danych (odpowiednik `IHYU` istnieje naprawde, ale nie mamy jego cen) -
+  wybor to `ihyg.uk` (poprawna polityka dywidend, ZLA waluta - szum EUR/USD) albo `ihya.uk`
+  (poprawna waluta, ZLA polityka dywidend - reinwestycja podbija CAGR o ~3.4pp/rok wobec `hyg.us`
+  na wspolnym oknie 2017-04 do 2026-07, WIEKSZY gap niz jakikolwiek zaakceptowany dotad w tym
+  mapowaniu). Wybrano `ihya.uk` (USD) zgodnie z jawnym priorytetem usera - dodatkowo
+  METODOLOGICZNIE: niedopasowanie waluty wprowadza SZUM w zwrotach MIESIECZNYCH (EUR/USD rusza
+  sie niezaleznie od obligacji), degradujac `monthly_return_correlation`/
+  `max_single_month_return_diff` NAPRAWDE (przypadkowo, miesiac po miesiacu); niedopasowanie
+  Acc/Dist to gladki, monotoniczny, w pelni przewidywalny dryf CAGR (nie wplywa na ksztalt
+  korelacji), tej samej kategorii co juz zaakceptowany `IVV`->`CSPX` (~3.7pp/rok).
+
+  **Wplyw na wyniki "ostatecznego testu"** (`gpm_mid_10` uzywa HYG w swoim 10-aktywowym
+  uniwersum, `top_n_risky=3` wiec HYG nie zawsze jest trzymany - stad wplyw calego portfela jest
+  rozcienczony):
+
+  | | mismatch | korelacja miesieczna | gap CAGR | gap MaxDD |
+  |---|---|---|---|---|
+  | `gpm_mid_10` solo (EUR `ihyg`, przed - CHANGELOG (39)) | 0/99 (0%) | 0.957 | +0.75pp | +0.33pp |
+  | `gpm_mid_10` solo (USD `ihya`, po) | 0/99 (0%) | 0.957 | +0.75pp | +0.33pp |
+  | `gpm_mid_10_best17_a` (EUR `ihyg`, przed - CHANGELOG (43)) | 0/85 (0%) | 0.9668 | +0.54pp | -0.33pp |
+  | `gpm_mid_10_best17_a` (USD `ihya`, po) | 0/85 (0%) | 0.9669 | +0.56pp | -0.33pp |
+
+  Praktycznie BEZ ZMIANY na poziomie calego portfela (jak oczekiwano - HYG to jeden z 10 aktywow,
+  top-3 na raz, wiec jego udzial jest rozcienczony) - ale mapowanie jest teraz METODOLOGICZNIE
+  POPRAWNE (waluta), co bylo celem tej poprawki, nie poprawa liczb.
+
+  Zaktualizowano `strategies_v2/gpm_mid_10/uk_ticker_mapping.json` i
+  `strategies_v2/gpm_mid_10_best17_a/uk_ticker_mapping.json`. Zaden test nie wymagal zmiany
+  asercji (progi `correlation > 0.9`/`gaps < 0.05` nadal spelnione). `results/gpm_mid_10.json` i
+  `results/gpm_mid_10_best17_a.json` przeregenerowane. Pelny pakiet testow: 467/467, bez regresji.
+
 ## 2026-07-12 (43)
 
 - **`results/` ROZSZERZONE** - user (zaraz po (42)): "Brakuje wyników dla gpm_mid_10_best17_a np
