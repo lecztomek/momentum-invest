@@ -2,6 +2,46 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-13 (46)
+
+- **VNQ mapping: `idup.uk` -> `xres.uk`** - user: "Wymienimy uk dup na xres jest akumulacyjny" -
+  dostarczyl nowy plik danych `data/uk/xres.uk.txt` bezposrednio na `main` (2618 wierszy,
+  2016-02-22 do 2026-07-02). Zweryfikowano PRZEZ WYSZUKIWANIE + porownanie stop wzrostu (ta sama
+  metoda co dla HYG (44)):
+  - `idup.uk` = iShares US Property Yield UCITS ETF **USD (Dist)**, ISIN IE00B1FZSF77 - potwierdzone
+    POPRAWNE (USD, Dist) zarowno przez dokumentacje funduszu, jak i przez stope wzrostu (3.55%/rok
+    na WLASNYM oknie vs `vnq.us` 4.24%/rok na tym samym oknie - LEKKIE niedoszacowanie, spojne z
+    Dist/brakiem reinwestycji dywidend).
+  - `xres.uk` = **Invesco** Real Estate S&P US Select Sector UCITS ETF **USD (Acc)**, ISIN
+    IE00BYM8JD58 - INNY dostawca niz iShares, potwierdzone jako Acc (7.40%/rok na wspolnym oknie
+    2016-02/2026-07 vs `vnq.us` 5.10%/rok - gap +2.3pp/rok, spojny z reinwestycja dywidend REIT-u
+    o wysokiej stopie dywidendy).
+
+  Czyli: `idup.uk` bylo TECHNICZNIE poprawnym wyborem (USD, Dist, zgodne z metodologia calego
+  mapowania) - user zamienil je mimo to na `xres.uk` (INNY dostawca, Acc) - prawdopodobnie bo
+  IDUP nie jest realnie dostepny/tradowalny na jego koncie maklerskim (nie zweryfikowane wprost,
+  ale user potwierdzil jednoznacznie: "Tak chce xres zamiast idup" po pytaniu o powod). Ten sam
+  wzorzec kompromisu co VT->VWRA (44)/HYG->IHYA (44) - akceptujemy Acc bias w zamian za realna
+  dostepnosc, dokumentujemy wprost rozmiar gapu (tu WIEKSZY niz w innych przypadkach - REIT-y
+  maja wysoka biezaca stope dywidendy, ~2.3pp/rok to najwiekszy pojedynczy Acc/Dist gap w calym
+  mapowaniu dotad).
+
+  **Wplyw na "ostateczny test"** (VNQ to jeden z 10 aktywow ryzykownych `gpm_mid_10`,
+  `top_n_risky=3` - wplyw calego portfela rozcienczony):
+
+  | | mismatch | korelacja miesieczna | gap CAGR | gap MaxDD |
+  |---|---|---|---|---|
+  | `gpm_mid_10` solo (IDUP, przed) | 0/99 (0%) | 0.9574 | +0.75pp | +0.33pp |
+  | `gpm_mid_10` solo (XRES, po) | 0/99 (0%) | 0.9569 | +0.82pp | +0.31pp |
+  | `gpm_mid_10_best17_a` (IDUP, przed) | 0/85 (0%) | 0.9669 | +0.56pp | -0.33pp |
+  | `gpm_mid_10_best17_a` (XRES, po) | 0/85 (0%) | 0.9667 | +0.56pp | -0.33pp |
+
+  Praktycznie bez zmiany na poziomie calego portfela (jak oczekiwano). Zaktualizowano
+  `strategies_v2/gpm_mid_10/uk_ticker_mapping.json` i
+  `strategies_v2/gpm_mid_10_best17_a/uk_ticker_mapping.json`. Zaden test nie wymagal zmiany
+  asercji. Pelna regeneracja `results/` (wszystkie 46 plikow + `SUMMARY.md`). Pelny pakiet
+  testow: 467/467, bez regresji.
+
 ## 2026-07-12 (45)
 
 - **`results/` dla portfeli LACZONYCH: dodane UK mapping** - user zauwazyl, ze poprawka HYG

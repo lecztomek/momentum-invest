@@ -1742,7 +1742,15 @@ CHANGELOG (44) po tym, jak user zlapal jeden bledny przypadek):
   Acc/Dist jest gladkim, przewidywalnym dryfem CAGR (ta sama kategoria co juz zaakceptowany
   IVV->CSPX), podczas gdy zla waluta wprowadzalaby prawdziwy SZUM w zwrotach miesiecznych.
   Wplyw na cale portfele (`gpm_mid_10`/`gpm_mid_10_best17_a`) praktycznie zaden - HYG to jeden z
-  10 aktywow ryzykownych, top-3 na raz.
+  10 aktywow ryzykownych, top-3 na raz. `vnq.us`->`xres.uk` (2026-07-13 (46), POPRAWIONE z
+  `idup.uk` - user dostarczyl nowe dane i potwierdzil: "Tak chce xres zamiast idup"). `idup.uk`
+  (iShares US Property Yield UCITS ETF USD (Dist)) bylo TECHNICZNIE poprawne (USD, Dist,
+  potwierdzone dokumentacja + stopami wzrostu), ale user zamienil je na `xres.uk` (Invesco Real
+  Estate S&P US Select Sector UCITS ETF USD (Acc) - INNY dostawca, Acc), prawdopodobnie z powodu
+  dostepnosci na koncie maklerskim. Gap Acc/Dist ~2.3pp/rok wobec `vnq.us` (WIEKSZY niz inne w
+  tym mapowaniu - REIT-y maja wysoka biezaca stope dywidendy) - ten sam wzorzec kompromisu
+  (waluta/dostepnosc > polityka dywidend) co VT->VWRA i HYG->IHYA. Wplyw na cale portfele
+  praktycznie zaden (VNQ tez top-3 z 10).
 
 30 testow (`test_uk_mapping.py` - 18 syntetycznych, w tym `find_uk_window_start` + integration
 test w `test_run_spec_runner.py` z tymczasowo skopiowanymi danymi USA pod nowymi tickerami "*.uk"

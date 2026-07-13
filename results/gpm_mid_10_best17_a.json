@@ -240,21 +240,21 @@
       "min_monthly_return_correlation": true
     },
     "comparison": {
-      "cagr_gap": 0.005572566602167317,
-      "max_drawdown_gap": -0.003255152274544426,
-      "max_single_month_return_diff": 0.03202275121789455,
-      "monthly_return_correlation": 0.9669481916998911,
+      "cagr_gap": 0.0055878143581131745,
+      "max_drawdown_gap": -0.003255152274544204,
+      "max_single_month_return_diff": 0.032215919652273106,
+      "monthly_return_correlation": 0.9666608427174153,
       "n_common_months": 83,
       "uk_metrics": {
         "annual_turnover": 2.7711576065702,
-        "best_year_return": 0.27239127952389586,
-        "cagr": 0.12445865123621846,
-        "calmar": 0.8308143529579395,
+        "best_year_return": 0.27249553596297615,
+        "cagr": 0.12447389899216432,
+        "calmar": 0.8309161382044012,
         "max_consecutive_negative_months": 7,
-        "max_drawdown": -0.1498032030779315,
+        "max_drawdown": -0.14980320307793127,
         "max_time_underwater_months": 20,
-        "sharpe": 1.0519549450687065,
-        "worst_year_return": -0.07165200745283462
+        "sharpe": 1.052911645452657,
+        "worst_year_return": -0.07170572380151796
       },
       "us_metrics": {
         "annual_turnover": 2.7711576065702,
