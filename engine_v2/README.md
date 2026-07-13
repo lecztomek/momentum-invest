@@ -1650,6 +1650,15 @@ Uruchomienie 2026-07-12 (42) potwierdza znane liczby sesji - `gpm_best17_a` (ses
 Calmar) wychodzi na #1 w `results/SUMMARY.md` (Calmar 0.786), zaraz za nim `gpm_mid_10_best17_a`
 (kandydat produkcyjny, Calmar 0.716).
 
+**UK mapping dla portfeli LACZONYCH** (2026-07-12 (45)) - user zauwazyl, ze poprawka HYG
+EUR->USD (44) nie zmienila `results/gpm_mid_10_best17_a.json`, bo generator NIGDY nie liczyl UK
+mapping dla portfeli laczonych ("wiadomo ze musi to sie przeliczyc" - trafnie). Dodano
+`_uk_mapping_combined` - sklada mapowanie ze WSZYSTKICH `uk_ticker_mapping.json` skladowych
+strategii, `null` gdy KTORAKOLWIEK skladowa go nie ma. Jedyny portfel laczony w repo z pelnym
+pokryciem: `gpm_mid_10_best17_a` (`best17_a` + `gpm_mid_10`, oba maja wlasne mapowanie) -
+`results/gpm_mid_10_best17_a.json` ma teraz `uk_mapping` (mismatch 0%, korelacja 0.9669).
+Pozostale 28 portfeli laczonych: `uk_mapping: null`.
+
 ### Tryby uzycia pipeline'u (docelowo)
 
 | Tryb | Mechanizm | Stan |

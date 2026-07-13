@@ -2,6 +2,33 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-12 (45)
+
+- **`results/` dla portfeli LACZONYCH: dodane UK mapping** - user zauwazyl, ze poprawka HYG
+  EUR->USD (44) nie zmienila `results/gpm_mid_10_best17_a.json` w ogole ("ale to przeliczales
+  wyniki i zrobiles ich commit?") - powod: `_generate_combined` w `generate_results.py` NIGDY nie
+  liczyl UK mapping (tylko `metrics`/`named_periods_all`/`train_oos`/
+  `capital_weight_sensitivity`) - dane US-vs-UK dla miksu istnialy TYLKO w osobnym
+  `test_gpm_mid_10_best17_a_uk_mapping.py`, nie w `results/`. User: "Wiadomo ze musi to sie
+  przeliczyc" - trafne, to byla realna luka w generatorze, nie w samej poprawce mapowania.
+
+  Nowa `_uk_mapping_combined` w `generate_results.py` - ten sam mechanizm co
+  `run_spec_runner._run_uk_mapping_check` dla pojedynczej strategii, uruchomiony na wyniku
+  `run_combined_pipeline`: sklada mapowanie ze WSZYSTKICH `uk_ticker_mapping.json` skladowych
+  strategii (sibling ich `strategy_spec.json`), zwraca `None` gdy KTORAKOLWIEK skladowa go nie ma
+  (np. `gpm_best17_a` - `gpm` nie ma wlasnego pliku mapowania, wiec `uk_mapping: null` - poprawne,
+  nie polowiczny wynik). Progi akceptacji zalozone przez generator
+  (`_COMBINED_UK_MAPPING_ACCEPTANCE`, ta sama konwencja co juz istniejacy
+  `annual_tax_rate_assumed`), bo `CombinedSpec` nie niesie wlasnego `AcceptanceSpec.uk_mapping`.
+
+  `results/gpm_mid_10_best17_a.json` ma teraz `uk_mapping` (jedyny portfel laczony w repo ze
+  100% pokryciem skladowych - `best17_a` + `gpm_mid_10`): mismatch 0%, korelacja miesieczna
+  0.9669, zgodne z liczbami z (43)/(44) (poprawka HYG->`ihya.uk` juz uwzgledniona). Wszystkie inne
+  28 portfeli laczonych dostaja `uk_mapping: null` (brak pelnego pokrycia mapowania skladowych).
+
+  Pelna regeneracja `results/` (wszystkie 46 plikow + `SUMMARY.md`). Pelny pakiet testow:
+  467/467, bez regresji.
+
 ## 2026-07-12 (44)
 
 - **HYG mapping: EUR -> USD (`ihyg.uk` -> `ihya.uk`)** - user: "W mappingu uzywamy tickera ihyg

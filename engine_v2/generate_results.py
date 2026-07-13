@@ -23,6 +23,13 @@ Generuje:
       - `capital_weight_sensitivity` (TYLKO portfele laczone `fixed_capital_weights` z 2
         skladowymi) - sweep udzialu kapitalu pierwszej skladowej w [0.30..0.70], ten sam wzorzec
         co recznie liczony sweep dla `gpm_best17_a` (CHANGELOG (31)).
+      - `uk_mapping` (portfele LACZONE - user: "wiadomo ze musi to sie przeliczyc" (44), po tym
+        jak poprawka HYG EUR->USD nie trafila do `results/gpm_mid_10_best17_a.json`, bo ten
+        generator w ogole nie liczyl UK mapping dla portfeli laczonych) - TYLKO gdy WSZYSTKIE
+        skladowe strategie maja WLASNY `uk_ticker_mapping.json` (inaczej `null`), ten sam
+        mechanizm co `run_spec_runner._run_uk_mapping_check` dla pojedynczej strategii, progi
+        zalozone przez generator (`_COMBINED_UK_MAPPING_ACCEPTANCE`, ta sama konwencja co
+        `annual_tax_rate_assumed`).
   - `results/SUMMARY.md` - jedna zbiorcza tabela (CAGR/MaxDD/Sharpe/Calmar/turnover, posortowane
     wg Calmar) do przegladania bez odpalania czegokolwiek.
 
@@ -50,7 +57,7 @@ from typing import Any, Dict
 
 import pandas as pd
 
-from engine_v2.acceptance_spec import AcceptanceSpec, Criteria
+from engine_v2.acceptance_spec import AcceptanceSpec, Criteria, UkMappingAcceptance
 from engine_v2.annual_tax import apply_annual_tax
 from engine_v2.backtest_engine import daily_equity_curve
 from engine_v2.blocks.data_loader import REGISTRY as DATA_LOADER_REGISTRY
@@ -62,6 +69,13 @@ from engine_v2.run_spec import RunSpec
 from engine_v2.run_spec_runner import _run_search, run as run_single
 from engine_v2.spec import StrategySpec
 from engine_v2.test_spec import TestSpec
+from engine_v2.uk_mapping import (
+    check_uk_mapping_criteria,
+    compare_us_vs_uk,
+    find_uk_window_start,
+    load_ticker_mapping,
+    remap_final_portfolio,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STRATEGIES_DIR = REPO_ROOT / "strategies_v2"
@@ -74,6 +88,16 @@ _COMBINED_ANNUAL_TAX_RATE = 0.19
 # zgeneralizowany na KAZDY portfel `fixed_capital_weights` z DOKLADNIE 2 skladowymi (jedyny uklad
 # w repo, patrz "Nigdy nie lacz 3 - max 2").
 _CAPITAL_WEIGHT_SWEEP = [0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70]
+# `CombinedSpec` nie niesie wlasnego `AcceptanceSpec.uk_mapping` (progi sa czescia TestSpec
+# pojedynczej strategii) - te same progi co uzywane w calej sesji dla portfeli laczonych
+# (gpm_mid_10_best17_a "ostateczny test", CHANGELOG (41)/(43)/(44)), zalozenie generatora.
+_COMBINED_UK_MAPPING_ACCEPTANCE = UkMappingAcceptance(
+    max_weights_mismatch_months_pct=0.05,
+    min_monthly_return_correlation=0.95,
+    max_single_month_return_diff=0.03,
+    max_cagr_gap_vs_us=0.03,
+    max_drawdown_gap_vs_us=0.05,
+)
 
 
 def _named_periods_all(equity_curve: pd.DataFrame, final_portfolio: pd.DataFrame) -> Dict[str, Any]:
@@ -150,6 +174,53 @@ def _train_oos_combined(
     return _train_oos_from_windows(
         equity_curve, final_portfolio, component_specs[0].train_window, component_specs[0].test_window
     )
+
+
+def _uk_mapping_combined(
+    combined_dir: Path,
+    combined_spec: CombinedSpec,
+    us_final_portfolio: pd.DataFrame,
+    us_daily_prices: pd.DataFrame,
+    annual_tax_rate: float,
+) -> Dict[str, Any] | None:
+    """Ten sam mechanizm co `run_spec_runner._run_uk_mapping_check` (pojedyncza strategia), tylko
+    na wyniku `run_combined_pipeline` - `CombinedSpec` nie ma wlasnego `TestSpec.uk_mapping`, wiec
+    mapowanie skladamy z uk_ticker_mapping.json KAZDEJ skladowej strategii (sibling jej
+    strategy_spec.json). `None` gdy KTORAKOLWIEK skladowa nie ma wlasnego pliku mapowania -
+    inaczej wynik bylby czesciowy/mylacy (user: "wszystkie tickery powinny byc w USD" - to samo
+    dotyczy kompletnosci mapowania, nie tylko waluty)."""
+    ticker_mapping: Dict[str, str] = {}
+    for rel_path in combined_spec.strategy_spec_paths:
+        mapping_path = (combined_dir / rel_path).parent / "uk_ticker_mapping.json"
+        if not mapping_path.exists():
+            return None
+        ticker_mapping.update(load_ticker_mapping(mapping_path))
+
+    uk_final_portfolio_full, _ = remap_final_portfolio(us_final_portfolio, ticker_mapping)
+    uk_tickers = sorted(set(ticker_mapping.values()))
+    loader_fn = DATA_LOADER_REGISTRY["stooq_csv"]
+    uk_daily_prices = loader_fn(uk_tickers, {"data_dir": "data/uk", "frequency": "daily"}).prices
+    uk_window_start = find_uk_window_start(uk_final_portfolio_full, uk_daily_prices)
+
+    us_slice = us_final_portfolio[us_final_portfolio["date"] >= uk_window_start].reset_index(drop=True)
+    uk_slice, diagnostics = remap_final_portfolio(us_slice, ticker_mapping)
+
+    us_equity_curve = daily_equity_curve(us_slice, us_daily_prices, {})
+    uk_equity_curve = daily_equity_curve(uk_slice, uk_daily_prices, {})
+    if annual_tax_rate > 0.0:
+        us_equity_curve = apply_annual_tax(us_equity_curve, annual_tax_rate)
+        uk_equity_curve = apply_annual_tax(uk_equity_curve, annual_tax_rate)
+
+    comparison = compare_us_vs_uk(us_slice, us_equity_curve, uk_slice, uk_equity_curve)
+    return {
+        "uk_window_start": uk_window_start.isoformat(),
+        "n_periods_in_window": len(us_slice),
+        "diagnostics": diagnostics,
+        "comparison": comparison,
+        "acceptance": check_uk_mapping_criteria(
+            comparison, diagnostics["mismatch_pct"], _COMBINED_UK_MAPPING_ACCEPTANCE
+        ),
+    }
 
 
 def _capital_weight_sensitivity(combined_dir: Path, combined_spec: CombinedSpec) -> Dict[str, Any] | None:
@@ -255,6 +326,9 @@ def _generate_combined(combined_dir: Path) -> Dict[str, Any]:
         "named_periods_all": _named_periods_all(equity_curve_after_tax, final_portfolio),
         "train_oos": _train_oos_combined(combined_dir, combined_spec, equity_curve_after_tax, final_portfolio),
         "capital_weight_sensitivity": _capital_weight_sensitivity(combined_dir, combined_spec),
+        "uk_mapping": _uk_mapping_combined(
+            combined_dir, combined_spec, final_portfolio, daily_prices, _COMBINED_ANNUAL_TAX_RATE
+        ),
     }
 
 
