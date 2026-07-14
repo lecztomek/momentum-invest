@@ -1665,7 +1665,16 @@ Pomija foldery-szkielety bez wlasnego `run_spec.json`/`combined_spec.json` (np. 
 uzywane tylko jako skladnik innej strategii) oraz jawne przyklady demo (`example_strategy`,
 `example_strategy_b`, `combined_example`).
 
-NIE jest czescia pytest/CI (pelny backtest + UK mapping + param stability sweep na ~46
+**Benchmarki "buy & hold" (2026-07-13 (48))** - user: "Czy zapisujemy wyniki benchmarku przy
+naszych wyliczeniach?" - dodane jako DWIE OSOBNE, samodzielne strategie (nie doklejony benchmark
+do kazdej istniejacej strategii z osobna): `strategies_v2/bh_vt/` (zawsze 100% `vt.us`, UK
+mapping `vwra.uk`) i `strategies_v2/bh_spy/` (zawsze 100% `spy.us`, UK mapping `cspx.uk`), ten
+sam wzorzec co juz istniejacy `tlt_hedge` (jednoaktywowa "cegielka", `top_n=1`,
+`portfolio_risk_engine="none"`). Trafiaja do `results/SUMMARY.md` jak kazda inna strategia (zero
+specjalnego kodu) - `bh_vt` CAGR 6.35%/Calmar 0.134, `bh_spy` CAGR 7.88%/Calmar 0.145 (obie na
+samym dole rankingu - zero ochrony przed krachem 2008, jak nalezy dla pasywnego benchmarku).
+
+NIE jest czescia pytest/CI (pelny backtest + UK mapping + param stability sweep na ~48
 strategiach jest wolny, ~kilkanascie minut po rozszerzeniu (43), bylo ~1-2 min) -
 `engine_v2/tests/test_generate_results.py` sprawdza tylko strukture (serializacja JSON,
 dyskretyzacja folderow demo) bez pelnego przebiegu. Nalezy uruchomic recznie po kazdej zmianie

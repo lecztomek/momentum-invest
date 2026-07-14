@@ -2,6 +2,39 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-13 (48)
+
+- **Benchmarki "buy & hold" (`bh_vt`, `bh_spy`)** - user: "Czy zapisujemy wyniki benchmarku przy
+  naszych wyliczeniach? A moze powinnismy miec prosta strategie buy hold vt z mappingiem vwra
+  oraz druga z sp500 i mapping uk". Trafne pytanie - `TestSpec.UkMappingSpec.uk_benchmark` byl
+  polem zdefiniowanym OD POCZATKU projektu (obecne juz w `example_strategy/test_spec.json`), ale
+  NIGDY nie bylo faktycznie uzywane/liczone - kolejne "zdefiniowane, nigdy nie liczone" pole (ten
+  sam wzorzec co `param_stability`/`named_periods`/`annual_tax` przed ich zbudowaniem).
+
+  Zamiast dodawac nowy mechanizm DO uk_mapping, dodano dwie NOWE, pelnoprawne strategie - zero
+  nowego kodu bloku, ten sam wzorzec co juz istniejacy `tlt_hedge` (jednoaktywowa "cegielka":
+  `top_n=1` na jednoaktywowym uniwersum, `portfolio_risk_engine="none"`, zero timingu/rotacji):
+  - `strategies_v2/bh_vt/` - zawsze 100% `vt.us` (Vanguard Total World, globalny rynek akcji),
+    UK mapping `vt.us`->`vwra.uk`.
+  - `strategies_v2/bh_spy/` - zawsze 100% `spy.us` (S&P 500), UK mapping `spy.us`->`cspx.uk`.
+
+  Obie automatycznie trafiaja do `results/SUMMARY.md` (ten sam generator co reszta strategii,
+  zero specjalnego kodu) - teraz mozna WPROST porownac, czy dodatkowa zlozonosc strategii
+  momentum w tym repo place wzgledem prostego pasywnego trzymania rynku. Progi akceptacji
+  celowo bardzo luzne (jak w `tlt_hedge`) - to punkt odniesienia, nie strategia oceniana wg
+  kryteriow aktywnej.
+
+  Wyniki (post-tax, pelna historia): `bh_vt` CAGR 6.35%/MaxDD -47.26%/Sharpe 0.404/Calmar 0.134;
+  `bh_spy` CAGR 7.88%/MaxDD -54.54%/Sharpe 0.495/Calmar 0.145 (obie zawieraja krach 2008, stad
+  duzy MaxDD - zaden overlay ochronny). UK mapping: mismatch 0% w obu (jeden ticker, zawsze
+  zmapowany, nigdy nie wpada w `_CASH`), korelacja miesieczna ~0.978-0.980 (najwyzsza w calym
+  repo - jednoaktywowe mapowanie nie ma szumu wielu tickerow naraz).
+
+  Nowy plik testowy `engine_v2/tests/test_bh_benchmarks.py` (8 testow, parametryzowane po obu
+  benchmarkach - wazniejsze niz dla `tlt_hedge`, ktory nigdy nie mial wlasnego dedykowanego testu,
+  bo byl tylko wewnetrzna "cegielka" dla combinera, nie widocznym benchmarkiem). Pelna
+  regeneracja `results/` (teraz 48 plikow). Pelny pakiet testow: 476/476, bez regresji.
+
 ## 2026-07-13 (47)
 
 - **BUGFIX `engine_v2/annual_tax.py` - podatek "Belki" byl NIEDOSZACOWANY na wielu latach.** User:

@@ -1,0 +1,32 @@
+{
+  "name": "bh_spy_v0",
+  "hypothesis": "Prosty benchmark 'buy & hold' - zawsze 100% spy.us (S&P 500). User: 'Czy zapisujemy wyniki benchmarku przy naszych wyliczeniach? Powinnismy miec... druga z sp500 i mapping uk'. Nie jest strategia momentum - zero timingu, zero rotacji - punkt odniesienia do oceny, czy dodatkowa zlozonosc strategii momentum w tym repo faktycznie place, tym razem wzgledem samego rynku USA (nie globalnego jak bh_vt). Ten sam wzorzec co 'tlt_hedge'/'bh_vt' - top_n=1 na jednoaktywowym uniwersum, portfolio_risk_engine='none'.",
+  "universe": ["spy.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "none",
+    "overlays": "none",
+    "execution": "hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "mom_1": {"impl": "momentum_monthly", "window": 1}
+    },
+    "asset_scoring": {"weights": {"mom_1": 1.0}},
+    "selector": {"top_n": 1},
+    "alpha_weighting": {"weights": [1.0]},
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 10, "frequency": "monthly"}
+  },
+
+  "allowed_param_families": {},
+
+  "created_at": "2026-07-13"
+}
