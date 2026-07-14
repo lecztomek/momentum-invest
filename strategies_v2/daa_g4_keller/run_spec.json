@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "Wierna rekonstrukcja DAA-G4 (Keller & Keuning 2018), zweryfikowana wprost wzgledem niezaleznej implementacji referencyjnej (TuringTrader) - top_n_offensive=2, breadth_denominator=1 (nie 1/2 domyslne jak w istniejacym daa_g4). Patrz hypothesis w strategy_spec.json za pelne porownanie z daa_g4."
+}

@@ -7,11 +7,16 @@ Allocation" (DAA). Rozni sie od `vaa_canary` na dwa sposoby:
 1. Kanarki sa OSOBNYM, MALYM uniwersum (`canary_assets`), NIE calym `offensive_assets` jak w
    VAA - w klasycznym DAA-G4 kanarek to tylko 2 z 4 aktywow ofensywnych (np. VWO+AGG), nie
    wszystkie 4.
-2. Udzial ochronny jest CIAGLY (proporcjonalny do szerokosci), nie binarny: policz `B` = liczbe
+2. Udzial ochronny jest CIAGLY (proporcjonalny do szerokosci), nie binarny: policz `b` = liczbe
    kanarkow z score <= 0 (NaN traktowane jako "zly" - ten sam wzorzec co
-   `canary_regime_gate.is_bad`), udzial ochronny (cash fraction) = B / len(canary_assets). Dla 2
-   kanarkow: 0/2=0% (oba dobre), 1/2=50% (jeden zly), 2/2=100% (oba zle) - w odroznieniu od
-   `vaa_canary`, gdzie JEDEN zly kanarek juz daje 100% ochrony.
+   `canary_regime_gate.is_bad`), udzial ochronny (cash fraction) = min(1.0, b / breadth_denominator).
+   Domyslnie `breadth_denominator = len(canary_assets)` (dla 2 kanarkow: 0/2=0% oba dobre,
+   1/2=50% jeden zly, 2/2=100% oba zle) - ALE to jest tylko domyslna wartosc, NIE ogolna regula
+   DAA: w oryginalnej pracy Keller/Keuning `breadth_denominator` (tam nazywane "B") jest OSOBNYM
+   parametrem od liczby kanarkow, dobieranym per wariant (DAA-G4: B=1 mimo 2 kanarkow - JEDEN zly
+   kanarek juz daje 100% ochrony, DAA-G12: B=2 - dopiero wtedy udzial jest naprawde ciagly
+   0/50/100%). Patrz `strategies_v2/daa_g4_keller/` (2026-07-14), gdzie ten parametr jest
+   faktycznie ustawiony inaczej niz liczba kanarkow.
 
 Reszta: top `top_n_offensive` aktywow ofensywnych wg `score` (NAJLEPSZE DOSTEPNE, bez wzgledu na
 znak - inaczej niz `gem_dual_momentum_switch`, DAA nie wymaga dodatniego momentum do wejscia w
@@ -33,6 +38,9 @@ params:
                                               (moze, ale nie musi, pokrywac sie z offensive_assets)
     top_n_offensive (int, opcjonalnie, domyslnie 1)
     top_n_defensive (int, opcjonalnie, domyslnie 1)
+    breadth_denominator (float, opcjonalnie, domyslnie len(canary_assets)) - mianownik "B" w
+        cash_fraction = min(1.0, b / breadth_denominator). Ustaw NIZEJ niz len(canary_assets),
+        zeby MNIEJ zlych kanarkow wymuszalo pelna ochrone (np. DAA-G4: B=1 z 2 kanarkami).
 """
 
 from __future__ import annotations
@@ -66,6 +74,10 @@ def daa_canary_breadth_switch(
             "params['defensive_assets'] i params['canary_assets']."
         )
 
+    breadth_denominator = float(params.get("breadth_denominator", len(canary_assets)))
+    if breadth_denominator <= 0.0:
+        raise ValueError("daa_canary_breadth_switch: params['breadth_denominator'] musi byc > 0.")
+
     missing = sorted((set(offensive_assets) | set(defensive_assets) | set(canary_assets)) - set(score.columns))
     if missing:
         raise ValueError(f"daa_canary_breadth_switch: brak tickerow {missing} w score.")
@@ -75,7 +87,7 @@ def daa_canary_breadth_switch(
     for date in target_weights.index:
         canary_scores = score.loc[date, canary_assets]
         is_bad = (canary_scores <= 0.0) | canary_scores.isna()
-        cash_fraction = float(is_bad.sum()) / len(canary_assets)
+        cash_fraction = min(1.0, float(is_bad.sum()) / breadth_denominator)
 
         offensive_ranked = score.loc[date, offensive_assets].dropna().sort_values(ascending=False)
         defensive_ranked = score.loc[date, defensive_assets].dropna().sort_values(ascending=False)

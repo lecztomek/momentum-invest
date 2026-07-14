@@ -2,6 +2,56 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-14 (53)
+
+- **`daa_g4_keller` - wierna rekonstrukcja "DAA-G4"** (user: "Zrob wersje daa g4 kellera").
+  Zweryfikowano WPROST zrodlo (nie z pamieci) - Keller & Keuning (2018), "Breadth Momentum and
+  the Canary Universe: Defensive Asset Allocation (DAA)", porownane z niezalezna implementacja
+  referencyjna (github.com/fbertram/TuringTrader, `BooksAndPubs/Keller_DAA.cs`, C# - kod
+  zrodlowy, nie parafraza).
+
+  **Odkryto, ze istniejacy `strategies_v2/daa_g4/` (z 2026-07-11) odbiega od prawdziwego DAA-G4
+  na 2 sposoby**:
+  1. `top_n_offensive=1` zamiast prawdziwego **T=2** (DAA-G4 trzyma top-2 aktywa ofensywne
+     rownolegle, nie top-1).
+  2. Udzial ochronny liczony jako `b/len(canary_assets)=b/2` (ciagle 0/50/100%), podczas gdy
+     prawdziwe DAA-G4 uzywa `breadth_denominator` (oznaczane "B" w pracy) = **1**, NIE 2 - JEDEN
+     zly kanarek juz wymusza 100% ochrony (`min(1, b/1)`), mimo ze kanarkow jest 2. Ciaglosc
+     0/50/100% jest wlasciwoscia wariantu **DAA-G12** (B=2 z tymi samymi 2 kanarkami VWO/BND),
+     NIE DAA-G4 - istniejacy `daa_g4` byl przez pomylke skalibrowany jak G12, mimo 4-aktywowego
+     uniwersum ofensywnego G4.
+
+  Dodano `breadth_denominator` (opcjonalny, domyslnie `len(canary_assets)` - istniejacy `daa_g4`
+  NIE zmienia zachowania) do `daa_canary_breadth_switch` - zero nowego bloku, jedna nowa,
+  wstecznie kompatybilna opcja. 2 nowe testy w `test_daa_components.py`.
+
+  **Nowa strategia `strategies_v2/daa_g4_keller/`**: T=2, breadth_denominator=1,
+  offensive=SPY/VEA/VWO/AGG (BND niedostepny w danych, zastapiony AGG - ta sama substytucja juz
+  zaakceptowana w `daa_g4`/`vaa_g4`), canary=VWO/AGG, defensive=SHY/IEF/LQD (top1). Score =
+  13612W momentum, identyczny wzor co `daa_g4`/`vaa_g4`.
+
+  **Wynik - UCZCIWIE gorszy niz istniejacy `daa_g4`, nie lepszy**:
+
+  | | CAGR | MaxDD | Sharpe | Calmar |
+  |---|---|---|---|---|
+  | `daa_g4` (przyblizenie, B=2, T=1) | 3.50% | -32.01% | 0.318 | 0.109 |
+  | `daa_g4_keller` (wierne, B=1, T=2) | 3.38% | **-37.58%** | 0.341 | 0.090 |
+
+  Agresywne B=1 (54% miesiecy w pelnej ochronie, wieksze niz w `daa_g4`) NIE pomaga w TYM oknie
+  danych - wieloletnia bessa obligacji 2021-2024 (4 kolejne ujemne lata: -4.7%/-16.1%/-2.1%/
+  -4.2%) oznaczala, ze SHY/IEF/LQD SAME mialy zla passe rownolegle ze spadkami akcji, wiec
+  ucieczka do "ochrony" nie chronila tak skutecznie jak w klasycznych rynkach niedzwiedzia
+  (2008, gdzie obligacje rosly gdy akcje spadaly). Publikowane wyniki DAA (np. ~13.7% CAGR z
+  PortfolioDB) pochodza z okresow SPRZED tego konkretnego reżimu rynkowego (stopy procentowe w
+  gore) i/lub bez realistycznych kosztow/podatku - NIE sa bezposrednio porownywalne z naszym
+  wynikiem po podatku i koszcie 40bps. Odnotowane w pelni uczciwie, nie ukryte ani nie
+  "poprawione" dobraniem progow.
+
+  6 nowych testow strategii (`test_daa_g4_keller_strategy_spec.py`, w tym dowod ze mechanizm jest
+  NAPRAWDE binarny - `defensive_total` zawsze 0.0 albo 1.0, nigdy posrednia wartosc jak w
+  `daa_g4`). Wygenerowano TYLKO nowy plik wynikowy + scalony `SUMMARY.md` (53 wiersze). Pelny
+  pakiet testow: 527/527, bez regresji.
+
 ## 2026-07-14 (52)
 
 - **`gfm_breadth`** - user: "Teraz kolejny wariant. Zmieniamy w GFM tylko mechanizm risk-off:

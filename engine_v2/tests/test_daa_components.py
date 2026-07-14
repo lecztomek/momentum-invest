@@ -166,6 +166,49 @@ def test_top_n_offensive_splits_equally():
     assert out.loc[idx[0], "o3"] == pytest.approx(0.0)
 
 
+def test_breadth_denominator_lower_than_canary_count_gives_binary_cash_fraction():
+    """DAA-G4 (Keller & Keuning): B=1 z 2 kanarkami - JEDEN zly kanarek juz wymusza 100% ochrony,
+    nie 50% jak z domyslnym breadth_denominator=len(canary_assets)=2."""
+    idx = pd.date_range("2021-01-01", periods=1, freq="MS")
+    off = ["o1", "o2"]
+    dfn = ["d1", "d2"]
+    can = ["c1", "c2"]
+    prices = pd.DataFrame({t: 1.0 for t in off + dfn + can}, index=idx)
+    md = MarketData(prices=prices, returns=pd.DataFrame())
+    score = pd.DataFrame(
+        {"o1": [0.10], "o2": [0.05], "d1": [0.01], "d2": [0.02], "c1": [0.03], "c2": [-0.01]}, index=idx
+    )
+    target_weights = _make_target_weights(idx, off + dfn + can)
+
+    out = daa_canary_breadth_switch(
+        target_weights, md, {}, score,
+        {"offensive_assets": off, "defensive_assets": dfn, "canary_assets": can, "breadth_denominator": 1},
+    )
+
+    # b=1 (c2 zly), breadth_denominator=1 -> cash_fraction = min(1, 1/1) = 1.0 (nie 0.5)
+    assert out.loc[idx[0], "o1"] == pytest.approx(0.0)
+    assert out.loc[idx[0], "d2"] == pytest.approx(1.0)
+
+
+def test_breadth_denominator_defaults_to_canary_count():
+    idx = pd.date_range("2021-01-01", periods=1, freq="MS")
+    off = ["o1"]
+    dfn = ["d1"]
+    can = ["c1", "c2"]
+    prices = pd.DataFrame({t: 1.0 for t in off + dfn + can}, index=idx)
+    md = MarketData(prices=prices, returns=pd.DataFrame())
+    score = pd.DataFrame({"o1": [0.1], "d1": [0.01], "c1": [0.05], "c2": [-0.01]}, index=idx)
+    target_weights = _make_target_weights(idx, off + dfn + can)
+
+    out = daa_canary_breadth_switch(
+        target_weights, md, {}, score,
+        {"offensive_assets": off, "defensive_assets": dfn, "canary_assets": can},
+    )
+
+    assert out.loc[idx[0], "o1"] == pytest.approx(0.5)
+    assert out.loc[idx[0], "d1"] == pytest.approx(0.5)
+
+
 def test_requires_params():
     idx = pd.date_range("2021-01-01", periods=1, freq="MS")
     md = MarketData(prices=pd.DataFrame({"a": [1.0]}, index=idx), returns=pd.DataFrame())

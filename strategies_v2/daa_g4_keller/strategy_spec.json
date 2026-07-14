@@ -1,0 +1,47 @@
+{
+  "name": "daa_g4_keller_v0",
+  "hypothesis": "User: 'Zrob wersje daa g4 kellera'. Zweryfikowano wprost zrodlo (nie z pamieci) - Keller & Keuning (2018), 'Breadth Momentum and the Canary Universe: Defensive Asset Allocation (DAA)', porownane z niezalezna implementacja referencyjna (TuringTrader/BooksAndPubs/Keller_DAA.cs, https://github.com/fbertram/TuringTrader). Nasza istniejaca `strategies_v2/daa_g4/` OKAZALA SIE odbiegac od prawdziwego DAA-G4 na 2 sposoby: (1) top_n_offensive=1 zamiast PRAWDZIWEGO T=2 (DAA-G4 trzyma top-2 aktywa ofensywne, nie top-1); (2) cash_fraction liczony jako b/len(canary_assets)=b/2 (ciagle 0/50/100%), podczas gdy PRAWDZIWE DAA-G4 uzywa breadth_denominator (B)=1, NIE 2 - JEDEN zly kanarek juz wymusza 100% ochrony (min(1, b/1)), mimo ze kanarkow jest 2 (ta ciaglosc 0/50/100% jest wlasciwoscia DAA-G12 z B=2, nie G4). Ta strategia to POPRAWNA rekonstrukcja: T=2, B=1, offensive=SPY/VEA/VWO/BND (BND niedostepny w danych, zastapiony AGG - ta sama substytucja co juz zaakceptowana w `daa_g4`/`vaa_g4`), canary=VWO/BND(AGG) (2 z 4 ofensywnych), defensive=SHY/IEF/LQD (top1, najlepszy dostepny). Score = 13612W momentum (12*r1+4*r3+2*r6+1*r12)/19 - identyczny wzor co `daa_g4`/`vaa_g4` (reuzyte istniejace bloki). Dodano `breadth_denominator` param do `daa_canary_breadth_switch` (domyslnie len(canary_assets), wiec istniejacy `daa_g4` NIE zmienia zachowania) - zero nowego bloku, jedna nowa, wsteczna-kompatybilna opcja istniejacego.",
+  "universe": ["spy.us", "vea.us", "vwo.us", "agg.us", "shy.us", "ief.us", "lqd.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "daa_canary_breadth_switch",
+    "overlays": "none",
+    "execution": "hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "mom_1": {"impl": "momentum_monthly", "window": 1},
+      "mom_3": {"impl": "momentum_monthly", "window": 3},
+      "mom_6": {"impl": "momentum_monthly", "window": 6},
+      "mom_12": {"impl": "momentum_monthly", "window": 12}
+    },
+    "asset_scoring": {
+      "weights": {"mom_1": 0.6316, "mom_3": 0.2105, "mom_6": 0.1053, "mom_12": 0.0526}
+    },
+    "selector": {"top_n": 1},
+    "alpha_weighting": {"weights": [1.0]},
+    "portfolio_risk_engine": {
+      "offensive_assets": ["spy.us", "vea.us", "vwo.us", "agg.us"],
+      "defensive_assets": ["shy.us", "ief.us", "lqd.us"],
+      "canary_assets": ["vwo.us", "agg.us"],
+      "top_n_offensive": 2,
+      "top_n_defensive": 1,
+      "breadth_denominator": 1
+    },
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"}
+  },
+
+  "allowed_param_families": {
+    "execution": {"hysteresis_pct": [0.0, 0.01, 0.02, 0.03, 0.05]}
+  },
+
+  "created_at": "2026-07-14"
+}

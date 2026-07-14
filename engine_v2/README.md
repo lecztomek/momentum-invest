@@ -55,7 +55,7 @@ Orchestrator: `pipeline.run_strategy_pipeline(spec)` -> gotowa tabela FINAL PORT
 | `asset_scoring` | pojedynczy wybór | `weighted_sum`, `momentum_times_decorrelation` | `weighted_sum` - ważona SUMA wskaźników; `momentum_times_decorrelation` - ILOCZYN dwóch konkretnych wskaźników (`momentum * (1 - korelacja)`, dla `strategies_v2/gpm/` - suma by tego nie wyraziła). Oba maskują NaN tam gdzie `eligibility_mask=False` |
 | `selector` | pojedynczy wybór | `top_n` | Top-N wg score, nigdy nie wybiera NaN |
 | `alpha_weighting` | pojedynczy wybór | `rank_weights`, `inverse_vol`, `rounded_score_weights` | Wagi wybranych: stałe wg rankingu (reszta do `_CASH`) albo odwrotnie proporcjonalne do zmienności (zawsze w pełni zainwestowane) albo proporcjonalne do score, zaokrąglone do bloku (largest remainder), z gwarantowanym minimum na aktywo |
-| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch`, `gpm_breadth_protective_split`, `gtaa_trend_bond_reroute`, `daa_canary_breadth_switch`, `gfm_breadth_risk_step` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku); `gpm_breadth_protective_split` skaluje udział ochronny CIĄGLE wg liczby dodatnich aktywów ryzykownych, zamiast binarnego przełączenia jak `vaa_canary`; `gtaa_trend_bond_reroute` ocenia KAŻDY SLOT niezależnie (nie globalnie) - część portfela może być w akcjach a część w obligacjach jednocześnie; `daa_canary_breadth_switch` - kanarek to OSOBNE, małe uniwersum (nie cały `offensive_assets` jak `vaa_canary`) + ciągły udział ochronny (0/50/100% dla 2 kanarków) zamiast binarnego; `gfm_breadth_risk_step` - jak `gpm_breadth_protective_split`, ale SKOKOWO (5 progów 0/25/50/75/100%, nie liniowo) + wybór najlepszego z 3 kandydatów ochronnych (SHY/IEF/TLT) |
+| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch`, `gpm_breadth_protective_split`, `gtaa_trend_bond_reroute`, `daa_canary_breadth_switch`, `gfm_breadth_risk_step` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku); `gpm_breadth_protective_split` skaluje udział ochronny CIĄGLE wg liczby dodatnich aktywów ryzykownych, zamiast binarnego przełączenia jak `vaa_canary`; `gtaa_trend_bond_reroute` ocenia KAŻDY SLOT niezależnie (nie globalnie) - część portfela może być w akcjach a część w obligacjach jednocześnie; `daa_canary_breadth_switch` - kanarek to OSOBNE, małe uniwersum (nie cały `offensive_assets` jak `vaa_canary`) + udział ochronny `min(1, b/breadth_denominator)` (domyślnie `len(canary_assets)` - ciągły 0/50/100% dla 2 kanarków jak w naszym `daa_g4`; ustawiony na 1 w `daa_g4_keller`, wiernej rekonstrukcji - wtedy JEDEN zły kanarek już wymusza 100% ochrony, binarnie); `gfm_breadth_risk_step` - jak `gpm_breadth_protective_split`, ale SKOKOWO (5 progów 0/25/50/75/100%, nie liniowo) + wybór najlepszego z 3 kandydatów ochronnych (SHY/IEF/TLT) |
 | `overlays` | pojedynczy wybór | `none` | Pass-through (rebound/vol-target - gdy będzie potrzebny) |
 | `execution` | pojedynczy wybór | `hysteresis`, `score_gap_hysteresis` | Rebalans tylko gdy przekroczony próg - na różnicy WAGI (`hysteresis`) albo różnicy SCORE między najsłabszym trzymanym a najlepszym wyzwaniowcem (`score_gap_hysteresis`, wymaga `ExecutionContext.score_row`) |
 
@@ -1618,6 +1618,38 @@ udzial ochronny, NaN kanarek liczy sie jako zly, ofensywny wybiera najlepszego d
 przy ujemnym score, top_n>1 dzieli po rowno, fallback do `_CASH`) + `test_daa_g4_strategy_spec.py`
 (kanarek WLASCIWYM podzbiorem ofensywnych - nie rownym, end-to-end z dowodem na wszystkie 3
 poziomy udzialu ochronnego, zamrozony baseline metryk).
+
+#### `daa_g4_keller` - wierna rekonstrukcja wg zrodla (2026-07-14 (53))
+
+User: "Zrob wersje daa g4 kellera". Zweryfikowano WPROST zrodlo tym razem (nie z pamieci jak
+przy pierwszym `daa_g4`) - Keller & Keuning (2018), porownane z niezalezna implementacja
+referencyjna (github.com/fbertram/TuringTrader, `Keller_DAA.cs`, kod zrodlowy).
+
+**Odkryto, ze istniejacy `daa_g4` odbiega od prawdziwego DAA-G4 na 2 sposoby**: (1)
+`top_n_offensive=1` zamiast prawdziwego **T=2** (trzyma top-2 ofensywne rownolegle); (2) udzial
+ochronny liczony jako `b/2` (ciagle 0/50/100%), podczas gdy prawdziwe DAA-G4 uzywa
+`breadth_denominator`="B"=**1**, nie 2 - JEDEN zly kanarek juz wymusza 100% ochrony (mechanizm
+BINARNY). Ciaglosc 0/50/100% jest wlasciwoscia **DAA-G12** (B=2, te same kanarki VWO/BND), NIE
+DAA-G4 - istniejacy `daa_g4` byl przez pomylke skalibrowany jak G12.
+
+Dodano `breadth_denominator` (opcjonalny, domyslnie `len(canary_assets)` - istniejacy `daa_g4`
+BEZ ZMIAN zachowania) do `daa_canary_breadth_switch` - zero nowego bloku.
+
+**Wynik - uczciwie GORSZY niz istniejacy `daa_g4`, nie lepszy**:
+
+| | CAGR | MaxDD | Sharpe | Calmar |
+|---|---|---|---|---|
+| `daa_g4` (przyblizenie, B=2, T=1) | 3.50% | -32.01% | 0.318 | 0.109 |
+| `daa_g4_keller` (wierne, B=1, T=2) | 3.38% | **-37.58%** | 0.341 | 0.090 |
+
+Agresywne B=1 (54% miesiecy w pelnej ochronie) NIE pomaga w TYM oknie danych - wieloletnia bessa
+obligacji 2021-2024 (4 kolejne ujemne lata) oznaczala, ze SHY/IEF/LQD SAME mialy zla passe
+rownolegle ze spadkami akcji, wiec ucieczka do "ochrony" nie chronila jak w klasycznych
+bessach akcji (2008, gdzie obligacje rosly). Publikowane wyniki DAA (np. ~13.7% CAGR) pochodza z
+okresow SPRZED tego reżimu i/lub bez realistycznych kosztow/podatku - nieporownywalne
+bezposrednio z naszym wynikiem po podatku i koszcie 40bps. 8 nowych testow (2 w
+`test_daa_components.py`, 6 w `test_daa_g4_keller_strategy_spec.py`, w tym dowod ze mechanizm
+jest NAPRAWDE binarny, nigdy posredni jak w `daa_g4`).
 
 #### `vaa_g4_ema` / `daa_g4_ema` - eksperyment: EMA zamiast momentum (negatywny wynik)
 
