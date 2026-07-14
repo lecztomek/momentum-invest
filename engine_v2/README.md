@@ -48,7 +48,7 @@ Orchestrator: `pipeline.run_strategy_pipeline(spec)` -> gotowa tabela FINAL PORT
 
 | Blok | Rodzaj | Zaimplementowane | Co robi |
 |---|---|---|---|
-| `data_loader` | pojedynczy wybór | `stooq_csv` | Wczytuje ceny z plików stooq, wspiera `daily`/`weekly`/`monthly` |
+| `data_loader` | pojedynczy wybór | `stooq_csv`, `stooq_csv_dividend_adjusted` | Wczytuje ceny z plików stooq, wspiera `daily`/`weekly`/`monthly`; `stooq_csv_dividend_adjusted` (2026-07-14, CHANGELOG (56)) dodatkowo koryguje o brakujaca reinwestycje dywidend/kuponow per-ticker (`dividend_adjustment_mapping`: US -> UK Acc UCITS ETF z `data/uk`, splice realnych danych + ekstrapolacja zmierzonej stalej stopy dla starszej historii) - superset `stooq_csv` (pusty mapping = identyczny wynik), uzywany na razie tylko przez `gpm_mid_10` (jedyna strategia z pelnym, wiarygodnym pokryciem) |
 | `data_cleaner` | pojedynczy wybór | `trim_and_interpolate` | Równa wspólny zakres dat, uzupełnia luki interpolacją (z limitem `max_gap`) |
 | `indicators` | **wielo-instancyjny** | `sma_daily`, `momentum_monthly`, `volatility_daily`, `ema_ratio_monthly`, `momentum_month_end`, `momentum_avg_month_end`, `corr_to_basket_month_end` | Biblioteka wskaźników - osobna implementacja per wskaźnik+częstotliwość+baza cenowa (start/koniec miesiąca); `momentum_avg_month_end` usredni kilka okien naraz (np. 1/3/6/12m), `corr_to_basket_month_end` liczy roczącą korelację do stałego, równoważonego koszyka tickerów - oba dla `strategies_v2/gpm/` |
 | `asset_filters` | **wielo-instancyjny** | `price_above_indicator`, `indicator_positive`, `canary_regime_gate`, `never_eligible` | Eliminacja aktywów (AND między instancjami); `canary_regime_gate` to GLOBALNY gate (cała grupa naraz, na podstawie osobnych "kanarków"), opcjonalny param `invert` (domyślnie `False`) odwraca gate na risk-OFF zamiast risk-on - patrz `strategies_v2/synergy_v2/`; `never_eligible` trwale wyklucza tickery z normalnej selekcji |
@@ -1412,6 +1412,30 @@ jakosc pelnego `gpm`**, w przeciwienstwie do bardziej agresywnego ciecia w `gpm_
 
 5 nowych testow: `test_gpm_mid_10_strategy_spec.py` (wiring, 10+2 uniwersum, end-to-end na
 realnych danych, zamrozony baseline metryk).
+
+**KOREKTA DYWIDEND (2026-07-14, CHANGELOG (56))**: user zauwazyl ogromny rozjazd `daa_g4_keller`
+vs publikowane wyniki Kellera ("Mamy wynik 3 procent a keller podawal 9") - zdiagnozowano, ze
+`data/us` to ceny BEZ reinwestycji dywidend/kuponow (zero takiej logiki w calym `engine_v2`).
+Naprawiono dla `gpm_mid_10` jako pierwszej strategii z PELNYM (12/12) pokryciem wiarygodnych (9-11
+lat overlapu) zamiennikow UK Acc - nowy blok `stooq_csv_dividend_adjusted`
+(`engine_v2/blocks/data_loader/dividend_adjusted_csv_loader.py`, patrz tabela blokow na gorze
+tego pliku). Wynik PRZED vs PO (post-tax, koszt 40bps+19% podatek):
+
+| | CAGR | MaxDD | Sharpe | Calmar |
+|---|---|---|---|---|
+| `gpm_mid_10` PRZED korekta | 3.36% | -14.36% | 0.451 | 0.234 |
+| `gpm_mid_10` PO korekcie | **4.77%** | **-12.95%** | **0.597** | **0.369** |
+
+Liczby z sekcji WYZEJ (2007-05 do 2026-08, param stability, porownanie z pelnym `gpm`) sa SPRZED
+tej korekty (pelny `gpm` sam jeszcze NIE ma korekty - brakuje mu zamiennika dla IJR/EFA/VEA) -
+NIE przeliczone, oznaczone tu jako NIEAKTUALNE do czasu pelnej rewizji calej rodziny `gpm`.
+Analogicznie: sekcje UK mapping / sweep wag `gpm_mid_10_best17_a` ponizej w tym pliku tez
+powstaly PRZED ta korekta i wymagaja ponownego przeliczenia - nie zrobione jeszcze (zakres
+ograniczony do samych metryk `gpm_mid_10`/`gpm_mid_10_best17_a` per CHANGELOG (56)).
+
+`daa_g4`/`daa_g4_keller`/`vaa_g4` (wszystkie uzywaja EFA/VEA) CELOWO NIE dostaly tej korekty -
+jedyny dostepny zamiennik (`xuse.uk`) ma tylko 1.2 roku danych, zmierzony gap dal sprzeczne znaki
+dla EFA vs VEA (czysty szum). Czekaja na dluzszy zamiennik.
 
 #### `gpm_best17_a` - miks defensywnego `gpm` z agresywnym `best17_a`
 

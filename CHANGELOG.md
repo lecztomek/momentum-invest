@@ -2,6 +2,87 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-14 (56)
+
+- **BUGFIX (repo-wide, ogromny): `data/us` to ceny BEZ reinwestycji dywidend/kuponow -
+  naprawiono dla `gpm_mid_10`** - user: "Mamy wynik 3 procent a keller podawal 9 to jest ogromny
+  rozjazd wiec gdzies jest konkretny bug trzeba go poszukac" (w kontekscie `daa_g4_keller`).
+
+  **Diagnoza**: `engine_v2/blocks/data_loader/csv_loader.py` czyta surowa kolumne `CLOSE` z
+  plikow stooq - ZERO logiki reinwestycji dywidend/kuponow w calym `engine_v2`. Zweryfikowano na
+  realnych danych: `agg.us` 2005->2026 CAGR ~1,0%/rok, publikowany total return AGG za ten okres
+  ~3,0-3,5%/rok - gap dokladnie odpowiada utraconemu kuponowi. `vt.us` (US, Dist) vs `vwra.uk`
+  (UK, Acc, ten sam indeks) na wspolnym oknie: gap +1,12%/rok - wczesniej (CHANGELOG 41) blednie
+  przypisany do "roznicy funduszy", to w rzeczywistosci ten sam efekt. Dotyczy WSZYSTKICH ~50
+  strategii w repo w roznym stopniu (im dluzej trzyma yieldujace aktywa, tym wiekszy blad).
+
+  **Naprawa - nowy blok `stooq_csv_dividend_adjusted`**
+  (`engine_v2/blocks/data_loader/dividend_adjusted_csv_loader.py`): dla kazdego tickera z
+  `dividend_adjustment_mapping` (US -> UK Acc) buduje skorygowana cene, splicujac PRAWDZIWE dane
+  akumulacyjne (UK-listowane UCITS ETF, USD, klasa Acc - user dogral te dane po moim pytaniu
+  "jakie tickery") tam gdzie istnieje wspolna historia (regresja liniowa na logarytmie stosunku
+  cen daje zmierzona, nie zgadywana, roczna stope), i ekstrapolujac ta sama stala stopa dla
+  historii sprzed startu danego UK ETF-u. Tickery bez wpisu w mapowaniu przechodza bez zmian -
+  superset `stooq_csv` (zweryfikowane testem: pusty mapping = identyczny wynik jak `stooq_csv`).
+
+  **Zmierzone gapy (realne, dlugie 9-11-letnie okna, regresja)**:
+  | Ticker | Zamiennik UK (Acc) | Okno | Gap/rok |
+  |---|---|---|---|
+  | spy.us | cspx.uk | 11,3 lat | -0,19% (~0, SPY juz bliskie total-return) |
+  | qqq.us | cndx.uk | 11,3 lat | -0,24% (~0) |
+  | vwo.us | eimi.uk | 11,3 lat | +0,76% |
+  | agg.us | suag.uk | 11,3 lat | **+1,56%** |
+  | shy.us | ibta.uk | 9,2 lat | +1,46% |
+  | ief.us | cbu0.uk | 11,2 lat | +1,11% |
+  | lqd.us | lqda.uk | 9,2 lat | **+2,11%** |
+  | vnq.us | xres.uk | 10,4 lat | +2,30% |
+  | dbc.us | icom.uk | 8,9 lat | -0,37% (~0, kontrakty terminowe, brak realnej dywidendy) |
+  | gld.us | igln.uk | 11,3 lat | +0,22% (~0, zloto fizyczne nie placi dywidendy) |
+  | hyg.us | ihya.uk | 9,2 lat | **+3,42%** |
+  | tlt.us | dtla.uk | 8,1 lat | +0,14% (male - krotkie okno z krachem obligacji 2022) |
+  | xle.us | iues.uk | 10,6 lat | -0,68% (czesc to roznica indeksu, nie tylko dywidenda) |
+
+  Uwaga: `efa.us`/`vea.us` -> `xuse.uk` (jedyny dostepny zamiennik) ma tylko 1,2 roku danych
+  (start 2025-04-28) - zmierzony gap dal SPRZECZNE znaki (+5,3%/rok dla EFA, -2,1%/rok dla VEA,
+  ta sama klasa aktywow) - czysty szum krotkiego okna. NIE uzyto tej korekty - `daa_g4`,
+  `daa_g4_keller`, `vaa_g4` (wszystkie uzywaja EFA/VEA) zostaja NIENARUSZONE do czasu lepszych
+  danych. Test empiryczny pokazal dodatkowo: CZESCIOWA korekta (niektore aktywa w tym samym
+  mechanizmie scoringu/kanarka skorygowane, inne nie) moze ZNIEKSZTALCIC wyniki w NIEPRZEWIDYWALNY
+  sposob (np. `vaa_g4` z czesciowa korekta SPY/VWO/AGG/SHY/IEF/LQD ale bez EFA wyszedl WYRAZNIE
+  gorzej niz bez zadnej korekty - najprawdopodobniej artefakt zaklocajacy binarny mechanizm
+  kanarka VAA, ktory porownuje wszystkie 4 aktywa ofensywne naraz) - dlatego korekta wlaczana
+  TYLKO gdy WSZYSTKIE aktywa danej strategii maja wiarygodny (dlugi) zamiennik.
+
+  **`gpm_mid_10` ma PELNE pokrycie (12/12 tickerow, wszystkie dlugie/wiarygodne okna)** - jedyna
+  na razie strategia przelaczona na `stooq_csv_dividend_adjusted`
+  (`strategies_v2/gpm_mid_10/strategy_spec.json`).
+
+  **Wynik (post-tax, koszt 40bps + 19% podatek)**:
+  | | CAGR | MaxDD | Sharpe | Calmar |
+  |---|---|---|---|---|
+  | `gpm_mid_10` PRZED | 3,36% | -14,36% | 0,451 | 0,234 |
+  | `gpm_mid_10` PO | **4,77%** | **-12,95%** | **0,597** | **0,369** |
+  | `gpm_mid_10_best17_a` PRZED | 8,22% | -15,34% | 0,796 | 0,536 |
+  | `gpm_mid_10_best17_a` PO | 8,52% | -16,36% | 0,800 | 0,521 |
+
+  Solo `gpm_mid_10` wyraznie lepszy na kazdej metryce. Miks z `best17_a` - CAGR/Sharpe lekko w
+  gore, ale MaxDD/Calmar odrobine w dol (zmiana relatywnego momentum `gpm_mid_10` po korekcie
+  przesuwa TIMING jego wlasnych przelaczen, co nieznacznie zmienia nakladanie sie obsunien z
+  `best17_a` w polaczonym portfelu - zapisane uczciwie, nie ukrywane).
+
+  Nowe testy: `test_dividend_adjusted_data_loader.py` (7 - matematyka splice'u na danych
+  syntetycznych, fallback dla niezmapowanych tickerow identyczny z `stooq_csv`, prawdziwy zmierzony
+  gap na `agg.us`/`suag.uk`, czytelny blad przy braku pliku UK). Zaktualizowany
+  `test_gpm_mid_10_strategy_spec.py::test_gpm_mid_10_metrics_regression_baseline` (nowa zamrozona
+  baseline + poprawiony bug w samym tescie - liczyl equity curve na SUROWYM `stooq_csv` mimo ze
+  `final_portfolio` juz bylo policzone na skorygowanych danych, niespojne). Wygenerowano TYLKO
+  `results/gpm_mid_10.json` + `results/gpm_mid_10_best17_a.json` + scalony `SUMMARY.md`. Pelny
+  pakiet testow: 539/539, bez regresji.
+
+  **Do zrobienia (nastepny krok)**: znalezc/dograc dluzszy (>5 lat) zamiennik Acc dla
+  `efa.us`/`vea.us`, zeby odblokowac `daa_g4`/`daa_g4_keller`/`vaa_g4` (i pelne `gpm`, ktore
+  dodatkowo brakuje `ijr.us`).
+
 ## 2026-07-14 (55)
 
 - **KOREKTA `daa_g4_keller`: dynamiczne skalowanie liczby aktyw ofensywnych ("Easy Trading")** -

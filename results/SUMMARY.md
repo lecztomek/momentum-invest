@@ -4,8 +4,8 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 
 | Strategia | Tryb | CAGR | MaxDD | Sharpe | Calmar | Turnover/rok | UK mapping |
 |---|---|---|---|---|---|---|---|
-| `gpm_mid_10_best17_a` | combined_final | 8.22% | -15.34% | 0.796 | 0.536 | 2.74 | fail (patrz JSON) |
 | `gpm_best17_a` | combined_final | 8.06% | -15.48% | 0.799 | 0.521 | 2.90 | - |
+| `gpm_mid_10_best17_a` | combined_final | 8.52% | -16.36% | 0.800 | 0.521 | 2.56 | fail (patrz JSON) |
 | `combined_triple` | combined_final | 9.07% | -20.41% | 0.785 | 0.444 | 2.27 | - |
 | `best17_a` | final | 13.71% | -31.19% | 0.802 | 0.440 | 1.16 | fail (patrz JSON) |
 | `gtaa_agg6_mid_best17_a` | combined_final | 9.05% | -21.09% | 0.779 | 0.429 | 2.10 | fail (patrz JSON) |
@@ -18,6 +18,7 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `combined_best2` | combined_final | 9.53% | -24.40% | 0.725 | 0.391 | 3.79 | - |
 | `gtaa_agg6_best17_a` | combined_final | 8.31% | -21.54% | 0.742 | 0.386 | 2.14 | - |
 | `vaa_g4_best17_a` | combined_final | 8.42% | -22.57% | 0.759 | 0.373 | 4.39 | - |
+| `gpm_mid_10` | final | 4.77% | -12.95% | 0.597 | 0.369 | 4.03 | PASS |
 | `combined_best2_dynamic` | combined_final | 10.66% | -30.24% | 0.734 | 0.352 | 3.68 | - |
 | `dual_momentum_all_weather_4` | combined_final | 5.85% | -16.75% | 0.606 | 0.349 | 1.95 | - |
 | `gtaa_agg6_mid` | final | 5.76% | -17.29% | 0.588 | 0.333 | 2.92 | fail (patrz JSON) |
@@ -33,7 +34,6 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `dual_momentum_the_one` | combined_final | 5.40% | -22.03% | 0.494 | 0.245 | 4.35 | - |
 | `vaa_g4_best17_b` | combined_final | 5.00% | -20.39% | 0.519 | 0.245 | 4.99 | - |
 | `the_one_best17_b` | combined_final | 5.35% | -22.07% | 0.495 | 0.242 | 4.12 | - |
-| `gpm_mid_10` | final | 3.36% | -14.36% | 0.451 | 0.234 | 4.39 | fail (patrz JSON) |
 | `gtaa_agg3` | final | 4.79% | -20.82% | 0.420 | 0.230 | 3.81 | - |
 | `vaa_g4_the_one` | combined_final | 4.92% | -21.60% | 0.454 | 0.228 | 6.91 | - |
 | `dual_momentum_best17_b` | combined_final | 5.01% | -22.26% | 0.476 | 0.225 | 2.19 | - |
