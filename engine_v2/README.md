@@ -1509,6 +1509,28 @@ slot o wadze 0 ignorowany) + `test_gtaa_strategy_specs.py` (wiring obu wariantow
 wag, bond_fallback wykluczony z selekcji, end-to-end na realnych danych z dowodem na mieszane
 sloty, zamrozone baseline'y metryk).
 
+#### `gtaa_agg3_mid`/`gtaa_agg6_mid` - wariant na uniwersum latwiejszym do zmapowania (2026-07-14 (50))
+
+User: "Dorobmy taka strategie AGG... wydaje mi sie ze bedzie sensowniejsza do mixu" - opis
+mechaniki (momentum 1/3/6/12m, top3/top6, filtr trendu per-slot, ucieczka do obligacji) okazal
+sie IDENTYCZNY z juz istniejacym `gtaa_agg3`/`gtaa_agg6` - jedyna realna zmiana to UNIWERSUM: bez
+IJR/EFA (usuniete z tego samego powodu co z `gpm_mid_10` - trudne do jednoznacznego zmapowania na
+UK/XTB), zamiast tego uniwersum `gpm_mid_10` (SPY/QQQ/VWO/VNQ/DBC/GLD/HYG/LQD/TLT/XLE + IEF) -
+dziedziczy jego juz zweryfikowany UK ticker mapping.
+
+**Wyraznie lepszy wynik niz oryginal** (nie tylko latwiejszy do mapowania):
+
+| | CAGR | MaxDD | Sharpe | Calmar |
+|---|---|---|---|---|
+| `gtaa_agg3` (oryginal, z IJR/EFA) | 4.79% | -20.82% | 0.420 | 0.230 |
+| `gtaa_agg3_mid` (bez IJR/EFA) | 7.03% | -21.16% | 0.552 | **0.332** |
+| `gtaa_agg6` (oryginal, z IJR/EFA) | 4.42% | -21.97% | 0.479 | 0.201 |
+| `gtaa_agg6_mid` (bez IJR/EFA) | 5.76% | -17.29% | 0.588 | **0.333** |
+
+UK mapping: pelne pokrycie (11/11 tickerow), mismatch 0% w obu, korelacja miesieczna ~0.97-0.973.
+Oba wchodza do `results/SUMMARY.md` na pozycjach ~21-22/50, wyzej niz oryginalne warianty
+(~36/45). 14 nowych testow w `test_gtaa_mid_strategy_specs.py`.
+
 #### `gtaa_agg6_best17_a` - miks gtaa_agg6+best17_a (negatywny wynik)
 
 User: "Nigdy nie łącz 3 - max 2" (odrzucenie wczesniejszego pomyslu trojki

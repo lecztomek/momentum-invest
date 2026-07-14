@@ -1,0 +1,38 @@
+{
+  "name": "gtaa_agg3_mid_v0",
+  "hypothesis": "User: 'Dorobmy strategie AGG - agresywna odmiana GTAA. Co miesiac liczy momentum 1/3/6/12m, wybiera top3 (AGG3)/top6 (AGG6), kazde aktywo musi byc powyzej SMA6, inaczej ta czesc trafia do obligacji, rebalans co miesiac'. Mechanika IDENTYCZNA z juz istniejacym `gtaa_agg3` (ten sam blok `gtaa_trend_bond_reroute`, zero nowego kodu) - JEDYNA roznica to UNIWERSUM: user chcial wariant 'sensowniejszy do mixu' - `gtaa_agg3` uzywa IJR/EFA, DOKLADNIE tych samych aktywow, ktore usunelismy z `gpm_mid_10` (z pelnego `gpm`), bo sa trudne do jednoznacznego zmapowania na UK/XTB (patrz `gpm_mid_10/strategy_spec.json`). `gtaa_agg3_mid` uzywa TEGO SAMEGO uniwersum ryzykownego co `gpm_mid_10` (10 aktywow: SPY/QQQ/VWO/VNQ/DBC/GLD/HYG/LQD/TLT/XLE) + IEF jako fallback obligacyjny (zamiast VGIT/IUSM, niedostepnych w danych, ten sam wybor co w `gtaa_agg3`) - dzieki temu dziedziczy JUZ zweryfikowany, latwy UK ticker mapping (`gpm_mid_10/uk_ticker_mapping.json` minus shy.us, ktorego AGG nie uzywa).",
+  "universe": ["spy.us", "qqq.us", "vwo.us", "vnq.us", "dbc.us", "gld.us", "hyg.us", "lqd.us", "tlt.us", "xle.us", "ief.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "gtaa_trend_bond_reroute",
+    "overlays": "none",
+    "execution": "hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "r": {"impl": "momentum_avg_month_end", "windows": [1, 3, 6, 12]}
+    },
+    "asset_filters": {
+      "exclude_bond_from_selection": {"impl": "never_eligible", "assets": ["ief.us"]}
+    },
+    "asset_scoring": {"weights": {"r": 1.0}},
+    "selector": {"top_n": 3},
+    "alpha_weighting": {"weights": [0.3333333333333333, 0.3333333333333333, 0.3333333333333333], "redistribute_if_short": true},
+    "portfolio_risk_engine": {"sma_window": 6, "bond_fallback_asset": "ief.us"},
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40}
+  },
+
+  "allowed_param_families": {
+    "portfolio_risk_engine": {"sma_window": [3, 4, 5, 6, 7, 8, 9]}
+  },
+
+  "created_at": "2026-07-14"
+}

@@ -19,6 +19,8 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `vaa_g4_best17_a` | combined_final | 8.42% | -22.57% | 0.759 | 0.373 | 4.39 | - |
 | `combined_best2_dynamic` | combined_final | 10.66% | -30.24% | 0.734 | 0.352 | 3.68 | - |
 | `dual_momentum_all_weather_4` | combined_final | 5.85% | -16.75% | 0.606 | 0.349 | 1.95 | - |
+| `gtaa_agg6_mid` | final | 5.76% | -17.29% | 0.588 | 0.333 | 2.92 | fail (patrz JSON) |
+| `gtaa_agg3_mid` | final | 7.03% | -21.16% | 0.552 | 0.332 | 3.64 | fail (patrz JSON) |
 | `best17_a_gfm` | combined_final | 9.49% | -28.76% | 0.719 | 0.330 | 1.85 | - |
 | `vaa_g4_all_weather_4` | combined_final | 5.79% | -19.01% | 0.638 | 0.305 | 4.76 | - |
 | `the_one_all_weather_4` | combined_final | 6.17% | -20.95% | 0.582 | 0.295 | 3.89 | - |

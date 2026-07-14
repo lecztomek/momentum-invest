@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "Wariant 'GTAA AGG6' na uniwersum latwiejszym do zmapowania na UK/XTB (bez IJR/EFA, to samo co gpm_mid_10) - patrz hypothesis w strategy_spec.json."
+}

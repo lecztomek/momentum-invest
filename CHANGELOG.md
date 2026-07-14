@@ -2,6 +2,39 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-14 (50)
+
+- **`gtaa_agg3_mid`/`gtaa_agg6_mid`** - user: "Dorobmy taka strategie AGG - agresywna odmiana
+  GTAA... wydaje mi sie ze bedzie sensowniejsza do mixu". Opis usera (momentum 1/3/6/12m, top3/
+  top6, filtr trendu per-slot wg SMA6, ucieczka do obligacji, rebalans miesieczny) okazal sie
+  mechanicznie IDENTYCZNY z juz istniejacym `gtaa_agg3`/`gtaa_agg6` (2026-07-11) - zero nowego
+  kodu bloku. Doprecyzowano z userem: chodzilo o NOWY wariant na uniwersum BEZ IJR/EFA (te same
+  aktywa usuniete z `gpm_mid_10` wlasnie dlatego, ze trudno je jednoznacznie zmapowac na
+  UK/XTB) - zamiast tego uniwersum `gpm_mid_10` (SPY/QQQ/VWO/VNQ/DBC/GLD/HYG/LQD/TLT/XLE + IEF).
+
+  Nowe strategie `strategies_v2/gtaa_agg3_mid/`, `strategies_v2/gtaa_agg6_mid/` - dziedzicza
+  gotowy, juz zweryfikowany UK ticker mapping z `gpm_mid_10` (minus `shy.us`, ktorego AGG nie
+  uzywa). Nowy plik testowy `engine_v2/tests/test_gtaa_mid_strategy_specs.py` (14 testow).
+
+  **Wynik - wyrazna poprawa wzgledem oryginalnego uniwersum** (usuniecie IJR/EFA i dodanie
+  QQQ/XLE pomaga, nie tylko upraszcza mapowanie):
+
+  | | CAGR | MaxDD | Sharpe | Calmar |
+  |---|---|---|---|---|
+  | `gtaa_agg3` (oryginal, z IJR/EFA) | 4.79% | -20.82% | 0.420 | 0.230 |
+  | `gtaa_agg3_mid` (bez IJR/EFA) | 7.03% | -21.16% | 0.552 | **0.332** |
+  | `gtaa_agg6` (oryginal, z IJR/EFA) | 4.42% | -21.97% | 0.479 | 0.201 |
+  | `gtaa_agg6_mid` (bez IJR/EFA) | 5.76% | -17.29% | 0.588 | **0.333** |
+
+  UK mapping: pelne pokrycie (11/11 tickerow), mismatch 0% w obu wariantach, korelacja miesieczna
+  ~0.97-0.973. Oba wchodza do `results/SUMMARY.md` na pozycjach ~21-22/50 (wyzej niz oryginalne
+  `gtaa_agg3`/`gtaa_agg6` na ~36/45) - potwierdza intuicje usera, ze ten wariant jest sensowniejszy
+  nie tylko do mapowania, ale i do samego wyniku.
+
+  Wygenerowano TYLKO nowe pliki wynikowe (nie pelny `results/` - zaden inny plik/strategia sie
+  nie zmienil, user wczesniej slusznie wytknal niepotrzebne pelne przeliczenia). Pelny pakiet
+  testow: 490/490, bez regresji.
+
 ## 2026-07-13 (49)
 
 - **Ujednolicenie `execution.cost_bps` na 40 we WSZYSTKICH strategiach.** User: "Przypilnuj zeby
