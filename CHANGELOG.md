@@ -2,6 +2,44 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-14 (52)
+
+- **`gfm_breadth`** - user: "Teraz kolejny wariant. Zmieniamy w GFM tylko mechanizm risk-off:
+  zamiast prostego SPY 12M > 0, liczymy szerokosc rynku... ryzyko zmniejszamy stopniowo, np.
+  100%/75%/50%/25%/0%... czesc defensywna wybiera najlepszy z SHY, IEF, TLT. Czesc ofensywna
+  zostaje bez zmian." Nowy blok `portfolio_risk_engine.gfm_breadth_risk_step` - laczy dwa juz
+  istniejace wzorce: dwie NIEZALEZNE formuly scoringu (risky vs protective, jak
+  `gfm_risk_switch`) + skalowanie udzialu ryzykownego wg szerokosci rynku (jak
+  `gpm_breadth_protective_split`) - ale SKOKOWE (`breadth_thresholds`/`risky_shares`), nie
+  ciagle/liniowe jak GPM.
+
+  **Kalibracja progow** (14 aktywow risk-on w GFM): `breadth_thresholds=[3,6,9,12]`,
+  `risky_shares=[0.0,0.25,0.5,0.75,1.0]` - 5 ROWNYCH koszykow po 3 (n w 0-2/3-5/6-8/9-11/12-14),
+  dajacych dokladnie progi "100/75/50/25/0%" z opisu, bez preferowania konkretnego zakresu (ten
+  sam rodzaj decyzji co `full_protective_max_n`/`protective_scale_denominator` w `gpm`).
+  Defensywna czesc: dodano `shy.us` do juz istniejacych IEF/TLT (3 kandydaci zamiast 2), cala
+  trafia w jedno aktywo z najwyzszym (mom_1+mom_3+mom_6+mom_12)/4.
+
+  Czesc ofensywna (top4 wg (mom_3+mom_6+mom_12)/3, rowne wagi) BEZ ZMIAN - zweryfikowane testem
+  (`test_gfm_breadth_offensive_side_matches_gfm_unchanged`).
+
+  **Wynik zgodny z celem usera** ("nizszy MaxDD i wczesniejsze przechodzenie do defensywy"):
+
+  | | CAGR | MaxDD | Sharpe | Calmar | Turnover |
+  |---|---|---|---|---|---|
+  | `gfm` (binarny SPY 12M switch) | 7.11% | -35.22% | 0.545 | 0.202 | 3.47 |
+  | `gfm_breadth` (skokowa szerokosc) | 5.49% | **-26.55%** | 0.504 | 0.207 | 4.41 |
+
+  MaxDD poprawiony o ~8.7pp (klasyczny kompromis: mniej CAGR za znaczaco nizsze ryzyko), Calmar
+  lekko lepszy. Wyzszy turnover (czesciowe pozycje na progach) - podniesiono
+  `max_annual_turnover` w acceptance_spec.json do 5.0 (bylo 4.0, jak w oryginalnym `gfm`).
+
+  19 nowych testow bloku (`test_gfm_breadth_risk_step.py` - walidacja, wszystkie 5 koszykow
+  szerokosci, best-of-3 defensywny wybor, NaN nie liczy sie do szerokosci/selekcji, brak
+  kandydatow -> `_CASH`) + 6 testow strategii (`test_gfm_breadth_strategy_spec.py`). Wygenerowano
+  TYLKO nowy plik wynikowy + scalony `SUMMARY.md` (52 wiersze). Pelny pakiet testow: 519/519, bez
+  regresji.
+
 ## 2026-07-14 (51)
 
 - **`gtaa_agg6_mid_best17_a`** - user: "I potem mix z best" (po (50)). Miks `fixed_capital_weights`

@@ -55,7 +55,7 @@ Orchestrator: `pipeline.run_strategy_pipeline(spec)` -> gotowa tabela FINAL PORT
 | `asset_scoring` | pojedynczy wybór | `weighted_sum`, `momentum_times_decorrelation` | `weighted_sum` - ważona SUMA wskaźników; `momentum_times_decorrelation` - ILOCZYN dwóch konkretnych wskaźników (`momentum * (1 - korelacja)`, dla `strategies_v2/gpm/` - suma by tego nie wyraziła). Oba maskują NaN tam gdzie `eligibility_mask=False` |
 | `selector` | pojedynczy wybór | `top_n` | Top-N wg score, nigdy nie wybiera NaN |
 | `alpha_weighting` | pojedynczy wybór | `rank_weights`, `inverse_vol`, `rounded_score_weights` | Wagi wybranych: stałe wg rankingu (reszta do `_CASH`) albo odwrotnie proporcjonalne do zmienności (zawsze w pełni zainwestowane) albo proporcjonalne do score, zaokrąglone do bloku (largest remainder), z gwarantowanym minimum na aktywo |
-| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch`, `gpm_breadth_protective_split`, `gtaa_trend_bond_reroute`, `daa_canary_breadth_switch` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku); `gpm_breadth_protective_split` skaluje udział ochronny CIĄGLE wg liczby dodatnich aktywów ryzykownych, zamiast binarnego przełączenia jak `vaa_canary`; `gtaa_trend_bond_reroute` ocenia KAŻDY SLOT niezależnie (nie globalnie) - część portfela może być w akcjach a część w obligacjach jednocześnie; `daa_canary_breadth_switch` - kanarek to OSOBNE, małe uniwersum (nie cały `offensive_assets` jak `vaa_canary`) + ciągły udział ochronny (0/50/100% dla 2 kanarków) zamiast binarnego |
+| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch`, `gpm_breadth_protective_split`, `gtaa_trend_bond_reroute`, `daa_canary_breadth_switch`, `gfm_breadth_risk_step` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku); `gpm_breadth_protective_split` skaluje udział ochronny CIĄGLE wg liczby dodatnich aktywów ryzykownych, zamiast binarnego przełączenia jak `vaa_canary`; `gtaa_trend_bond_reroute` ocenia KAŻDY SLOT niezależnie (nie globalnie) - część portfela może być w akcjach a część w obligacjach jednocześnie; `daa_canary_breadth_switch` - kanarek to OSOBNE, małe uniwersum (nie cały `offensive_assets` jak `vaa_canary`) + ciągły udział ochronny (0/50/100% dla 2 kanarków) zamiast binarnego; `gfm_breadth_risk_step` - jak `gpm_breadth_protective_split`, ale SKOKOWO (5 progów 0/25/50/75/100%, nie liniowo) + wybór najlepszego z 3 kandydatów ochronnych (SHY/IEF/TLT) |
 | `overlays` | pojedynczy wybór | `none` | Pass-through (rebound/vol-target - gdy będzie potrzebny) |
 | `execution` | pojedynczy wybór | `hysteresis`, `score_gap_hysteresis` | Rebalans tylko gdy przekroczony próg - na różnicy WAGI (`hysteresis`) albo różnicy SCORE między najsłabszym trzymanym a najlepszym wyzwaniowcem (`score_gap_hysteresis`, wymaga `ExecutionContext.score_row`) |
 
@@ -1223,6 +1223,31 @@ powyzszy wynik to jawna rekonstrukcja z zastepcza regula, NIE wierne odtworzenie
 `relative_drop` = 33.18%, **FAIL** (prog 0.30) - GFM-3 z `regime_threshold=0.0` wyraznie lepszy
 niz GFM-5 z `regime_threshold=-0.02`; spojne z tym, ze placeholderowy sygnal rezimu jest z natury
 prowizoryczny - realna regula GFM (nieznana) moglaby zachowywac sie inaczej.
+
+#### `gfm_breadth` - wariant z ryzykiem skalowanym stopniowo wg szerokosci rynku (2026-07-14 (52))
+
+User: "Zmieniamy w GFM tylko mechanizm risk-off: zamiast prostego SPY 12M > 0, liczymy szerokosc
+rynku... ryzyko zmniejszamy stopniowo, np. 100%/75%/50%/25%/0%... czesc defensywna wybiera
+najlepszy z SHY, IEF, TLT. Czesc ofensywna zostaje bez zmian." Nowy blok
+`portfolio_risk_engine.gfm_breadth_risk_step` - laczy dwa juz istniejace wzorce: dwie NIEZALEZNE
+formuly scoringu (risky vs protective, jak `gfm_risk_switch`) + skalowanie udzialu ryzykownego
+wg szerokosci rynku (jak `gpm_breadth_protective_split`) - ale SKOKOWE
+(`breadth_thresholds`/`risky_shares`), nie ciagle/liniowe jak GPM.
+
+Kalibracja (14 aktywow risk-on): `breadth_thresholds=[3,6,9,12]`,
+`risky_shares=[0.0,0.25,0.5,0.75,1.0]` - 5 rownych koszykow po 3, dajacych dokladnie progi
+"100/75/50/25/0%" z opisu. Defensywna czesc: dodano `shy.us` do IEF/TLT (3 kandydaci zamiast 2).
+Czesc ofensywna (top4 wg (mom_3+mom_6+mom_12)/3) BEZ ZMIAN.
+
+**Wynik zgodny z celem usera** ("nizszy MaxDD i wczesniejsze przechodzenie do defensywy"):
+
+| | CAGR | MaxDD | Sharpe | Calmar | Turnover |
+|---|---|---|---|---|---|
+| `gfm` (binarny SPY 12M switch) | 7.11% | -35.22% | 0.545 | 0.202 | 3.47 |
+| `gfm_breadth` (skokowa szerokosc) | 5.49% | **-26.55%** | 0.504 | 0.207 | 4.41 |
+
+MaxDD poprawiony o ~8.7pp (mniej CAGR za znaczaco nizsze ryzyko), Calmar lekko lepszy. 19 testow
+bloku (`test_gfm_breadth_risk_step.py`) + 6 testow strategii (`test_gfm_breadth_strategy_spec.py`).
 
 ### Osma strategia: `best17_b` ("Strategia B" uzytkownika - rotacja sektorowa)
 

@@ -1,0 +1,46 @@
+{
+  "name": "gfm_breadth_v0",
+  "hypothesis": "Wariant `gfm` - user: 'Zmieniamy w GFM tylko mechanizm risk-off: zamiast prostego SPY 12M > 0, liczymy szerokosc rynku: ile aktywow GFM ma dodatnie momentum, ryzyko zmniejszamy stopniowo, np. 100%/75%/50%/25%/0%, czesc defensywna wybiera najlepszy z SHY, IEF, TLT. Czesc ofensywna zostaje bez zmian: top 4 wg momentum 3/6/12. Cel: nizszy MaxDD i wczesniejsze przechodzenie do defensywy bez gwaltownego przelacznika opartego wylacznie na SPY.' Czesc OFENSYWNA identyczna z `gfm` (14 aktywow risk-on, score=(mom_3+mom_6+mom_12)/3, top4, rowne wagi) - ZERO zmian. Zmieniony TYLKO mechanizm risk-off: nowy blok `gfm_breadth_risk_step` (zamiast binarnego `gfm_risk_switch` z placeholderowym sygnalem SPY 12M > 0) - szerokosc rynku (n = ile z 14 aktywow risk-on ma dodatni score) decyduje o SKOKOWYM (nie ciaglym jak `gpm_breadth_protective_split`) udziale ryzykownym wg `breadth_thresholds=[3,6,9,12]`/`risky_shares=[0.0,0.25,0.5,0.75,1.0]` - 5 rownych koszykow po 3 (0-2/3-5/6-8/9-11/12-14 z 14 mozliwych wartosci n), dajacych dokladnie progi '100%/75%/50%/25%/0%' z opisu. Czesc defensywna: dodano `shy.us` do dwoch juz istniejacych kandydatow (IEF/TLT) - CALY defensywny udzial trafia w JEDNO aktywo z najwyzszym (mom_1+mom_3+mom_6+mom_12)/4 (ta sama formula co w `gfm_risk_switch`'s risk-off).",
+  "universe": ["spy.us", "vtv.us", "mtum.us", "qqq.us", "ijh.us", "ijr.us", "vea.us", "vwo.us", "efv.us", "mchi.us", "gsg.us", "gld.us", "vnq.us", "lqd.us", "shy.us", "ief.us", "tlt.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "gfm_breadth_risk_step",
+    "overlays": "none",
+    "execution": "hysteresis"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "mom_1": {"impl": "momentum_monthly", "window": 1},
+      "mom_3": {"impl": "momentum_monthly", "window": 3},
+      "mom_6": {"impl": "momentum_monthly", "window": 6},
+      "mom_12": {"impl": "momentum_monthly", "window": 12}
+    },
+    "asset_scoring": {"weights": {"mom_12": 1.0}},
+    "selector": {"top_n": 1},
+    "alpha_weighting": {"weights": [1.0]},
+    "portfolio_risk_engine": {
+      "risky_assets": ["spy.us", "vtv.us", "mtum.us", "qqq.us", "ijh.us", "ijr.us", "vea.us", "vwo.us", "efv.us", "mchi.us", "gsg.us", "gld.us", "vnq.us", "lqd.us"],
+      "protective_assets": ["shy.us", "ief.us", "tlt.us"],
+      "top_n_risky": 4,
+      "risky_mom_keys": ["mom_3", "mom_6", "mom_12"],
+      "protective_mom_keys": ["mom_1", "mom_3", "mom_6", "mom_12"],
+      "breadth_thresholds": [3, 6, 9, 12],
+      "risky_shares": [0.0, 0.25, 0.5, 0.75, 1.0]
+    },
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"}
+  },
+
+  "allowed_param_families": {
+    "portfolio_risk_engine": {"top_n_risky": [3, 4, 5]}
+  },
+
+  "created_at": "2026-07-14"
+}

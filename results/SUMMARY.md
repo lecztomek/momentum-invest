@@ -40,6 +40,7 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `dual_momentum` | final | 4.99% | -22.49% | 0.464 | 0.222 | 2.28 | - |
 | `gpm` | final | 3.43% | -15.93% | 0.448 | 0.215 | 4.34 | - |
 | `dual_momentum_vaa_g4` | combined_final | 4.73% | -22.52% | 0.526 | 0.210 | 4.97 | - |
+| `gfm_breadth` | final | 5.49% | -26.55% | 0.504 | 0.207 | 4.41 | - |
 | `the_one` | final | 5.51% | -26.85% | 0.414 | 0.205 | 6.50 | - |
 | `vaa_g4_gfm` | combined_final | 4.64% | -22.76% | 0.532 | 0.204 | 5.02 | - |
 | `gfm` | final | 7.11% | -35.22% | 0.545 | 0.202 | 3.47 | - |

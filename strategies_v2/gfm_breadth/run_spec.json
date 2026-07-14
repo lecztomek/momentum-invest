@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "Wariant `gfm` z ryzykiem skalowanym stopniowo wg szerokosci rynku (5 progow 0/25/50/75/100%) zamiast binarnego przelacznika SPY 12M>0 - patrz hypothesis w strategy_spec.json."
+}
