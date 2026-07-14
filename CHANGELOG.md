@@ -2,7 +2,44 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
-## 2026-07-14 (53)
+## 2026-07-14 (54)
+
+- **KOREKTA `daa_g4_keller`: T=4, B=2 (nie T=2, B=1)** - user po (53): "Ale zle zrobiles ja chce
+  t 4 b 2". Poprzednia wersja (53) opierala T=2/B=1 na niezaleznym, WTORNYM zrodle (kod
+  referencyjny TuringTrader, wariant "Easy Trading" ze SKALUJACYM SIE top_n w miare wzrostu
+  cash_fraction) - user jawnie skorygowal na inne wartosci, przyjete bez dalszej dyskusji jako
+  autorytatywne (moga pochodzic z samej pracy Kellera/Keuninga albo z innego zrodla, ktoremu user
+  ufa bardziej niz mojej wtornej weryfikacji).
+
+  `top_n_offensive=4` (WSZYSTKIE 4 aktywa ofensywne rownolegle, rowne wagi 25% kazde - nie top-2
+  jak w (53)), `breadth_denominator=2` (TAKI SAM jak domyslny w istniejacym `daa_g4` -
+  `len(canary_assets)=2` - wiec mechanizm udzialu ochronnego jest teraz IDENTYCZNY z `daa_g4`,
+  ciagly 0/50/100%, NIE binarny jak w (53)). Jedyna pozostala roznica wzgledem `daa_g4`: liczba
+  trzymanych aktyw ofensywnych (4 zamiast 1).
+
+  **Wynik PO korekcie** (lepszy niz (53), blisko `daa_g4`):
+
+  | | CAGR | MaxDD | Sharpe | Calmar | Turnover |
+  |---|---|---|---|---|---|
+  | `daa_g4` (top1 ofensywny) | 3.50% | -32.01% | 0.318 | 0.109 | 7.64 |
+  | `daa_g4_keller` (53, T=2/B=1, BLEDNE) | 3.38% | -37.58% | 0.341 | 0.090 | 7.19 |
+  | `daa_g4_keller` (54, T=4/B=2, POPRAWIONE) | 3.04% | **-30.28%** | 0.355 | 0.100 | 4.60 |
+
+  MaxDD teraz LEPSZY niz `daa_g4` (-30.28% vs -32.01%) - trzymanie wszystkich 4 aktyw ofensywnych
+  naraz (zamiast koncentracji w 1) daje realna dywersyfikacje wewnatrz "nogi" ofensywnej, przy
+  niższym turnoverze (4.60 vs 7.64 - mniej okazji do zmiany lidera, skoro i tak trzyma sie
+  wszystkie). Calmar wciaz odrobine nizszy niz `daa_g4` (0.100 vs 0.109) - CAGR nizszy, bo
+  rownowazenie 4 aktyw zamiast koncentracji w najlepszym redukuje gorne odchylenie razem z
+  dolnym.
+
+  Zaktualizowany `strategies_v2/daa_g4_keller/strategy_spec.json` (`top_n_offensive: 4`,
+  `breadth_denominator: 2`) i wszystkie testy w `test_daa_g4_keller_strategy_spec.py` (nowy test
+  `test_daa_g4_keller_holds_all_four_offensive_assets_when_fully_offensive` - dowod, ze wszystkie
+  4 sa faktycznie trzymane rownolegle, nie tylko dopuszczone). Wygenerowano TYLKO
+  `results/daa_g4_keller.json` + scalony `SUMMARY.md`. Pelny pakiet testow: 528/528, bez
+  regresji.
+
+## 2026-07-14 (53) - ⚠️ NIEAKTUALNE, patrz korekta (54) - user podal inne T/B po zobaczeniu wyniku
 
 - **`daa_g4_keller` - wierna rekonstrukcja "DAA-G4"** (user: "Zrob wersje daa g4 kellera").
   Zweryfikowano WPROST zrodlo (nie z pamieci) - Keller & Keuning (2018), "Breadth Momentum and

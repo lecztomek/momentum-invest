@@ -1,6 +1,6 @@
 {
   "name": "daa_g4_keller_v0",
-  "hypothesis": "User: 'Zrob wersje daa g4 kellera'. Zweryfikowano wprost zrodlo (nie z pamieci) - Keller & Keuning (2018), 'Breadth Momentum and the Canary Universe: Defensive Asset Allocation (DAA)', porownane z niezalezna implementacja referencyjna (TuringTrader/BooksAndPubs/Keller_DAA.cs, https://github.com/fbertram/TuringTrader). Nasza istniejaca `strategies_v2/daa_g4/` OKAZALA SIE odbiegac od prawdziwego DAA-G4 na 2 sposoby: (1) top_n_offensive=1 zamiast PRAWDZIWEGO T=2 (DAA-G4 trzyma top-2 aktywa ofensywne, nie top-1); (2) cash_fraction liczony jako b/len(canary_assets)=b/2 (ciagle 0/50/100%), podczas gdy PRAWDZIWE DAA-G4 uzywa breadth_denominator (B)=1, NIE 2 - JEDEN zly kanarek juz wymusza 100% ochrony (min(1, b/1)), mimo ze kanarkow jest 2 (ta ciaglosc 0/50/100% jest wlasciwoscia DAA-G12 z B=2, nie G4). Ta strategia to POPRAWNA rekonstrukcja: T=2, B=1, offensive=SPY/VEA/VWO/BND (BND niedostepny w danych, zastapiony AGG - ta sama substytucja co juz zaakceptowana w `daa_g4`/`vaa_g4`), canary=VWO/BND(AGG) (2 z 4 ofensywnych), defensive=SHY/IEF/LQD (top1, najlepszy dostepny). Score = 13612W momentum (12*r1+4*r3+2*r6+1*r12)/19 - identyczny wzor co `daa_g4`/`vaa_g4` (reuzyte istniejace bloki). Dodano `breadth_denominator` param do `daa_canary_breadth_switch` (domyslnie len(canary_assets), wiec istniejacy `daa_g4` NIE zmienia zachowania) - zero nowego bloku, jedna nowa, wsteczna-kompatybilna opcja istniejacego.",
+  "hypothesis": "User: 'Zrob wersje daa g4 kellera', potem POPRAWKA: 'Ale zle zrobiles ja chce t 4 b 2'. Pierwsza wersja (T=2, B=1) byla oparta o niezalezne, wtorne zrodlo (TuringTrader C# - 'Easy Trading' wariant z SKALUJACYM SIE top_n_offensive w miare wzrostu cash_fraction, nie prosty stale top_n) - user skorygowal wprost na T=4 (wszystkie 4 aktywa ofensywne, bez selekcji - rownowazenie miedzy WSZYSTKIMI naraz, skalowane udzialem ryzykownym) i B=2 (dokladnie liczba kanarkow - CIAGLY udzial ochronny 0/50/100%, ten sam mechanizm B co w istniejacym `daa_g4`). Roznica wzgledem istniejacego `daa_g4` to WIEC TYLKO top_n_offensive: 4 (wszystkie ofensywne rownolegle) zamiast 1 (tylko najlepszy). offensive=SPY/VEA/VWO/AGG (BND niedostepny w danych, zastapiony AGG - ta sama substytucja co w `daa_g4`/`vaa_g4`), canary=VWO/AGG (2 z 4 ofensywnych), defensive=SHY/IEF/LQD (top1, najlepszy dostepny). Score = 13612W momentum (12*r1+4*r3+2*r6+1*r12)/19 - identyczny wzor co `daa_g4`/`vaa_g4`.",
   "universe": ["spy.us", "vea.us", "vwo.us", "agg.us", "shy.us", "ief.us", "lqd.us"],
 
   "blocks": {
@@ -32,9 +32,9 @@
       "offensive_assets": ["spy.us", "vea.us", "vwo.us", "agg.us"],
       "defensive_assets": ["shy.us", "ief.us", "lqd.us"],
       "canary_assets": ["vwo.us", "agg.us"],
-      "top_n_offensive": 2,
+      "top_n_offensive": 4,
       "top_n_defensive": 1,
-      "breadth_denominator": 1
+      "breadth_denominator": 2
     },
     "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"}
   },
