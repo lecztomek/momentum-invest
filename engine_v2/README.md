@@ -55,7 +55,7 @@ Orchestrator: `pipeline.run_strategy_pipeline(spec)` -> gotowa tabela FINAL PORT
 | `asset_scoring` | pojedynczy wybór | `weighted_sum`, `momentum_times_decorrelation` | `weighted_sum` - ważona SUMA wskaźników; `momentum_times_decorrelation` - ILOCZYN dwóch konkretnych wskaźników (`momentum * (1 - korelacja)`, dla `strategies_v2/gpm/` - suma by tego nie wyraziła). Oba maskują NaN tam gdzie `eligibility_mask=False` |
 | `selector` | pojedynczy wybór | `top_n` | Top-N wg score, nigdy nie wybiera NaN |
 | `alpha_weighting` | pojedynczy wybór | `rank_weights`, `inverse_vol`, `rounded_score_weights` | Wagi wybranych: stałe wg rankingu (reszta do `_CASH`) albo odwrotnie proporcjonalne do zmienności (zawsze w pełni zainwestowane) albo proporcjonalne do score, zaokrąglone do bloku (largest remainder), z gwarantowanym minimum na aktywo |
-| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch`, `gpm_breadth_protective_split`, `gtaa_trend_bond_reroute`, `daa_canary_breadth_switch`, `gfm_breadth_risk_step` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku); `gpm_breadth_protective_split` skaluje udział ochronny CIĄGLE wg liczby dodatnich aktywów ryzykownych, zamiast binarnego przełączenia jak `vaa_canary`; `gtaa_trend_bond_reroute` ocenia KAŻDY SLOT niezależnie (nie globalnie) - część portfela może być w akcjach a część w obligacjach jednocześnie; `daa_canary_breadth_switch` - kanarek to OSOBNE, małe uniwersum (nie cały `offensive_assets` jak `vaa_canary`) + udział ochronny `min(1, b/breadth_denominator)` (domyślnie `len(canary_assets)` - ciągły 0/50/100% dla 2 kanarków, uzywane zarówno w `daa_g4` jak i `daa_g4_keller`); `gfm_breadth_risk_step` - jak `gpm_breadth_protective_split`, ale SKOKOWO (5 progów 0/25/50/75/100%, nie liniowo) + wybór najlepszego z 3 kandydatów ochronnych (SHY/IEF/TLT) |
+| `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch`, `gpm_breadth_protective_split`, `gtaa_trend_bond_reroute`, `daa_canary_breadth_switch`, `gfm_breadth_risk_step` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku); `gpm_breadth_protective_split` skaluje udział ochronny CIĄGLE wg liczby dodatnich aktywów ryzykownych, zamiast binarnego przełączenia jak `vaa_canary`; `gtaa_trend_bond_reroute` ocenia KAŻDY SLOT niezależnie (nie globalnie) - część portfela może być w akcjach a część w obligacjach jednocześnie; `daa_canary_breadth_switch` - kanarek to OSOBNE, małe uniwersum (nie cały `offensive_assets` jak `vaa_canary`) + udział ochronny `min(1, b/breadth_denominator)` (domyślnie `len(canary_assets)` - ciągły 0/50/100% dla 2 kanarków, uzywane zarówno w `daa_g4` jak i `daa_g4_keller`); opcjonalny `scale_top_n_with_cash_fraction` ("Easy Trading", domyślnie `False`, włączony tylko w `daa_g4_keller`) kurczy liczbę TRZYMANYCH aktywów ofensywnych proporcjonalnie do udziału ochronnego zamiast trzymać stałą `top_n_offensive`; `gfm_breadth_risk_step` - jak `gpm_breadth_protective_split`, ale SKOKOWO (5 progów 0/25/50/75/100%, nie liniowo) + wybór najlepszego z 3 kandydatów ochronnych (SHY/IEF/TLT) |
 | `overlays` | pojedynczy wybór | `none` | Pass-through (rebound/vol-target - gdy będzie potrzebny) |
 | `execution` | pojedynczy wybór | `hysteresis`, `score_gap_hysteresis` | Rebalans tylko gdy przekroczony próg - na różnicy WAGI (`hysteresis`) albo różnicy SCORE między najsłabszym trzymanym a najlepszym wyzwaniowcem (`score_gap_hysteresis`, wymaga `ExecutionContext.score_row`) |
 
@@ -1619,32 +1619,46 @@ przy ujemnym score, top_n>1 dzieli po rowno, fallback do `_CASH`) + `test_daa_g4
 (kanarek WLASCIWYM podzbiorem ofensywnych - nie rownym, end-to-end z dowodem na wszystkie 3
 poziomy udzialu ochronnego, zamrozony baseline metryk).
 
-#### `daa_g4_keller` - wariant DAA-G4 z T=4/B=2 (2026-07-14, koncowa wersja po korekcie (54))
+#### `daa_g4_keller` - wariant DAA-G4 z T=4/B=2 + dynamiczne top-N (2026-07-14, koncowa wersja po korekcie (55))
 
 User: "Zrob wersje daa g4 kellera". Pierwsza proba (CHANGELOG (53)) oparta na niezaleznym,
 wtornym zrodle (github.com/fbertram/TuringTrader, `Keller_DAA.cs`) dala T=2 (top-2 ofensywne)/
 B=1 (mechanizm BINARNY - jeden zly kanarek = 100% ochrony) - user to skorygowal: "Ale zle
-zrobiles ja chce t 4 b 2".
+zrobiles ja chce t 4 b 2" (CHANGELOG (54)). Po zobaczeniu wyniku (54) user poprawil jeszcze raz:
+"Blad jest przy 1 zlym kanarku. Keller powinien wtedy miec: top 2 aktywa po 25% + 50%
+defensywnie. Repo nadal trzyma top 4 po 12,5% + 50% defensywnie. Czyli trzeba dodac dynamiczne
+zmniejszenie liczby aktywow ofensywnych z 4 do 2." (CHANGELOG (55)).
 
-**Finalne parametry**: `top_n_offensive=4` (WSZYSTKIE 4 aktywa ofensywne rownolegle, rowne wagi
-25% kazde - nie wybor najlepszych z nich), `breadth_denominator=2` (TAKI SAM jak domyslny w
-`daa_g4` - ciagly udzial ochronny 0/50/100%, NIE binarny). Jedyna roznica wzgledem istniejacego
-`daa_g4`: liczba trzymanych aktyw ofensywnych naraz (4 zamiast 1) - mechanizm kanarka identyczny.
+**Finalne parametry**: `top_n_offensive=4` (MAKSYMALNIE 4 aktywa ofensywne - rzeczywista liczba
+trzymanych skaluje sie w dol), `breadth_denominator=2` (TAKI SAM jak domyslny w `daa_g4` - ciagly
+udzial ochronny 0/50/100%, NIE binarny), `scale_top_n_with_cash_fraction=true` ("Easy Trading"):
+liczba TRZYMANYCH aktyw ofensywnych = `round((1-cash_fraction)*top_n_offensive)`, nie stale 4.
+Przy 1 zlym kanarku z 2 (`cash_fraction=0.5`): `round(0.5*4)=2` -> top-2 po 25% (nie top-4 po
+12,5%). Roznica wzgledem istniejacego `daa_g4`: max liczba trzymanych aktyw ofensywnych (4 zamiast
+1, skalowana w dol) + wlaczone dynamiczne skalowanie (u `daa_g4` wylaczone, bez zmiany
+zachowania) - mechanizm kanarka identyczny.
 
-**Wynik** (lepszy niz pierwsza, bledna proba (53); MaxDD lepszy niz `daa_g4`):
+**Wynik (55, po korekcie dynamicznego top-N) vs (54, stale top-4)** (post-tax, koszt 40bps):
 
 | | CAGR | MaxDD | Sharpe | Calmar | Turnover |
 |---|---|---|---|---|---|
 | `daa_g4` (top1 ofensywny) | 3.50% | -32.01% | 0.318 | 0.109 | 7.64 |
-| `daa_g4_keller` (T=4, B=2) | 3.04% | **-30.28%** | 0.355 | 0.100 | 4.60 |
+| `daa_g4_keller` (54, stale top-4, BLEDNE) | 3.04% | -30.28% | 0.355 | 0.100 | 4.60 |
+| `daa_g4_keller` (55, dynamiczne top-2..4, POPRAWNE) | 2.86% | **-32.12%** | 0.343 | 0.089 | 4.82 |
 
-Trzymanie wszystkich 4 aktyw ofensywnych naraz (zamiast koncentracji w 1) daje realna
-dywersyfikacje wewnatrz "nogi" ofensywnej - MaxDD lepszy niz `daa_g4`, przy nizszym turnowerze
-(4.60 vs 7.64 - mniej okazji do zmiany lidera). Calmar odrobine nizszy (0.100 vs 0.109) - CAGR
-tez nizszy, bo rownowazenie 4 aktyw redukuje gorne odchylenie razem z dolnym. 9 testow
-(`test_daa_g4_keller_strategy_spec.py`, w tym dowod ze wszystkie 4 aktywa ofensywne sa faktycznie
-trzymane rownolegle gdy udzial ryzykowny=100%) + 2 w `test_daa_components.py`
-(`breadth_denominator`, wsteczna kompatybilnosc z `daa_g4`).
+**Uczciwie: (55) jest gorszy niz (54) na wszystkich metrykach** (nizszy CAGR, gorszy MaxDD,
+nizszy Sharpe/Calmar, odrobine wyzszy turnover), mimo ze mechanika jest teraz POPRAWNA wzgledem
+metodyki Kellera. Koncentrowanie kapitalu w 2 aktywach zamiast rozproszenie na 4 w stanie
+posrednim (`cash_fraction=0.5`) redukuje wewnetrzna dywersyfikacje "nogi" ofensywnej wlasnie w
+okresach podwyzszonego ryzyka - to kompromis wpisany w oryginalna metodyke DAA, nie blad
+implementacji. (55) ma teraz podobny MaxDD do `daa_g4` (-32.12% vs -32.01%), ale nizszy turnover
+(4.82 vs 7.64) i nadal wyzszy Sharpe (0.343 vs 0.318).
+
+Testy: `test_daa_g4_keller_strategy_spec.py` (9, w tym dowod ze wszystkie 4 aktywa ofensywne sa
+trzymane rownolegle przy udziale ryzykownym=100% i dowod ze DOKLADNIE 2 sa trzymane po 25% przy
+udziale ochronnym ~50%) + `test_daa_components.py` (13 razem, w tym 3 dedykowane
+`scale_top_n_with_cash_fraction`: shrink przy cash_fraction=0.5, brak zmiany przy
+cash_fraction=0, brak zmiany zachowania `daa_g4` gdy flaga wylaczona/domyslna).
 
 #### `vaa_g4_ema` / `daa_g4_ema` - eksperyment: EMA zamiast momentum (negatywny wynik)
 

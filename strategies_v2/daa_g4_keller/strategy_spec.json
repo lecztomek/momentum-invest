@@ -1,6 +1,6 @@
 {
   "name": "daa_g4_keller_v0",
-  "hypothesis": "User: 'Zrob wersje daa g4 kellera', potem POPRAWKA: 'Ale zle zrobiles ja chce t 4 b 2'. Pierwsza wersja (T=2, B=1) byla oparta o niezalezne, wtorne zrodlo (TuringTrader C# - 'Easy Trading' wariant z SKALUJACYM SIE top_n_offensive w miare wzrostu cash_fraction, nie prosty stale top_n) - user skorygowal wprost na T=4 (wszystkie 4 aktywa ofensywne, bez selekcji - rownowazenie miedzy WSZYSTKIMI naraz, skalowane udzialem ryzykownym) i B=2 (dokladnie liczba kanarkow - CIAGLY udzial ochronny 0/50/100%, ten sam mechanizm B co w istniejacym `daa_g4`). Roznica wzgledem istniejacego `daa_g4` to WIEC TYLKO top_n_offensive: 4 (wszystkie ofensywne rownolegle) zamiast 1 (tylko najlepszy). offensive=SPY/VEA/VWO/AGG (BND niedostepny w danych, zastapiony AGG - ta sama substytucja co w `daa_g4`/`vaa_g4`), canary=VWO/AGG (2 z 4 ofensywnych), defensive=SHY/IEF/LQD (top1, najlepszy dostepny). Score = 13612W momentum (12*r1+4*r3+2*r6+1*r12)/19 - identyczny wzor co `daa_g4`/`vaa_g4`.",
+  "hypothesis": "User: 'Zrob wersje daa g4 kellera', potem POPRAWKA 1: 'Ale zle zrobiles ja chce t 4 b 2'. Pierwsza wersja (T=2, B=1) byla oparta o niezalezne, wtorne zrodlo (TuringTrader C# - 'Easy Trading' wariant z SKALUJACYM SIE top_n_offensive w miare wzrostu cash_fraction, nie prosty stale top_n) - user skorygowal wprost na T=4 (maksymalnie 4 aktywa ofensywne) i B=2 (dokladnie liczba kanarkow - CIAGLY udzial ochronny 0/50/100%, ten sam mechanizm B co w istniejacym `daa_g4`). POPRAWKA 2 (po zobaczeniu wynikow): 'Blad jest przy 1 zlym kanarku. Keller powinien wtedy miec: top 2 aktywa po 25% + 50% defensywnie. Repo nadal trzyma top 4 po 12,5% + 50% defensywnie. Czyli trzeba dodac dynamiczne zmniejszenie liczby aktywow ofensywnych z 4 do 2.' - dodano `scale_top_n_with_cash_fraction: true` ('Easy Trading'): liczba TRZYMANYCH aktyw ofensywnych = round((1-cash_fraction)*top_n_offensive), nie stale top_n_offensive. Przy 1 zlym kanarku (cash_fraction=0.5): trzymane = round(0.5*4) = 2 aktywa po 25% kazde (50%/2), nie 4 po 12,5% (50%/4). Roznica wzgledem istniejacego `daa_g4` to WIEC: top_n_offensive=4 (max, skalowane w dol) zamiast stale 1, plus wlaczone dynamiczne skalowanie. offensive=SPY/VEA/VWO/AGG (BND niedostepny w danych, zastapiony AGG - ta sama substytucja co w `daa_g4`/`vaa_g4`), canary=VWO/AGG (2 z 4 ofensywnych), defensive=SHY/IEF/LQD (top1, najlepszy dostepny). Score = 13612W momentum (12*r1+4*r3+2*r6+1*r12)/19 - identyczny wzor co `daa_g4`/`vaa_g4`.",
   "universe": ["spy.us", "vea.us", "vwo.us", "agg.us", "shy.us", "ief.us", "lqd.us"],
 
   "blocks": {
@@ -34,7 +34,8 @@
       "canary_assets": ["vwo.us", "agg.us"],
       "top_n_offensive": 4,
       "top_n_defensive": 1,
-      "breadth_denominator": 2
+      "breadth_denominator": 2,
+      "scale_top_n_with_cash_fraction": true
     },
     "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"}
   },

@@ -209,6 +209,103 @@ def test_breadth_denominator_defaults_to_canary_count():
     assert out.loc[idx[0], "d1"] == pytest.approx(0.5)
 
 
+def test_scale_top_n_with_cash_fraction_shrinks_offensive_count():
+    """'Easy Trading': T=4/B=2, 1 zly kanarek -> cash_fraction=0.5 -> trzymane = round(0.5*4) = 2
+    aktywa ofensywne po 25% (50%/2), NIE top-4 po 12,5% (50%/4). Dokladnie przyklad usera:
+    'Keller powinien wtedy miec: top 2 aktywa po 25% + 50% defensywnie'."""
+    idx = pd.date_range("2021-01-01", periods=1, freq="MS")
+    off = ["o1", "o2", "o3", "o4"]
+    dfn = ["d1", "d2", "d3"]
+    can = ["c1", "c2"]
+    prices = pd.DataFrame({t: 1.0 for t in off + dfn + can}, index=idx)
+    md = MarketData(prices=prices, returns=pd.DataFrame())
+    score = pd.DataFrame(
+        {
+            "o1": [0.10], "o2": [0.08], "o3": [0.05], "o4": [0.01],
+            "d1": [0.01], "d2": [0.015], "d3": [0.02],
+            "c1": [-0.01], "c2": [0.02],
+        },
+        index=idx,
+    )
+    target_weights = _make_target_weights(idx, off + dfn + can)
+
+    out = daa_canary_breadth_switch(
+        target_weights, md, {}, score,
+        {
+            "offensive_assets": off, "defensive_assets": dfn, "canary_assets": can,
+            "top_n_offensive": 4, "top_n_defensive": 1, "breadth_denominator": 2,
+            "scale_top_n_with_cash_fraction": True,
+        },
+    )
+
+    assert out.loc[idx[0], "o1"] == pytest.approx(0.25)
+    assert out.loc[idx[0], "o2"] == pytest.approx(0.25)
+    assert out.loc[idx[0], "o3"] == pytest.approx(0.0)
+    assert out.loc[idx[0], "o4"] == pytest.approx(0.0)
+    assert out.loc[idx[0], "d3"] == pytest.approx(0.5)
+    assert out.loc[idx[0]].sum() == pytest.approx(1.0)
+
+
+def test_scale_top_n_with_cash_fraction_keeps_all_when_fully_offensive():
+    """cash_fraction=0 (oba kanarki dobre) -> trzymane = round(1.0*4) = 4, jak bez skalowania."""
+    idx = pd.date_range("2021-01-01", periods=1, freq="MS")
+    off = ["o1", "o2", "o3", "o4"]
+    dfn = ["d1"]
+    can = ["c1", "c2"]
+    prices = pd.DataFrame({t: 1.0 for t in off + dfn + can}, index=idx)
+    md = MarketData(prices=prices, returns=pd.DataFrame())
+    score = pd.DataFrame(
+        {"o1": [0.10], "o2": [0.08], "o3": [0.05], "o4": [0.01], "d1": [0.01], "c1": [0.03], "c2": [0.02]},
+        index=idx,
+    )
+    target_weights = _make_target_weights(idx, off + dfn + can)
+
+    out = daa_canary_breadth_switch(
+        target_weights, md, {}, score,
+        {
+            "offensive_assets": off, "defensive_assets": dfn, "canary_assets": can,
+            "top_n_offensive": 4, "top_n_defensive": 1, "breadth_denominator": 2,
+            "scale_top_n_with_cash_fraction": True,
+        },
+    )
+
+    for t in off:
+        assert out.loc[idx[0], t] == pytest.approx(0.25)
+    assert out.loc[idx[0]].sum() == pytest.approx(1.0)
+
+
+def test_scale_top_n_with_cash_fraction_off_by_default():
+    """Bez `scale_top_n_with_cash_fraction` (domyslnie False) - zachowanie `daa_g4` bez zmian:
+    top_n_offensive=4 pozostaje stale nawet przy cash_fraction=0.5 (top-4 po 12,5%)."""
+    idx = pd.date_range("2021-01-01", periods=1, freq="MS")
+    off = ["o1", "o2", "o3", "o4"]
+    dfn = ["d1", "d2", "d3"]
+    can = ["c1", "c2"]
+    prices = pd.DataFrame({t: 1.0 for t in off + dfn + can}, index=idx)
+    md = MarketData(prices=prices, returns=pd.DataFrame())
+    score = pd.DataFrame(
+        {
+            "o1": [0.10], "o2": [0.08], "o3": [0.05], "o4": [0.01],
+            "d1": [0.01], "d2": [0.015], "d3": [0.02],
+            "c1": [-0.01], "c2": [0.02],
+        },
+        index=idx,
+    )
+    target_weights = _make_target_weights(idx, off + dfn + can)
+
+    out = daa_canary_breadth_switch(
+        target_weights, md, {}, score,
+        {
+            "offensive_assets": off, "defensive_assets": dfn, "canary_assets": can,
+            "top_n_offensive": 4, "top_n_defensive": 1, "breadth_denominator": 2,
+        },
+    )
+
+    for t in off:
+        assert out.loc[idx[0], t] == pytest.approx(0.125)
+    assert out.loc[idx[0], "d3"] == pytest.approx(0.5)
+
+
 def test_requires_params():
     idx = pd.date_range("2021-01-01", periods=1, freq="MS")
     md = MarketData(prices=pd.DataFrame({"a": [1.0]}, index=idx), returns=pd.DataFrame())

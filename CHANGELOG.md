@@ -2,6 +2,51 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-14 (55)
+
+- **KOREKTA `daa_g4_keller`: dynamiczne skalowanie liczby aktyw ofensywnych ("Easy Trading")** -
+  user po (54): "Nie jest jeszcze w pelni poprawny. T=4, B=2 sa dobre. Blad jest przy 1 zlym
+  kanarku. Keller powinien wtedy miec: top 2 aktywa po 25% + 50% defensywnie. Repo nadal trzyma
+  top 4 po 12,5% + 50% defensywnie. Czyli trzeba dodac dynamiczne zmniejszenie liczby aktywow
+  ofensywnych z 4 do 2."
+
+  Dodano opcjonalny param `scale_top_n_with_cash_fraction` (domyslnie `False` - `daa_g4` BEZ
+  ZMIAN zachowania) do wspolnego bloku `daa_canary_breadth_switch.py`: gdy wlaczony, liczba
+  TRZYMANYCH aktyw ofensywnych = `round((1 - cash_fraction) * top_n_offensive)`, nie stale
+  `top_n_offensive`. Dla `daa_g4_keller` (T=4, B=2) przy 1 zlym kanarku z 2:
+  `cash_fraction=0.5`, `t=round(0.5*4)=2` -> top-2 (nie top-4) dzieli 50% po rowno = 25% kazde
+  (nie top-4 po 12,5%) - dokladnie jak user opisal. Wlaczone tylko w `daa_g4_keller`
+  (`scale_top_n_with_cash_fraction: true`), `daa_g4` bez zmian (param nieustawiony -> `False`).
+
+  **Wynik PO korekcie (55) vs PRZED (54)** (post-tax, koszt 40bps):
+
+  | | CAGR | MaxDD | Sharpe | Calmar | Turnover |
+  |---|---|---|---|---|---|
+  | `daa_g4` (top1 ofensywny, bez zmian) | 3.50% | -32.01% | 0.318 | 0.109 | 7.64 |
+  | `daa_g4_keller` (54, stale top-4, BLEDNE) | 3.04% | -30.28% | 0.355 | 0.100 | 4.60 |
+  | `daa_g4_keller` (55, dynamiczne top-2..4, POPRAWIONE) | 2.86% | **-32.12%** | 0.343 | 0.089 | 4.82 |
+
+  **Uczciwie: ten wynik jest GORSZY na wszystkich metrykach niz (54)** (nizszy CAGR, gorszy MaxDD,
+  nizszy Sharpe/Calmar, odrobine wyzszy turnover) - mimo ze mechanika jest teraz POPRAWNA wzgledem
+  metodyki Kellera (user potwierdzil oczekiwane zachowanie: top-2 po 25% zamiast top-4 po 12,5%
+  przy 1 zlym kanarku). Powod: koncentrowanie kapitalu w 2 aktywach zamiast rozproszenie na 4 w
+  stanie posrednim (cash_fraction=0.5) REDUKUJE wewnetrzna dywersyfikacje "nogi" ofensywnej
+  wlasnie w okresach podwyzszonego ryzyka (skoro kanarek juz sygnalizuje problem) - to jest
+  kompromis wpisany w oryginalna metodyke DAA, nie blad implementacji. `daa_g4_keller` (55) ma
+  teraz podobny MaxDD do `daa_g4` (-32.12% vs -32.01%), ale nizszy turnover (4.82 vs 7.64) i nadal
+  wyzszy Sharpe (0.343 vs 0.318).
+
+  Zaktualizowany `strategies_v2/daa_g4_keller/strategy_spec.json`
+  (`scale_top_n_with_cash_fraction: true`) i `engine_v2/blocks/portfolio_risk_engine/daa_canary_breadth_switch.py`.
+  Nowe testy: `test_daa_components.py` (3 nowe: shrink przy cash_fraction=0.5, brak zmiany przy
+  cash_fraction=0, brak zmiany zachowania gdy flaga wylaczona) i
+  `test_daa_g4_keller_strategy_spec.py` (nowy `test_daa_g4_keller_shrinks_to_two_offensive_assets_at_half_cash_fraction`
+  na realnych danych - dowod, ze KAZDY okres z ~50% udzialem obronnym trzyma dokladnie 2 aktywa
+  ofensywne po 25%, nigdy 4). Zaktualizowana zamrozona baseline w
+  `test_daa_g4_keller_metrics_regression_baseline` (nowe wartosci: cagr=0.0366, maxdd=-0.3212,
+  sharpe=0.426, PRZED podatkiem). Wygenerowano TYLKO `results/daa_g4_keller.json` + scalony
+  `SUMMARY.md`. Pelny pakiet testow: 532/532, bez regresji.
+
 ## 2026-07-14 (54)
 
 - **KOREKTA `daa_g4_keller`: T=4, B=2 (nie T=2, B=1)** - user po (53): "Ale zle zrobiles ja chce

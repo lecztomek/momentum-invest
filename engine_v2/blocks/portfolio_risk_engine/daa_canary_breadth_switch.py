@@ -23,6 +23,18 @@ znak - inaczej niz `gem_dual_momentum_switch`, DAA nie wymaga dodatniego momentu
 ofensywne, sam udzial ochronny juz to kompensuje) dostaje `(1 - cash_fraction)` po rowno; top
 `top_n_defensive` aktywow obronnych wg `score` dostaje `cash_fraction` po rowno.
 
+**"Easy Trading" - dynamiczne zmniejszanie liczby aktywow ofensywnych** (user, po zobaczeniu
+wyniku `daa_g4_keller` z T=4/B=2: "Blad jest przy 1 zlym kanarku. Keller powinien wtedy miec:
+top 2 aktywa po 25% + 50% defensywnie. Repo nadal trzyma top 4 po 12,5% + 50% defensywnie.")
+- w oryginalnej metodyce Kellera liczba TRZYMANYCH aktyw ofensywnych NIE jest stala na
+`top_n_offensive` - kurczy sie proporcjonalnie do `cash_fraction`:
+`t = round((1 - cash_fraction) * top_n_offensive)`. Dla T=4/B=2 przy 1 zlym kanarku:
+`cash_fraction=0.5`, `t=round(0.5*4)=2` -> top-2 (nie top-4) dzieli `(1-cash_fraction)=50%` po
+rowno = 25% kazde (nie top-4 po 12,5%). WLACZANE opcjonalnym `scale_top_n_with_cash_fraction`
+(domyslnie `False` - istniejacy `daa_g4` BEZ ZMIAN zachowania, ta funkcja z T=1 dawalaby
+degenerowane `t=round(0.5)=0` przy 1 zlym kanarku z 2, banker's rounding - dlatego NIE jest
+wlaczona domyslnie, tylko jawnie dla wariantow z wiekszym T jak `daa_g4_keller`).
+
 Brak wystarczajacej historii (NaN) - bezpiecznie: kanarek z NaN liczy sie jako "zly" (pcha w
 strone wiekszej ochrony); jesli w danej "nodze" (ofensywnej albo obronnej) brak JAKIEGOKOLWIEK
 uzywalnego kandydata, przypisana jej czesc kapitalu idzie w "_CASH" zamiast zgadywac.
@@ -36,11 +48,16 @@ params:
     defensive_assets (list[str], wymagane) - kandydaci "obronni"
     canary_assets (list[str], wymagane)    - OSOBNE, male uniwersum tylko do pomiaru szerokosci
                                               (moze, ale nie musi, pokrywac sie z offensive_assets)
-    top_n_offensive (int, opcjonalnie, domyslnie 1)
+    top_n_offensive (int, opcjonalnie, domyslnie 1) - MAKSYMALNA liczba aktyw ofensywnych (przy
+        cash_fraction=0); patrz `scale_top_n_with_cash_fraction` - rzeczywista liczba trzymanych
+        aktyw moze byc MNIEJSZA, gdy ta opcja jest wlaczona.
     top_n_defensive (int, opcjonalnie, domyslnie 1)
     breadth_denominator (float, opcjonalnie, domyslnie len(canary_assets)) - mianownik "B" w
         cash_fraction = min(1.0, b / breadth_denominator). Ustaw NIZEJ niz len(canary_assets),
         zeby MNIEJ zlych kanarkow wymuszalo pelna ochrone (np. DAA-G4: B=1 z 2 kanarkami).
+    scale_top_n_with_cash_fraction (bool, opcjonalnie, domyslnie False) - "Easy Trading": liczba
+        TRZYMANYCH aktyw ofensywnych = round((1 - cash_fraction) * top_n_offensive), nie stale
+        top_n_offensive. Patrz docstring modulu.
 """
 
 from __future__ import annotations
@@ -67,6 +84,7 @@ def daa_canary_breadth_switch(
     canary_assets = params.get("canary_assets")
     top_n_offensive = int(params.get("top_n_offensive", 1))
     top_n_defensive = int(params.get("top_n_defensive", 1))
+    scale_top_n_with_cash_fraction = bool(params.get("scale_top_n_with_cash_fraction", False))
 
     if not offensive_assets or not defensive_assets or not canary_assets:
         raise ValueError(
@@ -92,7 +110,11 @@ def daa_canary_breadth_switch(
         offensive_ranked = score.loc[date, offensive_assets].dropna().sort_values(ascending=False)
         defensive_ranked = score.loc[date, defensive_assets].dropna().sort_values(ascending=False)
 
-        chosen_offensive = list(offensive_ranked.index[:top_n_offensive])
+        if scale_top_n_with_cash_fraction:
+            n_offensive = int(round((1.0 - cash_fraction) * top_n_offensive))
+        else:
+            n_offensive = top_n_offensive
+        chosen_offensive = list(offensive_ranked.index[:n_offensive])
         chosen_defensive = list(defensive_ranked.index[:top_n_defensive])
 
         unallocated = 0.0

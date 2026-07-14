@@ -54,6 +54,6 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `bh_spy` | final | 7.89% | -54.54% | 0.495 | 0.145 | 0.05 | fail (patrz JSON) |
 | `bh_vt` | final | 6.35% | -47.26% | 0.404 | 0.134 | 0.06 | fail (patrz JSON) |
 | `daa_g4` | final | 3.50% | -32.01% | 0.318 | 0.109 | 7.64 | - |
-| `daa_g4_keller` | final | 3.04% | -30.28% | 0.355 | 0.100 | 4.60 | - |
+| `daa_g4_keller` | final | 2.86% | -32.12% | 0.343 | 0.089 | 4.82 | - |
 | `tlt_hedge` | final | 1.46% | -49.23% | 0.172 | 0.030 | 0.05 | - |
 | `tlt_timing` | final | 0.13% | -45.89% | 0.067 | 0.003 | 3.12 | - |
