@@ -29,7 +29,7 @@
       "offensive_assets": ["spy.us", "efa.us", "vwo.us", "agg.us"],
       "defensive_assets": ["shy.us", "ief.us", "lqd.us"]
     },
-    "execution": {"hysteresis_pct": 0.0, "cost_bps": 10, "frequency": "monthly"}
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"}
   },
 
   "allowed_param_families": {

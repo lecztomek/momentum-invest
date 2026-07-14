@@ -338,8 +338,8 @@ kosztowych, świadomie odłożone; `gross_return`/`trade_cost`/`net_return` (jed
 konsumowane przez `backtest_engine.daily_equity_curve`) są policzone poprawnie.
 
 **Wynik `combined_best2` (50/50 best17_a+the_one) - statyczny vs dynamiczny combiner** (koszty:
-`the_one` ma `cost_bps=10`, patrz "Znany, naprawiony bug" nizej za wyjasnienie skorygowanego
-kosztu):
+`the_one` mial wtedy `cost_bps=10`, patrz "Znany, naprawiony bug" nizej za wyjasnienie
+skorygowanego kosztu - ⚠️ NIEAKTUALNE od 2026-07-13 (49), `cost_bps` ujednolicone na 40 wszedzie):
 | | `fixed_capital_weights` | `dynamic_capital_weights` |
 |---|---|---|
 | CAGR | ~12.6% | ~14.0% |
@@ -1685,9 +1685,11 @@ strategii/bloku silnika, ktora wplywa na wyniki, i zacommitowac nowy wynik:
 ```
 
 Uruchomienie 2026-07-12 (42) potwierdzilo znane liczby sesji (`gpm_best17_a` #1, Calmar 0.786) -
-NIEAKTUALNE po bugfixie podatku (47), patrz sekcja "ANNUAL TAX" wyzej. Po (47):
-`gpm_mid_10_best17_a` (kandydat produkcyjny) jest teraz #1 w `results/SUMMARY.md` (Calmar 0.601),
-`gpm_best17_a` (dotychczasowy sesyjny rekord) #2 (Calmar 0.585).
+NIEAKTUALNE po bugfixie podatku (47) i po ujednoliceniu `execution.cost_bps` na 40 wszedzie (49,
+user: "przypilnuj zeby bps wszedzie byl 40" - patrz "Znany, naprawiony bug" nizej). Po OBU
+poprawkach: `gpm_mid_10_best17_a` (kandydat produkcyjny) jest #1 w `results/SUMMARY.md` (Calmar
+0.536), `gpm_best17_a` (dotychczasowy sesyjny rekord) #2 (Calmar 0.521) - kolejnosc niezmieniona
+wzgledem (47), tylko nizsze wartosci bezwzgledne (wyzszy koszt transakcyjny ciagnie CAGR w dol).
 
 **UK mapping dla portfeli LACZONYCH** (2026-07-12 (45)) - user zauwazyl, ze poprawka HYG
 EUR->USD (44) nie zmienila `results/gpm_mid_10_best17_a.json`, bo generator NIGDY nie liczyl UK

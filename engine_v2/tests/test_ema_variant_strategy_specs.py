@@ -87,8 +87,15 @@ def test_vaa_g4_ema_underperforms_vaa_g4_momentum(us_data_dir):
     assert ema["max_drawdown"] < momentum["max_drawdown"]  # glebszy (bardziej ujemny)
 
 
-def test_daa_g4_ema_underperforms_daa_g4_momentum(us_data_dir):
-    """Zamrozona regresja negatywnego wyniku (2026-07-11) - EMA wyraznie gorsze niz momentum."""
+def test_daa_g4_ema_worse_drawdown_than_daa_g4_momentum(us_data_dir):
+    """Zamrozona regresja (2026-07-11, zaktualizowana 2026-07-13 (49) po ujednoliceniu
+    execution.cost_bps na 40 we wszystkich strategiach - patrz CHANGELOG). Przy 10bps EMA mialo
+    GORSZY Sharpe niz momentum ("wyraznie gorsze") - przy 40bps ten wniosek juz NIE trzyma sie:
+    EMA ma ~4.7x nizszy roczny turnover (1.62 vs 7.64), wiec przy WYZSZYM koszcie za transakcje
+    momentum jest znaczaco bardziej ukarane - EMA wyprzedza je teraz na CAGR (5.10% vs 4.21%) i
+    Sharpe (0.388 vs 0.370). Jedyna czesc oryginalnego wniosku, ktora NADAL trzyma sie niezaleznie
+    od kosztu: EMA ma STRUKTURALNIE glebszy MaxDD (-42.0% vs -31.6%) - to jest wlasciwosc samego
+    sygnalu (wolniejsza reakcja EMA na odwrocenia trendu), nie artefakt kosztow transakcyjnych."""
     from engine_v2.backtest_engine import daily_equity_curve
     from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
     from engine_v2.metrics import compute_metrics
@@ -103,5 +110,5 @@ def test_daa_g4_ema_underperforms_daa_g4_momentum(us_data_dir):
 
     momentum = _metrics("daa_g4")
     ema = _metrics("daa_g4_ema")
-    assert ema["sharpe"] < momentum["sharpe"]
     assert ema["max_drawdown"] < momentum["max_drawdown"]
+    assert ema["annual_turnover"] < momentum["annual_turnover"]

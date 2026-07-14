@@ -26,7 +26,7 @@
     "asset_scoring": {"weights": {"mom_3": 1.0}},
     "selector": {"top_n": 1},
     "alpha_weighting": {"weights": [1.0]},
-    "execution": {"hysteresis_pct": 0.0, "cost_bps": 10, "frequency": "monthly"}
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"}
   },
 
   "allowed_param_families": {

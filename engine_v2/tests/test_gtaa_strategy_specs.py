@@ -91,7 +91,8 @@ def test_gtaa_full_chain_on_real_data(name, top_n, us_data_dir):
 
 
 def test_gtaa_agg3_metrics_regression_baseline(us_data_dir):
-    """Zamrozony wynik na realnych danych (2026-07-11, PRZED podatkiem)."""
+    """Zamrozony wynik na realnych danych (2026-07-13, PRZED podatkiem, PO ujednoliceniu
+    execution.cost_bps na 40 - patrz CHANGELOG (49))."""
     from engine_v2.backtest_engine import daily_equity_curve
     from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
     from engine_v2.metrics import compute_metrics
@@ -104,13 +105,14 @@ def test_gtaa_agg3_metrics_regression_baseline(us_data_dir):
     equity_curve = daily_equity_curve(final_portfolio, market_data.prices, {})
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
-    assert metrics["cagr"] == pytest.approx(0.0699, abs=0.01)
-    assert metrics["max_drawdown"] == pytest.approx(-0.1969, abs=0.01)
-    assert metrics["sharpe"] == pytest.approx(0.581, abs=0.05)
+    assert metrics["cagr"] == pytest.approx(0.0579, abs=0.01)
+    assert metrics["max_drawdown"] == pytest.approx(-0.2036, abs=0.01)
+    assert metrics["sharpe"] == pytest.approx(0.495, abs=0.05)
 
 
 def test_gtaa_agg6_metrics_regression_baseline(us_data_dir):
-    """Zamrozony wynik na realnych danych (2026-07-11, PRZED podatkiem)."""
+    """Zamrozony wynik na realnych danych (2026-07-13, PRZED podatkiem, PO ujednoliceniu
+    execution.cost_bps na 40 - patrz CHANGELOG (49))."""
     from engine_v2.backtest_engine import daily_equity_curve
     from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
     from engine_v2.metrics import compute_metrics
@@ -123,6 +125,6 @@ def test_gtaa_agg6_metrics_regression_baseline(us_data_dir):
     equity_curve = daily_equity_curve(final_portfolio, market_data.prices, {})
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
-    assert metrics["cagr"] == pytest.approx(0.0630, abs=0.01)
-    assert metrics["max_drawdown"] == pytest.approx(-0.1871, abs=0.01)
-    assert metrics["sharpe"] == pytest.approx(0.660, abs=0.05)
+    assert metrics["cagr"] == pytest.approx(0.0536, abs=0.01)
+    assert metrics["max_drawdown"] == pytest.approx(-0.2003, abs=0.01)
+    assert metrics["sharpe"] == pytest.approx(0.571, abs=0.05)

@@ -27,7 +27,7 @@
     "selector": {"top_n": 3},
     "alpha_weighting": {"weights": [0.3333333333333333, 0.3333333333333333, 0.3333333333333333], "redistribute_if_short": true},
     "portfolio_risk_engine": {"sma_window": 6, "bond_fallback_asset": "ief.us"},
-    "execution": {"hysteresis_pct": 0.0, "cost_bps": 10}
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40}
   },
 
   "allowed_param_families": {

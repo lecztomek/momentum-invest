@@ -86,7 +86,8 @@ def test_gpm_full_chain_on_real_data(us_data_dir):
 
 
 def test_gpm_metrics_regression_baseline(us_data_dir):
-    """Zamrozony wynik na realnych danych (2026-07-11, PRZED podatkiem) - lapie regresje w nowych
+    """Zamrozony wynik na realnych danych (2026-07-13, PRZED podatkiem, PO ujednoliceniu
+    execution.cost_bps na 40 - patrz CHANGELOG (49)) - lapie regresje w nowych
     blokach (momentum_avg_month_end, corr_to_basket_month_end, momentum_times_decorrelation,
     gpm_breadth_protective_split). Najnizszy MaxDD z calej sesji. Wartosci zaktualizowane po
     dodaniu xle.us do risky_assets (patrz CHANGELOG)."""
@@ -102,6 +103,6 @@ def test_gpm_metrics_regression_baseline(us_data_dir):
     equity_curve = daily_equity_curve(final_portfolio, market_data.prices, {})
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
-    assert metrics["cagr"] == pytest.approx(0.0553, abs=0.01)
-    assert metrics["max_drawdown"] == pytest.approx(-0.1327, abs=0.01)
-    assert metrics["sharpe"] == pytest.approx(0.697, abs=0.05)
+    assert metrics["cagr"] == pytest.approx(0.0418, abs=0.01)
+    assert metrics["max_drawdown"] == pytest.approx(-0.1552, abs=0.01)
+    assert metrics["sharpe"] == pytest.approx(0.539, abs=0.05)

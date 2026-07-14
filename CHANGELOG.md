@@ -2,6 +2,45 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-13 (49)
+
+- **Ujednolicenie `execution.cost_bps` na 40 we WSZYSTKICH strategiach.** User: "Przypilnuj zeby
+  bps wszedzie byl 40". Sprawdzone przed zmiana: `strategy_spec.json`'s `execution.cost_bps`
+  (REALNIE uzywany przez bloki `hysteresis`/`score_gap_hysteresis`) mial 10 w 20/23 strategiach,
+  40 tylko w `best17_a`/`synergy_v1`/`synergy_v2`. Dodatkowo `test_spec.json`'s
+  `costs.transaction_cost_bps_one_way` - pole zdefiniowane od poczatku projektu, ale NIGDZIE w
+  kodzie nieodczytywane (kolejny "zdefiniowany, nigdy nie liczony" placeholder, ten sam wzorzec
+  co `param_stability`/`named_periods`/`uk_benchmark` przed ich zbudowaniem) - bylo JUZ niespojne
+  z realnym kosztem w 3 strategiach (`the_one`/`dual_momentum`/`vaa_g4` mialy tu 40, a realnie
+  liczyly na 10).
+
+  Ujednolicono OBA pola na 40 wszedzie (23 `strategy_spec.json` + 18 `test_spec.json` - pozostale
+  3 foldery to szkielety-skladniki bez wlasnego `test_spec.json`).
+
+  **Konsekwencje** - 8 zamrozonych testow regresyjnych (PRZED-podatkowe baseline'y liczone na
+  starym 10bps) wymagalo aktualizacji: `test_daa_g4_strategy_spec.py`,
+  `test_gpm_lite_7_strategy_spec.py`, `test_gpm_mid_10_strategy_spec.py`,
+  `test_gpm_strategy_spec.py`, `test_gtaa_strategy_specs.py` (oba warianty), plus
+  `test_pipeline.py::test_pipeline_matches_manual_wiring` (recznie zdublowany `cost_bps: 10` w
+  manualnym odtworzeniu wiring'u dla `example_strategy`).
+
+  **Ciekawa, uczciwie odnotowana zmiana wniosku**: `test_ema_variant_strategy_specs.py` mial test
+  "EMA wyraznie gorsze niz momentum" (`daa_g4_ema` vs `daa_g4`) oparty na Sharpe - przy 10bps EMA
+  mialo NIZSZY Sharpe. Przy 40bps ten wniosek juz NIE trzyma sie: `daa_g4_ema` ma ~4.7x nizszy
+  roczny turnover (1.62 vs 7.64/rok), wiec wyzszy koszt transakcyjny KARZE `daa_g4` (momentum)
+  znacznie bardziej - EMA teraz WYPRZEDZA je na CAGR (5.10% vs 4.21%) i Sharpe (0.388 vs 0.370).
+  Jedyna czesc oryginalnego wniosku, ktora przetrwala niezaleznie od zalozenia kosztowego: EMA ma
+  STRUKTURALNIE glebszy MaxDD (-42.0% vs -31.6%, wolniejsza reakcja EMA na odwrocenia trendu, nie
+  artefakt kosztow) - test przemianowany na `test_daa_g4_ema_worse_drawdown_than_daa_g4_momentum`,
+  sprawdza teraz MaxDD i turnover zamiast Sharpe. Pouczajace odkrycie samo w sobie: wnioski o
+  "lepszej"/"gorszej" wersji strategii moga zalezec od zalozenia kosztowego, nie tylko od samego
+  sygnalu.
+
+  Pelna regeneracja `results/` (wszystkie 48 plikow, uzasadniona tym razem - zmiana dotyczy
+  faktycznie WSZYSTKICH strategii solo I portfeli laczonych, ktore je uzywaja jako skladniki, w
+  odroznieniu od poprzedniego dodania `bh_vt`/`bh_spy`, gdzie pelny przebieg byl niepotrzebny -
+  user slusznie to wytknal). Pelny pakiet testow: 476/476, bez regresji.
+
 ## 2026-07-13 (48)
 
 - **Benchmarki "buy & hold" (`bh_vt`, `bh_spy`)** - user: "Czy zapisujemy wyniki benchmarku przy

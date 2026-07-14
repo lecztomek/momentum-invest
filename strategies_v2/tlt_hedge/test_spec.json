@@ -21,7 +21,7 @@
     "blocks": []
   },
   "costs": {
-    "transaction_cost_bps_one_way": 10.0,
+    "transaction_cost_bps_one_way": 40.0,
     "annual_tax_rate": 0.19
   },
   "uk_mapping": {

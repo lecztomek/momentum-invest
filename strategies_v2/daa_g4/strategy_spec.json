@@ -35,7 +35,7 @@
       "top_n_offensive": 1,
       "top_n_defensive": 1
     },
-    "execution": {"hysteresis_pct": 0.0, "cost_bps": 10, "frequency": "monthly"}
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"}
   },
 
   "allowed_param_families": {

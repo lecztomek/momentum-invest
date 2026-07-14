@@ -36,7 +36,7 @@
       "full_protective_max_n": 5,
       "protective_scale_denominator": 5
     },
-    "execution": {"hysteresis_pct": 0.0, "cost_bps": 10}
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40}
   },
 
   "allowed_param_families": {

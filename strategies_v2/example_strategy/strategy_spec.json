@@ -29,7 +29,7 @@
     "asset_scoring": {"weights": {"mom_3": 0.5, "mom_6": 0.3, "mom_12": 0.2}},
     "selector": {"top_n": 2},
     "alpha_weighting": {"weights": [0.8, 0.2]},
-    "execution": {"hysteresis_pct": 0.05, "cost_bps": 10, "frequency": "monthly"}
+    "execution": {"hysteresis_pct": 0.05, "cost_bps": 40, "frequency": "monthly"}
   },
 
   "allowed_param_families": {

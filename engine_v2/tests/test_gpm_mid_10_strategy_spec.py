@@ -93,7 +93,8 @@ def test_gpm_mid_10_full_chain_on_real_data(us_data_dir):
 
 
 def test_gpm_mid_10_metrics_regression_baseline(us_data_dir):
-    """Zamrozony wynik na realnych danych (2026-07-12, PRZED podatkiem) - lapie regresje w
+    """Zamrozony wynik na realnych danych (2026-07-13, PRZED podatkiem, PO ujednoliceniu
+    execution.cost_bps na 40 - patrz CHANGELOG (49)) - lapie regresje w
     blokach uzywanych przez gpm_mid_10 (dokladnie te same co gpm: momentum_avg_month_end,
     corr_to_basket_month_end, momentum_times_decorrelation, gpm_breadth_protective_split)."""
     from engine_v2.backtest_engine import daily_equity_curve
@@ -108,9 +109,9 @@ def test_gpm_mid_10_metrics_regression_baseline(us_data_dir):
     equity_curve = daily_equity_curve(final_portfolio, market_data.prices, {})
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
-    assert metrics["cagr"] == pytest.approx(0.0545, abs=0.01)
-    assert metrics["max_drawdown"] == pytest.approx(-0.1304, abs=0.01)
-    assert metrics["sharpe"] == pytest.approx(0.707, abs=0.05)
+    assert metrics["cagr"] == pytest.approx(0.0408, abs=0.01)
+    assert metrics["max_drawdown"] == pytest.approx(-0.1330, abs=0.01)
+    assert metrics["sharpe"] == pytest.approx(0.540, abs=0.05)
 
 
 def test_gpm_mid_10_uk_mapping_end_to_end(us_data_dir, uk_data_dir):
