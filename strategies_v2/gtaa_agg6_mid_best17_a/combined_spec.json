@@ -1,0 +1,16 @@
+{
+  "name": "gtaa_agg6_mid_best17_a_v0",
+  "hypothesis": "User: 'i potem mix z best' (po gtaa_agg3_mid/gtaa_agg6_mid). Miks 2-elementowy (nigdy 3) `gtaa_agg6_mid`+`best17_a` - `gtaa_agg6_mid` wybrany (nie agg3_mid) tym samym powodem co przy oryginalnym `gtaa_agg6_best17_a`: nizszy MaxDD/lepszy Sharpe niz agg3-wariant, bardziej komplementarny z agresywnym best17_a. `fixed_capital_weights`, sweep wagi best17_a w [0.30..0.70] na PELNYM realnym backtescie, PO POPRAWIONYM PODATKU (47) i PO ujednoliceniu cost_bps=40 (49) - najlepszy Calmar przy best17_a=45%/gtaa_agg6_mid=55%: CAGR 9.05%, MaxDD -21.09%, Sharpe 0.779, Calmar 0.429. Wobec ORYGINALNEGO `gtaa_agg6_best17_a` PRZELICZONEGO NA TYCH SAMYCH poprawkach (najlepszy Calmar 0.425 przy 60/40) - `_mid` daje MARGINALNA poprawe Calmar (0.429 vs 0.425), ALE pelne pokrycie UK mapping (11/11 tickerow obu skladowych, mismatch 0%) wobec oryginalu (ktory w ogole nie mial wlasnego UK mapping - IJR/EFA nie sa zmapowane). Nadal WYRAZNIE gorzej niz `gpm_best17_a`/`gpm_mid_10_best17_a` (Calmar ~0.52-0.54 po tych samych poprawkach) - ten sam wniosek co oryginal: trend/momentum na tym samym uniwersum akcji USA co best17_a koreluje zbyt mocno, slabiej tlumi jej drawdown niz `gpm`'s odrebna koncepcja korelacji do koszyka. Zapisane jako uczciwy wynik (nie rekomendacja) - `gpm_mid_10_best17_a` pozostaje kandydatem produkcyjnym.",
+  "strategy_spec_paths": [
+    "../gtaa_agg6_mid/strategy_spec.json",
+    "../best17_a/strategy_spec.json"
+  ],
+  "combiner": "fixed_capital_weights",
+  "combiner_params": {
+    "capital_weights": {
+      "gtaa_agg6_mid_v0": 0.55,
+      "best17_a_v0": 0.45
+    }
+  },
+  "created_at": "2026-07-14"
+}

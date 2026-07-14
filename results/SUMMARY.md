@@ -8,6 +8,7 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `gpm_best17_a` | combined_final | 8.06% | -15.48% | 0.799 | 0.521 | 2.90 | - |
 | `combined_triple` | combined_final | 9.07% | -20.41% | 0.785 | 0.444 | 2.27 | - |
 | `best17_a` | final | 13.71% | -31.19% | 0.802 | 0.440 | 1.16 | fail (patrz JSON) |
+| `gtaa_agg6_mid_best17_a` | combined_final | 9.05% | -21.09% | 0.779 | 0.429 | 2.10 | fail (patrz JSON) |
 | `synergy_v2` | final | 13.32% | -31.19% | 0.769 | 0.427 | 1.16 | - |
 | `best17_a_tlt_hedge` | combined_final | 11.58% | -27.39% | 0.795 | 0.423 | 0.97 | - |
 | `best17_a_all_weather_4` | combined_final | 9.58% | -23.04% | 0.797 | 0.416 | 1.38 | - |

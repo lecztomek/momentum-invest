@@ -1531,6 +1531,15 @@ UK mapping: pelne pokrycie (11/11 tickerow), mismatch 0% w obu, korelacja miesie
 Oba wchodza do `results/SUMMARY.md` na pozycjach ~21-22/50, wyzej niz oryginalne warianty
 (~36/45). 14 nowych testow w `test_gtaa_mid_strategy_specs.py`.
 
+**Mix z best17_a (2026-07-14 (51))** - user: "I potem mix z best". `gtaa_agg6_mid_best17_a`
+(`fixed_capital_weights`, sweep wagi best17_a [0.30..0.70]) - najlepszy Calmar przy 45/55
+(best17_a/gtaa_agg6_mid): CAGR 9.05%, MaxDD -21.09%, Sharpe 0.779, Calmar **0.429**. Uczciwie
+przeliczono TAKZE oryginalny `gtaa_agg6_best17_a` na tych samych aktualnych poprawkach (podatek
+(47), cost_bps=40 (49)) - jego najlepszy Calmar to 0.425 (60/40) - `_mid` daje wiec MARGINALNA
+poprawe samego wyniku, ale PELNE pokrycie UK mapping (oryginal go w ogole nie mial). Nadal
+WYRAZNIE gorzej niz `gpm_best17_a`/`gpm_mid_10_best17_a` (Calmar ~0.52-0.54) - `gpm_mid_10_best17_a`
+pozostaje kandydatem produkcyjnym.
+
 #### `gtaa_agg6_best17_a` - miks gtaa_agg6+best17_a (negatywny wynik)
 
 User: "Nigdy nie łącz 3 - max 2" (odrzucenie wczesniejszego pomyslu trojki
