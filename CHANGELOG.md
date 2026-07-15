@@ -2,6 +2,45 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-15 (7)
+
+- **Nowa strategia `gpm_mid_13`** - user: "Chce nowa wersje strategii gpm - dodajmy tickery rsp
+  xlp xlv". Baza: `gpm_mid_10` (nie pelny 13-aktywowy `gpm` - user wybral wprost, opcja
+  "Recommended": gpm_mid_10 ma juz PELNE pokrycie korekty dywidendowej, `gpm`'s IJR/EFA/VEA
+  nadal nie maja wiarygodnego zamiennika Acc). Dodane 3 nowe aktywa ryzykowne: RSP (S&P 500
+  Equal Weight), XLP (sektor Consumer Staples), XLV (sektor Health Care) - razem 13 ryzykownych +
+  IEF/SHY ochronne = 15 tickerow uniwersum.
+
+  **Korekta dywidend WLACZONA OD RAZU** dla wszystkich 3 nowych tickerow (mamy juz realne dane
+  Acc z wczesniejszego dogrania przez usera): RSP->`speq.uk` (zmierzony gap +1,06%/rok, overlap
+  TYLKO 5,1 lat - krotszy niz reszta [9-11 lat], ale spojny/dodatni, NIE sprzeczny jak nieudany
+  przypadek EFA/VEA->xuse.uk), XLP->`iucs.uk` (+1,33%/rok, 9,3 lat), XLV->`iuhc.uk` (+0,25%/rok,
+  10,6 lat - niska stopa spojna z historycznie niska dywidenda sektora health care). Pelne
+  15/15 pokrycie `dividend_adjustment_mapping`.
+
+  `full_protective_max_n=6`/`protective_scale_denominator=6` (nie 5/5 jak gpm_mid_10 z 10
+  aktywami) - przeskalowane do 13-aktywowego uniwersum wg TEJ SAMEJ konwencji co oryginalny
+  13-aktywowy `gpm` (dokladnie te same wartosci dla tej samej liczby ryzykownych). `top_n_risky=3`
+  bez zmian.
+
+  **Wynik solo** (post-tax, koszt 40bps+19% podatek) vs `gpm_mid_10`:
+
+  | | CAGR | MaxDD | Sharpe | Calmar |
+  |---|---|---|---|---|
+  | `gpm_mid_10` | 4,77% | -12,95% | 0,597 | 0,369 |
+  | `gpm_mid_13` | **4,94%** | **-12,57%** | **0,616** | **0,393** |
+
+  Skromna, ale konsekwentna poprawa na kazdej metryce z dodania 3 defensywnych/szerszych aktywow
+  (RSP mniej skoncentrowany w Big Tech niz SPY, XLP/XLV niska beta).
+
+  Nowe pliki: `strategies_v2/gpm_mid_13/` (pelny komplet - strategy_spec/run_spec/test_spec/
+  acceptance_spec/uk_ticker_mapping, ten sam wzorzec co `gpm_mid_10`). Blok `reporting` wpiety od
+  razu (`results/monthly/gpm_mid_13.csv`). 8 nowych testow
+  (`test_gpm_mid_13_strategy_spec.py`, w tym UK mapping end-to-end - PASS, 0% mismatch, 15/15
+  tickerow zmapowanych, i test dokumentujacy DOKLADNIE roznice wzgledem gpm_mid_10). Wygenerowano
+  TYLKO `results/gpm_mid_13.json` + scalony `SUMMARY.md`. Pelny pakiet testow: 578/578, bez
+  regresji.
+
 ## 2026-07-15 (6)
 
 - **Blok `reporting` dziala TEZ dla portfeli LACZONYCH** - user: "Run one tez powinno dzialac dla

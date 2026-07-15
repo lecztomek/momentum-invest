@@ -824,6 +824,7 @@ strategies_v2/
   gpm/                            # "Generalized Protective Momentum" - patrz niżej, najnizszy MaxDD (-15.2%) i najstabilniejsza rodzina parametrow w calej sesji
   gpm_lite_7/                     # gpm uproszczony do 7 aktywow ryzykownych - patrz nizej, podobne wyniki, nieco nizszy turnover
   gpm_mid_10/                     # gpm uproszczony do 10 aktywow (usuniete IJR/EFA/VEA) - patrz nizej, PRAWIE IDENTYCZNY z pelnym gpm
+  gpm_mid_13/                     # gpm_mid_10 + RSP/XLP/XLV (13 ryzykownych) - patrz nizej, lekka poprawa na kazdej metryce
   gpm_best17_a/                   # gpm(+xle.us)+best17_a, signal_tilted_capital_weights - patrz nizej, NAJLEPSZY CALMAR (0.786) I SHARPE (1.011) calej sesji
   gtaa_agg3/                      # "GTAA AGG3" - top3 momentum + filtr trendu PER SLOT - patrz nizej
   gtaa_agg6/                      # "GTAA AGG6" - to samo, top6 zamiast top3 - patrz nizej
@@ -1437,6 +1438,46 @@ ograniczony do samych metryk `gpm_mid_10`/`gpm_mid_10_best17_a` per CHANGELOG (5
 `daa_g4`/`daa_g4_keller`/`vaa_g4` (wszystkie uzywaja EFA/VEA) CELOWO NIE dostaly tej korekty -
 jedyny dostepny zamiennik (`xuse.uk`) ma tylko 1.2 roku danych, zmierzony gap dal sprzeczne znaki
 dla EFA vs VEA (czysty szum). Czekaja na dluzszy zamiennik.
+
+#### `gpm_mid_13` - `gpm_mid_10` + RSP/XLP/XLV (2026-07-15)
+
+User: "Chce nowa wersje strategii gpm - dodajmy tickery rsp xlp xlv". Baza `gpm_mid_10` (nie
+pelny `gpm` - user wybral wprost "gpm_mid_10 + 3 nowe = 13 (Recommended)", bo gpm_mid_10 ma juz
+PELNE pokrycie korekty dywidendowej, a `gpm`'s IJR/EFA/VEA nadal jej nie maja). Dodane 3 nowe
+aktywa ryzykowne: **RSP** (Invesco S&P 500 Equal Weight - szerszy niz kapitalizacyjny SPY,
+mniej skoncentrowany w Big Tech), **XLP** (sektor Consumer Staples - defensywny, niska beta),
+**XLV** (sektor Health Care - defensywny, niska beta). Razem 13 ryzykownych + IEF/SHY ochronne =
+15 tickerow. Zero nowego kodu bloku - identyczna architektura co `gpm_mid_10`/`gpm`.
+
+**Korekta dywidend WLACZONA OD RAZU** (nie pozniej) - mamy juz realne dane Acc dla wszystkich 3
+nowych tickerow z wczesniejszego dogrania przez usera:
+
+| Ticker | Zamiennik Acc | Okno overlap | Zmierzony gap/rok |
+|---|---|---|---|
+| RSP | `speq.uk` | 5,1 lat | +1,06% (krotsze okno niz reszta [9-11 lat], ale spojne/dodatnie) |
+| XLP | `iucs.uk` | 9,3 lat | +1,33% |
+| XLV | `iuhc.uk` | 10,6 lat | +0,25% (niska stopa - spojne z historycznie niska dywidenda health care) |
+
+Pelne 15/15 pokrycie `dividend_adjustment_mapping` - w odroznieniu od pelnego `gpm` (nadal
+zablokowanego na IJR/EFA/VEA). `full_protective_max_n=6`/`protective_scale_denominator=6` (nie
+5/5 jak `gpm_mid_10` z 10 aktywami) - przeskalowane do 13-aktywowego uniwersum wg TEJ SAMEJ
+konwencji co oryginalny 13-aktywowy `gpm` (identyczne wartosci dla tej samej liczby ryzykownych).
+`top_n_risky=3` bez zmian.
+
+**Wynik solo** (post-tax, koszt 40bps+19% podatek) vs `gpm_mid_10`:
+
+| | CAGR | MaxDD | Sharpe | Calmar |
+|---|---|---|---|---|
+| `gpm_mid_10` | 4.77% | -12.95% | 0.597 | 0.369 |
+| `gpm_mid_13` | **4.94%** | **-12.57%** | **0.616** | **0.393** |
+
+Skromna, ale konsekwentna poprawa na kazdej metryce z dodania 3 defensywnych/szerszych aktywow.
+UK mapping "ostateczny test": PASS, 0% mismatch, 15/15 tickerow zmapowanych. Blok `reporting`
+wpiety od razu (`results/monthly/gpm_mid_13.csv`).
+
+8 nowych testow (`test_gpm_mid_13_strategy_spec.py`): wiring, 13+2 uniwersum, roznica DOKLADNIE
+3 tickery wzgledem `gpm_mid_10`, pelne pokrycie korekty dywidendowej, end-to-end na realnych
+danych, zamrozony baseline metryk, UK mapping end-to-end.
 
 #### `gpm_best17_a` - miks defensywnego `gpm` z agresywnym `best17_a`
 

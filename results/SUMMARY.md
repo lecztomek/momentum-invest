@@ -13,6 +13,7 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `best17_a_tlt_hedge` | combined_final | 11.58% | -27.39% | 0.795 | 0.423 | 0.97 | - |
 | `best17_a_all_weather_4` | combined_final | 9.58% | -23.04% | 0.797 | 0.416 | 1.38 | - |
 | `synergy_v1` | final | 11.96% | -29.99% | 0.726 | 0.399 | 1.07 | - |
+| `gpm_mid_13` | final | 4.94% | -12.57% | 0.616 | 0.393 | 4.15 | PASS |
 | `best17_a_tlt_timing` | combined_final | 9.47% | -24.09% | 0.754 | 0.393 | 1.41 | - |
 | `dual_momentum_best17_a` | combined_final | 9.01% | -22.93% | 0.735 | 0.393 | 1.68 | - |
 | `combined_best2` | combined_final | 9.53% | -24.40% | 0.725 | 0.391 | 3.79 | - |
