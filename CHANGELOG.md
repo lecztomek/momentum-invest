@@ -2,6 +2,27 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-15 (1)
+
+- **`engine_v2/run_one.py`** - user: "Chce miec skrypt jak w starym engine gdzie wybieram ktora
+  odpalic i tylko ona idzie" (w odroznieniu od `generate_results.py`, ktory zawsze przelicza
+  WSZYSTKIE ~50 strategii). Reuzywa `_generate_single`/`_generate_combined`
+  z `generate_results.py`, liczy TYLKO wskazana strategie, wypisuje metryki na ekran - nic nie
+  zapisuje do `results/`. `.venv/bin/python3 -m engine_v2.run_one <nazwa>` /
+  `... --list`. 6 nowych testow (`test_run_one.py`).
+
+- **`engine_v2/monthly_report.py`** - user: "czy mamy plik z decyzjami miesiecznymi zwrotem z
+  kazdego miesiaca maxdd wagi tam powinny byc - generalnie taki przebieg". Odpowiedz: NIE
+  mielismy - `results/<nazwa>.json` trzyma tylko zbiorcze metryki (CAGR/MaxDD/Sharpe...), zero
+  pelnego, miesiac-po-miesiacu ledgera. Nowy skrypt buduje taki ledger jako CSV dla jednej
+  strategii: `date`, `gross_return`/`net_return`, `turnover`/`operations`/`signal_changed`/
+  `trade_cost`, `equity` (po podatku, startuje od 1.0), `drawdown` (biezacy spadek od szczytu,
+  PROBKOWANY na dni rebalansu - UWAGA: moze byc plytszy niz oficjalny MaxDD z `results/*.json`,
+  jesli najgorszy dzien wypadl w trakcie okresu, nie akurat na rebalans; skrypt wypisuje obie
+  wartosci jawnie), `w_<ticker>` (waga uzyta per aktywo). `.venv/bin/python3 -m
+  engine_v2.monthly_report <nazwa>` -> `results/monthly/<nazwa>.csv`. 4 nowe testy
+  (`test_monthly_report.py`). Pelny pakiet testow: 549/549, bez regresji.
+
 ## 2026-07-14 (56)
 
 - **BUGFIX (repo-wide, ogromny): `data/us` to ceny BEZ reinwestycji dywidend/kuponow -

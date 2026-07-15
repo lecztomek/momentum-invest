@@ -1817,6 +1817,21 @@ wynikow):
 .venv/bin/python3 -m engine_v2.run_one --list          # lista dostepnych nazw
 ```
 
+**Pelny miesieczny ledger (decyzje/wagi/zwroty/drawdown)** (user: "czy mamy plik z decyzjami
+miesiecznymi zwrotem z kazdego miesiaca maxdd wagi tam powinny byc" - odpowiedz: NIE mielismy,
+`results/<nazwa>.json` trzyma tylko zbiorcze metryki) - `engine_v2/monthly_report.py`
+(2026-07-15): dla jednej strategii (pojedynczej albo laczonej) zapisuje CSV z JEDNYM WIERSZEM
+NA OKRES REBALANSU: `date`, `gross_return`/`net_return`, `turnover`/`operations`/`signal_changed`/
+`trade_cost`, `equity` (po podatku, startuje od 1.0), `drawdown` (biezacy spadek od
+dotychczasowego szczytu, probkowany NA DATY rebalansu - patrz zastrzezenie w docstringu modulu:
+moze byc PLYTSZY niz oficjalny MaxDD, jesli najgorszy dzien wypadl w trakcie okresu, nie akurat
+na rebalans - skrypt wypisuje obie wartosci), `w_<ticker>` (waga uzyta per aktywo tego okresu).
+
+```
+.venv/bin/python3 -m engine_v2.monthly_report gpm_mid_10
+# zapisuje do results/monthly/gpm_mid_10.csv
+```
+
 Uruchomienie 2026-07-12 (42) potwierdzilo znane liczby sesji (`gpm_best17_a` #1, Calmar 0.786) -
 NIEAKTUALNE po bugfixie podatku (47) i po ujednoliceniu `execution.cost_bps` na 40 wszedzie (49,
 user: "przypilnuj zeby bps wszedzie byl 40" - patrz "Znany, naprawiony bug" nizej). Po OBU
