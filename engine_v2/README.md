@@ -58,7 +58,7 @@ Orchestrator: `pipeline.run_strategy_pipeline(spec)` -> gotowa tabela FINAL PORT
 | `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch`, `gpm_breadth_protective_split`, `gtaa_trend_bond_reroute`, `daa_canary_breadth_switch`, `gfm_breadth_risk_step` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku); `gpm_breadth_protective_split` skaluje udział ochronny CIĄGLE wg liczby dodatnich aktywów ryzykownych, zamiast binarnego przełączenia jak `vaa_canary`; `gtaa_trend_bond_reroute` ocenia KAŻDY SLOT niezależnie (nie globalnie) - część portfela może być w akcjach a część w obligacjach jednocześnie; `daa_canary_breadth_switch` - kanarek to OSOBNE, małe uniwersum (nie cały `offensive_assets` jak `vaa_canary`) + udział ochronny `min(1, b/breadth_denominator)` (domyślnie `len(canary_assets)` - ciągły 0/50/100% dla 2 kanarków, uzywane zarówno w `daa_g4` jak i `daa_g4_keller`); opcjonalny `scale_top_n_with_cash_fraction` ("Easy Trading", domyślnie `False`, włączony tylko w `daa_g4_keller`) kurczy liczbę TRZYMANYCH aktywów ofensywnych proporcjonalnie do udziału ochronnego zamiast trzymać stałą `top_n_offensive`; `gfm_breadth_risk_step` - jak `gpm_breadth_protective_split`, ale SKOKOWO (5 progów 0/25/50/75/100%, nie liniowo) + wybór najlepszego z 3 kandydatów ochronnych (SHY/IEF/TLT) |
 | `overlays` | pojedynczy wybór | `none` | Pass-through (rebound/vol-target - gdy będzie potrzebny) |
 | `execution` | pojedynczy wybór | `hysteresis`, `score_gap_hysteresis` | Rebalans tylko gdy przekroczony próg - na różnicy WAGI (`hysteresis`) albo różnicy SCORE między najsłabszym trzymanym a najlepszym wyzwaniowcem (`score_gap_hysteresis`, wymaga `ExecutionContext.score_row`) |
-| `reporting` | **opcjonalny**, pojedynczy wybór | `monthly_csv_export` | JEDYNY blok POZA `PIPELINE_ORDER` (2026-07-15) - działa PO całym pipeline na gotowym `final_portfolio`+dziennej `equity_curve`, nie per-okres jak reszta. Strategia BEZ `blocks["reporting"]` działa identycznie jak dotąd (zero narzutu) - wywoływany przez `pipeline.run_strategy_pipeline_with_reporting()`, nie `run_strategy_pipeline()`. `monthly_csv_export` zapisuje miesięczny ledger (`engine_v2/monthly_ledger.py::build_monthly_ledger`) - `params["output_path"]` (wymagany), opcjonalny `params["annual_tax_rate"]` (StrategySpec nie niesie własnego podatku, więc blok jest w tym samowystarczalny) |
+| `reporting` | **opcjonalny**, pojedynczy wybór | `monthly_csv_export` | JEDYNY blok POZA `PIPELINE_ORDER` (2026-07-15) - działa PO całym pipeline na gotowym `final_portfolio`+dziennej `equity_curve`, nie per-okres jak reszta. Strategia BEZ `blocks["reporting"]` działa identycznie jak dotąd (zero narzutu) - wywoływany przez `pipeline.run_strategy_pipeline_with_reporting()`, nie `run_strategy_pipeline()`. Działa też dla portfeli ŁĄCZONYCH przez `CombinedSpec.reporting`/`reporting_params` + `combined_pipeline.run_combined_pipeline_with_reporting()` (analogiczny mechanizm, płaska para pól zamiast blocks/base_params). `monthly_csv_export` zapisuje miesięczny ledger (`engine_v2/monthly_ledger.py::build_monthly_ledger`) - `params["output_path"]` (wymagany), opcjonalny `params["annual_tax_rate"]` (StrategySpec/CombinedSpec nie niosą własnego podatku, więc blok jest w tym samowystarczalny). Wpięty do wszystkich 53 strategii (23 pojedyncze + 30 łączonych) |
 
 **Wielo-instancyjne bloki** (`indicators`, `asset_filters`, patrz `spec.MULTI_INSTANCE_BLOCKS`):
 nie mają jednej implementacji w `blocks`, tylko słownik nazwanych instancji w `base_params`,
@@ -1875,10 +1875,27 @@ zeby byl uzywany") - kazdy `strategy_spec.json` z wlasnym `run_spec.json` ma juz
 `blocks["reporting"]="monthly_csv_export"` + `base_params["reporting"]={"output_path":
 "results/monthly/<nazwa>.csv", "annual_tax_rate": 0.19}`. `run_one.py` dla pojedynczych strategii
 juz nie liczy ledgera samodzielnie - wola `run_strategy_pipeline_with_reporting(spec)`, blok
-robi reszte. Portfele LACZONE (`combined_spec.json`, 30 sztuk) NIE MAJA jeszcze odpowiednika
-(brak `run_combined_pipeline_with_reporting`) - `run_one.py` dla nich zostaje przy starej,
-recznej sciezce (`monthly_report.py`'s `_final_portfolio_and_equity_combined`).
-`results/monthly/*.csv` wygenerowane i zacommitowane dla wszystkich 23.
+robi reszte.
+
+**Rozszerzone na portfele LACZONE** (2026-07-15, user: "Run one tez powinno dzialac dla
+laczonych") - `CombinedSpec` (`engine_v2/combined_spec.py`) dostal analogiczna, plaska pare pol
+`reporting`/`reporting_params` (nie "blocks"/"base_params" jak `StrategySpec`, bo `CombinedSpec`
+w ogole nie ma tej koncepcji - ten sam wzorzec co juz istniejace `combiner`/`combiner_params`),
+plus nowa `combined_pipeline.run_combined_pipeline_with_reporting()` (analogia do
+`pipeline.run_strategy_pipeline_with_reporting()` - liczy DZIENNA `equity_curve` dla UNII
+uniwersow wszystkich skladowych, ten sam wzorzec co `generate_results._generate_combined`).
+Wszystkich 30 `combined_spec.json` (poza `combined_example`, demo) ma juz `"reporting":
+"monthly_csv_export"` + `"reporting_params": {"output_path": "results/monthly/<nazwa>.csv",
+"annual_tax_rate": 0.19}` (ta sama zalozona stawka co `generate_results._COMBINED_ANNUAL_TAX_RATE`).
+`run_one.py` dla laczonych tez juz nie liczy ledgera samodzielnie - wola
+`run_combined_pipeline_with_reporting(spec, strategy_dir)`.
+
+`results/monthly/*.csv` wygenerowane i zacommitowane dla wszystkich 53 strategii (23 pojedyncze +
+30 laczonych) - **pelne pokrycie**. 12 nowych testow (`test_reporting_block_combined.py` + 4 w
+`test_run_one.py`): pola `CombinedSpec.reporting`/`reporting_params` domyslnie puste,
+`run_combined_pipeline_with_reporting()` BEZ bloku = identyczny `final_portfolio` (bit-w-bit),
+realny zapis CSV, nieznana implementacja rzuca czytelny blad, kompletnosc (wszystkie 30 maja
+blok wpiety), `run_one.py` end-to-end dla laczonych, fallback gdy bloku brak.
 
 Uruchomienie 2026-07-12 (42) potwierdzilo znane liczby sesji (`gpm_best17_a` #1, Calmar 0.786) -
 NIEAKTUALNE po bugfixie podatku (47) i po ujednoliceniu `execution.cost_bps` na 40 wszedzie (49,

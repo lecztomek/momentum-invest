@@ -27,6 +27,14 @@ class CombinedSpec:
     combiner: str = ""
     combiner_params: Dict[str, Any] = field(default_factory=dict)
 
+    # Opcjonalny blok "reporting" (2026-07-15, patrz engine_v2/blocks/reporting/) - w odroznieniu
+    # od StrategySpec (blocks["reporting"]/base_params["reporting"]), CombinedSpec nie ma
+    # koncepcji "blocks"/"base_params" wcale - to para plaskich pol, ten sam wzorzec co
+    # combiner/combiner_params. Wywolywany przez combined_pipeline.run_combined_pipeline_with_reporting(),
+    # nie run_combined_pipeline() - strategia bez tego pola dziala identycznie jak dotad.
+    reporting: Optional[str] = None
+    reporting_params: Dict[str, Any] = field(default_factory=dict)
+
     created_at: Optional[str] = None
 
     def validate(self) -> List[str]:

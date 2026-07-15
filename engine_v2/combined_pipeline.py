@@ -51,6 +51,9 @@ from typing import Dict
 
 import pandas as pd
 
+from engine_v2.backtest_engine import daily_equity_curve
+from engine_v2.blocks.data_loader import REGISTRY as DATA_LOADER_REGISTRY
+from engine_v2.blocks.reporting import REGISTRY as REPORTING_REGISTRY
 from engine_v2.combined_spec import CombinedSpec
 from engine_v2.combiner import REGISTRY as COMBINER_REGISTRY
 from engine_v2.final_portfolio import build_final_portfolio
@@ -157,3 +160,37 @@ def run_combined_pipeline(combined_spec: CombinedSpec, base_dir: Path) -> pd.Dat
         )
 
     return build_final_portfolio(results, combined_spec.name)
+
+
+def run_combined_pipeline_with_reporting(combined_spec: CombinedSpec, base_dir: Path) -> pd.DataFrame:
+    """Jak `run_combined_pipeline()`, ale DODATKOWO odpala opcjonalny blok `reporting`
+    (2026-07-15, user: "Run one tez powinno dzialac dla laczonych" - analogia do
+    `pipeline.run_strategy_pipeline_with_reporting()` dla pojedynczych strategii). Jesli
+    `combined_spec.reporting` jest ustawione (i != "none"), liczy DZIENNA `equity_curve` dla
+    UNII uniwersow wszystkich skladowych strategii (ten sam wzorzec co
+    `generate_results._generate_combined`/`monthly_report._final_portfolio_and_equity_combined`)
+    i wola zarejestrowana implementacje z `blocks/reporting/`.
+
+    CombinedSpec bez `reporting` (albo `"none"`) dziala DOKLADNIE jak `run_combined_pipeline()` -
+    zero narzutu, zero zmiany zachowania dla wszystkich istniejacych portfeli laczonych."""
+    final_portfolio = run_combined_pipeline(combined_spec, base_dir)
+
+    reporting_name = combined_spec.reporting or "none"
+    if reporting_name != "none":
+        universe: set = set()
+        for rel_path in combined_spec.strategy_spec_paths:
+            universe |= set(StrategySpec.load(base_dir / rel_path).universe)
+
+        loader_fn = DATA_LOADER_REGISTRY["stooq_csv"]
+        daily_prices = loader_fn(sorted(universe), {"data_dir": "data/us", "frequency": "daily"}).prices
+        equity_curve = daily_equity_curve(final_portfolio, daily_prices, {})
+
+        reporting_fn = REPORTING_REGISTRY.get(reporting_name)
+        if reporting_fn is None:
+            raise NotImplementedError(
+                f"Blok 'reporting' nie ma implementacji '{reporting_name}' "
+                f"(dostepne: {sorted(REPORTING_REGISTRY.keys()) or 'brak'})."
+            )
+        reporting_fn(final_portfolio, equity_curve, combined_spec.reporting_params)
+
+    return final_portfolio

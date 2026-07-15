@@ -12,5 +12,7 @@
       "all_weather_4_v0": 0.5
     }
   },
+  "reporting": "monthly_csv_export",
+  "reporting_params": {"output_path": "results/monthly/best17_a_all_weather_4.csv", "annual_tax_rate": 0.19},
   "created_at": "2026-07-11"
 }

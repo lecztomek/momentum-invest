@@ -2,6 +2,37 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-15 (6)
+
+- **Blok `reporting` dziala TEZ dla portfeli LACZONYCH** - user: "Run one tez powinno dzialac dla
+  laczonych" (po wpieciu bloku do 23 pojedynczych strategii). `CombinedSpec`
+  (`engine_v2/combined_spec.py`) dostal nowa, plaska pare pol `reporting`/`reporting_params`
+  (CombinedSpec nie ma koncepcji "blocks"/"base_params" jak `StrategySpec` - ten sam wzorzec co
+  juz istniejace `combiner`/`combiner_params`). Nowa `combined_pipeline.run_combined_pipeline_with_reporting()`
+  - analogia do `pipeline.run_strategy_pipeline_with_reporting()`: liczy `run_combined_pipeline()`
+  jak dotad, DODATKOWO (jesli `reporting` ustawione) laduje dzienne ceny dla UNII uniwersow
+  wszystkich skladowych strategii (ten sam wzorzec co `generate_results._generate_combined`),
+  liczy `equity_curve` i wola zarejestrowany blok. CombinedSpec bez `reporting` dziala 1:1 jak
+  dotad (zweryfikowane testem bit-w-bit).
+
+  Wszystkie 30 `combined_spec.json` (poza `combined_example`, demo) dostaly `"reporting":
+  "monthly_csv_export"` + `"reporting_params": {"output_path": "results/monthly/<nazwa>.csv",
+  "annual_tax_rate": 0.19}` - ta sama chirurgiczna wstawka tekstowa co dla pojedynczych strategii
+  (`insert_after_root_key`, analogiczna do `insert_after_key` z (5), ale bez zagniezdzonego
+  kontenera - `combiner_params` zyje bezposrednio w korzeniu dokumentu). Diff kazdego pliku to
+  dokladnie 2 nowe linie.
+
+  `run_one.py` dla laczonych tez juz nie liczy ledgera samodzielnie - `_write_monthly_ledger_combined`
+  wola `combined_pipeline.run_combined_pipeline_with_reporting(spec, strategy_dir)`.
+
+  Wygenerowano i zacommitowano `results/monthly/<nazwa>.csv` dla wszystkich 30 portfeli
+  laczonych - razem z (5) daje PELNE pokrycie 53/53 strategii w repo.
+
+  8 nowych testow: `test_reporting_block_combined.py` (5 - pola CombinedSpec domyslnie puste,
+  bit-w-bit bez bloku, realny zapis CSV, nieznana implementacja rzuca czytelny blad, kompletnosc
+  wszystkich 30) + `test_run_one.py` (3 - end-to-end dla laczonych przez run_one, kompletnosc,
+  fallback bez bloku). Pelny pakiet testow: 570/570, bez regresji.
+
 ## 2026-07-15 (5)
 
 - **Blok `reporting` wpiety do WSZYSTKICH 23 pojedynczych strategii** - user: "dodaj do configa

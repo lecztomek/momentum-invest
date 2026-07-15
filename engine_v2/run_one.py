@@ -23,9 +23,14 @@ uzywany") uzywa TERAZ blokу `reporting` bezposrednio - kazdy z 23 `strategy_spe
 `base_params["reporting"]={"output_path": "results/monthly/<nazwa>.csv", "annual_tax_rate": 0.19}`,
 wiec ten skrypt po prostu wola `pipeline.run_strategy_pipeline_with_reporting(spec)` - blok sam
 zapisuje CSV, `run_one.py` juz nie ma wlasnej, osobnej logiki budowania ledgera dla pojedynczych
-strategii. Portfele LACZONE (`combined_spec.json`) nie maja jeszcze odpowiednika tego bloku
-(brak `run_combined_pipeline_with_reporting`) - dla nich zostaje stara, reczna sciezka
-(`_final_portfolio_and_equity_combined` + `build_monthly_ledger` z `monthly_report.py`).
+strategii.
+
+Portfele LACZONE (2026-07-15, user: "Run one tez powinno dzialac dla laczonych") maja TERAZ
+analogiczny mechanizm - `CombinedSpec.reporting`/`reporting_params` (plaska para pol, bo
+`CombinedSpec` nie ma koncepcji "blocks"/"base_params" jak `StrategySpec`) +
+`combined_pipeline.run_combined_pipeline_with_reporting()`. Kazdy z 30 `combined_spec.json` ma
+juz `"reporting": "monthly_csv_export"` + `"reporting_params": {"output_path": ...,
+"annual_tax_rate": 0.19}`.
 
 Uruchomienie (z korzenia repo):
   .venv/bin/python3 -m engine_v2.run_one gpm_mid_10
@@ -45,8 +50,8 @@ from engine_v2.generate_results import (
     _generate_combined,
     _generate_single,
 )
-from engine_v2.monthly_ledger import build_monthly_ledger
-from engine_v2.monthly_report import RESULTS_DIR, _final_portfolio_and_equity_combined
+from engine_v2.combined_pipeline import run_combined_pipeline_with_reporting
+from engine_v2.combined_spec import CombinedSpec
 from engine_v2.pipeline import run_strategy_pipeline_with_reporting
 from engine_v2.spec import StrategySpec
 
@@ -101,13 +106,19 @@ def _write_monthly_ledger_single(strategy_dir) -> None:
     print(f"\nMiesieczny ledger zapisany do {output_path} (blok reporting='{reporting_name}')")
 
 
-def _write_monthly_ledger_combined(name: str, strategy_dir) -> None:
-    final_portfolio, equity_curve = _final_portfolio_and_equity_combined(strategy_dir)
-    ledger = build_monthly_ledger(final_portfolio, equity_curve)
-    out_path = RESULTS_DIR / "monthly" / f"{name}.csv"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    ledger.to_csv(out_path, index=False)
-    print(f"\nMiesieczny ledger ({len(ledger)} okresow) zapisany do {out_path}")
+def _write_monthly_ledger_combined(strategy_dir) -> None:
+    combined_spec = CombinedSpec.load(strategy_dir / "combined_spec.json")
+    reporting_name = combined_spec.reporting or "none"
+    if reporting_name == "none":
+        print(
+            f"\n(brak bloku 'reporting' w {strategy_dir.name}/combined_spec.json - "
+            "pomijam miesieczny ledger)"
+        )
+        return
+
+    run_combined_pipeline_with_reporting(combined_spec, strategy_dir)
+    output_path = combined_spec.reporting_params.get("output_path", "?")
+    print(f"\nMiesieczny ledger zapisany do {output_path} (blok reporting='{reporting_name}')")
 
 
 def main() -> None:
@@ -147,7 +158,7 @@ def main() -> None:
         if (strategy_dir / "run_spec.json").exists():
             _write_monthly_ledger_single(strategy_dir)
         else:
-            _write_monthly_ledger_combined(args.name, strategy_dir)
+            _write_monthly_ledger_combined(strategy_dir)
 
 
 if __name__ == "__main__":

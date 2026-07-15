@@ -12,5 +12,7 @@
       "best17_a_v0": 0.45
     }
   },
+  "reporting": "monthly_csv_export",
+  "reporting_params": {"output_path": "results/monthly/gtaa_agg6_mid_best17_a.csv", "annual_tax_rate": 0.19},
   "created_at": "2026-07-14"
 }

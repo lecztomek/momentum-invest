@@ -53,6 +53,48 @@ def test_run_one_combined_strategy_prints_metrics():
     assert "combined_final" in result.stdout
 
 
+def test_run_one_combined_strategy_writes_monthly_ledger_via_reporting_block():
+    """User: "Run one tez powinno dzialac dla laczonych" - portfele laczone teraz TEZ pisza
+    miesieczny ledger przez blok 'reporting' (CombinedSpec.reporting), nie starym recznym kodem."""
+    monthly_path = REPO_ROOT / "results" / "monthly" / "gpm_mid_10_best17_a.csv"
+    original = monthly_path.read_bytes() if monthly_path.exists() else None
+    monthly_path.unlink(missing_ok=True)
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "engine_v2.run_one", "gpm_mid_10_best17_a"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        assert result.returncode == 0
+        assert monthly_path.exists()
+        assert "blok reporting='monthly_csv_export'" in result.stdout
+        df = pd.read_csv(monthly_path)
+        assert "drawdown" in df.columns
+    finally:
+        if original is not None:
+            monthly_path.write_bytes(original)
+
+
+def test_all_combined_strategies_declare_reporting_block():
+    """User: "dodaj do configa wszystkich strategii zeby byl uzywany" (rozszerzone potem na
+    laczone) - kazda strategia z WLASNYM combined_spec.json musi miec reporting wpiety."""
+    from engine_v2.combined_spec import CombinedSpec
+    from engine_v2.run_one import STRATEGIES_DIR, _available_strategies
+
+    checked = 0
+    for name in _available_strategies():
+        strategy_dir = STRATEGIES_DIR / name
+        if not (strategy_dir / "combined_spec.json").exists():
+            continue
+        spec = CombinedSpec.load(strategy_dir / "combined_spec.json")
+        assert spec.reporting == "monthly_csv_export", name
+        assert spec.reporting_params["output_path"] == f"results/monthly/{name}.csv", name
+        checked += 1
+    assert checked == 30
+
+
 def test_run_one_unknown_name_exits_nonzero_and_lists_available():
     result = subprocess.run(
         [sys.executable, "-m", "engine_v2.run_one", "nie_istnieje_xyz"],
@@ -156,6 +198,23 @@ def test_write_monthly_ledger_single_skips_gracefully_without_reporting_block(mo
     monkeypatch.setattr(run_one_module.StrategySpec, "load", staticmethod(lambda path: real_spec))
 
     run_one_module._write_monthly_ledger_single(strategy_dir)
+
+    captured = capsys.readouterr()
+    assert "brak bloku 'reporting'" in captured.out
+
+
+def test_write_monthly_ledger_combined_skips_gracefully_without_reporting_block(monkeypatch, capsys):
+    import engine_v2.run_one as run_one_module
+    from engine_v2.combined_spec import CombinedSpec
+
+    strategy_dir = REPO_ROOT / "strategies_v2" / "gpm_mid_10_best17_a"
+    real_spec = CombinedSpec.load(strategy_dir / "combined_spec.json")
+    real_spec.reporting = None
+    real_spec.reporting_params = {}
+
+    monkeypatch.setattr(run_one_module.CombinedSpec, "load", staticmethod(lambda path: real_spec))
+
+    run_one_module._write_monthly_ledger_combined(strategy_dir)
 
     captured = capsys.readouterr()
     assert "brak bloku 'reporting'" in captured.out
