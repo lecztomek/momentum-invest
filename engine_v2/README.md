@@ -1817,6 +1817,16 @@ wynikow):
 .venv/bin/python3 -m engine_v2.run_one --list          # lista dostepnych nazw
 ```
 
+Od (2026-07-15): rowniez cienki wrapper w KORZENIU repo (user: "Czemu nie ma tego run one w
+glownym katalogu jak run pipeline dla starego engine" - por. `run_global_pipeline.py`, glowny
+punkt wejscia starego `engine/`) - `run_one.py`/`monthly_report.py` w korzeniu tylko delegują do
+`engine_v2.run_one`/`engine_v2.monthly_report` (bez `-m`, bez duplikacji logiki):
+
+```
+.venv/bin/python3 run_one.py gpm_mid_10
+.venv/bin/python3 monthly_report.py gpm_mid_10
+```
+
 **Pelny miesieczny ledger (decyzje/wagi/zwroty/drawdown)** (user: "czy mamy plik z decyzjami
 miesiecznymi zwrotem z kazdego miesiaca maxdd wagi tam powinny byc" - odpowiedz: NIE mielismy,
 `results/<nazwa>.json` trzyma tylko zbiorcze metryki) - `engine_v2/monthly_report.py`

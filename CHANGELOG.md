@@ -2,6 +2,16 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-15 (2)
+
+- **Cienkie wrappery `run_one.py`/`monthly_report.py` w KORZENIU repo** - user: "Czemu nie ma
+  tego run one w glownym katalogu jak run pipeline dla starego engine" (por.
+  `run_global_pipeline.py`, glowny punkt wejscia starego `engine/`). Cala logika nadal zyje w
+  `engine_v2/run_one.py`/`engine_v2/monthly_report.py` - te dwa pliki w korzeniu tylko wolaja
+  `main()` z odpowiedniego modulu, zero duplikacji: `.venv/bin/python3 run_one.py gpm_mid_10`,
+  `.venv/bin/python3 monthly_report.py gpm_mid_10` (bez `-m`). 2 nowe testy
+  (`test_root_wrappers.py`, sprawdzaja tylko ze delegacja dziala). Pelny pakiet testow: 551/551.
+
 ## 2026-07-15 (1)
 
 - **`engine_v2/run_one.py`** - user: "Chce miec skrypt jak w starym engine gdzie wybieram ktora
