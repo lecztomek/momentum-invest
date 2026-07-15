@@ -11,7 +11,8 @@
     "alpha_weighting": "rank_weights",
     "portfolio_risk_engine": "gfm_risk_switch",
     "overlays": "none",
-    "execution": "hysteresis"
+    "execution": "hysteresis",
+    "reporting": "monthly_csv_export"
   },
 
   "base_params": {
@@ -36,7 +37,8 @@
       "regime_ticker": "spy.us",
       "regime_threshold": 0.0
     },
-    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"}
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"},
+    "reporting": {"output_path": "results/monthly/gfm.csv", "annual_tax_rate": 0.19}
   },
 
   "allowed_param_families": {

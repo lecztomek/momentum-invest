@@ -11,7 +11,8 @@
     "alpha_weighting": "inverse_vol",
     "portfolio_risk_engine": "none",
     "overlays": "none",
-    "execution": "hysteresis"
+    "execution": "hysteresis",
+    "reporting": "monthly_csv_export"
   },
 
   "base_params": {
@@ -27,7 +28,8 @@
     "asset_scoring": {"weights": {"mom_12": 1.0}},
     "selector": {"top_n": 3},
     "alpha_weighting": {"volatility_key": "vol_60"},
-    "execution": {"hysteresis_pct": 0.05, "cost_bps": 40, "frequency": "monthly"}
+    "execution": {"hysteresis_pct": 0.05, "cost_bps": 40, "frequency": "monthly"},
+    "reporting": {"output_path": "results/monthly/dual_momentum.csv", "annual_tax_rate": 0.19}
   },
 
   "allowed_param_families": {

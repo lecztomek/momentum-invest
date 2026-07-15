@@ -125,6 +125,42 @@ def test_run_one_skip_monthly_flag_does_not_write_ledger():
             monthly_path.unlink(missing_ok=True)
 
 
+def test_all_single_strategies_declare_reporting_block():
+    """User: "dodaj do configa wszystkich strategii zeby byl uzywany" - kazda strategia z
+    WLASNYM run_spec.json (nie laczona) musi miec blocks['reporting']='monthly_csv_export' i
+    poprawny output_path we wlasnym base_params."""
+    from engine_v2.run_one import STRATEGIES_DIR, _available_strategies
+    from engine_v2.spec import StrategySpec
+
+    for name in _available_strategies():
+        strategy_dir = STRATEGIES_DIR / name
+        if not (strategy_dir / "run_spec.json").exists():
+            continue  # laczone (combined_spec.json) - inny mechanizm, patrz docstring run_one.py
+        spec = StrategySpec.load(strategy_dir / "strategy_spec.json")
+        assert spec.blocks.get("reporting") == "monthly_csv_export", name
+        assert spec.base_params["reporting"]["output_path"] == f"results/monthly/{name}.csv", name
+
+
+def test_write_monthly_ledger_single_skips_gracefully_without_reporting_block(monkeypatch, capsys):
+    """Nie dotyka zadnego pliku na dysku - podmienia StrategySpec.load() na wersje in-memory bez
+    bloku 'reporting', zeby sprawdzic wylacznie sciezke "brak reporting -> pomijam", bez ryzyka
+    nadpisania prawdziwego strategy_spec.json."""
+    import engine_v2.run_one as run_one_module
+    from engine_v2.spec import StrategySpec
+
+    strategy_dir = REPO_ROOT / "strategies_v2" / "bh_spy"
+    real_spec = StrategySpec.load(strategy_dir / "strategy_spec.json")
+    real_spec.blocks.pop("reporting", None)
+    real_spec.base_params.pop("reporting", None)
+
+    monkeypatch.setattr(run_one_module.StrategySpec, "load", staticmethod(lambda path: real_spec))
+
+    run_one_module._write_monthly_ledger_single(strategy_dir)
+
+    captured = capsys.readouterr()
+    assert "brak bloku 'reporting'" in captured.out
+
+
 def test_run_one_no_args_exits_nonzero():
     result = subprocess.run(
         [sys.executable, "-m", "engine_v2.run_one"],

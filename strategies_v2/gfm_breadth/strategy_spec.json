@@ -11,7 +11,8 @@
     "alpha_weighting": "rank_weights",
     "portfolio_risk_engine": "gfm_breadth_risk_step",
     "overlays": "none",
-    "execution": "hysteresis"
+    "execution": "hysteresis",
+    "reporting": "monthly_csv_export"
   },
 
   "base_params": {
@@ -35,7 +36,8 @@
       "breadth_thresholds": [3, 6, 9, 12],
       "risky_shares": [0.0, 0.25, 0.5, 0.75, 1.0]
     },
-    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"}
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"},
+    "reporting": {"output_path": "results/monthly/gfm_breadth.csv", "annual_tax_rate": 0.19}
   },
 
   "allowed_param_families": {

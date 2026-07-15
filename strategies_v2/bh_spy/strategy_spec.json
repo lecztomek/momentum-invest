@@ -11,7 +11,8 @@
     "alpha_weighting": "rank_weights",
     "portfolio_risk_engine": "none",
     "overlays": "none",
-    "execution": "hysteresis"
+    "execution": "hysteresis",
+    "reporting": "monthly_csv_export"
   },
 
   "base_params": {
@@ -23,7 +24,8 @@
     "asset_scoring": {"weights": {"mom_1": 1.0}},
     "selector": {"top_n": 1},
     "alpha_weighting": {"weights": [1.0]},
-    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"}
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"},
+    "reporting": {"output_path": "results/monthly/bh_spy.csv", "annual_tax_rate": 0.19}
   },
 
   "allowed_param_families": {},

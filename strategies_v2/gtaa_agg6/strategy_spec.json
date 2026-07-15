@@ -11,7 +11,8 @@
     "alpha_weighting": "rank_weights",
     "portfolio_risk_engine": "gtaa_trend_bond_reroute",
     "overlays": "none",
-    "execution": "hysteresis"
+    "execution": "hysteresis",
+    "reporting": "monthly_csv_export"
   },
 
   "base_params": {
@@ -30,7 +31,8 @@
       "redistribute_if_short": true
     },
     "portfolio_risk_engine": {"sma_window": 6, "bond_fallback_asset": "ief.us"},
-    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40}
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40},
+    "reporting": {"output_path": "results/monthly/gtaa_agg6.csv", "annual_tax_rate": 0.19}
   },
 
   "allowed_param_families": {

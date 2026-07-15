@@ -11,7 +11,8 @@
     "alpha_weighting": "rank_weights",
     "portfolio_risk_engine": "gem_dual_momentum_switch",
     "overlays": "none",
-    "execution": "hysteresis"
+    "execution": "hysteresis",
+    "reporting": "monthly_csv_export"
   },
 
   "base_params": {
@@ -33,7 +34,8 @@
       "risk_off_assets": ["lqd.us", "ief.us", "tlt.us"],
       "mom_12_key": "mom_12"
     },
-    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"}
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"},
+    "reporting": {"output_path": "results/monthly/the_one.csv", "annual_tax_rate": 0.19}
   },
 
   "allowed_param_families": {

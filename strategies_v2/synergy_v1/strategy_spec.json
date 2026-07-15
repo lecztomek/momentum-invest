@@ -11,7 +11,8 @@
     "alpha_weighting": "rank_weights",
     "portfolio_risk_engine": "rebound_starter",
     "overlays": "none",
-    "execution": "score_gap_hysteresis"
+    "execution": "score_gap_hysteresis",
+    "reporting": "monthly_csv_export"
   },
 
   "base_params": {
@@ -47,7 +48,8 @@
       "indicator_key": "mom_r3",
       "threshold": 0.05
     },
-    "execution": {"min_score_gap": 0.005, "cost_bps": 40, "full_position_size": 2}
+    "execution": {"min_score_gap": 0.005, "cost_bps": 40, "full_position_size": 2},
+    "reporting": {"output_path": "results/monthly/synergy_v1.csv", "annual_tax_rate": 0.19}
   },
 
   "allowed_param_families": {

@@ -2,6 +2,36 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-15 (5)
+
+- **Blok `reporting` wpiety do WSZYSTKICH 23 pojedynczych strategii** - user: "dodaj do configa
+  wszystkich strategii zeby byl uzywany". Kazdy z 23 `strategy_spec.json` majacych WLASNY
+  `run_spec.json` (nie laczone - te maja `combined_spec.json` i inny mechanizm, patrz nizej)
+  dostal `blocks["reporting"]="monthly_csv_export"` + `base_params["reporting"]={"output_path":
+  "results/monthly/<nazwa>.csv", "annual_tax_rate": 0.19}` (ta sama stawka co
+  `test_spec.json.costs.annual_tax_rate` kazdej z nich - wszystkie akurat maja 0.19). Zmiana
+  zrobiona chirurgicznie na tekscie JSON (funkcja `insert_after_key` - lokalizuje dokladny koniec
+  wartosci klucza `execution` przez `json.JSONDecoder.raw_decode`, wstawia nowy klucz zaraz po
+  nim), NIE przez `StrategySpec.save()` (ktore przeformatowaloby caly plik - zweryfikowano na
+  `bh_spy`, diff wyszedlby ogromny/nieczytelny). Wynik: diff kazdego pliku to DOKLADNIE 2 nowe
+  linie (jedna w `blocks`, jedna w `base_params`), reszta pliku bit-w-bit bez zmian.
+
+  `run_one.py` przepisany dla POJEDYNCZYCH strategii: zamiast wlasnej, osobnej sciezki liczenia
+  ledgera (`_final_portfolio_and_equity_single`+`build_monthly_ledger`) teraz PO PROSTU woła
+  `pipeline.run_strategy_pipeline_with_reporting(spec)` - blok sam zapisuje CSV z parametrow juz
+  zapisanych w `strategy_spec.json`. Portfele LACZONE (`combined_spec.json`) NIE MAJA jeszcze
+  odpowiednika tego bloku (brak `run_combined_pipeline_with_reporting`) - dla nich `run_one.py`
+  zostaje przy starej, recznej sciezce.
+
+  Wygenerowano i zacommitowano `results/monthly/<nazwa>.csv` dla wszystkich 23 pojedynczych
+  strategii (wczesniej mielismy tylko `gpm_mid_10`/`gpm_mid_10_best17_a`).
+
+  2 nowe testy w `test_run_one.py`: `test_all_single_strategies_declare_reporting_block`
+  (kompletnosc - kazda z 23 faktycznie ma blok wpiety z poprawnym `output_path`),
+  `test_write_monthly_ledger_single_skips_gracefully_without_reporting_block` (fallback gdy
+  bloku brak - bez dotykania prawdziwego pliku na dysku, monkeypatch `StrategySpec.load`). Pelny
+  pakiet testow: 562/562, bez regresji.
+
 ## 2026-07-15 (4)
 
 - **Nowy typ bloku silnika: `reporting`** - user: "Wg mnie narzedzia sprawozdawcze powinny byc

@@ -11,7 +11,8 @@
     "alpha_weighting": "rank_weights",
     "portfolio_risk_engine": "gpm_breadth_protective_split",
     "overlays": "none",
-    "execution": "hysteresis"
+    "execution": "hysteresis",
+    "reporting": "monthly_csv_export"
   },
 
   "base_params": {
@@ -45,7 +46,8 @@
       "full_protective_max_n": 5,
       "protective_scale_denominator": 5
     },
-    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40}
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40},
+    "reporting": {"output_path": "results/monthly/gpm_mid_10.csv", "annual_tax_rate": 0.19}
   },
 
   "allowed_param_families": {

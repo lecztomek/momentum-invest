@@ -1870,6 +1870,16 @@ zadeklarowany, `run_strategy_pipeline_with_reporting()` BEZ bloku daje identyczn
 `final_portfolio` jak `run_strategy_pipeline()`, realny zapis CSV na `bh_spy` (prostej
 strategii), walidacja wymaganego `output_path`, `annual_tax_rate` faktycznie obniza equity.
 
+**Wpiete do WSZYSTKICH 23 pojedynczych strategii** (user: "dodaj do configa wszystkich strategii
+zeby byl uzywany") - kazdy `strategy_spec.json` z wlasnym `run_spec.json` ma juz
+`blocks["reporting"]="monthly_csv_export"` + `base_params["reporting"]={"output_path":
+"results/monthly/<nazwa>.csv", "annual_tax_rate": 0.19}`. `run_one.py` dla pojedynczych strategii
+juz nie liczy ledgera samodzielnie - wola `run_strategy_pipeline_with_reporting(spec)`, blok
+robi reszte. Portfele LACZONE (`combined_spec.json`, 30 sztuk) NIE MAJA jeszcze odpowiednika
+(brak `run_combined_pipeline_with_reporting`) - `run_one.py` dla nich zostaje przy starej,
+recznej sciezce (`monthly_report.py`'s `_final_portfolio_and_equity_combined`).
+`results/monthly/*.csv` wygenerowane i zacommitowane dla wszystkich 23.
+
 Uruchomienie 2026-07-12 (42) potwierdzilo znane liczby sesji (`gpm_best17_a` #1, Calmar 0.786) -
 NIEAKTUALNE po bugfixie podatku (47) i po ujednoliceniu `execution.cost_bps` na 40 wszedzie (49,
 user: "przypilnuj zeby bps wszedzie byl 40" - patrz "Znany, naprawiony bug" nizej). Po OBU

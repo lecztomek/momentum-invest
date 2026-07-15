@@ -11,7 +11,8 @@
     "alpha_weighting": "rank_weights",
     "portfolio_risk_engine": "daa_canary_breadth_switch",
     "overlays": "none",
-    "execution": "hysteresis"
+    "execution": "hysteresis",
+    "reporting": "monthly_csv_export"
   },
 
   "base_params": {
@@ -37,7 +38,8 @@
       "breadth_denominator": 2,
       "scale_top_n_with_cash_fraction": true
     },
-    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"}
+    "execution": {"hysteresis_pct": 0.0, "cost_bps": 40, "frequency": "monthly"},
+    "reporting": {"output_path": "results/monthly/daa_g4_keller.csv", "annual_tax_rate": 0.19}
   },
 
   "allowed_param_families": {

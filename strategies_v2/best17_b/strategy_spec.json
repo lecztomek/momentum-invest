@@ -11,7 +11,8 @@
     "alpha_weighting": "rank_weights",
     "portfolio_risk_engine": "none",
     "overlays": "none",
-    "execution": "score_gap_hysteresis"
+    "execution": "score_gap_hysteresis",
+    "reporting": "monthly_csv_export"
   },
 
   "base_params": {
@@ -40,7 +41,8 @@
     "asset_scoring": {"weights": {"mom_9": 1.0}},
     "selector": {"top_n": 2},
     "alpha_weighting": {"weights": [0.5, 0.5]},
-    "execution": {"min_score_gap": 0.03, "full_position_size": 2, "cost_bps": 40, "frequency": "monthly"}
+    "execution": {"min_score_gap": 0.03, "full_position_size": 2, "cost_bps": 40, "frequency": "monthly"},
+    "reporting": {"output_path": "results/monthly/best17_b.csv", "annual_tax_rate": 0.19}
   },
 
   "allowed_param_families": {

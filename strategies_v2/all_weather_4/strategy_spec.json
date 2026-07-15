@@ -11,7 +11,8 @@
     "alpha_weighting": "rounded_score_weights",
     "portfolio_risk_engine": "none",
     "overlays": "none",
-    "execution": "hysteresis"
+    "execution": "hysteresis",
+    "reporting": "monthly_csv_export"
   },
 
   "base_params": {
@@ -28,7 +29,8 @@
     },
     "selector": {"top_n": 4},
     "alpha_weighting": {"round_to": 0.10, "min_weight_blocks": 1},
-    "execution": {"hysteresis_pct": 0.20, "cost_bps": 40, "frequency": "monthly"}
+    "execution": {"hysteresis_pct": 0.20, "cost_bps": 40, "frequency": "monthly"},
+    "reporting": {"output_path": "results/monthly/all_weather_4.csv", "annual_tax_rate": 0.19}
   },
 
   "allowed_param_families": {
