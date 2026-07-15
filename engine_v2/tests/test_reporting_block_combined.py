@@ -84,4 +84,4 @@ def test_all_combined_strategies_declare_reporting_block():
         assert spec.reporting == "monthly_csv_export", d.name
         assert spec.reporting_params["output_path"] == f"results/monthly/{d.name}.csv", d.name
         checked += 1
-    assert checked == 30
+    assert checked == 31

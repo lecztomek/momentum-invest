@@ -2,6 +2,33 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-15 (8)
+
+- **Nowy miks `gpm_mid_13_best17_a`** - user: "Teraz zrob 50/50 z best 17" (po dodaniu
+  RSP/XLP/XLV jako `gpm_mid_13`). Ten sam wzorzec co produkcyjny kandydat
+  `gpm_mid_10_best17_a`: `gpm_mid_13` + `best17_a`, `fixed_capital_weights` 50/50 (bez tiltu, bez
+  sygnalu), merged `uk_ticker_mapping.json` (19 tickerow), blok `reporting` wpiety od razu.
+
+  **Wynik** (post-tax) vs `gpm_mid_10_best17_a`:
+
+  | | CAGR | MaxDD | Sharpe | Calmar |
+  |---|---|---|---|---|
+  | `gpm_mid_10_best17_a` | 8.52% | -16.36% | 0.800 | 0.521 |
+  | `gpm_mid_13_best17_a` | **8.58%** | **-15.53%** | **0.803** | **0.552** |
+
+  Poprawa na kazdej metryce - #7 w `results/SUMMARY.md` (bylo #9 dla `_10` wariantu). UK mapping:
+  0% mismatch, PRAWIE pelna akceptacja - jedyny nieprzechodzacy prog to
+  `max_single_month_return_diff` (0.033 vs limit 0.03) - DOKLADNIE TEN SAM, juz udokumentowany
+  wczesniej brzegowy przypadek co w `gpm_mid_10_best17_a` (nie nowy problem wprowadzony przez
+  RSP/XLP/XLV).
+
+  Nowe pliki: `strategies_v2/gpm_mid_13_best17_a/` (combined_spec.json + uk_ticker_mapping.json).
+  2 nowe testy (`test_gpm_mid_13_best17_a_uk_mapping.py`) + zaktualizowane 2 istniejace testy
+  kompletnosci (`test_all_combined_strategies_declare_reporting_block` w
+  `test_reporting_block_combined.py`/`test_run_one.py`: 30->31 portfeli laczonych). Wygenerowano
+  TYLKO `results/gpm_mid_13_best17_a.json` + scalony `SUMMARY.md`. Pelny pakiet testow: 582/582,
+  bez regresji.
+
 ## 2026-07-15 (7)
 
 - **Nowa strategia `gpm_mid_13`** - user: "Chce nowa wersje strategii gpm - dodajmy tickery rsp

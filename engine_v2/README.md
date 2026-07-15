@@ -1479,6 +1479,24 @@ wpiety od razu (`results/monthly/gpm_mid_13.csv`).
 3 tickery wzgledem `gpm_mid_10`, pelne pokrycie korekty dywidendowej, end-to-end na realnych
 danych, zamrozony baseline metryk, UK mapping end-to-end.
 
+#### `gpm_mid_13_best17_a` - miks `gpm_mid_13`+`best17_a`, 50/50 (2026-07-15)
+
+User: "Teraz zrob 50/50 z best 17" (od razu po `gpm_mid_13`). Ten sam wzorzec co produkcyjny
+kandydat `gpm_mid_10_best17_a`: `fixed_capital_weights` 50/50 (bez tiltu, bez sygnalu), merged
+`uk_ticker_mapping.json` (19 tickerow).
+
+**Wynik** (post-tax) vs `gpm_mid_10_best17_a`:
+
+| | CAGR | MaxDD | Sharpe | Calmar |
+|---|---|---|---|---|
+| `gpm_mid_10_best17_a` | 8.52% | -16.36% | 0.800 | 0.521 |
+| `gpm_mid_13_best17_a` | **8.58%** | **-15.53%** | **0.803** | **0.552** |
+
+Poprawa na kazdej metryce - #7 w `results/SUMMARY.md`. UK mapping: 0% mismatch, PRAWIE pelna
+akceptacja - jedyny nieprzechodzacy prog to `max_single_month_return_diff` (0.033 vs limit
+0.03), DOKLADNIE ten sam juz udokumentowany brzegowy przypadek co w `gpm_mid_10_best17_a` (nie
+nowy problem od RSP/XLP/XLV). 2 nowe testy (`test_gpm_mid_13_best17_a_uk_mapping.py`).
+
 #### `gpm_best17_a` - miks defensywnego `gpm` z agresywnym `best17_a`
 
 User: "dobrze go zmiksowac z czyms agresywnym np best17". `fixed_capital_weights`, sweep wagi

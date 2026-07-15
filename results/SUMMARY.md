@@ -4,6 +4,7 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 
 | Strategia | Tryb | CAGR | MaxDD | Sharpe | Calmar | Turnover/rok | UK mapping |
 |---|---|---|---|---|---|---|---|
+| `gpm_mid_13_best17_a` | combined_final | 8.58% | -15.53% | 0.803 | 0.552 | 2.62 | fail (patrz JSON) |
 | `gpm_best17_a` | combined_final | 8.06% | -15.48% | 0.799 | 0.521 | 2.90 | - |
 | `gpm_mid_10_best17_a` | combined_final | 8.52% | -16.36% | 0.800 | 0.521 | 2.56 | fail (patrz JSON) |
 | `combined_triple` | combined_final | 9.07% | -20.41% | 0.785 | 0.444 | 2.27 | - |
