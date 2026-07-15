@@ -5,12 +5,21 @@ idzie" (w odroznieniu od `generate_results.py`, ktory zawsze przelicza WSZYSTKIE
 Uruchamia DOKLADNIE JEDNA strategie (pojedyncza `run_spec.json` albo laczona `combined_spec.json`)
 z `strategies_v2/<nazwa>/` i wypisuje metryki na ekran. Reuzywa TA SAMA logike liczenia co
 `generate_results.py` (`_generate_single`/`_generate_combined`) - wynik jest identyczny z tym co
-trafiloby do `results/<nazwa>.json`, ale NIC nie zapisuje na dysk (to celowo osobny krok -
-`generate_results.py` albo reczne `_write_result`, po to zeby przypadkowe odpalenie tego skryptu
-nie nadpisywalo zamrozonych wynikow w repo).
+trafiloby do `results/<nazwa>.json`, ale metryki (`payload`) NIC nie zapisuja na dysk (to celowo
+osobny krok - `generate_results.py` albo reczne `_write_result`, po to zeby przypadkowe odpalenie
+tego skryptu nie nadpisywalo zamrozonych wynikow w repo).
+
+Miesieczny ledger (user: "Jak tak samo monthly przeciez w calym przebiegu powinien sie
+generowac" - po tym jak `monthly_report.py` byl osobnym, recznym krokiem) JEST zapisywany
+domyslnie, do `results/monthly/<nazwa>.csv`, jako CZESC KAZDEGO uruchomienia `run_one` - wylacz
+`--skip-monthly`, jesli akurat nie jest potrzebny (np. szybki podglad samych metryk). To JEDYNA
+rzecz z tego skryptu, ktora faktycznie zapisuje plik - i robi to celowo (w odroznieniu od
+`payload`/metryk), bo miesieczny ledger nie jest "zamrozonym wynikiem" jak `results/<nazwa>.json`
+(nie ma go w recenzji/regresji), tylko biezacym podgladem do przegladania.
 
 Uruchomienie (z korzenia repo):
   .venv/bin/python3 -m engine_v2.run_one gpm_mid_10
+  .venv/bin/python3 -m engine_v2.run_one gpm_mid_10 --skip-monthly
   .venv/bin/python3 -m engine_v2.run_one --list
 """
 
@@ -25,6 +34,12 @@ from engine_v2.generate_results import (
     STRATEGIES_DIR,
     _generate_combined,
     _generate_single,
+)
+from engine_v2.monthly_report import (
+    RESULTS_DIR,
+    _final_portfolio_and_equity_combined,
+    _final_portfolio_and_equity_single,
+    build_monthly_ledger,
 )
 
 
@@ -63,10 +78,26 @@ def _print_metrics(name: str, payload: Dict[str, Any]) -> None:
         )
 
 
+def _write_monthly_ledger(name: str, strategy_dir) -> None:
+    if (strategy_dir / "run_spec.json").exists():
+        final_portfolio, equity_curve = _final_portfolio_and_equity_single(strategy_dir)
+    else:
+        final_portfolio, equity_curve = _final_portfolio_and_equity_combined(strategy_dir)
+
+    ledger = build_monthly_ledger(final_portfolio, equity_curve)
+    out_path = RESULTS_DIR / "monthly" / f"{name}.csv"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    ledger.to_csv(out_path, index=False)
+    print(f"\nMiesieczny ledger ({len(ledger)} okresow) zapisany do {out_path}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("name", nargs="?", help="Nazwa folderu w strategies_v2/ (np. gpm_mid_10)")
     parser.add_argument("--list", action="store_true", help="Wypisz dostepne strategie i zakoncz")
+    parser.add_argument(
+        "--skip-monthly", action="store_true", help="Nie zapisuj results/monthly/<nazwa>.csv (domyslnie zapisywany)"
+    )
     args = parser.parse_args()
 
     available = _available_strategies()
@@ -92,6 +123,9 @@ def main() -> None:
         payload = _generate_combined(strategy_dir)
 
     _print_metrics(args.name, payload)
+
+    if not args.skip_monthly:
+        _write_monthly_ledger(args.name, strategy_dir)
 
 
 if __name__ == "__main__":

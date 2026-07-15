@@ -2,6 +2,17 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-15 (3)
+
+- **`run_one.py` domyslnie generuje tez miesieczny ledger** - user: "Jak tak samo monthly
+  przeciez w calym przebiegu powinien sie generowac" (po tym jak `monthly_report.py` byl
+  osobnym, recznym krokiem). Kazde uruchomienie `run_one.py <nazwa>` teraz TAKZE zapisuje
+  `results/monthly/<nazwa>.csv` (reuzywa `_final_portfolio_and_equity_single`/
+  `_final_portfolio_and_equity_combined`/`build_monthly_ledger` z `monthly_report.py`) - nowa
+  flaga `--skip-monthly` zeby tego uniknac (np. szybki podglad samych metryk). 2 nowe testy
+  (domyslne generowanie + `--skip-monthly` faktycznie pomija zapis). Pelny pakiet testow:
+  553/553, bez regresji.
+
 ## 2026-07-15 (2)
 
 - **Cienkie wrappery `run_one.py`/`monthly_report.py` w KORZENIU repo** - user: "Czemu nie ma

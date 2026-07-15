@@ -1808,12 +1808,15 @@ strategii/bloku silnika, ktora wplywa na wyniki, i zacommitowac nowy wynik:
 **Szybki podglad JEDNEJ strategii** (user: "Chce miec skrypt jak w starym engine gdzie wybieram
 ktora odpalic i tylko ona idzie") - `engine_v2/run_one.py` (2026-07-14): reuzywa TA SAMA logike co
 `generate_results.py` (`_generate_single`/`_generate_combined`), ale liczy TYLKO jedna wskazana
-strategie i wypisuje metryki na ekran - NIC nie zapisuje do `results/` (od tego jest
-`generate_results.py`, celowo osobny krok, zeby przypadkowe odpalenie nie nadpisalo zamrozonych
-wynikow):
+strategie i wypisuje metryki na ekran - metryki (`payload`) NIC nie zapisuja do `results/` (od
+tego jest `generate_results.py`, celowo osobny krok, zeby przypadkowe odpalenie nie nadpisalo
+zamrozonych wynikow). Miesieczny ledger (nizej) JEST zapisywany domyslnie przy kazdym uruchomieniu
+(user: "Jak tak samo monthly przeciez w calym przebiegu powinien sie generowac") - `--skip-monthly`
+zeby tego uniknac:
 
 ```
 .venv/bin/python3 -m engine_v2.run_one gpm_mid_10
+.venv/bin/python3 -m engine_v2.run_one gpm_mid_10 --skip-monthly
 .venv/bin/python3 -m engine_v2.run_one --list          # lista dostepnych nazw
 ```
 

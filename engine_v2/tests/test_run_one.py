@@ -10,6 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pandas as pd
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -74,6 +76,53 @@ def test_run_one_list_flag_exits_zero():
     )
     assert result.returncode == 0
     assert "gpm_mid_10" in result.stdout
+
+
+def test_run_one_writes_monthly_ledger_by_default():
+    """User: "Jak tak samo monthly przeciez w calym przebiegu powinien sie generowac" - od tej
+    pory kazde `run_one` domyslnie zapisuje tez results/monthly/<nazwa>.csv."""
+    monthly_path = REPO_ROOT / "results" / "monthly" / "gpm_mid_10.csv"
+    original = monthly_path.read_bytes() if monthly_path.exists() else None
+    monthly_path.unlink(missing_ok=True)
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "engine_v2.run_one", "gpm_mid_10"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        assert result.returncode == 0
+        assert monthly_path.exists()
+        assert "Miesieczny ledger" in result.stdout
+        df = pd.read_csv(monthly_path)
+        assert "drawdown" in df.columns
+        assert any(c.startswith("w_") for c in df.columns)
+    finally:
+        if original is not None:
+            monthly_path.write_bytes(original)
+
+
+def test_run_one_skip_monthly_flag_does_not_write_ledger():
+    monthly_path = REPO_ROOT / "results" / "monthly" / "gpm_mid_10.csv"
+    original = monthly_path.read_bytes() if monthly_path.exists() else None
+    monthly_path.unlink(missing_ok=True)
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "engine_v2.run_one", "gpm_mid_10", "--skip-monthly"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        assert result.returncode == 0
+        assert not monthly_path.exists()
+        assert "Miesieczny ledger" not in result.stdout
+    finally:
+        if original is not None:
+            monthly_path.write_bytes(original)
+        else:
+            monthly_path.unlink(missing_ok=True)
 
 
 def test_run_one_no_args_exits_nonzero():
