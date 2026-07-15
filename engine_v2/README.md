@@ -1805,6 +1805,18 @@ strategii/bloku silnika, ktora wplywa na wyniki, i zacommitowac nowy wynik:
 .venv/bin/python3 -m engine_v2.generate_results
 ```
 
+**Szybki podglad JEDNEJ strategii** (user: "Chce miec skrypt jak w starym engine gdzie wybieram
+ktora odpalic i tylko ona idzie") - `engine_v2/run_one.py` (2026-07-14): reuzywa TA SAMA logike co
+`generate_results.py` (`_generate_single`/`_generate_combined`), ale liczy TYLKO jedna wskazana
+strategie i wypisuje metryki na ekran - NIC nie zapisuje do `results/` (od tego jest
+`generate_results.py`, celowo osobny krok, zeby przypadkowe odpalenie nie nadpisalo zamrozonych
+wynikow):
+
+```
+.venv/bin/python3 -m engine_v2.run_one gpm_mid_10
+.venv/bin/python3 -m engine_v2.run_one --list          # lista dostepnych nazw
+```
+
 Uruchomienie 2026-07-12 (42) potwierdzilo znane liczby sesji (`gpm_best17_a` #1, Calmar 0.786) -
 NIEAKTUALNE po bugfixie podatku (47) i po ujednoliceniu `execution.cost_bps` na 40 wszedzie (49,
 user: "przypilnuj zeby bps wszedzie byl 40" - patrz "Znany, naprawiony bug" nizej). Po OBU
