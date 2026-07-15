@@ -4,9 +4,11 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 
 | Strategia | Tryb | CAGR | MaxDD | Sharpe | Calmar | Turnover/rok | UK mapping |
 |---|---|---|---|---|---|---|---|
-| `gpm_mid_13_best17_a` | combined_final | 8.58% | -15.53% | 0.803 | 0.552 | 2.62 | fail (patrz JSON) |
+| `gpm_uk` | final | 5.56% | -9.12% | 0.699 | 0.609 | 3.68 | - |
+| `gpm_mid_10_best17_a` | combined_final | 8.93% | -16.15% | 0.855 | 0.553 | 2.56 | fail (patrz JSON) |
+| `gpm_mid_13_best17_a` | combined_final | 9.02% | -16.39% | 0.859 | 0.550 | 2.62 | fail (patrz JSON) |
 | `gpm_best17_a` | combined_final | 8.06% | -15.48% | 0.799 | 0.521 | 2.90 | - |
-| `gpm_mid_10_best17_a` | combined_final | 8.52% | -16.36% | 0.800 | 0.521 | 2.56 | fail (patrz JSON) |
+| `gpm_uk_best17_a_uk` | combined_final | 7.17% | -15.65% | 0.676 | 0.458 | 2.59 | - |
 | `combined_triple` | combined_final | 9.07% | -20.41% | 0.785 | 0.444 | 2.27 | - |
 | `best17_a` | final | 13.71% | -31.19% | 0.802 | 0.440 | 1.16 | fail (patrz JSON) |
 | `gtaa_agg6_mid_best17_a` | combined_final | 9.05% | -21.09% | 0.779 | 0.429 | 2.10 | fail (patrz JSON) |
@@ -26,6 +28,7 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `gtaa_agg6_mid` | final | 5.76% | -17.29% | 0.588 | 0.333 | 2.92 | fail (patrz JSON) |
 | `gtaa_agg3_mid` | final | 7.03% | -21.16% | 0.552 | 0.332 | 3.64 | fail (patrz JSON) |
 | `best17_a_gfm` | combined_final | 9.49% | -28.76% | 0.719 | 0.330 | 1.85 | - |
+| `best17_a_uk` | final | 10.24% | -31.10% | 0.603 | 0.329 | 1.74 | - |
 | `vaa_g4_all_weather_4` | combined_final | 5.79% | -19.01% | 0.638 | 0.305 | 4.76 | - |
 | `the_one_all_weather_4` | combined_final | 6.17% | -20.95% | 0.582 | 0.295 | 3.89 | - |
 | `best17_a_best17_b` | combined_final | 8.67% | -30.28% | 0.672 | 0.286 | 1.63 | - |

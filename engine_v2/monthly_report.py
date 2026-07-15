@@ -43,8 +43,7 @@ import pandas as pd
 
 from engine_v2.annual_tax import apply_annual_tax
 from engine_v2.backtest_engine import daily_equity_curve
-from engine_v2.blocks.data_loader import REGISTRY as DATA_LOADER_REGISTRY
-from engine_v2.combined_pipeline import run_combined_pipeline
+from engine_v2.combined_pipeline import load_combined_daily_prices, run_combined_pipeline
 from engine_v2.combined_spec import CombinedSpec
 from engine_v2.generate_results import _COMBINED_ANNUAL_TAX_RATE, _DEMO_DIRS, STRATEGIES_DIR
 from engine_v2.monthly_ledger import build_monthly_ledger
@@ -81,12 +80,7 @@ def _final_portfolio_and_equity_combined(combined_dir: Path) -> Tuple[pd.DataFra
     combined_spec = CombinedSpec.load(combined_dir / "combined_spec.json")
     final_portfolio = run_combined_pipeline(combined_spec, combined_dir)
 
-    universe: set = set()
-    for rel_path in combined_spec.strategy_spec_paths:
-        universe |= set(StrategySpec.load(combined_dir / rel_path).universe)
-
-    loader_fn = DATA_LOADER_REGISTRY["stooq_csv"]
-    daily_prices = loader_fn(sorted(universe), {"data_dir": "data/us", "frequency": "daily"}).prices
+    daily_prices = load_combined_daily_prices(combined_spec, combined_dir)
 
     equity_curve = daily_equity_curve(final_portfolio, daily_prices, {})
     equity_curve = apply_annual_tax(equity_curve, _COMBINED_ANNUAL_TAX_RATE)
