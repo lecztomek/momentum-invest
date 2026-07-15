@@ -28,6 +28,12 @@ STRATEGY_BLOCKS = [
     "portfolio_risk_engine",
     "overlays",
     "execution",
+    # "reporting" (2026-07-15) - JEDYNY OPCJONALNY blok: dziala PO calym pipeline (dostaje gotowy
+    # final_portfolio+equity_curve, nie per-okres jak reszta), wiec NIE jest w
+    # pipeline.PIPELINE_ORDER/REQUIRED_SINGLE_CHOICE_BLOCKS - strategia bez niego dziala identycznie
+    # jak dotad. Wywolywany przez pipeline.run_strategy_pipeline_with_reporting(), nie
+    # run_strategy_pipeline(). Patrz engine_v2/blocks/reporting/.
+    "reporting",
 ]
 
 # Bloki "wielo-instancyjne": w base_params trzymaja slownik NAZWANYCH INSTANCJI (kazda z

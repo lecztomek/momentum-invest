@@ -2,6 +2,41 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-15 (4)
+
+- **Nowy typ bloku silnika: `reporting`** - user: "Wg mnie narzedzia sprawozdawcze powinny byc
+  w silniku moze jako koncowy etap - kolejny blok to powinien byc", potem doprecyzowanie: "Nowy
+  blok ma byc i powinien isc na koncu [...] musi to byc wbudowane w silnik tak zebym mogl miec
+  inne implementacje". Reszta 10 blokow dziala PER OKRES (w petli `run_strategy_pipeline`) -
+  `reporting` dziala PO calym pipeline, na gotowym `final_portfolio`+dziennej `equity_curve` (ta
+  ostatnia w ogole nie jest liczona przez `run_strategy_pipeline()` dzis - liczy ja dopiero
+  wywolujacy, np. `run_spec_runner.py`). Dlatego jest OPCJONALNY (poza
+  `pipeline.PIPELINE_ORDER`/`REQUIRED_SINGLE_CHOICE_BLOCKS` - strategia bez niego dziala 1:1 jak
+  dotad, zweryfikowane testem bit-w-bit) i wolany przez NOWA funkcje
+  `pipeline.run_strategy_pipeline_with_reporting(spec)`.
+
+  Nowe pliki: `engine_v2/blocks/reporting/__init__.py` (REGISTRY, ten sam wzorzec co reszta
+  blokow), `engine_v2/blocks/reporting/monthly_csv_export.py` (pierwsza implementacja - zapisuje
+  miesieczny ledger, `params["output_path"]` wymagany, opcjonalny `params["annual_tax_rate"]` -
+  `StrategySpec` nie niesie wlasnego podatku jak `TestSpec`, wiec blok jest w tym
+  samowystarczalny). Wydzielono `build_monthly_ledger` z `monthly_report.py` do nowego
+  `engine_v2/monthly_ledger.py` (czysty modul silnika, nie skrypt CLI) - reuzywany TERAZ przez
+  blok `reporting` I przez CLI `monthly_report.py`/`run_one.py`, jedna implementacja.
+
+  `spec.STRATEGY_BLOCKS` dostal `"reporting"` (zeby `validate()` akceptowal go jako znany blok),
+  ale NIE `pipeline.PIPELINE_ORDER` (zostaje opcjonalny). `pipeline.resolve_blocks()` sprawdza go
+  osobno, jesli zadeklarowany - zeby generyczny wzorzec testowy `for block_type in spec.blocks:
+  assert block_type in resolved` (uzywany w wielu istniejacych testach *_spec.py) dzialal tak
+  samo dla strategii, ktore go maja.
+
+  7 nowych testow (`test_reporting_block.py`): blok zarejestrowany, `resolve_blocks()` widzi go
+  gdy zadeklarowany, `run_strategy_pipeline_with_reporting()` BEZ bloku = identyczny
+  `final_portfolio` jak `run_strategy_pipeline()` (bit-w-bit, `bh_spy`), realny zapis CSV,
+  walidacja wymaganego `output_path`, `annual_tax_rate` faktycznie obniza equity. Pelny pakiet
+  testow: 560/560, bez regresji. Zadna z ~53 istniejacych strategii NIE ma jeszcze
+  `blocks["reporting"]` ustawionego - to swiadomie NOWY, opcjonalny mechanizm, nie zmiana
+  zachowania czegokolwiek istniejacego.
+
 ## 2026-07-15 (3)
 
 - **`run_one.py` domyslnie generuje tez miesieczny ledger** - user: "Jak tak samo monthly

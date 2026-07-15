@@ -22,12 +22,19 @@ Kolumny CSV (jeden wiersz = jeden okres rebalansu, domyslnie miesiac):
 Uruchomienie (z korzenia repo):
   .venv/bin/python3 -m engine_v2.monthly_report gpm_mid_10
   # zapisuje do results/monthly/gpm_mid_10.csv
+
+Budowanie samego ledgera (`build_monthly_ledger`) zyje w `engine_v2/monthly_ledger.py` (2026-07-15)
+- ten skrypt jest jedynie CLI-owym opakowaniem tamtej logiki (uruchamia strategie z pelnym
+  podatkiem/kosztem wg jej WLASNEGO `test_spec.json`, jak `generate_results.py`). Dla NOWYCH
+  strategii, ktore chca to zamiast tego wbudowane w sam pipeline (bez recznego odpalania), patrz
+  blok `reporting` (`engine_v2/blocks/reporting/monthly_csv_export.py`) +
+  `pipeline.run_strategy_pipeline_with_reporting()` - inny kontrakt (podatek jako WLASNY parametr
+  bloku, nie odczyt `test_spec.json`), ale ta sama logika ledgera pod spodem.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 from typing import Tuple
@@ -40,6 +47,7 @@ from engine_v2.blocks.data_loader import REGISTRY as DATA_LOADER_REGISTRY
 from engine_v2.combined_pipeline import run_combined_pipeline
 from engine_v2.combined_spec import CombinedSpec
 from engine_v2.generate_results import _COMBINED_ANNUAL_TAX_RATE, _DEMO_DIRS, STRATEGIES_DIR
+from engine_v2.monthly_ledger import build_monthly_ledger
 from engine_v2.pipeline import run_strategy_pipeline
 from engine_v2.run_spec import RunSpec
 from engine_v2.run_spec_runner import _load_daily_prices, _tax_adjusted_equity_curve
@@ -83,26 +91,6 @@ def _final_portfolio_and_equity_combined(combined_dir: Path) -> Tuple[pd.DataFra
     equity_curve = daily_equity_curve(final_portfolio, daily_prices, {})
     equity_curve = apply_annual_tax(equity_curve, _COMBINED_ANNUAL_TAX_RATE)
     return final_portfolio, equity_curve
-
-
-def build_monthly_ledger(final_portfolio: pd.DataFrame, equity_curve: pd.DataFrame) -> pd.DataFrame:
-    ec = equity_curve.sort_values("date").reset_index(drop=True).copy()
-    ec["running_peak"] = ec["equity"].cummax()
-    ec["drawdown"] = ec["equity"] / ec["running_peak"] - 1.0
-
-    fp = final_portfolio.sort_values("date").reset_index(drop=True)
-    weights_per_row = [json.loads(w) for w in fp["weights_used_json"]]
-    all_tickers = sorted({t for weights in weights_per_row for t in weights})
-
-    merged = pd.merge_asof(fp, ec[["date", "equity", "drawdown"]], on="date", direction="backward")
-
-    ledger = merged[
-        ["date", "gross_return", "net_return", "turnover", "operations", "signal_changed", "trade_cost", "equity", "drawdown"]
-    ].copy()
-    for ticker in all_tickers:
-        ledger[f"w_{ticker}"] = [weights.get(ticker, 0.0) for weights in weights_per_row]
-
-    return ledger
 
 
 def main() -> None:

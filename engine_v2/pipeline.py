@@ -23,6 +23,7 @@ from typing import Any, Callable, Dict
 import pandas as pd
 
 from engine_v2.spec import MULTI_INSTANCE_BLOCKS, StrategySpec
+from engine_v2.backtest_engine import daily_equity_curve
 from engine_v2.final_portfolio import build_final_portfolio
 from engine_v2.types import (
     EligibilityMask,
@@ -43,6 +44,7 @@ from engine_v2.blocks.alpha_weighting import REGISTRY as ALPHA_WEIGHTING_REGISTR
 from engine_v2.blocks.portfolio_risk_engine import REGISTRY as PORTFOLIO_RISK_ENGINE_REGISTRY
 from engine_v2.blocks.overlays import REGISTRY as OVERLAYS_REGISTRY
 from engine_v2.blocks.execution import REGISTRY as EXECUTION_REGISTRY
+from engine_v2.blocks.reporting import REGISTRY as REPORTING_REGISTRY
 
 PHASE_A_VECTORIZED = [
     "data_loader",
@@ -77,6 +79,9 @@ _REGISTRIES: Dict[str, Dict[str, Callable]] = {
     "portfolio_risk_engine": PORTFOLIO_RISK_ENGINE_REGISTRY,
     "overlays": OVERLAYS_REGISTRY,
     "execution": EXECUTION_REGISTRY,
+    # "reporting" - CELOWO poza PIPELINE_ORDER (patrz spec.STRATEGY_BLOCKS) - w _REGISTRIES tylko
+    # zeby _lookup("reporting", ...) dzialalo z run_strategy_pipeline_with_reporting() nizej.
+    "reporting": REPORTING_REGISTRY,
 }
 
 
@@ -109,6 +114,14 @@ def resolve_blocks(spec: StrategySpec) -> Dict[str, Callable]:
         if name is None:
             continue
         resolved[block_type] = _lookup(block_type, name)
+
+    # "reporting" jest opcjonalny i POZA PIPELINE_ORDER (patrz spec.STRATEGY_BLOCKS) - sprawdzamy
+    # go tu osobno, zeby `for block_type in spec.blocks: assert block_type in resolved` (wzorzec
+    # uzywany w testach *_spec_resolves_all_blocks) dzialal identycznie, niezaleznie od tego czy
+    # strategia go deklaruje.
+    reporting_name = spec.blocks.get("reporting")
+    if reporting_name is not None:
+        resolved["reporting"] = _lookup("reporting", reporting_name)
 
     return resolved
 
@@ -244,3 +257,34 @@ def run_strategy_pipeline(spec: StrategySpec) -> pd.DataFrame:
         state.current_weights = result.weights_used
 
     return build_final_portfolio(results, spec.name)
+
+
+def run_strategy_pipeline_with_reporting(spec: StrategySpec) -> pd.DataFrame:
+    """Jak `run_strategy_pipeline()`, ale DODATKOWO odpala opcjonalny blok `reporting`
+    (2026-07-15, user: "Nowy blok ma byc i powinien isc na koncu [...] musi to byc wbudowane w
+    silnik") - jesli `spec.blocks.get("reporting")` jest ustawione (i != "none"), liczy DZIENNA
+    `equity_curve` (osobne zaladowanie cen z `frequency="daily"` - `run_strategy_pipeline()` samo
+    w sobie liczy tylko na czestotliwosci strategii, zwykle "monthly") i woła zarejestrowana
+    implementacje z `blocks/reporting/` z `(final_portfolio, equity_curve, params)`.
+
+    Strategia BEZ `blocks["reporting"]` (albo `"none"`) dziala DOKLADNIE jak
+    `run_strategy_pipeline()` - zero narzutu, zero zmiany zachowania (wszystkie istniejace
+    strategie/testy).
+
+    UWAGA: `StrategySpec` (w odroznieniu od `TestSpec`) nie niesie wlasnego podatku - jesli
+    `params["annual_tax_rate"] > 0`, blok `reporting` sam aplikuje `apply_annual_tax` (patrz
+    `monthly_csv_export`), NIEZALEZNIE od `test_spec.json` tej strategii (ktory ten wrapper w
+    ogole nie czyta - to swiadomie inny, samowystarczalny kontrakt niz `run_spec_runner.py`)."""
+    final_portfolio = run_strategy_pipeline(spec)
+
+    reporting_name = spec.blocks.get("reporting", "none")
+    if reporting_name and reporting_name != "none":
+        daily_params = dict(spec.base_params.get("data_loader", {}))
+        daily_params["frequency"] = "daily"
+        daily_prices = _lookup("data_loader", spec.blocks["data_loader"])(spec.universe, daily_params).prices
+        equity_curve = daily_equity_curve(final_portfolio, daily_prices, {})
+
+        reporting_fn = _lookup("reporting", reporting_name)
+        reporting_fn(final_portfolio, equity_curve, spec.base_params.get("reporting", {}))
+
+    return final_portfolio

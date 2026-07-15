@@ -58,6 +58,7 @@ Orchestrator: `pipeline.run_strategy_pipeline(spec)` -> gotowa tabela FINAL PORT
 | `portfolio_risk_engine` | pojedynczy wybór | `none`, `vaa_canary`, `gem_dual_momentum_switch`, `rebound_starter`, `gfm_risk_switch`, `gpm_breadth_protective_split`, `gtaa_trend_bond_reroute`, `daa_canary_breadth_switch`, `gfm_breadth_risk_step` | Pass-through, albo pełna podmiana portfela wg reguły (patrz niżej - to jest świadomie najbardziej elastyczny blok w silniku); `gpm_breadth_protective_split` skaluje udział ochronny CIĄGLE wg liczby dodatnich aktywów ryzykownych, zamiast binarnego przełączenia jak `vaa_canary`; `gtaa_trend_bond_reroute` ocenia KAŻDY SLOT niezależnie (nie globalnie) - część portfela może być w akcjach a część w obligacjach jednocześnie; `daa_canary_breadth_switch` - kanarek to OSOBNE, małe uniwersum (nie cały `offensive_assets` jak `vaa_canary`) + udział ochronny `min(1, b/breadth_denominator)` (domyślnie `len(canary_assets)` - ciągły 0/50/100% dla 2 kanarków, uzywane zarówno w `daa_g4` jak i `daa_g4_keller`); opcjonalny `scale_top_n_with_cash_fraction` ("Easy Trading", domyślnie `False`, włączony tylko w `daa_g4_keller`) kurczy liczbę TRZYMANYCH aktywów ofensywnych proporcjonalnie do udziału ochronnego zamiast trzymać stałą `top_n_offensive`; `gfm_breadth_risk_step` - jak `gpm_breadth_protective_split`, ale SKOKOWO (5 progów 0/25/50/75/100%, nie liniowo) + wybór najlepszego z 3 kandydatów ochronnych (SHY/IEF/TLT) |
 | `overlays` | pojedynczy wybór | `none` | Pass-through (rebound/vol-target - gdy będzie potrzebny) |
 | `execution` | pojedynczy wybór | `hysteresis`, `score_gap_hysteresis` | Rebalans tylko gdy przekroczony próg - na różnicy WAGI (`hysteresis`) albo różnicy SCORE między najsłabszym trzymanym a najlepszym wyzwaniowcem (`score_gap_hysteresis`, wymaga `ExecutionContext.score_row`) |
+| `reporting` | **opcjonalny**, pojedynczy wybór | `monthly_csv_export` | JEDYNY blok POZA `PIPELINE_ORDER` (2026-07-15) - działa PO całym pipeline na gotowym `final_portfolio`+dziennej `equity_curve`, nie per-okres jak reszta. Strategia BEZ `blocks["reporting"]` działa identycznie jak dotąd (zero narzutu) - wywoływany przez `pipeline.run_strategy_pipeline_with_reporting()`, nie `run_strategy_pipeline()`. `monthly_csv_export` zapisuje miesięczny ledger (`engine_v2/monthly_ledger.py::build_monthly_ledger`) - `params["output_path"]` (wymagany), opcjonalny `params["annual_tax_rate"]` (StrategySpec nie niesie własnego podatku, więc blok jest w tym samowystarczalny) |
 
 **Wielo-instancyjne bloki** (`indicators`, `asset_filters`, patrz `spec.MULTI_INSTANCE_BLOCKS`):
 nie mają jednej implementacji w `blocks`, tylko słownik nazwanych instancji w `base_params`,
@@ -1844,6 +1845,30 @@ na rebalans - skrypt wypisuje obie wartosci), `w_<ticker>` (waga uzyta per aktyw
 .venv/bin/python3 -m engine_v2.monthly_report gpm_mid_10
 # zapisuje do results/monthly/gpm_mid_10.csv
 ```
+
+**Blok `reporting` - to samo, ale WBUDOWANE w silnik** (user, po zobaczeniu ze `monthly_report.py`
+byl osobnym skryptem: "Wg mnie narzedzia sprawozdawcze powinny byc w silniku moze jako koncowy
+etap - kolejny blok to powinien byc", potem: "Nowy blok ma byc i powinien isc na koncu [...] musi
+to byc wbudowane w silnik tak zebym mogl miec inne implementacje") - nowy typ bloku
+`engine_v2/blocks/reporting/` (patrz tabela wyzej), na razie jedna implementacja
+`monthly_csv_export`. W odroznieniu od pozostalych 10 blokow (dzialaja PER OKRES, wewnatrz petli
+`run_strategy_pipeline`) "reporting" dostaje juz GOTOWY wynik calego backtestu - dlatego jest
+CELOWO poza `pipeline.PIPELINE_ORDER`/`REQUIRED_SINGLE_CHOICE_BLOCKS` (opcjonalny, strategia bez
+niego dziala 1:1 jak dotad - zweryfikowane testem porownujacym `run_strategy_pipeline()` vs
+`run_strategy_pipeline_with_reporting()` bit-w-bit) i wolany przez NOWA funkcje
+`pipeline.run_strategy_pipeline_with_reporting(spec)` zamiast `run_strategy_pipeline(spec)`.
+
+Zeby wlaczyc w konkretnej strategii: `strategy_spec.json` dostaje `"blocks": {..., "reporting":
+"monthly_csv_export"}` + `"base_params": {..., "reporting": {"output_path": "...", "annual_tax_rate": 0.19}}`
+(oba parametry bloku, nie odczyt cudzego pliku - `StrategySpec` w odroznieniu od `TestSpec` nie
+niesie wlasnego podatku, wiec trzeba go podac jawnie jesli ma byc uwzgledniony). Sama logika
+budowania ledgera (`build_monthly_ledger`) zyje w `engine_v2/monthly_ledger.py` - reuzywana przez
+TEN blok I przez CLI `monthly_report.py` (jedna implementacja, dwa miejsca wywolania).
+
+7 nowych testow (`test_reporting_block.py`): blok zarejestrowany, `resolve_blocks()` widzi go gdy
+zadeklarowany, `run_strategy_pipeline_with_reporting()` BEZ bloku daje identyczny
+`final_portfolio` jak `run_strategy_pipeline()`, realny zapis CSV na `bh_spy` (prostej
+strategii), walidacja wymaganego `output_path`, `annual_tax_rate` faktycznie obniza equity.
 
 Uruchomienie 2026-07-12 (42) potwierdzilo znane liczby sesji (`gpm_best17_a` #1, Calmar 0.786) -
 NIEAKTUALNE po bugfixie podatku (47) i po ujednoliceniu `execution.cost_bps` na 40 wszedzie (49,
