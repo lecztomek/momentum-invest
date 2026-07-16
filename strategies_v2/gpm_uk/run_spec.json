@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "User: 'sprobujmy zrobic gpm na tickerach uk ale bez mappingu jako zrodlowa strategie' - w odroznieniu od gpm_mid_10 (US ceny + korekta dywidend z ekstrapolacja), ta wersja jest zbudowana WPROST na UK Acc tickerach (prawdziwy total return, zero szacunkow) - kosztem krotszej historii (~2018-2026, najpozniej debiutujacy DTLA/TLT 2018-05)."
+}

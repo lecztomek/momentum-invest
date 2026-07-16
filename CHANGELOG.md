@@ -2,6 +2,84 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-15 (9)
+
+- **Nowa rodzina "UK-native": `gpm_uk`/`best17_a_uk`/`gpm_uk_best17_a_uk`** - user: "Nie mozemy
+  sobie tak wesolo ekstrapolowac danych us dist nie podoba mi sie to - moze sprobujmy zrobic gpm
+  na tickerach uk ale bez mappingu jako zrodlowa strategie to samo dla best17 i potem combined".
+  W odroznieniu od `gpm_mid_10`/`gpm_mid_13` (US Dist ceny + `stooq_csv_dividend_adjusted`, ktory
+  dla historii SPRZED startu danego UK ETF-u EKSTRAPOLUJE zmierzona stala stope) - te 3 nowe
+  strategie sa zbudowane WPROST na tickerach UK (Acc, prawdziwy total return z NAV, ZERO
+  ekstrapolacji/szacunkow) jako WLASNYM, zrodlowym uniwersum: `stooq_csv` (zwykly loader, bez
+  mappingu) na `data/uk`.
+
+  Cena tej uczciwosci: KROTSZA historia. `gpm_uk` (10 aktywow, jak `gpm_mid_10` - user wybral to
+  uniwersum "Recommended" zamiast 13-aktywowego, zeby uniknac SPEQ/RSP ktory skrocilby okno do
+  ~5 lat) zaczyna sie ~2018-06 (najpozniej debiutujacy DTLA/TLT, 2018-05-15). `best17_a_uk`
+  zaczyna sie ~2019-08 (VWRA/VT, 2019-07-26). Oba `uk_mapping.enabled=false` w `test_spec.json`
+  (te strategie SA JUZ "strona UK" - nie ma czego dalej mapowac).
+
+  **Wynik** (post-tax, koszt 40bps+19% podatek, UWAGA: krotsze/inne okno niz US-owe wersje, wiec
+  porownanie nie jest 1:1 apples-to-apples - brak np. krachu 2008):
+
+  | | CAGR | MaxDD | Sharpe | Calmar |
+  |---|---|---|---|---|
+  | `gpm_uk` (2018-2026) | 5.56% | -9.12% | 0.699 | 0.609 |
+  | `best17_a_uk` (2019-2026) | 10.24% | -31.10% | 0.603 | 0.329 |
+  | `gpm_uk_best17_a_uk` (50/50) | 7.17% | -15.65% | 0.676 | 0.458 |
+
+  `gpm_uk` solo #7 w SUMMARY.md wg Calmar - ale to NIE dowodzi ze korekta/ekstrapolacja z (56)
+  byla "gorsza" niz native UK - roznica okien (2018-2026 bez 2008 GFC vs 2007-2026 z 2008 GFC)
+  wystarczy zeby wytlumaczyc wiekszosc gapu, nie sama metoda danych.
+
+- **BUGFIX (znaleziony przy budowie powyzszej rodziny): equity_curve portfeli LACZONYCH ignorowala
+  korekte dywidend skladowych** - budowa `gpm_uk_best17_a_uk` (dwie skladowe na `data/uk`)
+  ujawnila, ze WSZYSTKIE 4 miejsca liczace `equity_curve` dla portfeli laczonych
+  (`combined_pipeline.run_combined_pipeline_with_reporting`,
+  `monthly_report._final_portfolio_and_equity_combined`, `generate_results._generate_combined`,
+  `generate_results._capital_weight_sensitivity`) mialy NA SZTYWNO `stooq_csv`+`data/us` dla
+  WSZYSTKICH tickerow uniwersum - ignorujac, ze niektore skladowe uzywaja INNEGO loadera (np.
+  `gpm_mid_10`/`gpm_mid_13` - `stooq_csv_dividend_adjusted`) LUB innego `data_dir` (nowe
+  `gpm_uk`/`best17_a_uk` - `data/uk`, co powodowalo TWARDY KeyError zamiast cichej pomylki).
+
+  Dla `gpm_mid_10`/`gpm_mid_13` (dzialaja poprawnie na SUROWYM `data/us`, wiec bledu nie
+  wykrywalo) skutek byl CICHY: korekta dywidend byla poprawnie stosowana przy liczeniu SOLO
+  metryk kazdej skladowej (przez jej WLASNY `run_strategy_pipeline`), ale przy liczeniu equity
+  POLACZONEGO portfela (do metryk/raportu combined) uzywano PONOWNIE surowych, nieskorygowanych
+  cen US - efektywnie GUBIAC korekte dla ~50% kapitalu (udzial gpm_mid_10/13 w miksie).
+
+  Naprawa: nowa `combined_pipeline.load_combined_daily_prices(combined_spec, base_dir)` - laduje
+  ceny KAZDEJ skladowej JEJ WLASNYM loaderem/parametrami (nie na sztywno), z prosta,
+  udokumentowana regula przy overlapie tickera miedzy skladowymi (np. `dbc.us` w `gpm_mid_10` I
+  `best17_a`, z roznymi loaderami): PIERWSZA skladowa w `strategy_spec_paths` wygrywa. Wszystkie
+  4 miejsca teraz woalja te jedna, wspolna funkcje.
+
+  **Przeliczone, poprawione wyniki** (post-tax) - PRZED (bugiem) vs PO (bugfixie):
+
+  | | CAGR | MaxDD | Sharpe | Calmar |
+  |---|---|---|---|---|
+  | `gpm_mid_10_best17_a` PRZED | 8.52% | -16.36% | 0.800 | 0.521 |
+  | `gpm_mid_10_best17_a` PO | **8.93%** | -16.15% | **0.855** | **0.553** |
+  | `gpm_mid_13_best17_a` PRZED | 8.58% | -15.53% | 0.803 | 0.552 |
+  | `gpm_mid_13_best17_a` PO | **9.02%** | -16.39% | **0.859** | 0.550 |
+
+  Poprawa CAGR/Sharpe na obu (jak oczekiwano - dywidendy/kupony wreszcie liczone dla polaczonej
+  equity), MaxDD mieszany (lepszy dla `_10`, odrobine gorszy dla `_13` - drugorzedny efekt
+  interakcji z timingiem combinera, nie odwrocenie kierunku poprawki). Zaktualizowano tez
+  duplikowana logike w `test_gpm_mid_10_best17_a_uk_mapping.py`/
+  `test_gpm_mid_13_best17_a_uk_mapping.py` (ten sam bug byl osobno zaimplementowany w tych
+  testach - teraz uzywaja `load_combined_daily_prices`).
+
+  Nowe pliki: `strategies_v2/gpm_uk/`, `strategies_v2/best17_a_uk/`,
+  `strategies_v2/gpm_uk_best17_a_uk/` (pelne komplety specow). 6 nowych testow regresyjnych dla
+  bugfixu (`test_combined_pipeline.py`) + 24 nowe testy dla nowych strategii
+  (`test_gpm_uk_strategy_spec.py`, `test_best17_a_uk_strategy_spec.py`,
+  `test_gpm_uk_best17_a_uk_combined.py`) + zaktualizowane 2 testy kompletnosci (31->32 portfeli
+  laczonych). Wygenerowano `results/gpm_uk.json`, `results/best17_a_uk.json`,
+  `results/gpm_uk_best17_a_uk.json`, przeliczono `results/gpm_mid_10_best17_a.json`/
+  `results/gpm_mid_13_best17_a.json` + scalony `SUMMARY.md`. Pelny pakiet testow: 601/601, bez
+  regresji.
+
 ## 2026-07-15 (8)
 
 - **Nowy miks `gpm_mid_13_best17_a`** - user: "Teraz zrob 50/50 z best 17" (po dodaniu

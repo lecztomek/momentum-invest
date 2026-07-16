@@ -61,7 +61,7 @@ from engine_v2.acceptance_spec import AcceptanceSpec, Criteria, UkMappingAccepta
 from engine_v2.annual_tax import apply_annual_tax
 from engine_v2.backtest_engine import daily_equity_curve
 from engine_v2.blocks.data_loader import REGISTRY as DATA_LOADER_REGISTRY
-from engine_v2.combined_pipeline import run_combined_pipeline
+from engine_v2.combined_pipeline import load_combined_daily_prices, run_combined_pipeline
 from engine_v2.combined_spec import CombinedSpec
 from engine_v2.metrics import compute_metrics
 from engine_v2.named_periods import KNOWN_PERIODS, compute_named_period_metrics
@@ -238,11 +238,7 @@ def _capital_weight_sensitivity(combined_dir: Path, combined_spec: CombinedSpec)
     name_a, name_b = names
     current_weight_a = combined_spec.combiner_params["capital_weights"][name_a]
 
-    universe: set[str] = set()
-    for rel_path in combined_spec.strategy_spec_paths:
-        universe |= set(StrategySpec.load(combined_dir / rel_path).universe)
-    loader_fn = DATA_LOADER_REGISTRY["stooq_csv"]
-    daily_prices = loader_fn(sorted(universe), {"data_dir": "data/us", "frequency": "daily"}).prices
+    daily_prices = load_combined_daily_prices(combined_spec, combined_dir)
 
     records = []
     for weight_a in _CAPITAL_WEIGHT_SWEEP:
@@ -306,12 +302,7 @@ def _generate_combined(combined_dir: Path) -> Dict[str, Any]:
     combined_spec = CombinedSpec.load(combined_dir / "combined_spec.json")
     final_portfolio = run_combined_pipeline(combined_spec, combined_dir)
 
-    universe: set[str] = set()
-    for rel_path in combined_spec.strategy_spec_paths:
-        universe |= set(StrategySpec.load(combined_dir / rel_path).universe)
-
-    loader_fn = DATA_LOADER_REGISTRY["stooq_csv"]
-    daily_prices = loader_fn(sorted(universe), {"data_dir": "data/us", "frequency": "daily"}).prices
+    daily_prices = load_combined_daily_prices(combined_spec, combined_dir)
 
     equity_curve = daily_equity_curve(final_portfolio, daily_prices, {})
     metrics_pre_tax = compute_metrics(equity_curve, final_portfolio, {})

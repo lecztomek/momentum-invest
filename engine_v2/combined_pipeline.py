@@ -162,6 +162,37 @@ def run_combined_pipeline(combined_spec: CombinedSpec, base_dir: Path) -> pd.Dat
     return build_final_portfolio(results, combined_spec.name)
 
 
+def load_combined_daily_prices(combined_spec: CombinedSpec, base_dir: Path) -> pd.DataFrame:
+    """Laduje dzienne ceny dla WSZYSTKICH tickerow uzywanych przez skladowe strategie, KAZDA
+    WLASNYM loaderem/parametrami zamiast na sztywno `stooq_csv`+`data/us` (2026-07-15, bugfix -
+    user: "sprobujmy zrobic gpm na tickerach uk ... i potem combined" ujawnil, ze wszystkie 4
+    miejsca liczace equity_curve polaczonego portfela (tu, `monthly_report.py`,
+    `generate_results.py` x2) na sztywno uzywaly `stooq_csv`+`data/us` dla WSZYSTKICH tickerow,
+    ignorujac ze niektore skladowe uzywaja innego loadera (np. `gpm_mid_10`/`gpm_mid_13` -
+    `stooq_csv_dividend_adjusted`) LUB innego `data_dir` (np. nowe `gpm_uk`/`best17_a_uk` -
+    `data/uk`). To CICHO gubilo korekte dywidend przy liczeniu metryk POLACZONEGO portfela (mimo
+    ze kazda skladowa SOLO mial ja poprawnie policzona przez WLASNY `run_strategy_pipeline`) -
+    dotyczylo `results/gpm_mid_10_best17_a.json`/`results/gpm_mid_13_best17_a.json`, teraz
+    naprawione i przeliczone (patrz CHANGELOG).
+
+    Przy overlapie tickera miedzy skladowymi (np. `dbc.us` w `gpm_mid_10` I `best17_a`, z roznymi
+    loaderami) - PIERWSZA skladowa w `strategy_spec_paths` wygrywa (prosta, udokumentowana
+    regula; nie probujemy godzic dwoch roznych zrodel ceny dla tego samego tickera)."""
+    frames = []
+    seen: set = set()
+    for rel_path in combined_spec.strategy_spec_paths:
+        strategy_spec = StrategySpec.load(base_dir / rel_path)
+        loader_fn = DATA_LOADER_REGISTRY[strategy_spec.blocks["data_loader"]]
+        daily_params = dict(strategy_spec.base_params.get("data_loader", {}))
+        daily_params["frequency"] = "daily"
+        prices = loader_fn(strategy_spec.universe, daily_params).prices
+        new_cols = [c for c in prices.columns if c not in seen]
+        if new_cols:
+            frames.append(prices[new_cols])
+            seen |= set(new_cols)
+    return pd.concat(frames, axis=1).sort_index()
+
+
 def run_combined_pipeline_with_reporting(combined_spec: CombinedSpec, base_dir: Path) -> pd.DataFrame:
     """Jak `run_combined_pipeline()`, ale DODATKOWO odpala opcjonalny blok `reporting`
     (2026-07-15, user: "Run one tez powinno dzialac dla laczonych" - analogia do
@@ -177,12 +208,7 @@ def run_combined_pipeline_with_reporting(combined_spec: CombinedSpec, base_dir: 
 
     reporting_name = combined_spec.reporting or "none"
     if reporting_name != "none":
-        universe: set = set()
-        for rel_path in combined_spec.strategy_spec_paths:
-            universe |= set(StrategySpec.load(base_dir / rel_path).universe)
-
-        loader_fn = DATA_LOADER_REGISTRY["stooq_csv"]
-        daily_prices = loader_fn(sorted(universe), {"data_dir": "data/us", "frequency": "daily"}).prices
+        daily_prices = load_combined_daily_prices(combined_spec, base_dir)
         equity_curve = daily_equity_curve(final_portfolio, daily_prices, {})
 
         reporting_fn = REPORTING_REGISTRY.get(reporting_name)

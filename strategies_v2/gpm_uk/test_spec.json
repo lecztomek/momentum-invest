@@ -1,0 +1,31 @@
+{
+  "train_window": {"start": "2018-06-01", "end": "2021-12-31"},
+  "test_window": {"start": "2022-01-01", "end": "2026-06-30"},
+
+  "walk_forward": {
+    "enabled": true,
+    "window_months": 24,
+    "step_months": 6
+  },
+
+  "ablation": {
+    "enabled": true,
+    "modules_to_test": ["portfolio_risk_engine"]
+  },
+
+  "sensitivity": {
+    "enabled": true,
+    "blocks": ["portfolio_risk_engine"]
+  },
+
+  "costs": {
+    "transaction_cost_bps_one_way": 40.0,
+    "annual_tax_rate": 0.19
+  },
+
+  "uk_mapping": {
+    "enabled": false,
+    "ticker_mapping_file": "uk_ticker_mapping.json",
+    "uk_data_dir": "data/uk"
+  }
+}

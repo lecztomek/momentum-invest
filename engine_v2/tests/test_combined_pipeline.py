@@ -84,3 +84,46 @@ def test_combined_pipeline_matches_manual_capital_split(us_data_dir, us_universe
         weights = json.loads(row["weights_used_json"])
         for ticker, weight in weights.items():
             assert weight == pytest.approx(manual_combined.loc[row["date"], ticker], abs=1e-9)
+
+
+def test_load_combined_daily_prices_uses_each_components_own_loader(us_data_dir):
+    """2026-07-15 bugfix (user: "sprobujmy zrobic gpm na tickerach uk ... i potem combined" -
+    ujawnil, ze wszystkie miejsca liczace equity_curve polaczonego portfela na sztywno uzywaly
+    stooq_csv+data/us dla WSZYSTKICH tickerow, CICHO gubiac korekte dywidend dla skladowych typu
+    gpm_mid_10 - patrz CHANGELOG). `lqd.us` w `gpm_mid_10` jest mapowany na `lqda.uk`
+    (zmierzony gap +2,11%/rok - duzy, latwo odroznialny od surowej ceny), wiec skorygowana
+    seria MUSI byc realnie inna od surowej `stooq_csv`+`data/us`."""
+    from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
+    from engine_v2.combined_pipeline import load_combined_daily_prices
+
+    combined_dir = REPO_ROOT / "strategies_v2" / "gpm_mid_10_best17_a"
+    combined_spec = CombinedSpec.load(combined_dir / "combined_spec.json")
+
+    prices = load_combined_daily_prices(combined_spec, combined_dir)
+    raw_lqd = LOADER_REGISTRY["stooq_csv"](["lqd.us"], {"data_dir": str(us_data_dir), "frequency": "daily"}).prices["lqd.us"]
+
+    assert not prices["lqd.us"].dropna().equals(raw_lqd.reindex(prices["lqd.us"].dropna().index))
+
+
+def test_load_combined_daily_prices_first_component_wins_on_overlap(us_data_dir):
+    """`dbc.us` wystepuje w OBU skladowych `gpm_mid_10_best17_a` (gpm_mid_10:
+    stooq_csv_dividend_adjusted; best17_a: plain stooq_csv) - polityka "pierwsza skladowa
+    wygrywa" musi dac WYNIK Z GPM_MID_10 (pierwszy w strategy_spec_paths), nie z best17_a."""
+    from engine_v2.combined_pipeline import load_combined_daily_prices
+    from engine_v2.spec import StrategySpec
+
+    combined_dir = REPO_ROOT / "strategies_v2" / "gpm_mid_10_best17_a"
+    combined_spec = CombinedSpec.load(combined_dir / "combined_spec.json")
+    assert "dbc.us" in StrategySpec.load(combined_dir / combined_spec.strategy_spec_paths[0]).universe
+    assert "dbc.us" in StrategySpec.load(combined_dir / combined_spec.strategy_spec_paths[1]).universe
+
+    prices = load_combined_daily_prices(combined_spec, combined_dir)
+
+    gpm_mid_10_spec = StrategySpec.load(combined_dir / combined_spec.strategy_spec_paths[0])
+    from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
+
+    expected = LOADER_REGISTRY[gpm_mid_10_spec.blocks["data_loader"]](
+        gpm_mid_10_spec.universe, {**gpm_mid_10_spec.base_params["data_loader"], "frequency": "daily"}
+    ).prices["dbc.us"]
+
+    assert prices["dbc.us"].dropna().equals(expected.reindex(prices["dbc.us"].dropna().index))

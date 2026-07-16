@@ -1,0 +1,59 @@
+{
+  "name": "best17_a_uk_v0",
+  "hypothesis": "User: 'sprobujmy zrobic gpm na tickerach uk ale bez mappingu jako zrodlowa strategie to samo dla best17'. Analogia do `gpm_uk` - `best17_a` zbudowany WPROST na tickerach UK (Acc, USD, prawdziwy total return z NAV) jako WLASNYM, ZRODLOWYM uniwersum, zamiast US Dist ceny + korekta/ekstrapolacja. Uniwersum identyczne jak `best17_a`, podmienione na UK Acc odpowiedniki: XLK->IUIT, IVV->CSPX, DBC->ICOM, IAU->IGLN, VT->VWRA (te same mapowania co juz istniejacy `best17_a/uk_ticker_mapping.json`, uzywany dotad TYLKO do 'ostatecznego testu' - tu staja sie GLOWNYM zrodlem danych).\n\nCena: KROTSZA historia - najpozniej debiutujacy ticker to VWRA (2019-07-26, VT), wiec backtest realnie zaczyna sie ~2019-2020 (nie ~2005-2010 jak wersja US). Mechanika DOKLADNIE identyczna jak `best17_a` (canary_regime_gate na VWRA+IUIT, ranking EMA7/EMA16, top2 wagi 0.8/0.2, gate'y IGLN/ICOM na 3m momentum, histereza po roznicy score, rebound-starter na VWRA) - zero nowego kodu bloku, tylko podmiana nazw tickerow wszedzie w konfiguracji (canary_assets, target_assets, rebound_ticker, gates).",
+  "universe": ["iuit.uk", "cspx.uk", "icom.uk", "igln.uk", "vwra.uk"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "rebound_starter",
+    "overlays": "none",
+    "execution": "score_gap_hysteresis",
+    "reporting": "monthly_csv_export"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/uk", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "ema7_16": {"impl": "ema_ratio_monthly", "fast_span": 7, "slow_span": 16},
+      "ema5_12": {"impl": "ema_ratio_monthly", "fast_span": 5, "slow_span": 12},
+      "mom_r3": {"impl": "momentum_month_end", "window": 3},
+      "mom_r3_gate": {"impl": "momentum_monthly", "window": 3}
+    },
+    "asset_filters": {
+      "canary": {
+        "impl": "canary_regime_gate",
+        "canary_assets": ["vwra.uk", "iuit.uk"],
+        "indicator_key": "ema5_12",
+        "bad_threshold": -0.02,
+        "max_bad_count": 0,
+        "target_assets": ["iuit.uk", "cspx.uk", "icom.uk", "igln.uk"]
+      },
+      "iau_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3_gate", "threshold": -0.01, "assets": ["igln.uk"]},
+      "dbc_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3_gate", "threshold": -0.01, "assets": ["icom.uk"]},
+      "require_positive_score": {"impl": "indicator_positive", "indicator_key": "ema7_16", "threshold": 0.0, "assets": ["iuit.uk", "cspx.uk", "icom.uk", "igln.uk"]},
+      "exclude_canary_from_selection": {"impl": "never_eligible", "assets": ["vwra.uk"]}
+    },
+    "asset_scoring": {"weights": {"ema7_16": 1.0}},
+    "selector": {"top_n": 2},
+    "alpha_weighting": {"weights": [0.8, 0.2], "redistribute_if_short": true},
+    "portfolio_risk_engine": {
+      "rebound_ticker": "vwra.uk",
+      "indicator_key": "mom_r3",
+      "threshold": 0.05
+    },
+    "execution": {"min_score_gap": 0.005, "cost_bps": 40, "full_position_size": 2},
+    "reporting": {"output_path": "results/monthly/best17_a_uk.csv", "annual_tax_rate": 0.19}
+  },
+
+  "allowed_param_families": {
+    "execution": {"min_score_gap": [0.0, 0.0025, 0.005, 0.0075, 0.01]},
+    "asset_filters": {"canary.bad_threshold": [-0.03, -0.02, -0.01]}
+  },
+
+  "created_at": "2026-07-15"
+}
