@@ -80,8 +80,9 @@ def test_synergy_v2_tlt_and_offensive_assets_never_held_together(us_data_dir):
 
 
 def test_synergy_v1_metrics_regression_baseline(us_data_dir):
-    """Zamrozony wynik (2026-07-11, PRZED podatkiem) - crowding-out: gorzej niz best17_a solo
-    (cagr ~0.1649, maxdd ~-0.2947, sharpe ~0.96) na kazdej z trzech metryk."""
+    """Zamrozony wynik (2026-07-15, PRZED podatkiem, PO poprawce progu best17_a's
+    iau_gate/dbc_gate -1%->+1%, patrz CHANGELOG) - crowding-out: gorzej niz best17_a solo.
+    Poprzednia baseline (prog -1%): cagr=0.1445, maxdd=-0.2819, sharpe=0.86."""
     from engine_v2.backtest_engine import daily_equity_curve
     from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
     from engine_v2.metrics import compute_metrics
@@ -94,14 +95,15 @@ def test_synergy_v1_metrics_regression_baseline(us_data_dir):
     equity_curve = daily_equity_curve(final_portfolio, market_data.prices, {})
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
-    assert metrics["cagr"] == pytest.approx(0.1445, abs=0.01)
+    assert metrics["cagr"] == pytest.approx(0.1298, abs=0.01)
     assert metrics["max_drawdown"] == pytest.approx(-0.2819, abs=0.01)
-    assert metrics["sharpe"] == pytest.approx(0.86, abs=0.05)
+    assert metrics["sharpe"] == pytest.approx(0.788, abs=0.05)
 
 
 def test_synergy_v2_metrics_regression_baseline(us_data_dir):
-    """Zamrozony wynik (2026-07-11, PRZED podatkiem) - blisko, ale wciaz ponizej best17_a solo
-    (cagr ~0.1674, maxdd ~-0.3119, sharpe ~0.961) na kazdej z trzech metryk."""
+    """Zamrozony wynik (2026-07-15, PRZED podatkiem, PO poprawce progu best17_a's
+    iau_gate/dbc_gate -1%->+1%, patrz CHANGELOG) - blisko, ale wciaz ponizej best17_a solo.
+    Poprzednia baseline (prog -1%): cagr=0.1626, maxdd=-0.3119, sharpe=0.92."""
     from engine_v2.backtest_engine import daily_equity_curve
     from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
     from engine_v2.metrics import compute_metrics
@@ -114,6 +116,6 @@ def test_synergy_v2_metrics_regression_baseline(us_data_dir):
     equity_curve = daily_equity_curve(final_portfolio, market_data.prices, {})
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
-    assert metrics["cagr"] == pytest.approx(0.1626, abs=0.01)
+    assert metrics["cagr"] == pytest.approx(0.1464, abs=0.01)
     assert metrics["max_drawdown"] == pytest.approx(-0.3119, abs=0.01)
-    assert metrics["sharpe"] == pytest.approx(0.92, abs=0.05)
+    assert metrics["sharpe"] == pytest.approx(0.844, abs=0.05)

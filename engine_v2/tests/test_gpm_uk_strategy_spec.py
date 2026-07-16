@@ -24,7 +24,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 GPM_UK_SPEC_PATH = REPO_ROOT / "strategies_v2" / "gpm_uk" / "strategy_spec.json"
 
 _RISKY_UK = {
-    "cspx.uk", "cndx.uk", "eimi.uk", "xres.uk", "icom.uk", "igln.uk", "ihya.uk", "lqda.uk",
+    "cspx.uk", "cndx.uk", "eimi.uk", "xres.uk", "cmod.uk", "igln.uk", "ihya.uk", "lqda.uk",
     "dtla.uk", "iues.uk",
 }
 

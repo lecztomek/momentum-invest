@@ -3,32 +3,32 @@
     "max_annual_turnover": true,
     "max_consecutive_negative_months": true,
     "max_drawdown": true,
-    "max_time_underwater_months": false,
+    "max_time_underwater_months": true,
     "min_cagr": true,
     "min_calmar": true,
     "min_sharpe": true
   },
   "metrics": {
-    "annual_turnover": 3.681478377472343,
-    "best_year_return": 0.13091398944782573,
-    "cagr": 0.055558630098350825,
-    "calmar": 0.6091633156510398,
+    "annual_turnover": 3.6569896077774047,
+    "best_year_return": 0.1314604973067519,
+    "cagr": 0.05921312175983329,
+    "calmar": 0.6759737938615767,
     "max_consecutive_negative_months": 3,
-    "max_drawdown": -0.09120481925109503,
-    "max_time_underwater_months": 42,
-    "sharpe": 0.6985544311710069,
-    "worst_year_return": -0.037528265876212386
+    "max_drawdown": -0.08759677120258114,
+    "max_time_underwater_months": 28,
+    "sharpe": 0.7415454348627805,
+    "worst_year_return": -0.03742808508208395
   },
   "metrics_pre_tax": {
-    "annual_turnover": 3.681478377472343,
-    "best_year_return": 0.16162220919484693,
-    "cagr": 0.06595518898808073,
-    "calmar": 0.8008453830163762,
+    "annual_turnover": 3.6569896077774047,
+    "best_year_return": 0.16229691025524962,
+    "cagr": 0.07049094181858884,
+    "calmar": 0.8581257180305302,
     "max_consecutive_negative_months": 3,
-    "max_drawdown": -0.08235695726890646,
+    "max_drawdown": -0.08214523855592093,
     "max_time_underwater_months": 28,
-    "sharpe": 0.8314628324205315,
-    "worst_year_return": -0.03752826587621261
+    "sharpe": 0.8861266409734078,
+    "worst_year_return": -0.03742808508208406
   },
   "mode": "final",
   "named_periods_all": {
@@ -37,14 +37,14 @@
       "covered": true,
       "metrics": {
         "annual_turnover": 3.6845394736842105,
-        "best_year_return": 0.07465883605323098,
-        "cagr": 0.08243639125374669,
-        "calmar": 1.5052867257304885,
+        "best_year_return": 0.07471385307327871,
+        "cagr": 0.08249735646577316,
+        "calmar": 1.5063999491867721,
         "max_consecutive_negative_months": 2,
-        "max_drawdown": -0.0547645773025347,
+        "max_drawdown": -0.05476457730253459,
         "max_time_underwater_months": 4,
-        "sharpe": 0.8634499732342829,
-        "worst_year_return": 0.07465883605323098
+        "sharpe": 0.8644256876718663,
+        "worst_year_return": 0.07471385307327871
       }
     },
     "gfc_crash": {
@@ -57,14 +57,14 @@
       "covered": true,
       "metrics": {
         "annual_turnover": 2.187125748502994,
-        "best_year_return": -0.035212776539908286,
-        "cagr": -0.035619859456693104,
-        "calmar": -0.6502555869374375,
+        "best_year_return": -0.03511235473344432,
+        "cagr": -0.03551829820769936,
+        "calmar": -0.649568210242325,
         "max_consecutive_negative_months": 3,
-        "max_drawdown": -0.05477824438918688,
+        "max_drawdown": -0.05467985909354933,
         "max_time_underwater_months": 10,
-        "sharpe": -0.6767295077900392,
-        "worst_year_return": -0.035212776539908286
+        "sharpe": -0.6754905005325152,
+        "worst_year_return": -0.03511235473344432
       }
     },
     "post_gfc_recovery": {
@@ -84,25 +84,25 @@
       ],
       "default_rank_std": 1.118033988749895,
       "default_wins_fold_count": 0,
-      "kendalls_w": 0.7291666666666666,
+      "kendalls_w": 0.6708333333333333,
       "n_folds": 4,
       "n_variants": 9
     },
     "local_param_stability": {
-      "best_metric": 0.1102936418019847,
+      "best_metric": 0.10998928481800563,
       "best_values": [
         4,
         6
       ],
       "default_in_plateau": false,
       "default_meets_threshold": false,
-      "default_metric": 0.09464701256757646,
+      "default_metric": 0.09919317570774949,
       "default_rank": 5,
       "default_values": [
         3,
         5
       ],
-      "gap_to_best": 0.14186338377056548,
+      "gap_to_best": 0.09815600790676998,
       "metric_key": "wf_mean_cagr",
       "n_variants": 9,
       "param_cols": [
@@ -116,12 +116,12 @@
       "tolerance": 0.03
     },
     "param_stability": {
-      "best": 0.1102936418019847,
+      "best": 0.10998928481800563,
       "best_variant_name": "gpm_uk_v0__portfolio_risk_engine.top_n_risky=4_portfolio_risk_engine.full_protective_max_n=6",
       "metric_key": "wf_mean_cagr",
       "n_variants": 9,
-      "relative_drop": 0.29664745432652695,
-      "worst": 0.07757531373302412,
+      "relative_drop": 0.2883340672235796,
+      "worst": 0.07827562697541735,
       "worst_variant_name": "gpm_uk_v0__portfolio_risk_engine.top_n_risky=2_portfolio_risk_engine.full_protective_max_n=4"
     },
     "param_stability_check": {
@@ -133,173 +133,173 @@
         "portfolio_risk_engine.top_n_risky": 2,
         "variant_name": "gpm_uk_v0__portfolio_risk_engine.top_n_risky=2_portfolio_risk_engine.full_protective_max_n=4",
         "wf_fold_cagrs": [
-          0.08944951573311655,
-          0.08933284862743474,
-          0.08382731313989944,
-          0.04769157743164576
+          0.09184615551377906,
+          0.08933284862743585,
+          0.08393293313608852,
+          0.04799057062436596
         ],
-        "wf_mean_cagr": 0.07757531373302412,
-        "wf_mean_sharpe": 0.8870562876685696,
-        "wf_min_cagr": 0.04769157743164576,
+        "wf_mean_cagr": 0.07827562697541735,
+        "wf_mean_sharpe": 0.8902603545173478,
+        "wf_min_cagr": 0.04799057062436596,
         "wf_windows": 4,
-        "wf_worst_drawdown": -0.11257720684896755
+        "wf_worst_drawdown": -0.11257720684896744
       },
       {
         "portfolio_risk_engine.full_protective_max_n": 5,
         "portfolio_risk_engine.top_n_risky": 2,
         "variant_name": "gpm_uk_v0__portfolio_risk_engine.top_n_risky=2_portfolio_risk_engine.full_protective_max_n=5",
         "wf_fold_cagrs": [
-          0.08944951573311655,
-          0.08933284862743474,
-          0.08382731313989944,
-          0.04769157743164576
+          0.09184615551377906,
+          0.08933284862743585,
+          0.08393293313608852,
+          0.04799057062436596
         ],
-        "wf_mean_cagr": 0.07757531373302412,
-        "wf_mean_sharpe": 0.8870562876685696,
-        "wf_min_cagr": 0.04769157743164576,
+        "wf_mean_cagr": 0.07827562697541735,
+        "wf_mean_sharpe": 0.8902603545173478,
+        "wf_min_cagr": 0.04799057062436596,
         "wf_windows": 4,
-        "wf_worst_drawdown": -0.11257720684896755
+        "wf_worst_drawdown": -0.11257720684896744
       },
       {
         "portfolio_risk_engine.full_protective_max_n": 6,
         "portfolio_risk_engine.top_n_risky": 2,
         "variant_name": "gpm_uk_v0__portfolio_risk_engine.top_n_risky=2_portfolio_risk_engine.full_protective_max_n=6",
         "wf_fold_cagrs": [
-          0.11034101711430377,
+          0.11012803483075673,
           0.09578532566713616,
-          0.08413500498242699,
-          0.047691577431646426
+          0.08424065496347533,
+          0.04799057062436529
         ],
-        "wf_mean_cagr": 0.08448823129887834,
-        "wf_mean_sharpe": 0.9727923427357335,
-        "wf_min_cagr": 0.047691577431646426,
+        "wf_mean_cagr": 0.08453614652143338,
+        "wf_mean_sharpe": 0.9674944925874371,
+        "wf_min_cagr": 0.04799057062436529,
         "wf_windows": 4,
-        "wf_worst_drawdown": -0.1125772068489671
+        "wf_worst_drawdown": -0.11257720684896733
       },
       {
         "portfolio_risk_engine.full_protective_max_n": 4,
         "portfolio_risk_engine.top_n_risky": 3,
         "variant_name": "gpm_uk_v0__portfolio_risk_engine.top_n_risky=3_portfolio_risk_engine.full_protective_max_n=4",
         "wf_fold_cagrs": [
-          0.09629580658809545,
-          0.1093802485395523,
-          0.10577240595310933,
-          0.06713958918954877
+          0.09974377642534393,
+          0.10929273171084386,
+          0.10587871554477957,
+          0.08185747915003061
         ],
-        "wf_mean_cagr": 0.09464701256757646,
-        "wf_mean_sharpe": 1.1701273227544082,
-        "wf_min_cagr": 0.06713958918954877,
+        "wf_mean_cagr": 0.09919317570774949,
+        "wf_mean_sharpe": 1.2168763696004112,
+        "wf_min_cagr": 0.08185747915003061,
         "wf_windows": 4,
-        "wf_worst_drawdown": -0.05476457730253459
+        "wf_worst_drawdown": -0.05476457730253448
       },
       {
         "portfolio_risk_engine.full_protective_max_n": 5,
         "portfolio_risk_engine.top_n_risky": 3,
         "variant_name": "gpm_uk_v0__portfolio_risk_engine.top_n_risky=3_portfolio_risk_engine.full_protective_max_n=5",
         "wf_fold_cagrs": [
-          0.09629580658809545,
-          0.1093802485395523,
-          0.10577240595310933,
-          0.06713958918954877
+          0.09974377642534393,
+          0.10929273171084386,
+          0.10587871554477957,
+          0.08185747915003061
         ],
-        "wf_mean_cagr": 0.09464701256757646,
-        "wf_mean_sharpe": 1.1701273227544082,
-        "wf_min_cagr": 0.06713958918954877,
+        "wf_mean_cagr": 0.09919317570774949,
+        "wf_mean_sharpe": 1.2168763696004112,
+        "wf_min_cagr": 0.08185747915003061,
         "wf_windows": 4,
-        "wf_worst_drawdown": -0.05476457730253459
+        "wf_worst_drawdown": -0.05476457730253448
       },
       {
         "portfolio_risk_engine.full_protective_max_n": 6,
         "portfolio_risk_engine.top_n_risky": 3,
         "variant_name": "gpm_uk_v0__portfolio_risk_engine.top_n_risky=3_portfolio_risk_engine.full_protective_max_n=6",
         "wf_fold_cagrs": [
-          0.11051738375029685,
-          0.11253829245747515,
-          0.10496072984425142,
-          0.06713958918954921
+          0.11172469319909584,
+          0.11245052649688536,
+          0.10506696140091631,
+          0.08185747915003083
         ],
-        "wf_mean_cagr": 0.09878899881039316,
-        "wf_mean_sharpe": 1.226557586777346,
-        "wf_min_cagr": 0.06713958918954921,
+        "wf_mean_cagr": 0.10277491506173209,
+        "wf_mean_sharpe": 1.2660615855317432,
+        "wf_min_cagr": 0.08185747915003083,
         "wf_windows": 4,
-        "wf_worst_drawdown": -0.05476457730253448
+        "wf_worst_drawdown": -0.05476457730253437
       },
       {
         "portfolio_risk_engine.full_protective_max_n": 4,
         "portfolio_risk_engine.top_n_risky": 4,
         "variant_name": "gpm_uk_v0__portfolio_risk_engine.top_n_risky=4_portfolio_risk_engine.full_protective_max_n=4",
         "wf_fold_cagrs": [
-          0.09928462730479315,
-          0.10761995630668619,
-          0.11493135838264767,
-          0.10587424131977285
+          0.09996301360088222,
+          0.10777510524970846,
+          0.11521672677245776,
+          0.10625096436972825
         ],
-        "wf_mean_cagr": 0.10692754582847497,
-        "wf_mean_sharpe": 1.3637494827868546,
-        "wf_min_cagr": 0.09928462730479315,
+        "wf_mean_cagr": 0.10730145249819417,
+        "wf_mean_sharpe": 1.3654684708609153,
+        "wf_min_cagr": 0.09996301360088222,
         "wf_windows": 4,
-        "wf_worst_drawdown": -0.05632016266261175
+        "wf_worst_drawdown": -0.0559460741494362
       },
       {
         "portfolio_risk_engine.full_protective_max_n": 5,
         "portfolio_risk_engine.top_n_risky": 4,
         "variant_name": "gpm_uk_v0__portfolio_risk_engine.top_n_risky=4_portfolio_risk_engine.full_protective_max_n=5",
         "wf_fold_cagrs": [
-          0.09928462730479315,
-          0.10761995630668619,
-          0.11493135838264767,
-          0.10587424131977285
+          0.09996301360088222,
+          0.10777510524970846,
+          0.11521672677245776,
+          0.10625096436972825
         ],
-        "wf_mean_cagr": 0.10692754582847497,
-        "wf_mean_sharpe": 1.3637494827868546,
-        "wf_min_cagr": 0.09928462730479315,
+        "wf_mean_cagr": 0.10730145249819417,
+        "wf_mean_sharpe": 1.3654684708609153,
+        "wf_min_cagr": 0.09996301360088222,
         "wf_windows": 4,
-        "wf_worst_drawdown": -0.05632016266261175
+        "wf_worst_drawdown": -0.0559460741494362
       },
       {
         "portfolio_risk_engine.full_protective_max_n": 6,
         "portfolio_risk_engine.top_n_risky": 4,
         "variant_name": "gpm_uk_v0__portfolio_risk_engine.top_n_risky=4_portfolio_risk_engine.full_protective_max_n=6",
         "wf_fold_cagrs": [
-          0.1114193325571633,
-          0.11099339403502628,
-          0.1128875992959768,
-          0.10587424131977241
+          0.10938471481024559,
+          0.11114901550953005,
+          0.11317244458251796,
+          0.10625096436972892
         ],
-        "wf_mean_cagr": 0.1102936418019847,
-        "wf_mean_sharpe": 1.4123273252158433,
-        "wf_min_cagr": 0.10587424131977241,
+        "wf_mean_cagr": 0.10998928481800563,
+        "wf_mean_sharpe": 1.4049725140058529,
+        "wf_min_cagr": 0.10625096436972892,
         "wf_windows": 4,
-        "wf_worst_drawdown": -0.05632016266261164
+        "wf_worst_drawdown": -0.0559460741494362
       }
     ]
   },
   "train_oos": {
     "test_oos": {
       "annual_turnover": 3.670626550868486,
-      "best_year_return": 0.13091398944782573,
-      "cagr": 0.05942118184565759,
-      "calmar": 0.731055786612048,
+      "best_year_return": 0.1314604973067519,
+      "cagr": 0.05958977853237024,
+      "calmar": 0.7328284461873821,
       "max_consecutive_negative_months": 3,
-      "max_drawdown": -0.08128132344186045,
+      "max_drawdown": -0.08131477270347842,
       "max_time_underwater_months": 21,
-      "sharpe": 0.7283534083393159,
-      "worst_year_return": -0.035212776539908286
+      "sharpe": 0.7305939149889203,
+      "worst_year_return": -0.03511235473344432
     },
     "test_window": {
       "end": "2026-06-30",
       "start": "2022-01-01"
     },
     "train": {
-      "annual_turnover": 3.902853792025019,
-      "best_year_return": 0.11601283043325661,
-      "cagr": 0.05410856343898751,
-      "calmar": 0.7705492596799305,
+      "annual_turnover": 3.8457388584831897,
+      "best_year_return": 0.11606996456569507,
+      "cagr": 0.062250914982940664,
+      "calmar": 0.8865581166778728,
       "max_consecutive_negative_months": 3,
-      "max_drawdown": -0.07022077142928285,
-      "max_time_underwater_months": 16,
-      "sharpe": 0.6987026443140822,
-      "worst_year_return": -0.00031502704331320963
+      "max_drawdown": -0.0702163950810224,
+      "max_time_underwater_months": 11,
+      "sharpe": 0.7969073613385821,
+      "worst_year_return": 0.005591848040473968
     },
     "train_window": {
       "end": "2021-12-31",

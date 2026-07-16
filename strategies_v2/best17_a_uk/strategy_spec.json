@@ -1,7 +1,7 @@
 {
   "name": "best17_a_uk_v0",
-  "hypothesis": "User: 'sprobujmy zrobic gpm na tickerach uk ale bez mappingu jako zrodlowa strategie to samo dla best17'. Analogia do `gpm_uk` - `best17_a` zbudowany WPROST na tickerach UK (Acc, USD, prawdziwy total return z NAV) jako WLASNYM, ZRODLOWYM uniwersum, zamiast US Dist ceny + korekta/ekstrapolacja. Uniwersum identyczne jak `best17_a`, podmienione na UK Acc odpowiedniki: XLK->IUIT, IVV->CSPX, DBC->ICOM, IAU->IGLN, VT->VWRA (te same mapowania co juz istniejacy `best17_a/uk_ticker_mapping.json`, uzywany dotad TYLKO do 'ostatecznego testu' - tu staja sie GLOWNYM zrodlem danych).\n\nCena: KROTSZA historia - najpozniej debiutujacy ticker to VWRA (2019-07-26, VT), wiec backtest realnie zaczyna sie ~2019-2020 (nie ~2005-2010 jak wersja US). Mechanika DOKLADNIE identyczna jak `best17_a` (canary_regime_gate na VWRA+IUIT, ranking EMA7/EMA16, top2 wagi 0.8/0.2, gate'y IGLN/ICOM na 3m momentum, histereza po roznicy score, rebound-starter na VWRA) - zero nowego kodu bloku, tylko podmiana nazw tickerow wszedzie w konfiguracji (canary_assets, target_assets, rebound_ticker, gates).",
-  "universe": ["iuit.uk", "cspx.uk", "icom.uk", "igln.uk", "vwra.uk"],
+  "hypothesis": "User: 'sprobujmy zrobic gpm na tickerach uk ale bez mappingu jako zrodlowa strategie to samo dla best17'. Analogia do `gpm_uk` - `best17_a` zbudowany WPROST na tickerach UK (Acc, USD, prawdziwy total return z NAV) jako WLASNYM, ZRODLOWYM uniwersum, zamiast US Dist ceny + korekta/ekstrapolacja. Uniwersum identyczne jak `best17_a`, podmienione na UK Acc odpowiedniki: XLK->IUIT, IVV->CSPX, DBC->CMOD, IAU->IGLN, VT->VWRA (te same mapowania co juz istniejacy `best17_a/uk_ticker_mapping.json`, uzywany dotad TYLKO do 'ostatecznego testu' - tu staja sie GLOWNYM zrodlem danych).\n\nCena: KROTSZA historia - najpozniej debiutujacy ticker to VWRA (2019-07-26, VT), wiec backtest realnie zaczyna sie ~2019-2020 (nie ~2005-2010 jak wersja US). Mechanika DOKLADNIE identyczna jak `best17_a` (canary_regime_gate na VWRA+IUIT, ranking EMA7/EMA16, top2 wagi 0.8/0.2, gate'y IGLN/CMOD na 3m momentum, histereza po roznicy score, rebound-starter na VWRA) - zero nowego kodu bloku, tylko podmiana nazw tickerow wszedzie w konfiguracji (canary_assets, target_assets, rebound_ticker, gates). POPRAWKA 2026-07-15 (user: 'Mamy bledny prog gate powinien byc plus 1 procent'): `iau_gate`/`dbc_gate` mialy `threshold=-0.01`, poprawione na `threshold=0.01` (ten sam blad/poprawka co w `best17_a`). POPRAWKA 2026-07-16 (user: 'Zarowno best17 jak i gpm uk powinny uzywac dbc-> cmod'): DBC-slot uzywal `icom.uk`, ale prawdziwy, zweryfikowany system uzytkownika (`ideas/best17_3m_tlt_dtla_40/ticker_mapping.json`) mapuje `dbc.us` na `cmod.uk`, nie `icom.uk` - poprawione na CMOD (ten sam blad/poprawka co w `best17_a/uk_ticker_mapping.json` i `gpm_uk`).",
+  "universe": ["iuit.uk", "cspx.uk", "cmod.uk", "igln.uk", "vwra.uk"],
 
   "blocks": {
     "data_loader": "stooq_csv",
@@ -31,11 +31,11 @@
         "indicator_key": "ema5_12",
         "bad_threshold": -0.02,
         "max_bad_count": 0,
-        "target_assets": ["iuit.uk", "cspx.uk", "icom.uk", "igln.uk"]
+        "target_assets": ["iuit.uk", "cspx.uk", "cmod.uk", "igln.uk"]
       },
-      "iau_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3_gate", "threshold": -0.01, "assets": ["igln.uk"]},
-      "dbc_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3_gate", "threshold": -0.01, "assets": ["icom.uk"]},
-      "require_positive_score": {"impl": "indicator_positive", "indicator_key": "ema7_16", "threshold": 0.0, "assets": ["iuit.uk", "cspx.uk", "icom.uk", "igln.uk"]},
+      "iau_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3_gate", "threshold": 0.01, "assets": ["igln.uk"]},
+      "dbc_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3_gate", "threshold": 0.01, "assets": ["cmod.uk"]},
+      "require_positive_score": {"impl": "indicator_positive", "indicator_key": "ema7_16", "threshold": 0.0, "assets": ["iuit.uk", "cspx.uk", "cmod.uk", "igln.uk"]},
       "exclude_canary_from_selection": {"impl": "never_eligible", "assets": ["vwra.uk"]}
     },
     "asset_scoring": {"weights": {"ema7_16": 1.0}},

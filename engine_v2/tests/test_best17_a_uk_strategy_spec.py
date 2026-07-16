@@ -43,7 +43,7 @@ def test_best17_a_uk_uses_plain_loader_on_uk_data():
 
 def test_best17_a_uk_universe_matches_best17_a_ticker_mapping():
     """Uniwersum musi byc DOKLADNIE UK odpowiednikami best17_a's US uniwersum (xlk/ivv/dbc/iau/vt
-    -> iuit/cspx/icom/igln/vwra), wg juz istniejacego uk_ticker_mapping.json."""
+    -> iuit/cspx/cmod/igln/vwra), wg juz istniejacego uk_ticker_mapping.json."""
     spec = _load_spec()
     best17_a_spec = StrategySpec.load(REPO_ROOT / "strategies_v2" / "best17_a" / "strategy_spec.json")
     mapping = json.loads((REPO_ROOT / "strategies_v2" / "best17_a" / "uk_ticker_mapping.json").read_text())

@@ -67,10 +67,14 @@ def test_best17_a_asset_gates_use_month_start_momentum_not_month_end():
     assert rebound["indicator_key"] == "mom_r3"
 
 
-def test_best17_a_iau_gate_matches_real_2026_transition(us_data_dir):
-    """Zweryfikowane wprost przeciw prawdziwemu CSV starego silnika (ideas_out/best17_3m_tlt_dtla_40) -
-    IAU powinien byc eligibilny w maju 2026 (mom_r3_gate ~ -0.97%, > -1% progu) i zablokowany w
-    czerwcu 2026 (mom_r3_gate ~ -16.05%, znacznie ponizej progu)."""
+def test_best17_a_iau_gate_matches_new_plus_1pct_threshold(us_data_dir):
+    """POPRAWKA 2026-07-15 (user: "Mamy bledny prog gate powinien byc plus 1 procent") -
+    `iau_gate`/`dbc_gate` threshold zmieniony z -1% na +1%, SWIADOMIE ODCHODZAC od
+    zweryfikowanego zachowania starego silnika (ideas_out/best17_3m_tlt_dtla_40, ktory uzywal
+    -1% - IAU byl eligibilny w maju 2026 przy mom_r3_gate ~-0.97%, bo to bylo > -1%; teraz przy
+    +1% ten sam maj 2026 jest JUZ ZABLOKOWANY, -0.97% < +1%). Ten test weryfikuje mechanike
+    NOWEGO progu na realnym przejsciu: styczen 2025 (mom_r3_gate ~-0.04%, ponizej +1% ->
+    zablokowany) -> luty 2025 (mom_r3_gate ~+3.00%, powyzej +1% -> eligibilny)."""
     from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
     from engine_v2.blocks.indicators import REGISTRY as INDICATORS_REGISTRY
 
@@ -81,8 +85,11 @@ def test_best17_a_iau_gate_matches_real_2026_transition(us_data_dir):
     mom_r3_gate = INDICATORS_REGISTRY["momentum_monthly"](market_data, {"window": 3})
 
     threshold = spec.base_params["asset_filters"]["iau_gate"]["threshold"]
-    assert mom_r3_gate.loc["2026-05-01", "iau.us"] > threshold  # eligibilny (barely)
-    assert mom_r3_gate.loc["2026-06-01", "iau.us"] <= threshold  # zablokowany
+    assert threshold == pytest.approx(0.01)
+    assert mom_r3_gate.loc["2025-01-01", "iau.us"] <= threshold  # zablokowany
+    assert mom_r3_gate.loc["2025-02-01", "iau.us"] > threshold  # eligibilny
+    # maj 2026 - PRZED poprawka byl eligibilny (proba -1%), TERAZ zablokowany (+1%)
+    assert mom_r3_gate.loc["2026-05-01", "iau.us"] <= threshold
 
 
 def test_best17_a_full_chain_on_real_data(us_data_dir):
@@ -120,9 +127,11 @@ def test_best17_a_full_chain_on_real_data(us_data_dir):
 
 
 def test_best17_a_metrics_regression_baseline(us_data_dir):
-    """Zamrozony wynik na realnych danych (2026-07-11) - lapie regresje w blokach uzywanych przez
-    best17_a (canary_regime_gate, rebound_starter, score_gap_hysteresis, rank_weights) bez
-    potrzeby przechowywania calej tabeli FINAL PORTFOLIO."""
+    """Zamrozony wynik na realnych danych (2026-07-15, PO poprawce progu iau_gate/dbc_gate
+    -1%->+1%, patrz CHANGELOG) - lapie regresje w blokach uzywanych przez best17_a
+    (canary_regime_gate, rebound_starter, score_gap_hysteresis, rank_weights) bez potrzeby
+    przechowywania calej tabeli FINAL PORTFOLIO. Poprzednia baseline (prog -1%, przed poprawka):
+    cagr=0.1674, max_drawdown=-0.3119, sharpe=0.961."""
     from engine_v2.backtest_engine import daily_equity_curve
     from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
     from engine_v2.metrics import compute_metrics
@@ -135,9 +144,9 @@ def test_best17_a_metrics_regression_baseline(us_data_dir):
     equity_curve = daily_equity_curve(final_portfolio, market_data.prices, {})
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
-    assert metrics["cagr"] == pytest.approx(0.1674, abs=0.01)
+    assert metrics["cagr"] == pytest.approx(0.1512, abs=0.01)
     assert metrics["max_drawdown"] == pytest.approx(-0.3119, abs=0.01)
-    assert metrics["sharpe"] == pytest.approx(0.961, abs=0.05)
+    assert metrics["sharpe"] == pytest.approx(0.883, abs=0.05)
 
 
 def test_best17_a_uk_mapping_end_to_end(us_data_dir, uk_data_dir):

@@ -2,6 +2,142 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-16 (2)
+
+- **BUGFIX: DBC-slot w UK uzywal `icom.uk` zamiast `cmod.uk`** - user: "Zarowno best17 jak i
+  gpm uk powinny uzywac dbc-> cmod". `strategies_v2/best17_a/uk_ticker_mapping.json` mapowal
+  `dbc.us` na `icom.uk`, a `best17_a_uk`/`gpm_uk` (UK-native strategie z (9) wyzej) uzywaly
+  `icom.uk` WPROST jako wlasnego, zrodlowego tickera w tym slocie - ale prawdziwy, juz wczesniej
+  w tej sesji zweryfikowany system uzytkownika (`ideas/best17_3m_tlt_dtla_40/ticker_mapping.json`,
+  ten sam plik uzyty do weryfikacji gate'u IAU/DBC w (1) nizej) mapuje `dbc.us` na `cmod.uk`, NIE
+  `icom.uk`. ICOM i CMOD to dwa rozne fundusze commodity UCITS - podmiana nie jest kosmetyczna,
+  zmienia realne ceny uzywane w backtescie.
+
+  Blokery przed poprawka: (1) `data/uk/cmod.uk.txt` nie istnial w repo, a loader silnika jest
+  czysto plikowy (dane UK sa wklejane recznie przez usera, nie fetchowane) - proxy blokuje tez
+  bezposredni dostep do stooq.com z tego srodowiska ("gateway answered 403 to CONNECT"), wiec
+  agent nie mogl pobrac danych sam; (2) zakres - `icom.uk` jako DBC-odpowiednik wystepuje w 7
+  miejscach (`best17_a`, `best17_a_uk`, `gpm_uk`, `gpm_mid_10`, `gpm_mid_13`, `gtaa_agg3_mid`,
+  `gtaa_agg6_mid` + ich `_best17_a` warianty laczone). Zapytano usera o oba - user dostarczyl
+  `data/uk/cmod.uk.txt` (2393 wierszy, 2017-01 do 2026-07, wpushowane bezposrednio na `main`,
+  scalone do tego brancha fast-forwardem) i ograniczyl zakres TYLKO do rodziny `best17_a`+`gpm_uk`
+  (nie ruszamy `gpm_mid_10`/`gpm_mid_13`/`gtaa_agg3_mid`/`gtaa_agg6_mid` solo - one nadal uzywaja
+  `icom.uk` we WLASNYM uniwersum US-mapped, tylko jako komponenty portfeli z `best17_a` ich
+  `uk_mapping` sekcja teraz przeliczona z CMOD, bo korzysta z `best17_a`'s wspolnego pliku
+  mapowania).
+
+  Zmienione: `strategies_v2/best17_a/uk_ticker_mapping.json` (`dbc.us`: `icom.uk`->`cmod.uk`),
+  `strategies_v2/best17_a_uk/strategy_spec.json` (universe + `canary.target_assets` +
+  `dbc_gate.assets` + `require_positive_score.assets`: `icom.uk`->`cmod.uk`),
+  `strategies_v2/gpm_uk/strategy_spec.json` (universe + `indicators.c.basket_assets` +
+  `portfolio_risk_engine.risky_assets`: `icom.uk`->`cmod.uk`) - wszystkie z dopiskiem w
+  `hypothesis`. Zaktualizowano `test_gpm_uk_strategy_spec.py::_RISKY_UK` i docstring w
+  `test_best17_a_uk_strategy_spec.py` (asercja sama czyta mapping z pliku, wiec logika testu bez
+  zmian). `test_best17_a_uk_mapping_end_to_end`/`test_best17_a_strategy_spec.py::test_best17_a_uk_mapping_end_to_end`
+  dalej PASS na nowych danych CMOD (korelacja 0.971, cagr_gap 0.9%, maxdd_gap 0.09% - w normie;
+  `max_single_month_return_diff` dalej `False` w acceptance dict, ale to byl juz stan PRZED
+  poprawka z ICOM, wiec nie jest regresja tej zmiany).
+
+  **Wynik (post-tax, izolowany efekt CMOD - po (1) nizej, PRZED->PO tej poprawce)**:
+
+  | | CAGR | MaxDD | Sharpe | Calmar |
+  |---|---|---|---|---|
+  | `best17_a_uk` PRZED (ICOM) | 10.92% | -31.10% | 0.634 | 0.351 |
+  | `best17_a_uk` PO (CMOD) | **10.94%** | -31.10% | **0.636** | **0.352** |
+  | `gpm_uk` PRZED (ICOM) | 5.56% | -9.12% | 0.699 | 0.609 |
+  | `gpm_uk` PO (CMOD) | **5.92%** | **-8.76%** | **0.742** | **0.676** |
+  | `gpm_uk_best17_a_uk` (50/50) PRZED (ICOM) | 7.44% | -15.65% | 0.697 | 0.476 |
+  | `gpm_uk_best17_a_uk` (50/50) PO (CMOD) | **7.64%** | -15.65% | **0.713** | **0.488** |
+
+  Kierunek efektu: CMOD mial nieco lepszy total-return-profil niz ICOM w tym oknie (2019-2026)
+  - wszystkie 3 strategie/portfele lekko w gore na kazdej metryce, `gpm_uk` najbardziej (mniejsze
+  MaxDD, wyzszy Sharpe/Calmar). `best17_a` (US, solo) i portfele z `data/us` (`gpm_mid_10_best17_a`
+  itp.) maja NIEZMIENIONE metryki solo - zmieniona jest tylko ich `uk_mapping` diagnostyczna
+  sekcja w `results/*.json` (US-owe core nadal liczy sie na `data/us`, ktore nie zawiera CMOD/ICOM
+  w ogole).
+
+  Przeliczono `results/best17_a.json` (tylko `uk_mapping`), `results/best17_a_uk.json`,
+  `results/gpm_uk.json`, `results/gpm_uk_best17_a_uk.json`, `results/gpm_mid_10_best17_a.json`
+  (tylko `uk_mapping`), `results/gpm_mid_13_best17_a.json` (tylko `uk_mapping`),
+  `results/gtaa_agg6_mid_best17_a.json` (tylko `uk_mapping`) + odpowiadajace
+  `results/monthly/*.csv` dla `best17_a`/`best17_a_uk`/`gpm_uk`/`gpm_uk_best17_a_uk` + scalony
+  `SUMMARY.md`. Pelny pakiet testow: patrz (1) nizej (liczony razem po obu poprawkach tego dnia).
+
+## 2026-07-16 (1)
+
+- **BUGFIX: `iau_gate`/`dbc_gate` threshold w `best17_a` (i 3 pochodnych) byl `-0.01`, powinien
+  byc `0.01`** - user: "Mamy bledny prog gate powinien byc plus 1 procent". Pytanie bylo
+  niejednoznaczne (wiele progow "gate" w repo) - dopytano AskUserQuestion, user potwierdzil
+  `iau_gate`/`dbc_gate` w `best17_a` (`indicator_positive` na `mom_r3_gate`, eligibilny gdy 3m
+  momentum > threshold): `-0.01` = eligibilny gdy 3m momentum > -1% (bardzo lagodny warunek,
+  wykluczal tylko przy naprawde zlym momentum) -> `0.01` = eligibilny gdy 3m momentum > +1%
+  (wymaga realnie dodatniego momentum).
+
+  **Krytyczne odkrycie w trakcie pracy**: stary prog `-0.01` NIE byl przypadkowym bledem - byl
+  jawnie zweryfikowany wczesniej w tej sesji (test `test_best17_a_iau_gate_matches_real_2026_transition`,
+  POPRAWKA 2026-07-11) wzgledem PRAWDZIWEGO CSV z realnego, historycznego systemu tradingowego
+  usera (`ideas_out/best17_3m_tlt_dtla_40`) - IAU byl tam eligibilny w maju 2026 przy
+  `mom_r3_gate` ~-0.97%, co pasuje TYLKO do progu -1% (>-0.01), nie +1%. Zamiast cicho nadpisac
+  zweryfikowana wartosc, zatrzymano prace i zapytano usera wprost, czy nadal chce zmienic prog na
+  +1% MIMO tej rozbieznosci z realnym systemem - user potwierdzil: "Tak, zmien na +1% mimo to"
+  (swiadoma decyzja, NIE przeoczenie).
+
+  Zmienione: `strategies_v2/best17_a/strategy_spec.json` + 3 pochodne z IDENTYCZNYM
+  kopiowanym bledem (`best17_a_uk`, `synergy_v1`, `synergy_v2`) - wszystkie `threshold`:
+  `-0.01`->`0.01` w `iau_gate`/`dbc_gate`, `hypothesis` zaktualizowana. Test
+  `test_best17_a_iau_gate_matches_real_2026_transition` przemianowany na
+  `test_best17_a_iau_gate_matches_new_plus_1pct_threshold` - stare przejscie maj/czerwiec 2026
+  (eligibilny->zablokowany) juz nie istnieje przy nowym progu (oba miesiace teraz zablokowane),
+  znaleziono NOWE realne przejscie (styczen 2025 zablokowany -> luty 2025 eligibilny) + zachowano
+  asercje "maj 2026 teraz zablokowany" jako most do starego, zweryfikowanego zachowania.
+  Zaktualizowano 4 zamrozone "metrics regression baseline" testy (`test_best17_a_strategy_spec.py`,
+  `test_best17_a_tlt_hedge.py`, `test_synergy_strategy_specs.py` x2) z nowymi wartosciami PO
+  poprawce, stara wartosc PRZED zachowana w docstringu dla porownania.
+
+  **Ripple effect - to jedna zmiana progu dotyka ~20 strategii**: `best17_a`/`best17_a_uk`/
+  `synergy_v1`/`synergy_v2` (bezposrednio) + 16 portfeli laczonych, ktore je zawieraja przez
+  `strategy_spec_paths`: `best17_a_all_weather_4`, `best17_a_best17_b`, `best17_a_gfm`,
+  `best17_a_tlt_hedge`, `best17_a_tlt_timing`, `combined_best2`, `combined_best2_dynamic`,
+  `combined_triple`, `dual_momentum_best17_a`, `gpm_best17_a`, `gpm_mid_10_best17_a`,
+  `gpm_mid_13_best17_a`, `gtaa_agg6_best17_a`, `gtaa_agg6_mid_best17_a`, `vaa_g4_best17_a`,
+  `gpm_uk_best17_a_uk`. Wszystkie 20 przeliczone (`_generate_single`/`_generate_combined` +
+  `_write_result`, targetowana regeneracja - NIE pelny `generate_results.py::main()`) +
+  odpowiadajace `results/monthly/*.csv` (przez `*_with_reporting` warianty pipeline'u, ktorych
+  `generate_results.py` sam NIE wola) + scalony `SUMMARY.md`.
+
+  **Wynik (post-tax, PRZED -1% vs PO +1%)**:
+
+  | | CAGR PRZED | CAGR PO | MaxDD PRZED | MaxDD PO | Sharpe PRZED | Sharpe PO | Calmar PRZED | Calmar PO |
+  |---|---|---|---|---|---|---|---|---|
+  | `best17_a` | 13.71% | **12.34%** | -31.19% | -31.19% | 0.802 | **0.736** | 0.440 | **0.396** |
+  | `best17_a_uk` | 10.24% | **10.92%** | -31.10% | -31.10% | 0.603 | **0.634** | 0.329 | **0.351** |
+  | `synergy_v1` | 11.96% | **10.62%** | -29.99% | -29.99% | 0.726 | **0.659** | 0.399 | **0.354** |
+  | `synergy_v2` | 13.32% | **11.96%** | -31.19% | -31.19% | 0.769 | **0.705** | 0.427 | **0.383** |
+  | `best17_a_all_weather_4` | 9.58% | **9.00%** | -23.04% | -23.04% | 0.797 | **0.754** | 0.416 | **0.390** |
+  | `best17_a_best17_b` | 8.67% | **8.09%** | -30.28% | -30.28% | 0.672 | **0.632** | 0.286 | **0.267** |
+  | `best17_a_gfm` | 9.49% | **8.83%** | -28.76% | -28.76% | 0.719 | **0.678** | 0.330 | **0.307** |
+  | `best17_a_tlt_hedge` | 11.58% | **10.65%** | -27.39% | -26.86% | 0.795 | **0.743** | 0.423 | **0.397** |
+  | `best17_a_tlt_timing` | 9.47% | **8.57%** | -24.09% | -23.79% | 0.754 | **0.693** | 0.393 | **0.360** |
+  | `combined_best2` | 9.53% | **8.90%** | -24.40% | -24.40% | 0.725 | **0.683** | 0.391 | **0.365** |
+  | `combined_best2_dynamic` | 10.66% | **10.02%** | -30.24% | -30.24% | 0.734 | **0.696** | 0.352 | **0.331** |
+  | `combined_triple` | 9.07% | **8.55%** | -20.41% | -20.41% | 0.785 | **0.745** | 0.444 | **0.419** |
+  | `dual_momentum_best17_a` | 9.01% | **8.40%** | -22.93% | -22.82% | 0.735 | **0.693** | 0.393 | **0.368** |
+  | `gpm_best17_a` | 8.06% | **7.51%** | -15.48% | -15.05% | 0.799 | **0.750** | 0.521 | **0.499** |
+  | `gpm_mid_10_best17_a` | 8.93% | **8.34%** | -16.15% | -16.15% | 0.855 | **0.806** | 0.553 | **0.517** |
+  | `gpm_mid_13_best17_a` | 9.02% | **8.44%** | -16.39% | -16.39% | 0.859 | **0.810** | 0.550 | **0.515** |
+  | `gtaa_agg6_best17_a` | 8.31% | **7.76%** | -21.54% | -21.02% | 0.742 | **0.700** | 0.386 | **0.369** |
+  | `gtaa_agg6_mid_best17_a` | 9.05% | **8.50%** | -21.09% | -21.09% | 0.779 | **0.737** | 0.429 | **0.403** |
+  | `vaa_g4_best17_a` | 8.42% | **7.84%** | -22.57% | -21.43% | 0.759 | **0.713** | 0.373 | **0.366** |
+  | `gpm_uk_best17_a_uk` | 7.17% | **7.44%** | -15.65% | -15.65% | 0.676 | **0.697** | 0.458 | **0.476** |
+
+  Kierunek: prog bardziej restrykcyjny (+1% zamiast -1%) generalnie ciut ogranicza CAGR/Sharpe na
+  wiekszosci strategii z ekspozycja US na IAU/DBC (mniej okazji do trzymania tych aktywow), poza
+  wariantami UK-native (`best17_a_uk`, `gpm_uk_best17_a_uk`), gdzie efekt jest odwrotny (rozny
+  rozklad miesiecznych wartosci `mom_r3_gate` na cenach UK vs US wokol nowego progu). MaxDD w
+  wiekszosci bez zmian (ten sam najgorszy miesiac/okres niezalezny od gate'u IAU/DBC), poza
+  kilkoma portfelami z hedge/timing komponentami, gdzie nieco sie poprawil. Pelny pakiet testow
+  (po OBU poprawkach tego dnia, (1)+(2)): 601/601, bez regresji.
+
 ## 2026-07-15 (9)
 
 - **Nowa rodzina "UK-native": `gpm_uk`/`best17_a_uk`/`gpm_uk_best17_a_uk`** - user: "Nie mozemy

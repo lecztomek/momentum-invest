@@ -71,8 +71,10 @@ def test_best17_a_tlt_hedge_never_activates_before_core_start(us_data_dir):
 
 
 def test_best17_a_tlt_hedge_metrics_regression_baseline(us_data_dir):
-    """Zamrozony wynik na realnych danych (2026-07-11, po bugfixie 'wlaczal sie przed startem
-    core') - lapie regresje w momentum_hedge_overlay/tlt_hedge/best17_a razem."""
+    """Zamrozony wynik na realnych danych (2026-07-15, PO poprawce progu best17_a's
+    iau_gate/dbc_gate -1%->+1%, patrz CHANGELOG) - lapie regresje w
+    momentum_hedge_overlay/tlt_hedge/best17_a razem. Poprzednia baseline (prog -1%):
+    cagr=0.1410, max_drawdown=-0.2370, sharpe=0.97."""
     from engine_v2.backtest_engine import daily_equity_curve
     from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
     from engine_v2.metrics import compute_metrics
@@ -85,6 +87,6 @@ def test_best17_a_tlt_hedge_metrics_regression_baseline(us_data_dir):
     equity_curve = daily_equity_curve(final_portfolio, market_data.prices, {})
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
-    assert metrics["cagr"] == pytest.approx(0.1410, abs=0.01)
+    assert metrics["cagr"] == pytest.approx(0.1301, abs=0.01)
     assert metrics["max_drawdown"] == pytest.approx(-0.2370, abs=0.01)
-    assert metrics["sharpe"] == pytest.approx(0.97, abs=0.05)
+    assert metrics["sharpe"] == pytest.approx(0.897, abs=0.05)

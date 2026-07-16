@@ -4,35 +4,35 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 
 | Strategia | Tryb | CAGR | MaxDD | Sharpe | Calmar | Turnover/rok | UK mapping |
 |---|---|---|---|---|---|---|---|
-| `gpm_uk` | final | 5.56% | -9.12% | 0.699 | 0.609 | 3.68 | - |
-| `gpm_mid_10_best17_a` | combined_final | 8.93% | -16.15% | 0.855 | 0.553 | 2.56 | fail (patrz JSON) |
-| `gpm_mid_13_best17_a` | combined_final | 9.02% | -16.39% | 0.859 | 0.550 | 2.62 | fail (patrz JSON) |
-| `gpm_best17_a` | combined_final | 8.06% | -15.48% | 0.799 | 0.521 | 2.90 | - |
-| `gpm_uk_best17_a_uk` | combined_final | 7.17% | -15.65% | 0.676 | 0.458 | 2.59 | - |
-| `combined_triple` | combined_final | 9.07% | -20.41% | 0.785 | 0.444 | 2.27 | - |
-| `best17_a` | final | 13.71% | -31.19% | 0.802 | 0.440 | 1.16 | fail (patrz JSON) |
-| `gtaa_agg6_mid_best17_a` | combined_final | 9.05% | -21.09% | 0.779 | 0.429 | 2.10 | fail (patrz JSON) |
-| `synergy_v2` | final | 13.32% | -31.19% | 0.769 | 0.427 | 1.16 | - |
-| `best17_a_tlt_hedge` | combined_final | 11.58% | -27.39% | 0.795 | 0.423 | 0.97 | - |
-| `best17_a_all_weather_4` | combined_final | 9.58% | -23.04% | 0.797 | 0.416 | 1.38 | - |
-| `synergy_v1` | final | 11.96% | -29.99% | 0.726 | 0.399 | 1.07 | - |
+| `gpm_uk` | final | 5.92% | -8.76% | 0.742 | 0.676 | 3.66 | - |
+| `gpm_mid_10_best17_a` | combined_final | 8.34% | -16.15% | 0.806 | 0.517 | 2.69 | fail (patrz JSON) |
+| `gpm_mid_13_best17_a` | combined_final | 8.44% | -16.39% | 0.810 | 0.515 | 2.75 | fail (patrz JSON) |
+| `gpm_best17_a` | combined_final | 7.51% | -15.05% | 0.750 | 0.499 | 3.02 | - |
+| `gpm_uk_best17_a_uk` | combined_final | 7.64% | -15.65% | 0.713 | 0.488 | 2.60 | - |
+| `combined_triple` | combined_final | 8.55% | -20.41% | 0.745 | 0.419 | 2.38 | - |
+| `gtaa_agg6_mid_best17_a` | combined_final | 8.50% | -21.09% | 0.737 | 0.403 | 2.21 | fail (patrz JSON) |
+| `best17_a_tlt_hedge` | combined_final | 10.65% | -26.86% | 0.743 | 0.397 | 1.14 | - |
+| `best17_a` | final | 12.34% | -31.19% | 0.736 | 0.396 | 1.44 | fail (patrz JSON) |
 | `gpm_mid_13` | final | 4.94% | -12.57% | 0.616 | 0.393 | 4.15 | PASS |
-| `best17_a_tlt_timing` | combined_final | 9.47% | -24.09% | 0.754 | 0.393 | 1.41 | - |
-| `dual_momentum_best17_a` | combined_final | 9.01% | -22.93% | 0.735 | 0.393 | 1.68 | - |
-| `combined_best2` | combined_final | 9.53% | -24.40% | 0.725 | 0.391 | 3.79 | - |
-| `gtaa_agg6_best17_a` | combined_final | 8.31% | -21.54% | 0.742 | 0.386 | 2.14 | - |
-| `vaa_g4_best17_a` | combined_final | 8.42% | -22.57% | 0.759 | 0.373 | 4.39 | - |
+| `best17_a_all_weather_4` | combined_final | 9.00% | -23.04% | 0.754 | 0.390 | 1.50 | - |
+| `synergy_v2` | final | 11.96% | -31.19% | 0.705 | 0.383 | 1.44 | - |
+| `gtaa_agg6_best17_a` | combined_final | 7.76% | -21.02% | 0.700 | 0.369 | 2.26 | - |
 | `gpm_mid_10` | final | 4.77% | -12.95% | 0.597 | 0.369 | 4.03 | PASS |
-| `combined_best2_dynamic` | combined_final | 10.66% | -30.24% | 0.734 | 0.352 | 3.68 | - |
+| `dual_momentum_best17_a` | combined_final | 8.40% | -22.82% | 0.693 | 0.368 | 1.81 | - |
+| `vaa_g4_best17_a` | combined_final | 7.84% | -21.43% | 0.713 | 0.366 | 4.51 | - |
+| `combined_best2` | combined_final | 8.90% | -24.40% | 0.683 | 0.365 | 3.92 | - |
+| `best17_a_tlt_timing` | combined_final | 8.57% | -23.79% | 0.693 | 0.360 | 1.60 | - |
+| `synergy_v1` | final | 10.62% | -29.99% | 0.659 | 0.354 | 1.36 | - |
+| `best17_a_uk` | final | 10.94% | -31.10% | 0.636 | 0.352 | 1.80 | - |
 | `dual_momentum_all_weather_4` | combined_final | 5.85% | -16.75% | 0.606 | 0.349 | 1.95 | - |
 | `gtaa_agg6_mid` | final | 5.76% | -17.29% | 0.588 | 0.333 | 2.92 | fail (patrz JSON) |
 | `gtaa_agg3_mid` | final | 7.03% | -21.16% | 0.552 | 0.332 | 3.64 | fail (patrz JSON) |
-| `best17_a_gfm` | combined_final | 9.49% | -28.76% | 0.719 | 0.330 | 1.85 | - |
-| `best17_a_uk` | final | 10.24% | -31.10% | 0.603 | 0.329 | 1.74 | - |
+| `combined_best2_dynamic` | combined_final | 10.02% | -30.24% | 0.696 | 0.331 | 3.82 | - |
+| `best17_a_gfm` | combined_final | 8.83% | -28.76% | 0.678 | 0.307 | 1.98 | - |
 | `vaa_g4_all_weather_4` | combined_final | 5.79% | -19.01% | 0.638 | 0.305 | 4.76 | - |
 | `the_one_all_weather_4` | combined_final | 6.17% | -20.95% | 0.582 | 0.295 | 3.89 | - |
-| `best17_a_best17_b` | combined_final | 8.67% | -30.28% | 0.672 | 0.286 | 1.63 | - |
 | `all_weather_4_best17_b` | combined_final | 6.09% | -21.43% | 0.589 | 0.284 | 1.99 | - |
+| `best17_a_best17_b` | combined_final | 8.09% | -30.28% | 0.632 | 0.267 | 1.75 | - |
 | `all_weather_4` | final | 6.87% | -25.72% | 0.646 | 0.267 | 1.74 | - |
 | `all_weather_4_gfm` | combined_final | 5.80% | -22.65% | 0.622 | 0.256 | 2.00 | - |
 | `gpm_lite_7` | final | 3.50% | -14.02% | 0.421 | 0.249 | 4.07 | - |

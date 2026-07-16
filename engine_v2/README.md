@@ -10,6 +10,17 @@ funkcja zarejestrowana pod nazwą w słowniku (`REGISTRY`). Orchestrator (`pipel
 importuje konkretnej implementacji bezpośrednio, tylko woła `REGISTRY[nazwa](...)` - dzięki temu
 dowolny blok da się podmienić albo przetestować osobno, bez ruszania reszty.
 
+> **AKTUALIZACJA 2026-07-16 - dwie poprawki w rodzinie `best17_a`, patrz CHANGELOG:**
+> (1) `iau_gate`/`dbc_gate` threshold `-0.01` -> `0.01` (user: "Mamy bledny prog gate powinien
+> byc plus 1 procent") - dotyczy `best17_a`/`best17_a_uk`/`synergy_v1`/`synergy_v2` + WSZYSTKICH
+> 16 portfeli łączonych, które je zawierają; (2) DBC-slot w UK (`uk_ticker_mapping.json`/
+> `best17_a_uk`/`gpm_uk`) `icom.uk` -> `cmod.uk` (user: "Zarowno best17 jak i gpm uk powinny
+> uzywac dbc-> cmod", zgodnie z prawdziwym systemem uzytkownika,
+> `ideas/best17_3m_tlt_dtla_40/ticker_mapping.json`). **Każda liczba dotycząca tych strategii W
+> CAŁYM PONIŻSZYM DOKUMENCIE sprzed tej daty jest NIEAKTUALNA** - aktualne wyniki zawsze w
+> `results/SUMMARY.md`/`results/<strategia>.json`, pełny opis zmiany i tabele przed/po w
+> `CHANGELOG.md`.
+
 ## Cztery specy (pre-rejestracja w stylu funduszowym)
 
 - **StrategySpec** (`spec.py`) - hipoteza, universe, wybrane implementacje bloków (`blocks`),
