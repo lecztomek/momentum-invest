@@ -2,7 +2,89 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
-## 2026-07-16 (3)
+## 2026-07-16 (4)
+
+- **BUGFIX (znaleziony przy weryfikacji (3) nizej): `backtest_engine.daily_equity_curve` w ogole
+  nie uzywala `execution_day_of_month`** - user zauwazyl niespojnosc przy probie trwalego
+  zapisania wynikow sweepu ("Gdzies powinny zostac te wyniki... kopia naszej tylko ten trading
+  day inny"). Przy budowie 10 nowych, trwalych strategii `gpm_mid_10_day5` okazalo sie miec
+  METRYKI IDENTYCZNE co do bitu z `gpm_mid_10` (dzien 1) - mimo ze `final_portfolio.net_return`
+  (liczony poprawnie w FAZIE B na `market_data.returns`) realnie sie roznil. Przyczyna:
+  `daily_equity_curve` NIE uzywa `net_return` z FINAL PORTFOLIO do rekonstrukcji dziennej krzywej
+  equity (uzywanej do CAGR/MaxDD/Sharpe) - odtwarza ja OD ZERA z `weights_used_json` + cen
+  dziennych, przelaczajac wagi zawsze na SUROWEJ ETYKIECIE okresu ("2020-01-01" - kalendarzowy
+  poczatek miesiaca), NIGDY na faktycznej dacie wykonania. Dla `gpm_mid_10` (wskazniki `r`/`c`
+  liczone na cenach konca miesiaca, niezalezne od dnia wykonania) `execution_day_of_month`
+  wplywalo WYLACZNIE na `net_return`/`market_data.returns` - ktorych `daily_equity_curve` i tak
+  nigdy nie uzywa - stad zerowy, cichy efekt. Dla `best17_a` (gdzie `mom_r3_gate` NAPRAWDE
+  zmienia decyzje o eligibilnosci IAU/DBC w zaleznosci od dnia) sweep (3) NIZEJ pokazywal jakas
+  zmiane, ale z BLEDNEGO powodu - rzeczywista data transakcji w dziennej krzywej i tak zawsze
+  siadala na dniu 1, niezaleznie od ustawionego `execution_day_of_month`.
+
+  **Naprawa**: `engine_v2/period_anchor.py::nth_trading_day_dates(trading_days, day_of_month)` -
+  jak `nth_trading_day_prices`, ale zwraca RZECZYWISTA DATE (nie cene) wybranego dnia dla kazdego
+  miesiaca (reuzywa `nth_trading_day_prices` sztuczka: traktuje "date" jako wlasna "cene").
+  `daily_equity_curve` dostaje nowy param `execution_day_of_month` i mapuje TYLKO `period_start`
+  (nie `period_end`!) przez ta funkcje - proba zmapowania OBU granic psula wynik nawet dla dnia=1
+  (rozciagala kazdy okres o dodatkowe dni miedzy surowa etykieta nastepnego miesiaca a jego
+  faktyczna data wykonania - zlapane empirycznie: `best17_a` CAGR zmienil sie z 15.12% na 16.21%
+  przy dniu=1, co jest niedopuszczalna regresja). Mapowanie WYLACZNIE `period_start` jest
+  bajt-identyczne ze starym zachowaniem przy dniu=1 (potwierdzone: porownanie krzywej equity
+  wiersz-po-wierszu, `Series.equals()` == `True`) - kolejny okres i tak zaczyna sie od wlasnej,
+  poprawnej daty wykonania, wiec nie trzeba jawnie przycinac gornej granicy.
+
+  Nowy helper `combined_pipeline.combined_execution_day_of_month(combined_spec, base_dir)` (dzien
+  pierwszej skladowej - z zalozenia identyczny u wszystkich, patrz (3)) i
+  `period_anchor.strategy_execution_day_of_month(base_params)` - przewleczone przez WSZYSTKIE 13
+  miejsc wolajacych `daily_equity_curve` w kodzie produkcyjnym (`run_spec_runner.py` x5,
+  `combined_pipeline.py` x1, `generate_results.py` x3, `monthly_report.py` x2, `pipeline.py` x1).
+  Testy istniejace (day_of_month=1 wszedzie) - zero zmian w wywolaniach, `{}` nadal oznacza dzien 1.
+
+  **Poprawiony sweep na faworytach** (ten sam eksperyment co (3), teraz z dzialajacym silnikiem -
+  POST-TAX, PELNA historia):
+
+  | | dzien 1 (dzisiejszy) | dzien 5 | dzien 10 |
+  |---|---|---|---|
+  | `best17_a` CAGR | **12.34%** | 10.86% | 7.11% |
+  | `best17_a` Sharpe | **0.736** | 0.741 | 0.624 |
+  | `gpm_mid_10_best17_a` CAGR | **8.34%** | 7.49% | 5.45% |
+  | `gpm_mid_13_best17_a` CAGR | **8.44%** | 7.63% | 5.57% |
+
+  **Train/OOS (train 2010-06..2019-12, test/OOS 2020-01..2026-06) - Sharpe**:
+
+  | | TRAIN dzien 1 | TRAIN dzien 5 | TRAIN dzien 10 | OOS dzien 1 | OOS dzien 5 | OOS dzien 10 |
+  |---|---|---|---|---|---|---|
+  | `best17_a` | **0.794** | 0.865 | 0.829 | **0.730** | 0.644 | 0.473 |
+  | `gpm_mid_10_best17_a` | 0.916 | **0.983** | 1.063 | **0.823** | 0.774 | 0.586 |
+  | `gpm_mid_13_best17_a` | 0.933 | **1.009** | 1.102 | **0.829** | 0.776 | 0.573 |
+
+  **Poprawny, spojny wniosek: dzien 1 > dzien 5 > dzien 10 na OOS na wszystkich 3 faworytach**
+  (na TRAIN kolejnosc Sharpe bywa odwrocona - dzien 10 ma wyzszy TRAIN Sharpe niz dzien 1 na obu
+  portfelach `gpm_mid_X_best17_a` - ale to NIE przenosi sie na OOS, wiec dalej NIE jest to sygnal
+  do zmiany). W odroznieniu od (3) (gdzie "zwyciezca" zmienial sie miedzy TRAIN i OOS - klasyczny
+  przeuczony wynik), teraz OOS jest jednoznaczny i monotoniczny: im pozniej w miesiacu kupujemy,
+  tym gorzej - czesc momentum "wygasa" w dniach miedzy koncem miesiaca a faktycznym zakupem.
+  Dzien 1 (dzisiejszy domyslny) jest wiec NIE TYLKO nieprzeuczonym, "bezpiecznym" wyborem (jak
+  mowilo (3)), ale FAKTYCZNIE NAJLEPSZYM z {{1,5,10}} na OOS - silniejszy wniosek niz wczesniej.
+
+  **Trwaly zapis eksperymentu (user: "Gdzies powinny zostac te wyniki... moze to nowy plik
+  konfig z wpisanym tym dniem")** - 10 nowych strategii (kopie best17_a/gpm_mid_10/gpm_mid_13 +
+  ich portfele laczone, z `execution_day_of_month` wpisanym na stale): `best17_a_day5`,
+  `best17_a_day10`, `gpm_mid_10_day5`, `gpm_mid_10_day10`, `gpm_mid_13_day5`, `gpm_mid_13_day10`
+  (solo) + `gpm_mid_10_best17_a_day5`, `gpm_mid_10_best17_a_day10`, `gpm_mid_13_best17_a_day5`,
+  `gpm_mid_13_best17_a_day10` (laczone, odwoluja sie do nowych `_dayN` komponentow). Kazda z
+  pelnym kompletem specow (solo) albo samym `combined_spec.json` (laczone, `uk_ticker_mapping.json`
+  w katalogu portfela laczonego jest i tak nieuzywane - patrz `generate_results._uk_mapping_combined`,
+  ktora czyta mapping SKLADOWYCH, nie wlasny plik portfela). Wygenerowano wszystkie 10
+  `results/*.json` + `results/monthly/*.csv` + scalony `SUMMARY.md` (68 plikow lacznie).
+  Zaktualizowano 2 twarde liczniki kompletnosci (`test_reporting_block_combined.py`,
+  `test_run_one.py`: 32->36 portfeli laczonych z `reporting`).
+
+  Zadna zmiana NIE zostala zaaplikowana do domyslnych `strategy_spec.json` - dzien 1 pozostaje
+  (i teraz jest empirycznie potwierdzony jako najlepszy z testowanych, nie tylko "bezpieczny").
+  Pelny pakiet testow: 617/617, bez regresji.
+
+## 2026-07-16 (3) - ⚠️ SWEEP PONIZEJ BYL LICZONY Z BUGIEM, patrz poprawka (4)
 
 - **NOWY PARAMETR: `execution_day_of_month`** - user: "chciałbym sprawdzić wyniki strategii w
   przypadku zmiany kiedy kupujemy no zamiast ostatni dzień miesiąc to niech będzie 5 lub 10 lub 1"
@@ -36,6 +118,13 @@ Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co 
   `momentum_monthly` - musi byc IDENTYCZNY w obu miejscach danej strategii. 8 nowych testow
   (`test_period_anchor.py` x7 + `test_indicators.py` x1), w tym bajt-identycznosc dnia=1 ze
   starym `resample("MS").first()`.
+
+  **⚠️ CALY SWEEP PONIZEJ (tabele + wnioski) JEST BLEDNY** - `backtest_engine.daily_equity_curve`
+  (funkcja liczaca dzienna krzywa equity uzywana do CAGR/MaxDD/Sharpe) w ogole NIE uzywala
+  `execution_day_of_month` - zawsze przelaczala wagi na etykiecie "1-szy dzien miesiaca",
+  niezaleznie od realnego dnia wykonania. Poprawiony wynik (2026-07-16 (4) nizej): dzien 1 >
+  dzien 5 > dzien 10 na KAZDEJ metryce, na OBU oknach (train I OOS) - zupelnie inny wniosek niz
+  ponizej. Zostawione jako zapis co sie stalo, NIE jako aktualne dane.
 
   **Sweep na faworytach** (`best17_a` solo + `gpm_mid_10_best17_a`/`gpm_mid_13_best17_a`
   laczone, dzien 1 vs 5 vs 10 - ad-hoc skrypt, TYLKO tymczasowo patchowal `strategy_spec.json`

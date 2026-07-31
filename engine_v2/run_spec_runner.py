@@ -66,6 +66,7 @@ from engine_v2.local_param_stability import (
 from engine_v2.metrics import compute_metrics
 from engine_v2.named_periods import compute_named_period_metrics
 from engine_v2.param_stability import check_param_stability, compute_param_stability
+from engine_v2.period_anchor import strategy_execution_day_of_month
 from engine_v2.pipeline import run_strategy_pipeline
 from engine_v2.run_spec import RunSpec
 from engine_v2.spec import MULTI_INSTANCE_BLOCKS, StrategySpec
@@ -134,8 +135,9 @@ def _run_uk_mapping_check(
     us_slice = us_final_portfolio[us_final_portfolio["date"] >= uk_window_start].reset_index(drop=True)
     uk_slice, diagnostics = remap_final_portfolio(us_slice, ticker_mapping)
 
-    us_equity_curve = daily_equity_curve(us_slice, _load_daily_prices(strategy_spec), {})
-    uk_equity_curve = daily_equity_curve(uk_slice, uk_daily_prices, {})
+    day_params = {"execution_day_of_month": strategy_execution_day_of_month(strategy_spec.base_params)}
+    us_equity_curve = daily_equity_curve(us_slice, _load_daily_prices(strategy_spec), day_params)
+    uk_equity_curve = daily_equity_curve(uk_slice, uk_daily_prices, day_params)
     if test_spec.costs.annual_tax_rate > 0.0:
         us_equity_curve = apply_annual_tax(us_equity_curve, test_spec.costs.annual_tax_rate)
         uk_equity_curve = apply_annual_tax(uk_equity_curve, test_spec.costs.annual_tax_rate)
@@ -158,7 +160,8 @@ def _run_final(
     base_dir: Path | None = None,
 ) -> Dict[str, Any]:
     final_portfolio = run_strategy_pipeline(strategy_spec)
-    equity_curve = daily_equity_curve(final_portfolio, _load_daily_prices(strategy_spec), {})
+    day_params = {"execution_day_of_month": strategy_execution_day_of_month(strategy_spec.base_params)}
+    equity_curve = daily_equity_curve(final_portfolio, _load_daily_prices(strategy_spec), day_params)
     equity_curve, metrics_pre_tax = _tax_adjusted_equity_curve(equity_curve, final_portfolio, test_spec)
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
@@ -191,7 +194,8 @@ def _run_validation(
     strategy_spec: StrategySpec, test_spec: TestSpec, acceptance_spec: AcceptanceSpec
 ) -> Dict[str, Any]:
     final_portfolio = run_strategy_pipeline(strategy_spec)
-    equity_curve = daily_equity_curve(final_portfolio, _load_daily_prices(strategy_spec), {})
+    day_params = {"execution_day_of_month": strategy_execution_day_of_month(strategy_spec.base_params)}
+    equity_curve = daily_equity_curve(final_portfolio, _load_daily_prices(strategy_spec), day_params)
     # podatek liczony na CALEJ historii PRZED wycieciem test_window - "high water mark" musi
     # widziec lata sprzed okna OOS, zeby poprawnie zbudowac baze podatkowa (patrz docstring modulu)
     equity_curve, _metrics_pre_tax_full_history = _tax_adjusted_equity_curve(equity_curve, final_portfolio, test_spec)
@@ -233,7 +237,8 @@ def _run_search(
 
     def evaluate(variant_spec: StrategySpec) -> Dict[str, Any]:
         final_portfolio = run_strategy_pipeline(variant_spec)
-        equity_curve = daily_equity_curve(final_portfolio, daily_prices, {})
+        day_params = {"execution_day_of_month": strategy_execution_day_of_month(variant_spec.base_params)}
+        equity_curve = daily_equity_curve(final_portfolio, daily_prices, day_params)
         wf_result = run_walk_forward(equity_curve, final_portfolio, test_spec, {})
 
         if wf_result.empty:

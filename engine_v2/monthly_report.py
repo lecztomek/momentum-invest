@@ -43,10 +43,11 @@ import pandas as pd
 
 from engine_v2.annual_tax import apply_annual_tax
 from engine_v2.backtest_engine import daily_equity_curve
-from engine_v2.combined_pipeline import load_combined_daily_prices, run_combined_pipeline
+from engine_v2.combined_pipeline import combined_execution_day_of_month, load_combined_daily_prices, run_combined_pipeline
 from engine_v2.combined_spec import CombinedSpec
 from engine_v2.generate_results import _COMBINED_ANNUAL_TAX_RATE, _DEMO_DIRS, STRATEGIES_DIR
 from engine_v2.monthly_ledger import build_monthly_ledger
+from engine_v2.period_anchor import strategy_execution_day_of_month
 from engine_v2.pipeline import run_strategy_pipeline
 from engine_v2.run_spec import RunSpec
 from engine_v2.run_spec_runner import _load_daily_prices, _tax_adjusted_equity_curve
@@ -71,7 +72,8 @@ def _final_portfolio_and_equity_single(strategy_dir: Path) -> Tuple[pd.DataFrame
     test_spec = TestSpec.load(strategy_dir / "test_spec.json")
 
     final_portfolio = run_strategy_pipeline(strategy_spec)
-    equity_curve = daily_equity_curve(final_portfolio, _load_daily_prices(strategy_spec), {})
+    day_params = {"execution_day_of_month": strategy_execution_day_of_month(strategy_spec.base_params)}
+    equity_curve = daily_equity_curve(final_portfolio, _load_daily_prices(strategy_spec), day_params)
     equity_curve, _ = _tax_adjusted_equity_curve(equity_curve, final_portfolio, test_spec)
     return final_portfolio, equity_curve
 
@@ -82,7 +84,8 @@ def _final_portfolio_and_equity_combined(combined_dir: Path) -> Tuple[pd.DataFra
 
     daily_prices = load_combined_daily_prices(combined_spec, combined_dir)
 
-    equity_curve = daily_equity_curve(final_portfolio, daily_prices, {})
+    day_params = {"execution_day_of_month": combined_execution_day_of_month(combined_spec, combined_dir)}
+    equity_curve = daily_equity_curve(final_portfolio, daily_prices, day_params)
     equity_curve = apply_annual_tax(equity_curve, _COMBINED_ANNUAL_TAX_RATE)
     return final_portfolio, equity_curve
 

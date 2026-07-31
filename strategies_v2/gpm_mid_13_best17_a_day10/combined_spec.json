@@ -1,0 +1,21 @@
+{
+  "name": "gpm_mid_13_best17_a_day10_v0",
+  "hypothesis": "User: 'Teraz zrob 50/50 z best 17' (po dodaniu RSP/XLP/XLV do gpm_mid_10 jako `gpm_mid_13`). Ten sam wzorzec co `gpm_mid_10_best17_a` (kandydat produkcyjny): `gpm_mid_13` + `best17_a`, zmiksowane NAJPROSTSZYM mozliwym combinerem `fixed_capital_weights` 50/50 (bez tiltu, bez sygnalu). `gpm_mid_13` solo jest lekko lepszy niz `gpm_mid_10` solo (CAGR 4.94% vs 4.77%, MaxDD -12.57% vs -12.95%, Sharpe 0.616 vs 0.597, Calmar 0.393 vs 0.369, patrz CHANGELOG 2026-07-15 (7)) - ten miks sprawdza, czy ta przewaga solo przenosi sie na polaczony portfel z `best17_a`. EKSPERYMENT execution_day_of_month (2026-07-16, user: \"chodzi o to zeby zobaczyc ze podawane strategie sa dobre\") - `execution_day_of_month`=10 (domyslnie 1, patrz `engine_v2/period_anchor.py`), zapisane na trwale jako oddzielna strategia. UWAGA: pierwszy sweep (2026-07-16) mial BLAD w `backtest_engine.daily_equity_curve` - funkcja wcale nie uzywala `execution_day_of_month` przy rekonstrukcji dziennej krzywej equity, zawsze przelaczala wagi na etykiecie \"1-szy dzien miesiaca\" niezaleznie od realnego dnia wykonania - stad falszywy wniosek \"dzien 5 wygrywa na pelnej historii, ale przegrywa na OOS\" (patrz CHANGELOG 2026-07-16 (3)/(4), OZNACZONE jako bledne). Po naprawie bugfixu (nowy param `execution_day_of_month` w `daily_equity_curve`, patrz CHANGELOG 2026-07-16 (4)) POPRAWNY, spojny wniosek: dzien 1 > dzien 5 > dzien 10 na KAZDEJ metryce, na OBU oknach (train 2010-06..2019-12 I test/OOS 2020-01..2026-06), na wszystkich 3 faworytach - wczesniejsze zdecydowanie sie na dzialanie po zamknieciu miesiaca (dzien 1) jest strukturalnie lepsze niz czekanie (momentum czesciowo 'wygasa'). Ta strategia jest TRWALYM ZAPISEM tego eksperymentu (teraz z poprawnym wynikiem) - NIE rekomendacja zmiany domyslnego dnia (dzien 1 juz jest optymalny z {1,5,10}).",
+  "strategy_spec_paths": [
+    "../gpm_mid_13_day10/strategy_spec.json",
+    "../best17_a_day10/strategy_spec.json"
+  ],
+  "combiner": "fixed_capital_weights",
+  "combiner_params": {
+    "capital_weights": {
+      "gpm_mid_13_day10_v0": 0.5,
+      "best17_a_day10_v0": 0.5
+    }
+  },
+  "reporting": "monthly_csv_export",
+  "reporting_params": {
+    "output_path": "results/monthly/gpm_mid_13_best17_a_day10.csv",
+    "annual_tax_rate": 0.19
+  },
+  "created_at": "2026-07-16"
+}

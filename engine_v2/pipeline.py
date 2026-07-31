@@ -25,6 +25,7 @@ import pandas as pd
 from engine_v2.spec import MULTI_INSTANCE_BLOCKS, StrategySpec
 from engine_v2.backtest_engine import daily_equity_curve
 from engine_v2.final_portfolio import build_final_portfolio
+from engine_v2.period_anchor import strategy_execution_day_of_month
 from engine_v2.types import (
     EligibilityMask,
     ExecutionContext,
@@ -282,7 +283,8 @@ def run_strategy_pipeline_with_reporting(spec: StrategySpec) -> pd.DataFrame:
         daily_params = dict(spec.base_params.get("data_loader", {}))
         daily_params["frequency"] = "daily"
         daily_prices = _lookup("data_loader", spec.blocks["data_loader"])(spec.universe, daily_params).prices
-        equity_curve = daily_equity_curve(final_portfolio, daily_prices, {})
+        day_params = {"execution_day_of_month": strategy_execution_day_of_month(spec.base_params)}
+        equity_curve = daily_equity_curve(final_portfolio, daily_prices, day_params)
 
         reporting_fn = _lookup("reporting", reporting_name)
         reporting_fn(final_portfolio, equity_curve, spec.base_params.get("reporting", {}))

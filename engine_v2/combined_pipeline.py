@@ -57,6 +57,7 @@ from engine_v2.blocks.reporting import REGISTRY as REPORTING_REGISTRY
 from engine_v2.combined_spec import CombinedSpec
 from engine_v2.combiner import REGISTRY as COMBINER_REGISTRY
 from engine_v2.final_portfolio import build_final_portfolio
+from engine_v2.period_anchor import strategy_execution_day_of_month
 from engine_v2.pipeline import run_strategy_pipeline
 from engine_v2.spec import StrategySpec
 from engine_v2.types import PeriodExecutionResult
@@ -193,6 +194,16 @@ def load_combined_daily_prices(combined_spec: CombinedSpec, base_dir: Path) -> p
     return pd.concat(frames, axis=1).sort_index()
 
 
+def combined_execution_day_of_month(combined_spec: CombinedSpec, base_dir: Path) -> int:
+    """`execution_day_of_month` skladowych strategii - z ZALOZENIA identyczny u wszystkich
+    (konwencja tej samej rodziny, patrz `period_anchor.py`), bierzemy wartosc PIERWSZEJ
+    skladowej. Potrzebne wszedzie, gdzie liczymy `daily_equity_curve` na POLACZONYM portfelu -
+    inaczej ta funkcja przelaczylaby wagi na dniu 1, nawet gdy skladowe faktycznie handlowaly
+    na dniu 5/10 (patrz bugfix 2026-07-16 w CHANGELOG)."""
+    strategy_spec = StrategySpec.load(base_dir / combined_spec.strategy_spec_paths[0])
+    return strategy_execution_day_of_month(strategy_spec.base_params)
+
+
 def run_combined_pipeline_with_reporting(combined_spec: CombinedSpec, base_dir: Path) -> pd.DataFrame:
     """Jak `run_combined_pipeline()`, ale DODATKOWO odpala opcjonalny blok `reporting`
     (2026-07-15, user: "Run one tez powinno dzialac dla laczonych" - analogia do
@@ -209,7 +220,8 @@ def run_combined_pipeline_with_reporting(combined_spec: CombinedSpec, base_dir: 
     reporting_name = combined_spec.reporting or "none"
     if reporting_name != "none":
         daily_prices = load_combined_daily_prices(combined_spec, base_dir)
-        equity_curve = daily_equity_curve(final_portfolio, daily_prices, {})
+        day_params = {"execution_day_of_month": combined_execution_day_of_month(combined_spec, base_dir)}
+        equity_curve = daily_equity_curve(final_portfolio, daily_prices, day_params)
 
         reporting_fn = REPORTING_REGISTRY.get(reporting_name)
         if reporting_fn is None:

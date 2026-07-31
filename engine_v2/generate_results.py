@@ -61,7 +61,7 @@ from engine_v2.acceptance_spec import AcceptanceSpec, Criteria, UkMappingAccepta
 from engine_v2.annual_tax import apply_annual_tax
 from engine_v2.backtest_engine import daily_equity_curve
 from engine_v2.blocks.data_loader import REGISTRY as DATA_LOADER_REGISTRY
-from engine_v2.combined_pipeline import load_combined_daily_prices, run_combined_pipeline
+from engine_v2.combined_pipeline import combined_execution_day_of_month, load_combined_daily_prices, run_combined_pipeline
 from engine_v2.combined_spec import CombinedSpec
 from engine_v2.metrics import compute_metrics
 from engine_v2.named_periods import KNOWN_PERIODS, compute_named_period_metrics
@@ -205,8 +205,9 @@ def _uk_mapping_combined(
     us_slice = us_final_portfolio[us_final_portfolio["date"] >= uk_window_start].reset_index(drop=True)
     uk_slice, diagnostics = remap_final_portfolio(us_slice, ticker_mapping)
 
-    us_equity_curve = daily_equity_curve(us_slice, us_daily_prices, {})
-    uk_equity_curve = daily_equity_curve(uk_slice, uk_daily_prices, {})
+    day_params = {"execution_day_of_month": combined_execution_day_of_month(combined_spec, combined_dir)}
+    us_equity_curve = daily_equity_curve(us_slice, us_daily_prices, day_params)
+    uk_equity_curve = daily_equity_curve(uk_slice, uk_daily_prices, day_params)
     if annual_tax_rate > 0.0:
         us_equity_curve = apply_annual_tax(us_equity_curve, annual_tax_rate)
         uk_equity_curve = apply_annual_tax(uk_equity_curve, annual_tax_rate)
@@ -247,7 +248,8 @@ def _capital_weight_sensitivity(combined_dir: Path, combined_spec: CombinedSpec)
             combiner_params={"capital_weights": {name_a: weight_a, name_b: round(1.0 - weight_a, 10)}},
         )
         final_portfolio = run_combined_pipeline(variant, combined_dir)
-        equity_curve = daily_equity_curve(final_portfolio, daily_prices, {})
+        day_params = {"execution_day_of_month": combined_execution_day_of_month(variant, combined_dir)}
+        equity_curve = daily_equity_curve(final_portfolio, daily_prices, day_params)
         equity_curve = apply_annual_tax(equity_curve, _COMBINED_ANNUAL_TAX_RATE)
         metrics = compute_metrics(equity_curve, final_portfolio, {})
         records.append({f"weight_{name_a}": weight_a, **metrics})
@@ -304,7 +306,8 @@ def _generate_combined(combined_dir: Path) -> Dict[str, Any]:
 
     daily_prices = load_combined_daily_prices(combined_spec, combined_dir)
 
-    equity_curve = daily_equity_curve(final_portfolio, daily_prices, {})
+    day_params = {"execution_day_of_month": combined_execution_day_of_month(combined_spec, combined_dir)}
+    equity_curve = daily_equity_curve(final_portfolio, daily_prices, day_params)
     metrics_pre_tax = compute_metrics(equity_curve, final_portfolio, {})
     equity_curve_after_tax = apply_annual_tax(equity_curve, _COMBINED_ANNUAL_TAX_RATE)
     metrics = compute_metrics(equity_curve_after_tax, final_portfolio, {})

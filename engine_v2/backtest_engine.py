@@ -25,6 +25,12 @@ z kolumnami: date, equity (equity[0] = starting_equity, domyslnie 1.0).
 
 params:
     starting_equity (float, opcjonalnie, domyslnie 1.0)
+    execution_day_of_month (int, opcjonalnie, domyslnie 1) - BUGFIX 2026-07-16: MUSI byc ten sam
+        dzien miesiaca, co uzyty w `data_loader`/wskaznikach danej strategii (patrz
+        `engine_v2/period_anchor.py`) - inaczej ta funkcja przelaczy wagi na innej dacie niz ta,
+        na ktorej FINAL PORTFOLIO faktycznie podjelo decyzje (patrz CHANGELOG - bez tej poprawki
+        `execution_day_of_month>1` wplywalo TYLKO na wskazniki/decyzje, a rzeczywista data
+        transakcji w dziennej krzywej equity zawsze siadala na dniu 1)
 
 Polaczenie okresow: dzien rebalansu KOLEJNEGO okresu jest jednoczesnie ostatnim dniem
 poprzedniego (jego zwrot z tego dnia jeszcze liczy sie na starych wagach) - tego samego dnia
@@ -39,6 +45,8 @@ from typing import Any, Dict
 
 import pandas as pd
 
+from engine_v2.period_anchor import nth_trading_day_dates
+
 
 def daily_equity_curve(
     final_portfolio: pd.DataFrame, daily_prices: pd.DataFrame, params: Dict[str, Any]
@@ -47,16 +55,29 @@ def daily_equity_curve(
         raise ValueError("daily_equity_curve: pusty final_portfolio.")
 
     starting_equity = float(params.get("starting_equity", 1.0))
+    day_of_month = int(params.get("execution_day_of_month", 1))
 
     fp = final_portfolio.sort_values("date").reset_index(drop=True)
     prices = daily_prices.sort_index().ffill()
+    # etykieta okresu (np. "2020-01-01") -> RZECZYWISTA data transakcji tego miesiaca (np.
+    # "2020-01-06" dla day_of_month=5) - patrz bugfix w period_anchor.py.
+    trading_dates = nth_trading_day_dates(prices.index, day_of_month)
+
+    def _actual_date(label: pd.Timestamp) -> pd.Timestamp:
+        return trading_dates.get(label, label)
 
     equity = starting_equity
     records: list = []
 
     for i in range(len(fp)):
         row = fp.iloc[i]
-        period_start = row["date"]
+        period_start = _actual_date(row["date"])
+        # UWAGA: period_end NIE jest mapowany przez _actual_date - musi zostac surowa etykieta
+        # (jak przed poprawka), zeby przy day_of_month=1 zachowanie bylo BAJT-IDENTYCZNE (patrz
+        # test w test_backtest_engine.py). Mapowanie OBU granic rozciagaloby kazdy okres o
+        # dodatkowe dni (od surowej etykiety nastepnego miesiaca do jego faktycznej daty
+        # wykonania), zmieniajac wynik nawet dla dnia 1 - period_start samo w sobie wystarcza,
+        # zeby kolejny okres i tak zaczal sie od WLASNEJ, poprawnej daty wykonania.
         period_end = fp.iloc[i + 1]["date"] if i + 1 < len(fp) else prices.index.max()
 
         weights = json.loads(row["weights_used_json"])

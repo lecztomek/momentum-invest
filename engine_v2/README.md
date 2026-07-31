@@ -16,9 +16,13 @@ dowolny blok da się podmienić albo przetestować osobno, bez ruszania reszty.
 > 16 portfeli łączonych, które je zawierają; (2) DBC-slot w UK (`uk_ticker_mapping.json`/
 > `best17_a_uk`/`gpm_uk`) `icom.uk` -> `cmod.uk` (user: "Zarowno best17 jak i gpm uk powinny
 > uzywac dbc-> cmod", zgodnie z prawdziwym systemem uzytkownika,
-> `ideas/best17_3m_tlt_dtla_40/ticker_mapping.json`). **Każda liczba dotycząca tych strategii W
-> CAŁYM PONIŻSZYM DOKUMENCIE sprzed tej daty jest NIEAKTUALNA** - aktualne wyniki zawsze w
-> `results/SUMMARY.md`/`results/<strategia>.json`, pełny opis zmiany i tabele przed/po w
+> `ideas/best17_3m_tlt_dtla_40/ticker_mapping.json`). Plus (3) nowy opcjonalny param
+> `execution_day_of_month` (test wplywu dnia miesiaca zakupu) + BUGFIX
+> `backtest_engine.daily_equity_curve` (nie uzywala go wcale przy pierwszym sweepie - patrz
+> CHANGELOG (3) oznaczone jako bledne, poprawka w (4)) - domyslny dzien 1 BEZ ZMIAN, teraz
+> empirycznie potwierdzony jako najlepszy z {{1,5,10}} na OOS. **Każda liczba dotycząca tych
+> strategii W CAŁYM PONIŻSZYM DOKUMENCIE sprzed tej daty jest NIEAKTUALNA** - aktualne wyniki
+> zawsze w `results/SUMMARY.md`/`results/<strategia>.json`, pełny opis zmiany i tabele przed/po w
 > `CHANGELOG.md`.
 
 ## Cztery specy (pre-rejestracja w stylu funduszowym)
