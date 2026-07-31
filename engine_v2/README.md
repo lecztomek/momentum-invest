@@ -17,11 +17,12 @@ dowolny blok da się podmienić albo przetestować osobno, bez ruszania reszty.
 > `best17_a_uk`/`gpm_uk`) `icom.uk` -> `cmod.uk` (user: "Zarowno best17 jak i gpm uk powinny
 > uzywac dbc-> cmod", zgodnie z prawdziwym systemem uzytkownika,
 > `ideas/best17_3m_tlt_dtla_40/ticker_mapping.json`). Plus (3) nowy opcjonalny param
-> `execution_day_of_month` (test wplywu dnia miesiaca zakupu) + BUGFIX
-> `backtest_engine.daily_equity_curve` (nie uzywala go wcale przy pierwszym sweepie - patrz
-> CHANGELOG (3) oznaczone jako bledne, poprawka w (4)) - domyslny dzien 1 BEZ ZMIAN, teraz
-> empirycznie potwierdzony jako najlepszy z {{1,5,10}} na OOS. **Każda liczba dotycząca tych
-> strategii W CAŁYM PONIŻSZYM DOKUMENCIE sprzed tej daty jest NIEAKTUALNA** - aktualne wyniki
+> `execution_day_of_month` (test wplywu dnia miesiaca zakupu) + DWA kolejne bugfixy w
+> `backtest_engine.daily_equity_curve` (patrz CHANGELOG (3) i (4), OBA oznaczone jako bledne -
+> ostateczna poprawka w (5)) - domyslny dzien 1 BEZ ZMIAN, ale ostateczny (po obu poprawkach),
+> zweryfikowany wynik pokazuje dzien 10 jako najlepszy z {{1,5,10}} na OOS (nie dzien 1 - patrz
+> (5) po szczegoly, decyzja o niezmienianiu domyslnego dnia bez zmian). **Każda liczba dotycząca
+> tych strategii W CAŁYM PONIŻSZYM DOKUMENCIE sprzed tej daty jest NIEAKTUALNA** - aktualne wyniki
 > zawsze w `results/SUMMARY.md`/`results/<strategia>.json`, pełny opis zmiany i tabele przed/po w
 > `CHANGELOG.md`.
 

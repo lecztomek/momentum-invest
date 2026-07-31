@@ -2,7 +2,68 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
-## 2026-07-16 (4)
+## 2026-07-16 (5)
+
+- **DRUGI BUGFIX w `daily_equity_curve`** (user zauwazyl anomalie: "coś nie tak, czemu jest aż
+  taka różnica w dniu 10") - poprawka (4) naprawila TYLKO to, ze `execution_day_of_month` byl w
+  ogole uzywany, ale gorna granica okresu (`period_end`) nadal byla SUROWA etykieta nastepnego
+  miesiaca ("2020-02-01"), nie realna data wykonania. Dla `day_of_month>1` ta surowa etykieta
+  lezy TYGODNIAMI przed faktyczna nastepna data wykonania ("2020-02-10" dla dnia=10) - wiec
+  `prices.index <= surowa_etykieta` obcinal caly okres 9-12 dni handlowych KAZDEGO miesiaca,
+  NIEZALEZNIE od tego, czy portfel trzymal wtedy realne aktywa. Zweryfikowane bezposrednio:
+  `best17_a_day10`'s equity miala identyczna wartosc przez 5 kolejnych miesiecy 2008 (rozne od
+  cash - portfel realnie trzymal IAU/XLK/IVV/DBC w tym oknie), z przerwami 9-12 dni
+  kalendarzowych miedzy kolejnymi wierszami equity - **caly ruch cen tych aktywow w tym oknie byl
+  cicho gubiony**. To systematycznie ZANIZALO wynik dnia 5/10 w (3) i (4) - obie te tabele/wnioski
+  sa BLEDNE.
+
+  **Naprawa**: dla `day_of_month==1` - SCIEZKA BEZ ZMIAN (surowa etykieta, `<=`) - gwarantuje
+  bajt-identycznosc ze stanem SPRZED (4) (zweryfikowane na `best17_a`/`gpm_mid_10`/`the_one`).
+  Dla `day_of_month>1` - gorna granica okresu to TERAZ rzeczywista data startu NASTEPNEGO okresu
+  (`_actual_date`, `<=` wlacznie - ten sam dzien nastepny okres i tak nadpisuje, jak w oryginalnym
+  mechanizmie "dzien rebalansu to jednoczesnie ostatni dzien poprzedniego okresu"), zamiast
+  surowej etykiety. Powod, dla ktorego NIE da sie tego zunifikowac w jeden wzor dla obu
+  przypadkow: oryginalny kod (dzien=1) ma WBUDOWANA niespojnosc zalezna od przypadku
+  kalendarzowego (gdy "1-szy dzien miesiaca" akurat jest dniem handlowym, transition-day
+  APLIKUJE sie pod starymi wagami zanim zostanie nadpisany; gdy nie jest - luka miedzy
+  miesiacami jest CICHO pomijana) - probowanie odtworzenia tego "poprawnie" dla kazdego dnia
+  zmienialoby wynik nawet przy dniu=1 (zlapane empirycznie: CAGR `best17_a` 15.12%->13.61% przy
+  jednej probie, 15.12%->16.21% przy innej). Zamiast tego: zero ryzyka dla dnia=1 (caly istniejacy
+  pakiet testow, ~600+ zamrozonych baseline'ow w repo, dziala na TEJ SCIEZCE bez zmian), a dla
+  dnia>1 - PELNE, poprawne pokrycie kazdego dnia handlowego miedzy kolejnymi realnymi wykonaniami
+  (zero lukk >5 dni kalendarzowych, zweryfikowane na `best17_a_day5/10` i obu portfelach
+  laczonych).
+
+  **Ostateczny, zweryfikowany sweep** (POST-TAX, PELNA historia):
+
+  | | dzien 1 (dzisiejszy) | dzien 5 | dzien 10 |
+  |---|---|---|---|
+  | `best17_a` CAGR | 12.34% | 13.11% | **13.52%** |
+  | `gpm_mid_10_best17_a` CAGR | 8.34% | 8.49% | **8.88%** |
+  | `gpm_mid_13_best17_a` CAGR | 8.44% | 8.58% | **9.13%** |
+
+  **Train/OOS (Sharpe)**:
+
+  | | TRAIN dzien 1 | TRAIN dzien 5 | TRAIN dzien 10 | OOS dzien 1 | OOS dzien 5 | OOS dzien 10 |
+  |---|---|---|---|---|---|---|
+  | `best17_a` | 0.794 | 0.890 | **0.878** | 0.730 | 0.674 | **0.775** |
+  | `gpm_mid_10_best17_a` | 0.916 | 0.958 | **0.969** | 0.823 | 0.751 | **0.846** |
+  | `gpm_mid_13_best17_a` | 0.933 | 0.989 | **1.001** | 0.829 | 0.725 | **0.844** |
+
+  **Ostateczny wniosek: dzien 10 wygrywa na OOS na WSZYSTKICH 3 faworytach** (Sharpe OOS: dzien10
+  > dzien1 > dzien5, konsekwentnie na kazdym kandydacie), i jest tez najlepszy lub bardzo blisko
+  najlepszego na TRAIN. To TRZECI, calkowicie odmienny wniosek z tego samego eksperymentu (po (3)
+  "dzien1 wygrywa" i (4) "dzien1>dzien5>dzien10") - dwa razy z rzedu blad byl w silniku, nie w
+  interpretacji danych. Mimo trzeciego, tym razem spojnego na train+OOS wyniku, NIE zmieniamy
+  domyslnego dnia w `strategy_spec.json` - jeden train/test split (nie pelny walk-forward) plus
+  historia dwoch kolejnych bledow w tym samym eksperymencie to zbyt malo zaufania, zeby
+  wdrozyc zmiane na produkcyjnych strategiach. Zaktualizowano hipotezy wszystkich 10 trwale
+  zapisanych strategii `*_day5`/`*_day10` (2026-07-16 (4)) z tym ostatecznym wynikiem.
+  Przeliczono wszystkie 10 `results/*.json` + CSV + `SUMMARY.md`. Pelny pakiet testow: 617/617,
+  bez regresji (bajt-identycznosc dnia=1 zweryfikowana na wielu strategiach niezaleznie od
+  testow jednostkowych).
+
+## 2026-07-16 (4) - ⚠️ SWEEP PONIZEJ BYL LICZONY Z DRUGIM BUGIEM, patrz poprawka (5)
 
 - **BUGFIX (znaleziony przy weryfikacji (3) nizej): `backtest_engine.daily_equity_curve` w ogole
   nie uzywala `execution_day_of_month`** - user zauwazyl niespojnosc przy probie trwalego
@@ -39,6 +100,14 @@ Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co 
   miejsc wolajacych `daily_equity_curve` w kodzie produkcyjnym (`run_spec_runner.py` x5,
   `combined_pipeline.py` x1, `generate_results.py` x3, `monthly_report.py` x2, `pipeline.py` x1).
   Testy istniejace (day_of_month=1 wszedzie) - zero zmian w wywolaniach, `{}` nadal oznacza dzien 1.
+
+  **⚠️ SWEEP PONIZEJ (obie tabele) JEST DALEJ BLEDNY** - poprawka wyzej naprawila TYLKO to, ze
+  `daily_equity_curve` w ogole uzywala `execution_day_of_month`, ale gorna granica okresu byla
+  SUROWA etykieta nastepnego miesiaca (nie realna data wykonania) - dla day_of_month>1 to
+  systematycznie CIELO caly okres 9-12 dni handlowych KAZDEGO miesiaca (mimo trzymania realnych
+  aktywow jak IAU/XLK), zanizajac wynik dnia 5/10. Poprawiony wynik (2026-07-16 (5) nizej):
+  dzien 10 wygrywa na OOS na wszystkich 3 faworytach - zupelnie inny wniosek. Zostawione jako
+  zapis co sie stalo, NIE jako aktualne dane.
 
   **Poprawiony sweep na faworytach** (ten sam eksperyment co (3), teraz z dzialajacym silnikiem -
   POST-TAX, PELNA historia):
@@ -84,7 +153,7 @@ Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co 
   (i teraz jest empirycznie potwierdzony jako najlepszy z testowanych, nie tylko "bezpieczny").
   Pelny pakiet testow: 617/617, bez regresji.
 
-## 2026-07-16 (3) - ⚠️ SWEEP PONIZEJ BYL LICZONY Z BUGIEM, patrz poprawka (4)
+## 2026-07-16 (3) - ⚠️ SWEEP PONIZEJ BYL LICZONY Z BUGIEM, patrz poprawki (4) i finalnie (5)
 
 - **NOWY PARAMETR: `execution_day_of_month`** - user: "chciałbym sprawdzić wyniki strategii w
   przypadku zmiany kiedy kupujemy no zamiast ostatni dzień miesiąc to niech będzie 5 lub 10 lub 1"

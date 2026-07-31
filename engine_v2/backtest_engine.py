@@ -71,14 +71,28 @@ def daily_equity_curve(
 
     for i in range(len(fp)):
         row = fp.iloc[i]
-        period_start = _actual_date(row["date"])
-        # UWAGA: period_end NIE jest mapowany przez _actual_date - musi zostac surowa etykieta
-        # (jak przed poprawka), zeby przy day_of_month=1 zachowanie bylo BAJT-IDENTYCZNE (patrz
-        # test w test_backtest_engine.py). Mapowanie OBU granic rozciagaloby kazdy okres o
-        # dodatkowe dni (od surowej etykiety nastepnego miesiaca do jego faktycznej daty
-        # wykonania), zmieniajac wynik nawet dla dnia 1 - period_start samo w sobie wystarcza,
-        # zeby kolejny okres i tak zaczal sie od WLASNEJ, poprawnej daty wykonania.
-        period_end = fp.iloc[i + 1]["date"] if i + 1 < len(fp) else prices.index.max()
+        has_next = i + 1 < len(fp)
+
+        if day_of_month == 1:
+            # SCIEZKA ORYGINALNA, bez zmian - gwarantuje bajt-identyczny wynik z kodem sprzed
+            # bugfixu (2026-07-16 (4)+(5)). Uzywa SUROWEJ etykiety ("2020-02-01"), nie faktycznej daty
+            # - to jest CELOWO niespojne (gdy "1-szy dzien miesiaca" jest sam dniem handlowym,
+            # granica `<=` go zlapie, w przeciwnym razie okres po prostu konczy sie na ostatnim
+            # dniu handlowym biezacego miesiaca) - ale ZASTANY, wszedzie przetestowany stan.
+            period_start = row["date"]
+            period_end = fp.iloc[i + 1]["date"] if has_next else prices.index.max()
+            period_days = prices.index[(prices.index >= period_start) & (prices.index <= period_end)]
+        else:
+            # BUGFIX 2026-07-16 (5): dla day_of_month>1 surowa etykieta nastepnego okresu
+            # ("2020-02-01") lezy TYGODNIE przed faktyczna nastepna data wykonania
+            # ("2020-02-10") - `prices.index <= surowa_etykieta` obcinal caly ten okres wielu dni
+            # handlowych (mimo trzymania realnych aktywow, patrz CHANGELOG). Gorna granica MUSI
+            # byc RZECZYWISTA data startu nastepnego okresu (`<=`, wlacznie - ten sam dzien
+            # nastepny okres i tak nadpisze, patrz "NADPISYWANY" nizej), zeby zaden dzien
+            # handlowy nie zostal pominiety miedzy dwoma kolejnymi rzeczywistymi wykonaniami.
+            period_start = _actual_date(row["date"])
+            period_end = _actual_date(fp.iloc[i + 1]["date"]) if has_next else prices.index.max()
+            period_days = prices.index[(prices.index >= period_start) & (prices.index <= period_end)]
 
         weights = json.loads(row["weights_used_json"])
         trade_cost = float(row.get("trade_cost", 0.0))
@@ -94,7 +108,6 @@ def daily_equity_curve(
         if unknown:
             raise ValueError(f"daily_equity_curve: nieznane tickery {unknown} (brak w daily_prices).")
 
-        period_days = prices.index[(prices.index >= period_start) & (prices.index <= period_end)]
         if len(period_days) == 0:
             continue
 
