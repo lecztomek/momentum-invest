@@ -55,15 +55,34 @@ Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co 
   | `gpm_mid_13_best17_a` CAGR | 8.44% | **8.88%** | 8.65% |
   | `gpm_mid_13_best17_a` Sharpe | 0.810 | **0.850** | 0.832 |
 
-  Kierunek: dzien 5 wygrywa na kazdej metryce CAGR/Sharpe/Calmar na wszystkich 3 faworytach
-  (MaxDD bez zmian - ten sam najgorszy miesiac/okres, niezalezny od dnia wykonania w tym
-  przypadku), z NIZSZYM turnoverem niz dzien 1 - ale to prawdopodobnie w duzej mierze artefakt
-  KONKRETNEJ historii cen (5-10 dzien miesiaca akurat czesciej trafial na lepsza cene w tym
-  oknie), NIE dowod, ze dzien 5 jest strukturalnie lepszy - do potwierdzenia potrzeba by
-  train/OOS split (jak przy innych sweepach w tym repo) zanim to zmienimy na trwale w
-  `strategy_spec.json`. Zmiana NIE zostala zapisana jako nowy domyslny dzien - to eksploracyjny
-  wynik do decyzji usera, nie wdrozona poprawka. Pelny pakiet testow: 609/609 (601 + 8 nowych),
-  bez regresji.
+  Kierunek na PELNEJ historii: dzien 5 wygrywa na kazdej metryce CAGR/Sharpe/Calmar na wszystkich
+  3 faworytach (MaxDD bez zmian - ten sam najgorszy miesiac/okres, niezalezny od dnia wykonania w
+  tym przypadku), z NIZSZYM turnoverem niz dzien 1.
+
+  **Train/OOS split (user: "na tym teście chodzi o to żeby zobaczyć że podawane strategie są
+  dobre") - kluczowa weryfikacja, ten sam sweep, ale osobno na oknie TRAIN (2010-06..2019-12) i
+  TEST/OOS (2020-01..2026-06, wg `test_spec.json` kazdego kandydata - identyczne okna dla
+  wszystkich trzech)**:
+
+  | | TRAIN Sharpe dzien 1 | TRAIN Sharpe dzien 5 | TRAIN Sharpe dzien 10 | OOS Sharpe dzien 1 | OOS Sharpe dzien 5 | OOS Sharpe dzien 10 |
+  |---|---|---|---|---|---|---|
+  | `best17_a` | 0.794 | **0.918** | 0.824 | 0.730 | **0.693** (najgorszy) | **0.742** (najlepszy) |
+  | `gpm_mid_10_best17_a` | 0.916 | **1.019** | 0.944 | 0.823 | **0.795** (najgorszy) | **0.832** (najlepszy) |
+  | `gpm_mid_13_best17_a` | 0.933 | **1.034** | 0.962 | 0.829 | **0.801** (najgorszy) | **0.838** (najlepszy) |
+
+  **Wynik: przewaga dnia 5 z pelnej historii NIE utrzymuje sie out-of-sample - to byl efekt
+  TRAIN okna (2010-2019), gdzie dzien 5 wygrywa wyraznie na wszystkich trzech kandydatach, ale na
+  PRAWDZIWYM OOS (2020-2026) dzien 5 jest NAJGORSZY z trzech wariantow na kazdym kandydacie,
+  a dzien 10 (nie testowany wczesniej jako "zwyciezca") wypada NAJLEPIEJ na OOS na wszystkich
+  trzech.** Klasyczny przyklad przeuczenia sie do jednego okna - "dzien 5" nie jest strukturalnie
+  lepszym dniem wykonania, tylko lepiej trafial w konkretne ceny w oknie treningowym. Wniosek:
+  NIE zmieniamy domyslnego dnia wykonania na podstawie tego testu - dzisiejszy dzien 1 pozostaje
+  rozsadnym, nieprzeuczonym wyborem (i tak jest wciaz drugi najlepszy na OOS na wszystkich 3
+  kandydatach, tuz za dniem 10). Gdyby chciec dalej scigac dzien 10, potrzeba by pelnego
+  walk-forward (nie jednego train/test split) zanim cokolwiek zmienimy w `strategy_spec.json`.
+
+  Zmiana NIE zostala zapisana jako nowy domyslny dzien - to eksploracyjny wynik do decyzji
+  usera, nie wdrozona poprawka. Pelny pakiet testow: 609/609 (601 + 8 nowych), bez regresji.
 
 ## 2026-07-16 (2)
 
