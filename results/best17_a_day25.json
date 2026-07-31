@@ -1,0 +1,497 @@
+{
+  "acceptance": {
+    "max_annual_turnover": true,
+    "max_consecutive_negative_months": true,
+    "max_drawdown": false,
+    "max_time_underwater_months": false,
+    "min_cagr": true,
+    "min_calmar": true,
+    "min_sharpe": true
+  },
+  "metrics": {
+    "annual_turnover": 1.3492959878879638,
+    "best_year_return": 0.35825529518575494,
+    "cagr": 0.15531371305233055,
+    "calmar": 0.49006243312444664,
+    "max_consecutive_negative_months": 3,
+    "max_drawdown": -0.3169263803024259,
+    "max_time_underwater_months": 26,
+    "sharpe": 0.8665278335512142,
+    "worst_year_return": -0.13684942420638202
+  },
+  "metrics_pre_tax": {
+    "annual_turnover": 1.3492959878879638,
+    "best_year_return": 0.43705400454745114,
+    "cagr": 0.1878110050507813,
+    "calmar": 0.5926013633562579,
+    "max_consecutive_negative_months": 3,
+    "max_drawdown": -0.3169263803024256,
+    "max_time_underwater_months": 25,
+    "sharpe": 1.0294224289435419,
+    "worst_year_return": -0.13684942420638202
+  },
+  "mode": "final",
+  "named_periods_all": {
+    "covid_crash_rebound": {
+      "checks": {},
+      "covered": true,
+      "metrics": {
+        "annual_turnover": 0.4805921052631579,
+        "best_year_return": 0.22135390067588046,
+        "cagr": 0.24605942561766536,
+        "calmar": 0.7763930076848257,
+        "max_consecutive_negative_months": 2,
+        "max_drawdown": -0.3169263803024259,
+        "max_time_underwater_months": 2,
+        "sharpe": 0.7562940656221796,
+        "worst_year_return": 0.22135390067588046
+      }
+    },
+    "gfc_crash": {
+      "checks": {},
+      "covered": true,
+      "metrics": {
+        "annual_turnover": 3.006172839506173,
+        "best_year_return": 0.0,
+        "cagr": -0.09431332496639833,
+        "calmar": -0.9539168309915832,
+        "max_consecutive_negative_months": 1,
+        "max_drawdown": -0.09886954701109629,
+        "max_time_underwater_months": 8,
+        "sharpe": -0.9550967725809074,
+        "worst_year_return": -0.06530306448658241
+      }
+    },
+    "inflation_bear": {
+      "checks": {},
+      "covered": true,
+      "metrics": {
+        "annual_turnover": 1.093562874251497,
+        "best_year_return": -0.1440275294621033,
+        "cagr": -0.14559327817772005,
+        "calmar": -0.7976724657765694,
+        "max_consecutive_negative_months": 1,
+        "max_drawdown": -0.18252263231372612,
+        "max_time_underwater_months": 9,
+        "sharpe": -0.6807854439606158,
+        "worst_year_return": -0.1440275294621033
+      }
+    },
+    "post_gfc_recovery": {
+      "checks": {},
+      "covered": true,
+      "metrics": {
+        "annual_turnover": 2.1260820895522388,
+        "best_year_return": 0.27017577804532933,
+        "cagr": 0.18471308131051267,
+        "calmar": 1.2982301989888874,
+        "max_consecutive_negative_months": 3,
+        "max_drawdown": -0.14228068446903674,
+        "max_time_underwater_months": 5,
+        "sharpe": 1.1331557394567342,
+        "worst_year_return": 0.045582055977550384
+      }
+    }
+  },
+  "param_stability_full": {
+    "fold_rank_stability": {
+      "default_rank_mean": 6.8,
+      "default_rank_per_fold": [
+        4.0,
+        6.0,
+        8.0,
+        8.0,
+        8.0
+      ],
+      "default_rank_std": 1.6,
+      "default_wins_fold_count": 0,
+      "kendalls_w": 0.876,
+      "n_folds": 5,
+      "n_variants": 15
+    },
+    "local_param_stability": {
+      "best_metric": 0.1636900128429602,
+      "best_values": [
+        0.0025,
+        -0.03
+      ],
+      "default_in_plateau": true,
+      "default_meets_threshold": true,
+      "default_metric": 0.16107707530428841,
+      "default_rank": 7,
+      "default_values": [
+        0.005,
+        -0.02
+      ],
+      "gap_to_best": 0.015962718148104526,
+      "metric_key": "wf_mean_cagr",
+      "n_variants": 15,
+      "param_cols": [
+        "execution.min_score_gap",
+        "asset_filters.canary.bad_threshold"
+      ],
+      "plateau_area_cells": 10,
+      "plateau_area_fraction": 0.6666666666666666,
+      "plateau_cols_covered": [
+        -0.03,
+        -0.02
+      ],
+      "plateau_rows_covered": [
+        0.0,
+        0.0025,
+        0.005,
+        0.0075,
+        0.01
+      ],
+      "tolerance": 0.03
+    },
+    "param_stability": {
+      "best": 0.1636900128429602,
+      "best_variant_name": "best17_a_day25_v0__execution.min_score_gap=0.0025_asset_filters.canary.bad_threshold=-0.03",
+      "metric_key": "wf_mean_cagr",
+      "n_variants": 15,
+      "relative_drop": 0.19578299067660457,
+      "worst": 0.13164229258467364,
+      "worst_variant_name": "best17_a_day25_v0__execution.min_score_gap=0.0_asset_filters.canary.bad_threshold=-0.01"
+    },
+    "param_stability_check": {
+      "max_relative_metric_drop_within_family": true
+    },
+    "sweep": [
+      {
+        "asset_filters.canary.bad_threshold": -0.03,
+        "execution.min_score_gap": 0.0,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.0_asset_filters.canary.bad_threshold=-0.03",
+        "wf_fold_cagrs": [
+          0.1701660290846143,
+          0.13777504898403015,
+          0.175937946454634,
+          0.17964327581755146,
+          0.14539442015333748
+        ],
+        "wf_mean_cagr": 0.1617833440988335,
+        "wf_mean_sharpe": 1.1120237759398681,
+        "wf_min_cagr": 0.13777504898403015,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.22878652244219144
+      },
+      {
+        "asset_filters.canary.bad_threshold": -0.02,
+        "execution.min_score_gap": 0.0,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.0_asset_filters.canary.bad_threshold=-0.02",
+        "wf_fold_cagrs": [
+          0.1701660290846143,
+          0.13502180696921684,
+          0.1730907987123893,
+          0.1767840272097212,
+          0.1426197049844684
+        ],
+        "wf_mean_cagr": 0.15953647339208202,
+        "wf_mean_sharpe": 1.1025351501420908,
+        "wf_min_cagr": 0.13502180696921684,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.22878652244219144
+      },
+      {
+        "asset_filters.canary.bad_threshold": -0.01,
+        "execution.min_score_gap": 0.0,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.0_asset_filters.canary.bad_threshold=-0.01",
+        "wf_fold_cagrs": [
+          0.14171626124565262,
+          0.09154590438073318,
+          0.15621265328945766,
+          0.1598343037454284,
+          0.10890234026209633
+        ],
+        "wf_mean_cagr": 0.13164229258467364,
+        "wf_mean_sharpe": 0.963301247413131,
+        "wf_min_cagr": 0.09154590438073318,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.22878652244219144
+      },
+      {
+        "asset_filters.canary.bad_threshold": -0.03,
+        "execution.min_score_gap": 0.0025,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.0025_asset_filters.canary.bad_threshold=-0.03",
+        "wf_fold_cagrs": [
+          0.17602081381507295,
+          0.1414536079742057,
+          0.175937946454634,
+          0.17964327581755124,
+          0.14539442015333703
+        ],
+        "wf_mean_cagr": 0.1636900128429602,
+        "wf_mean_sharpe": 1.1248705487198822,
+        "wf_min_cagr": 0.1414536079742057,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.22878652244219133
+      },
+      {
+        "asset_filters.canary.bad_threshold": -0.02,
+        "execution.min_score_gap": 0.0025,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.0025_asset_filters.canary.bad_threshold=-0.02",
+        "wf_fold_cagrs": [
+          0.17602081381507295,
+          0.13869146440791713,
+          0.1730907987123893,
+          0.17678402720972097,
+          0.1426197049844682
+        ],
+        "wf_mean_cagr": 0.1614413618259137,
+        "wf_mean_sharpe": 1.1154017491908053,
+        "wf_min_cagr": 0.13869146440791713,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.22878652244219155
+      },
+      {
+        "asset_filters.canary.bad_threshold": -0.01,
+        "execution.min_score_gap": 0.0025,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.0025_asset_filters.canary.bad_threshold=-0.01",
+        "wf_fold_cagrs": [
+          0.14638443247749677,
+          0.0940800141148066,
+          0.15621265328945744,
+          0.15983430374542773,
+          0.10890234026209589
+        ],
+        "wf_mean_cagr": 0.1330827487778569,
+        "wf_mean_sharpe": 0.974097671256833,
+        "wf_min_cagr": 0.0940800141148066,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.2287865224421909
+      },
+      {
+        "asset_filters.canary.bad_threshold": -0.03,
+        "execution.min_score_gap": 0.005,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.005_asset_filters.canary.bad_threshold=-0.03",
+        "wf_fold_cagrs": [
+          0.17602081381507295,
+          0.1414536079742057,
+          0.17532499869050322,
+          0.17902772227827368,
+          0.14479706571321826
+        ],
+        "wf_mean_cagr": 0.16332484169425476,
+        "wf_mean_sharpe": 1.121772830050394,
+        "wf_min_cagr": 0.1414536079742057,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.228786522442191
+      },
+      {
+        "asset_filters.canary.bad_threshold": -0.02,
+        "execution.min_score_gap": 0.005,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.005_asset_filters.canary.bad_threshold=-0.02",
+        "wf_fold_cagrs": [
+          0.17602081381507295,
+          0.13869146440791713,
+          0.17247933500007262,
+          0.17616996566436738,
+          0.14202379763401196
+        ],
+        "wf_mean_cagr": 0.16107707530428841,
+        "wf_mean_sharpe": 1.1122933082384878,
+        "wf_min_cagr": 0.13869146440791713,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.22878652244219155
+      },
+      {
+        "asset_filters.canary.bad_threshold": -0.01,
+        "execution.min_score_gap": 0.005,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.005_asset_filters.canary.bad_threshold=-0.01",
+        "wf_fold_cagrs": [
+          0.14638443247749677,
+          0.0940800141148066,
+          0.1556099871684855,
+          0.15922908679104686,
+          0.10832401743725995
+        ],
+        "wf_mean_cagr": 0.13272550759781915,
+        "wf_mean_sharpe": 0.9709908517868715,
+        "wf_min_cagr": 0.0940800141148066,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.22878652244219166
+      },
+      {
+        "asset_filters.canary.bad_threshold": -0.03,
+        "execution.min_score_gap": 0.0075,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.0075_asset_filters.canary.bad_threshold=-0.03",
+        "wf_fold_cagrs": [
+          0.17602081381507295,
+          0.1414536079742057,
+          0.17532499869050322,
+          0.17902772227827368,
+          0.14479706571321826
+        ],
+        "wf_mean_cagr": 0.16332484169425476,
+        "wf_mean_sharpe": 1.121772830050394,
+        "wf_min_cagr": 0.1414536079742057,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.228786522442191
+      },
+      {
+        "asset_filters.canary.bad_threshold": -0.02,
+        "execution.min_score_gap": 0.0075,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.0075_asset_filters.canary.bad_threshold=-0.02",
+        "wf_fold_cagrs": [
+          0.17602081381507295,
+          0.13869146440791713,
+          0.17247933500007262,
+          0.17616996566436738,
+          0.14202379763401196
+        ],
+        "wf_mean_cagr": 0.16107707530428841,
+        "wf_mean_sharpe": 1.1122933082384878,
+        "wf_min_cagr": 0.13869146440791713,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.22878652244219155
+      },
+      {
+        "asset_filters.canary.bad_threshold": -0.01,
+        "execution.min_score_gap": 0.0075,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.0075_asset_filters.canary.bad_threshold=-0.01",
+        "wf_fold_cagrs": [
+          0.14638443247749677,
+          0.0940800141148066,
+          0.1556099871684855,
+          0.15922908679104686,
+          0.10832401743725995
+        ],
+        "wf_mean_cagr": 0.13272550759781915,
+        "wf_mean_sharpe": 0.9709908517868715,
+        "wf_min_cagr": 0.0940800141148066,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.22878652244219166
+      },
+      {
+        "asset_filters.canary.bad_threshold": -0.03,
+        "execution.min_score_gap": 0.01,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.01_asset_filters.canary.bad_threshold=-0.03",
+        "wf_fold_cagrs": [
+          0.17602081381507295,
+          0.1414536079742057,
+          0.17532499869050322,
+          0.17902772227827368,
+          0.14479706571321826
+        ],
+        "wf_mean_cagr": 0.16332484169425476,
+        "wf_mean_sharpe": 1.121772830050394,
+        "wf_min_cagr": 0.1414536079742057,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.228786522442191
+      },
+      {
+        "asset_filters.canary.bad_threshold": -0.02,
+        "execution.min_score_gap": 0.01,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.01_asset_filters.canary.bad_threshold=-0.02",
+        "wf_fold_cagrs": [
+          0.17602081381507295,
+          0.13869146440791713,
+          0.17247933500007262,
+          0.17616996566436738,
+          0.14202379763401196
+        ],
+        "wf_mean_cagr": 0.16107707530428841,
+        "wf_mean_sharpe": 1.1122933082384878,
+        "wf_min_cagr": 0.13869146440791713,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.22878652244219155
+      },
+      {
+        "asset_filters.canary.bad_threshold": -0.01,
+        "execution.min_score_gap": 0.01,
+        "variant_name": "best17_a_day25_v0__execution.min_score_gap=0.01_asset_filters.canary.bad_threshold=-0.01",
+        "wf_fold_cagrs": [
+          0.14638443247749677,
+          0.0940800141148066,
+          0.1556099871684855,
+          0.15922908679104686,
+          0.10832401743725995
+        ],
+        "wf_mean_cagr": 0.13272550759781915,
+        "wf_mean_sharpe": 0.9709908517868715,
+        "wf_min_cagr": 0.0940800141148066,
+        "wf_windows": 5,
+        "wf_worst_drawdown": -0.22878652244219166
+      }
+    ]
+  },
+  "train_oos": {
+    "test_oos": {
+      "annual_turnover": 1.7459667093469915,
+      "best_year_return": 0.3050068958299519,
+      "cagr": 0.17863994133705985,
+      "calmar": 0.5636638425826,
+      "max_consecutive_negative_months": 3,
+      "max_drawdown": -0.3169263803024259,
+      "max_time_underwater_months": 26,
+      "sharpe": 0.8242276476051081,
+      "worst_year_return": -0.13684942420638202
+    },
+    "test_window": {
+      "end": "2026-06-30",
+      "start": "2020-01-01"
+    },
+    "train": {
+      "annual_turnover": 0.6736599423631124,
+      "best_year_return": 0.35825529518575494,
+      "cagr": 0.14028744147687644,
+      "calmar": 0.6131805316999102,
+      "max_consecutive_negative_months": 3,
+      "max_drawdown": -0.22878652244219155,
+      "max_time_underwater_months": 7,
+      "sharpe": 0.919095145833541,
+      "worst_year_return": -0.02183647870146288
+    },
+    "train_window": {
+      "end": "2019-12-31",
+      "start": "2010-06-01"
+    }
+  },
+  "uk_mapping": {
+    "acceptance": {
+      "max_cagr_gap_vs_us": true,
+      "max_drawdown_gap_vs_us": true,
+      "max_single_month_return_diff": false,
+      "max_weights_mismatch_months_pct": true,
+      "min_monthly_return_correlation": true
+    },
+    "comparison": {
+      "cagr_gap": 0.004554017301481084,
+      "max_drawdown_gap": -0.005947840039063013,
+      "max_single_month_return_diff": 0.046547885802653344,
+      "monthly_return_correlation": 0.9697094368365327,
+      "n_common_months": 83,
+      "uk_metrics": {
+        "annual_turnover": 1.7998240125146658,
+        "best_year_return": 0.2884300473385617,
+        "cagr": 0.18837562525136797,
+        "calmar": 0.5834334653665817,
+        "max_consecutive_negative_months": 3,
+        "max_drawdown": -0.3228742203414886,
+        "max_time_underwater_months": 26,
+        "sharpe": 0.9356038080047278,
+        "worst_year_return": -0.14859416873537956
+      },
+      "us_metrics": {
+        "annual_turnover": 1.7998240125146658,
+        "best_year_return": 0.3050068958299519,
+        "cagr": 0.1838216079498869,
+        "calmar": 0.5800135910884917,
+        "max_consecutive_negative_months": 3,
+        "max_drawdown": -0.3169263803024256,
+        "max_time_underwater_months": 26,
+        "sharpe": 0.8533224577530469,
+        "worst_year_return": -0.13684942420638146
+      }
+    },
+    "diagnostics": {
+      "mismatch_dates": [],
+      "mismatch_pct": 0.0,
+      "mismatch_periods": 0,
+      "total_periods": 85,
+      "unmapped_tickers_used": []
+    },
+    "n_periods_in_window": 85,
+    "uk_window_start": "2019-07-26T00:00:00"
+  }
+}

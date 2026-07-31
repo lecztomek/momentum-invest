@@ -1,0 +1,137 @@
+{
+  "name": "gpm_mid_10_day25_v0",
+  "hypothesis": "User: 'gpm_mid_10 - posrednia, uproszczona wersja defensywnego GPM'. Cel: 'zachowac wiekszosc dywersyfikacji i ochrony pelnego GPM, jednoczesnie usuwajac aktywa najtrudniejsze do jednoznacznego odwzorowania w XTB'. Uniwersum ryzykowne: 10 aktywow (SPY akcje USA, QQQ Nasdaq100, VWO rynki wschodzace, VNQ nieruchomosci, DBC surowce, GLD zloto, HYG obligacje high yield, LQD obligacje IG, TLT dlugoterminowe Treasury, XLE energia) - z pelnego 13-aktywowego gpm usuniete IJR (US small cap), EFA/VEA (oba 'developed ex-US' - zdublowane, trudne do jednoznacznego odwzorowania funduszem w XTB). Ochrona bez zmian: IEF/SHY. Mechanika identyczna jak w pelnym gpm - zero nowego kodu bloku (`momentum_avg_month_end`, `corr_to_basket_month_end`, `momentum_times_decorrelation`, `gpm_breadth_protective_split`). `top_n_risky=3` (user potwierdzil: 'top 3 w czesci ryzykownej'). `full_protective_max_n=5`/`protective_scale_denominator=5` (zamiast 6/6 w pelnym 13-aktywowym gpm) - przeskalowane proporcjonalnie do 10-aktywowego uniwersum (polowa z 10 = 5), ta sama konwencja `denominator = len(risky_assets) - full_protective_max_n` co w oryginale (6=12-6, tu 5=10-5). KOREKTA DYWIDEND (2026-07-14, user: 'Mamy wynik 3 procent a keller podawal 9 to jest ogromny rozjazd wiec gdzies jest konkretny bug trzeba go poszukac' -> zdiagnozowano: `data/us` to ceny bez reinwestycji dywidend/kuponow): `data_loader` zmieniony na `stooq_csv_dividend_adjusted` ze `dividend_adjustment_mapping` dla WSZYSTKICH 12 tickerow uniwersum na ich odpowiedniki akumulacyjne (Acc, USD) z `data/uk` - pelne pokrycie, wszystkie pary maja dlugie (9-11 lat) wiarygodne okno wspolnej historii. Patrz CHANGELOG (56). EKSPERYMENT execution_day_of_month (2026-07-16, user: \"chodzi o to zeby zobaczyc ze podawane strategie sa dobre\", potem: \"dodaj jeszcze dzien 15 20 25\") - `execution_day_of_month`=25 (domyslnie 1, patrz `engine_v2/period_anchor.py`), zapisane na trwale jako oddzielna strategia. Ten sweep byl juz raz (dzien 5/10) dwukrotnie bledny z powodu 2 bugow w `daily_equity_curve` (patrz CHANGELOG 2026-07-16 (3)/(4) OZNACZONE jako bledne, poprawka w (5)) - dzien 15/20/25 byl liczony JUZ PO obu poprawkach (zero regresji przy dniu=1, brak przerw >5 dni kalendarzowych zweryfikowany bezposrednio dla kazdego dnia). Pelny obraz OOS Sharpe na wszystkich 6 testowanych dniach: `best17_a` dzien 1/5/10/15/20/25 = 0.730/0.674/0.775/0.723/0.666/0.824; `gpm_mid_10_best17_a` = 0.823/0.751/0.846/0.806/0.772/0.907; `gpm_mid_13_best17_a` = 0.829/0.725/0.844/0.779/0.747/0.868 - dzien 25 wygrywa na WSZYSTKICH 3 faworytach, ale wzorzec NIE jest monotoniczny (dzien 20 gorszy niz dzien 15 na kazdym kandydacie) - to sugeruje, ze duza czesc tej zmiennosci to szum pojedynczego train/OOS split, nie czysto struktarna przewaga 'pozniej = lepiej'. Zmiana NIE zostala zaaplikowana do domyslnych `strategy_spec.json` - potrzeba pelnego walk-forward (nie jednego train/test split) zanim cokolwiek zmienimy na produkcyjnych strategiach, tym bardziej po historii dwoch kolejnych bledow w tym samym eksperymencie.",
+  "universe": [
+    "spy.us",
+    "qqq.us",
+    "vwo.us",
+    "vnq.us",
+    "dbc.us",
+    "gld.us",
+    "hyg.us",
+    "lqd.us",
+    "tlt.us",
+    "xle.us",
+    "ief.us",
+    "shy.us"
+  ],
+  "blocks": {
+    "data_loader": "stooq_csv_dividend_adjusted",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "momentum_times_decorrelation",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "gpm_breadth_protective_split",
+    "overlays": "none",
+    "execution": "hysteresis",
+    "reporting": "monthly_csv_export"
+  },
+  "base_params": {
+    "data_loader": {
+      "data_dir": "data/us",
+      "uk_data_dir": "data/uk",
+      "frequency": "monthly",
+      "dividend_adjustment_mapping": {
+        "spy.us": "cspx",
+        "qqq.us": "cndx",
+        "vwo.us": "eimi",
+        "vnq.us": "xres",
+        "dbc.us": "icom",
+        "gld.us": "igln",
+        "hyg.us": "ihya",
+        "lqd.us": "lqda",
+        "tlt.us": "dtla",
+        "xle.us": "iues",
+        "ief.us": "cbu0",
+        "shy.us": "ibta"
+      },
+      "execution_day_of_month": 25
+    },
+    "data_cleaner": {},
+    "indicators": {
+      "r": {
+        "impl": "momentum_avg_month_end",
+        "windows": [
+          1,
+          3,
+          6,
+          12
+        ]
+      },
+      "c": {
+        "impl": "corr_to_basket_month_end",
+        "basket_assets": [
+          "spy.us",
+          "qqq.us",
+          "vwo.us",
+          "vnq.us",
+          "dbc.us",
+          "gld.us",
+          "hyg.us",
+          "lqd.us",
+          "tlt.us",
+          "xle.us"
+        ],
+        "window": 12
+      }
+    },
+    "asset_filters": {},
+    "asset_scoring": {
+      "momentum_key": "r",
+      "corr_key": "c"
+    },
+    "selector": {
+      "top_n": 1
+    },
+    "alpha_weighting": {
+      "weights": [
+        1.0
+      ],
+      "redistribute_if_short": true
+    },
+    "portfolio_risk_engine": {
+      "risky_assets": [
+        "spy.us",
+        "qqq.us",
+        "vwo.us",
+        "vnq.us",
+        "dbc.us",
+        "gld.us",
+        "hyg.us",
+        "lqd.us",
+        "tlt.us",
+        "xle.us"
+      ],
+      "protective_assets": [
+        "ief.us",
+        "shy.us"
+      ],
+      "top_n_risky": 3,
+      "full_protective_max_n": 5,
+      "protective_scale_denominator": 5
+    },
+    "execution": {
+      "hysteresis_pct": 0.0,
+      "cost_bps": 40
+    },
+    "reporting": {
+      "output_path": "results/monthly/gpm_mid_10_day25.csv",
+      "annual_tax_rate": 0.19
+    }
+  },
+  "allowed_param_families": {
+    "portfolio_risk_engine": {
+      "top_n_risky": [
+        2,
+        3,
+        4
+      ],
+      "full_protective_max_n": [
+        4,
+        5,
+        6
+      ]
+    }
+  },
+  "created_at": "2026-07-16"
+}

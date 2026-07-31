@@ -1,0 +1,21 @@
+{
+  "name": "gpm_mid_10_best17_a_day25_v0",
+  "hypothesis": "User: 'nasz produkcyjny kandydat, wersja 50/50' - PROSTSZA alternatywa dla sesyjnego rekordu `gpm_best17_a` (signal_tilted_capital_weights, gpm PELNE 13 aktywow, Calmar 0.786). Tutaj: `gpm_mid_10` (10 aktywow ryzykownych zamiast 13 - usuniete IJR/EFA/VEA, najtrudniejsze do jednoznacznego odwzorowania w XTB) + `best17_a`, zmiksowane NAJPROSTSZYM mozliwym combinerem `fixed_capital_weights` 50/50 (bez tiltu, bez sygnalu - latwiejsze do wdrozenia i zrozumienia niz signal_tilted). Wybrany jako kandydat produkcyjny wlasnie dla prostoty wdrozenia (gpm_mid_10 eliminuje aktywa trudne do zmapowania na UK/XTB) kosztem odrobiny jakosci wzgledem sesyjnego rekordu. Zweryfikowany 'ostatecznym testem' UK mapping (zob. CHANGELOG) na realnych danych US+UK: monthly_return_correlation 0.9575, cagr_gap +0.26pp, max_drawdown_gap -0.33pp - mapowanie na tickery UK dziala poprawnie takze dla miksu. EKSPERYMENT execution_day_of_month (2026-07-16, user: \"chodzi o to zeby zobaczyc ze podawane strategie sa dobre\", potem: \"dodaj jeszcze dzien 15 20 25\") - `execution_day_of_month`=25 (domyslnie 1, patrz `engine_v2/period_anchor.py`), zapisane na trwale jako oddzielna strategia. Ten sweep byl juz raz (dzien 5/10) dwukrotnie bledny z powodu 2 bugow w `daily_equity_curve` (patrz CHANGELOG 2026-07-16 (3)/(4) OZNACZONE jako bledne, poprawka w (5)) - dzien 15/20/25 byl liczony JUZ PO obu poprawkach (zero regresji przy dniu=1, brak przerw >5 dni kalendarzowych zweryfikowany bezposrednio dla kazdego dnia). Pelny obraz OOS Sharpe na wszystkich 6 testowanych dniach: `best17_a` dzien 1/5/10/15/20/25 = 0.730/0.674/0.775/0.723/0.666/0.824; `gpm_mid_10_best17_a` = 0.823/0.751/0.846/0.806/0.772/0.907; `gpm_mid_13_best17_a` = 0.829/0.725/0.844/0.779/0.747/0.868 - dzien 25 wygrywa na WSZYSTKICH 3 faworytach, ale wzorzec NIE jest monotoniczny (dzien 20 gorszy niz dzien 15 na kazdym kandydacie) - to sugeruje, ze duza czesc tej zmiennosci to szum pojedynczego train/OOS split, nie czysto struktarna przewaga 'pozniej = lepiej'. Zmiana NIE zostala zaaplikowana do domyslnych `strategy_spec.json` - potrzeba pelnego walk-forward (nie jednego train/test split) zanim cokolwiek zmienimy na produkcyjnych strategiach, tym bardziej po historii dwoch kolejnych bledow w tym samym eksperymencie.",
+  "strategy_spec_paths": [
+    "../gpm_mid_10_day25/strategy_spec.json",
+    "../best17_a_day25/strategy_spec.json"
+  ],
+  "combiner": "fixed_capital_weights",
+  "combiner_params": {
+    "capital_weights": {
+      "gpm_mid_10_day25_v0": 0.5,
+      "best17_a_day25_v0": 0.5
+    }
+  },
+  "reporting": "monthly_csv_export",
+  "reporting_params": {
+    "output_path": "results/monthly/gpm_mid_10_best17_a_day25.csv",
+    "annual_tax_rate": 0.19
+  },
+  "created_at": "2026-07-16"
+}

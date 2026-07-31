@@ -7,14 +7,23 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `gpm_uk` | final | 5.92% | -8.76% | 0.742 | 0.676 | 3.66 | - |
 | `gpm_mid_10_best17_a_day10` | combined_final | 8.88% | -15.14% | 0.836 | 0.586 | 2.62 | fail (patrz JSON) |
 | `gpm_mid_13_best17_a_day10` | combined_final | 9.13% | -15.84% | 0.852 | 0.576 | 2.68 | fail (patrz JSON) |
+| `gpm_mid_13_best17_a_day15` | combined_final | 9.44% | -16.52% | 0.873 | 0.571 | 2.67 | fail (patrz JSON) |
 | `gpm_mid_10_best17_a_day5` | combined_final | 8.49% | -15.00% | 0.809 | 0.566 | 2.62 | fail (patrz JSON) |
+| `gpm_mid_10_best17_a_day25` | combined_final | 9.66% | -17.25% | 0.893 | 0.560 | 2.65 | fail (patrz JSON) |
+| `gpm_mid_10_best17_a_day15` | combined_final | 9.37% | -17.18% | 0.873 | 0.546 | 2.61 | fail (patrz JSON) |
 | `gpm_mid_13_best17_a_day5` | combined_final | 8.58% | -15.91% | 0.812 | 0.539 | 2.68 | fail (patrz JSON) |
+| `gpm_mid_13_best17_a_day25` | combined_final | 9.72% | -18.03% | 0.890 | 0.539 | 2.71 | fail (patrz JSON) |
+| `gpm_mid_13_best17_a_day20` | combined_final | 9.01% | -17.28% | 0.831 | 0.522 | 2.71 | fail (patrz JSON) |
 | `gpm_mid_10_best17_a` | combined_final | 8.34% | -16.15% | 0.806 | 0.517 | 2.69 | fail (patrz JSON) |
 | `gpm_mid_13_best17_a` | combined_final | 8.44% | -16.39% | 0.810 | 0.515 | 2.75 | fail (patrz JSON) |
+| `gpm_mid_10_best17_a_day20` | combined_final | 8.95% | -17.65% | 0.832 | 0.507 | 2.65 | fail (patrz JSON) |
 | `gpm_best17_a` | combined_final | 7.51% | -15.05% | 0.750 | 0.499 | 3.02 | - |
+| `best17_a_day25` | final | 15.53% | -31.69% | 0.867 | 0.490 | 1.35 | fail (patrz JSON) |
 | `gpm_uk_best17_a_uk` | combined_final | 7.64% | -15.65% | 0.713 | 0.488 | 2.60 | - |
+| `best17_a_day15` | final | 14.43% | -30.51% | 0.819 | 0.473 | 1.27 | fail (patrz JSON) |
 | `best17_a_day10` | final | 13.52% | -29.01% | 0.783 | 0.466 | 1.28 | fail (patrz JSON) |
 | `best17_a_day5` | final | 13.11% | -28.58% | 0.765 | 0.459 | 1.28 | fail (patrz JSON) |
+| `best17_a_day20` | final | 13.87% | -31.71% | 0.786 | 0.437 | 1.35 | fail (patrz JSON) |
 | `combined_triple` | combined_final | 8.55% | -20.41% | 0.745 | 0.419 | 2.38 | - |
 | `gtaa_agg6_mid_best17_a` | combined_final | 8.50% | -21.09% | 0.737 | 0.403 | 2.21 | fail (patrz JSON) |
 | `best17_a_tlt_hedge` | combined_final | 10.65% | -26.86% | 0.743 | 0.397 | 1.14 | - |
@@ -22,6 +31,7 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `gpm_mid_13` | final | 4.94% | -12.57% | 0.616 | 0.393 | 4.15 | PASS |
 | `best17_a_all_weather_4` | combined_final | 9.00% | -23.04% | 0.754 | 0.390 | 1.50 | - |
 | `synergy_v2` | final | 11.96% | -31.19% | 0.705 | 0.383 | 1.44 | - |
+| `gpm_mid_10_day15` | final | 4.94% | -12.96% | 0.603 | 0.381 | 4.03 | PASS |
 | `gtaa_agg6_best17_a` | combined_final | 7.76% | -21.02% | 0.700 | 0.369 | 2.26 | - |
 | `gpm_mid_10` | final | 4.77% | -12.95% | 0.597 | 0.369 | 4.03 | PASS |
 | `dual_momentum_best17_a` | combined_final | 8.40% | -22.82% | 0.693 | 0.368 | 1.81 | - |
@@ -33,13 +43,18 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `gpm_mid_10_day10` | final | 4.87% | -13.78% | 0.595 | 0.353 | 4.03 | PASS |
 | `best17_a_uk` | final | 10.94% | -31.10% | 0.636 | 0.352 | 1.80 | - |
 | `dual_momentum_all_weather_4` | combined_final | 5.85% | -16.75% | 0.606 | 0.349 | 1.95 | - |
+| `gpm_mid_13_day15` | final | 5.06% | -14.56% | 0.614 | 0.347 | 4.15 | PASS |
 | `gpm_mid_13_day5` | final | 4.54% | -13.47% | 0.561 | 0.337 | 4.15 | PASS |
 | `gtaa_agg6_mid` | final | 5.76% | -17.29% | 0.588 | 0.333 | 2.92 | fail (patrz JSON) |
 | `gpm_mid_10_day5` | final | 4.36% | -13.12% | 0.543 | 0.332 | 4.03 | PASS |
 | `gtaa_agg3_mid` | final | 7.03% | -21.16% | 0.552 | 0.332 | 3.64 | fail (patrz JSON) |
+| `gpm_mid_13_day25` | final | 4.74% | -14.27% | 0.578 | 0.332 | 4.15 | PASS |
 | `combined_best2_dynamic` | combined_final | 10.02% | -30.24% | 0.696 | 0.331 | 3.82 | - |
+| `gpm_mid_10_day25` | final | 4.59% | -13.91% | 0.563 | 0.330 | 4.03 | PASS |
+| `gpm_mid_10_day20` | final | 4.59% | -14.89% | 0.564 | 0.309 | 4.03 | PASS |
 | `best17_a_gfm` | combined_final | 8.83% | -28.76% | 0.678 | 0.307 | 1.98 | - |
 | `vaa_g4_all_weather_4` | combined_final | 5.79% | -19.01% | 0.638 | 0.305 | 4.76 | - |
+| `gpm_mid_13_day20` | final | 4.74% | -15.61% | 0.578 | 0.304 | 4.15 | PASS |
 | `the_one_all_weather_4` | combined_final | 6.17% | -20.95% | 0.582 | 0.295 | 3.89 | - |
 | `all_weather_4_best17_b` | combined_final | 6.09% | -21.43% | 0.589 | 0.284 | 1.99 | - |
 | `best17_a_best17_b` | combined_final | 8.09% | -30.28% | 0.632 | 0.267 | 1.75 | - |

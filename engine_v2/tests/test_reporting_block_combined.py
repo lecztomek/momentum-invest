@@ -84,4 +84,4 @@ def test_all_combined_strategies_declare_reporting_block():
         assert spec.reporting == "monthly_csv_export", d.name
         assert spec.reporting_params["output_path"] == f"results/monthly/{d.name}.csv", d.name
         checked += 1
-    assert checked == 36  # 32 + 4 nowe execution_day_of_month warianty (2026-07-16 (4))
+    assert checked == 42  # 32 + 4 (2026-07-16 (4)) + 6 nowe execution_day_of_month dni 15/20/25 (2026-07-16 (6))

@@ -2,6 +2,37 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-16 (6)
+
+- **Rozszerzenie sweepu `execution_day_of_month` o dni 15/20/25** - user: "dodaj jeszcze dzień
+  15 20 25" (po (5), juz na naprawionym silniku - zero dodatkowych bugow do zlapania tym razem,
+  zweryfikowano bezposrednio brak przerw >5 dni kalendarzowych dla kazdego z 3 nowych dni).
+  Ten sam wzorzec co (4)/(5): 15 nowych trwalych strategii (`best17_a`/`gpm_mid_10`/`gpm_mid_13`
+  x dzien 15/20/25 solo + oba portfele laczone x te same 3 dni = 9 solo + 6 laczonych).
+
+  **Pelny obraz - OOS Sharpe na wszystkich 6 przetestowanych dniach (POST-TAX)**:
+
+  | | dzien 1 | dzien 5 | dzien 10 | dzien 15 | dzien 20 | dzien 25 |
+  |---|---|---|---|---|---|---|
+  | `best17_a` | 0.730 | 0.674 | 0.775 | 0.723 | 0.666 | **0.824** |
+  | `gpm_mid_10_best17_a` | 0.823 | 0.751 | 0.846 | 0.806 | 0.772 | **0.907** |
+  | `gpm_mid_13_best17_a` | 0.829 | 0.725 | 0.844 | 0.779 | 0.747 | **0.868** |
+
+  **Kluczowa obserwacja (user: "ciekawe czy każdy następny będzie lepszy to byłaby bardzo dziwna
+  anomalia") - wzorzec NIE jest monotoniczny**: dzien 20 jest gorszy (albo blisko najgorszego) na
+  wszystkich 3 kandydatach, mimo ze lezy MIEDZY dwoma lepszymi dniami (10 i 25). Brak
+  monotonicznosci jest w rzeczywistosci DOBRYM znakiem - gdyby kazdy kolejny dzien byl lepszy od
+  poprzedniego, sugerowaloby to kolejny ukryty blad (np. skalowanie z liczba dni), a nie realny
+  efekt rynkowy. Zamiast tego widzimy: dzien 25 wygrywa na wszystkich 3 kandydatach, ale przy
+  niemonotonicznym, "szumiacym" wzorcu miedzy dniami 10-20 - najbardziej prawdopodobna
+  interpretacja to, ze duza czesc tej zmiennosci to szum JEDNEGO train/OOS split (test/OOS ma
+  tylko ~77 miesiecy, 2020-2026), nie czysto strukturalna przewaga "pozniej = lepiej".
+
+  Zmiana NIE zostala zaaplikowana do domyslnych `strategy_spec.json`. Zaktualizowano 2 twarde
+  liczniki kompletnosci (`test_reporting_block_combined.py`, `test_run_one.py`: 36->42 portfeli
+  laczonych z `reporting`). 83 pliki wynikowe lacznie w `results/`. Pelny pakiet testow: 629/629,
+  bez regresji.
+
 ## 2026-07-16 (5)
 
 - **DRUGI BUGFIX w `daily_equity_curve`** (user zauwazyl anomalie: "coś nie tak, czemu jest aż
