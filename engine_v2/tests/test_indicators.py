@@ -67,6 +67,19 @@ def test_momentum_monthly_requires_window():
         momentum_monthly(md, {})
 
 
+def test_momentum_monthly_execution_day_of_month_uses_different_price(us_data_dir, us_universe):
+    """User: "co musielibysmy zmienic zeby sprawdzic wplyw dnia miesiaca w ktorym kupujemy" -
+    `execution_day_of_month` (domyslnie 1, patrz `period_anchor.py`) MUSI dawac inny wynik niz
+    domyslny dzien 1, inaczej caly mechanizm byłby martwym parametrem."""
+    md = LOADER_REGISTRY["stooq_csv"](us_universe, {"data_dir": str(us_data_dir), "frequency": "monthly"})
+
+    day1 = momentum_monthly(md, {"window": 3})
+    day10 = momentum_monthly(md, {"window": 3, "execution_day_of_month": 10})
+
+    assert list(day1.index) == list(day10.index)  # etykiety identyczne (patrz period_anchor.py)
+    assert not day1.equals(day10)  # ale wartosci rozne - inny dzien, inna cena bazowa
+
+
 def test_indicators_on_real_data_produce_expected_shapes(us_data_dir, us_universe):
     md = LOADER_REGISTRY["stooq_csv"](us_universe, {"data_dir": str(us_data_dir), "frequency": "monthly"})
 

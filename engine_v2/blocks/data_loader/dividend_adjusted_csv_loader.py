@@ -50,6 +50,7 @@ params:
     dividend_adjustment_mapping (dict, domyslnie {}) - {"us_ticker": "uk_ticker_bez_.uk.txt",
         np. "agg.us": "suag"} - tickery BEZ wpisu przechodza bez zmian (surowa cena US).
     frequency (str, domyslnie "monthly")            - jak w `stooq_csv`
+    execution_day_of_month (int, domyslnie 1)       - jak w `stooq_csv`
 """
 
 from __future__ import annotations
@@ -123,6 +124,7 @@ def stooq_csv_dividend_adjusted(universe: List[str], params: Dict[str, Any]) -> 
     uk_data_dir = Path(params.get("uk_data_dir", "data/uk"))
     mapping: Dict[str, str] = dict(params.get("dividend_adjustment_mapping", {}))
     frequency = str(params.get("frequency", "monthly"))
+    day_of_month = int(params.get("execution_day_of_month", 1))
 
     data_files, missing = _resolve_data_files(data_dir, universe)
     if missing:
@@ -136,7 +138,7 @@ def stooq_csv_dividend_adjusted(universe: List[str], params: Dict[str, Any]) -> 
         uk_close = _load_uk_close(uk_data_dir, uk_ticker)
         daily_close[us_ticker] = _dividend_adjusted_close(daily_close[us_ticker].dropna(), uk_close)
 
-    execution_prices = _period_start_execution_prices(daily_close, frequency)
+    execution_prices = _period_start_execution_prices(daily_close, frequency, day_of_month)
     returns = _start_to_start_returns(execution_prices)
 
     return MarketData(prices=daily_close, returns=returns)

@@ -16,6 +16,13 @@ params:
     data_dir (str, wymagane)              - folder z plikami *.txt (jak data/us, data/uk)
     frequency (str, domyslnie "monthly")   - "daily", "weekly" albo "monthly" - strategie moga
                                              dzialac na kazdej z tych czestotliwosci
+    execution_day_of_month (int, domyslnie 1) - TYLKO dla frequency="monthly": ktorego dnia
+                                             miesiaca wykonujemy transakcje (pierwszy dzien
+                                             handlowy na/po tym dniu kalendarzowym) - patrz
+                                             `engine_v2/period_anchor.py`. Musi byc IDENTYCZNY
+                                             jak w kazdym wskazniku liczonym na cenie wykonania
+                                             (np. `momentum_monthly`), inaczej pipeline laczy po
+                                             dacie dane z dwoch roznych dni.
 """
 
 from __future__ import annotations
@@ -26,6 +33,7 @@ from typing import Any, Dict, List, Tuple
 import pandas as pd
 
 from engine_v2.blocks.data_loader import REGISTRY
+from engine_v2.period_anchor import nth_trading_day_prices
 from engine_v2.registry import register
 from engine_v2.types import MarketData
 
@@ -88,14 +96,14 @@ def _week_start_labels(index: pd.DatetimeIndex) -> pd.Series:
     return dates - pd.to_timedelta(dates.dt.weekday, unit="D")
 
 
-def _period_start_execution_prices(daily_close: pd.DataFrame, frequency: str) -> pd.DataFrame:
+def _period_start_execution_prices(daily_close: pd.DataFrame, frequency: str, day_of_month: int = 1) -> pd.DataFrame:
     frequency = frequency.lower()
 
     if frequency == "daily":
         # kazdy dzien to wlasny okres - nie ma czego resamplowac, uzywamy cen 1:1
         out = daily_close.copy()
     elif frequency == "monthly":
-        out = daily_close.resample("MS").first()
+        out = nth_trading_day_prices(daily_close, day_of_month)
     elif frequency == "weekly":
         labels = _week_start_labels(daily_close.index)
         out = daily_close.groupby(labels).first()
@@ -120,13 +128,14 @@ def stooq_csv(universe: List[str], params: Dict[str, Any]) -> MarketData:
 
     data_dir = Path(params["data_dir"])
     frequency = str(params.get("frequency", "monthly"))
+    day_of_month = int(params.get("execution_day_of_month", 1))
 
     data_files, missing = _resolve_data_files(data_dir, universe)
     if missing:
         raise ValueError(f"Brakujace tickery w {data_dir}: {missing}")
 
     daily_close = _load_all_daily_closes(data_files)
-    execution_prices = _period_start_execution_prices(daily_close, frequency)
+    execution_prices = _period_start_execution_prices(daily_close, frequency, day_of_month)
     returns = _start_to_start_returns(execution_prices)
 
     return MarketData(prices=daily_close, returns=returns)

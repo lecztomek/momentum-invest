@@ -2,6 +2,69 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-07-16 (3)
+
+- **NOWY PARAMETR: `execution_day_of_month`** - user: "chciałbym sprawdzić wyniki strategii w
+  przypadku zmiany kiedy kupujemy no zamiast ostatni dzień miesiąc to niech będzie 5 lub 10 lub 1"
+  (test wplywu dnia miesiaca, w ktorym faktycznie wykonujemy transakcje - tylko dla naszych
+  faworytow, nie wszystkich strategii w repo).
+
+  **Odkrycie przy analizie**: to NIE jest jeden parametr do zmiany, tylko dzien-1-miesiaca
+  ("pierwszy dzien handlowy") zaszyty NA STALE w 3 roznych miejscach silnika, ktore MUSZA sie
+  zgadzac (pipeline laczy wskazniki/ceny wykonania po DACIE - rozjazd choc o jeden dzien = po
+  cichu 0% zwrotu tego miesiaca, zero widocznego bledu): (1) `csv_loader.py::_period_start_execution_prices`
+  (cena wykonania transakcji - `resample("MS").first()`), (2) `momentum_monthly.py` (wskazniki
+  liczone NA cenie wykonania, np. `mom_r3_gate`/gate'y IAU-DBC w `best17_a` - identyczny
+  `resample("MS").first()`), (3) `_month_end_common.py::shift_to_next_month_start` (wskazniki
+  liczone na cenach KONCA miesiaca, np. `ema7_16`/`mom_r3`/`r`/`c`, etykietowane jako "start
+  nastepnego miesiaca"). Kluczowa obserwacja: `resample("MS").first()` etykietuje wiersz jako
+  KALENDARZOWY start miesiaca (np. "2020-01-01"), NIE jako faktyczna data pierwszego dnia
+  handlowego (np. "2020-01-02") - to znaczy, ze zmiana dnia wykonania wplywa TYLKO na to, JAKA
+  cene/wartosc bierzemy do danego wiersza, NIE na etykiete tego wiersza. Dzieki temu (3) wcale
+  nie musi znac `execution_day_of_month` - jego etykieta "nastepny miesiac" jest i tak zawsze
+  symboliczna (dzien 1), niezaleznie od faktycznego dnia wykonania.
+
+  **Nowy wspolny modul `engine_v2/period_anchor.py::nth_trading_day_prices(daily_prices,
+  day_of_month=1)`** - zamiast `resample("MS").first()`: dla `day_of_month=1` DOKLADNIE to samo
+  zachowanie (zero regresji, potwierdzone testem bajt-identycznosci); dla `day_of_month>1` -
+  pierwszy dzien handlowy NA/PO tym dniu kalendarzowym w danym miesiacu (fallback: ostatni dzien
+  handlowy tego miesiaca, gdy zaden nie spelnia warunku - krotki miesiac + duzy `day_of_month`).
+  Uzywany teraz przez `csv_loader.py` (i przez `stooq_csv_dividend_adjusted`, ktory go
+  importuje - jedna poprawka obsluzyla oba loadery) oraz `momentum_monthly.py` (usunieta lokalna
+  duplikacja `_monthly_start_prices`). Nowy param `execution_day_of_month` (domyslnie `1`) w
+  `data_loader` (`stooq_csv`/`stooq_csv_dividend_adjusted`) i w kazdej instancji
+  `momentum_monthly` - musi byc IDENTYCZNY w obu miejscach danej strategii. 8 nowych testow
+  (`test_period_anchor.py` x7 + `test_indicators.py` x1), w tym bajt-identycznosc dnia=1 ze
+  starym `resample("MS").first()`.
+
+  **Sweep na faworytach** (`best17_a` solo + `gpm_mid_10_best17_a`/`gpm_mid_13_best17_a`
+  laczone, dzien 1 vs 5 vs 10 - ad-hoc skrypt, TYLKO tymczasowo patchowal `strategy_spec.json`
+  na dysku i przywracal oryginaly po kazdym uruchomieniu, `results/*.json` NIE zmienione,
+  wszystkie 3 warianty maja `execution_day_of_month` w `best17_a`'s `data_loader`+`mom_r3_gate`;
+  `gpm_mid_10`/`gpm_mid_13` potrzebuja TYLKO zmiany w `data_loader` - ich wskazniki `r`/`c` sa
+  liczone na cenach konca miesiaca, wiec nie zaleza od dnia wykonania, patrz wyzej):
+
+  | | dzien 1 (dzisiejszy) | dzien 5 | dzien 10 |
+  |---|---|---|---|
+  | `best17_a` CAGR | 12.34% | **13.28%** | 12.81% |
+  | `best17_a` MaxDD | -31.19% | -31.19% | -31.19% |
+  | `best17_a` Sharpe | 0.736 | **0.783** | 0.761 |
+  | `best17_a` Turnover | 1.44 | **1.28** | 1.28 |
+  | `gpm_mid_10_best17_a` CAGR | 8.34% | **8.78%** | 8.55% |
+  | `gpm_mid_10_best17_a` Sharpe | 0.806 | **0.846** | 0.827 |
+  | `gpm_mid_13_best17_a` CAGR | 8.44% | **8.88%** | 8.65% |
+  | `gpm_mid_13_best17_a` Sharpe | 0.810 | **0.850** | 0.832 |
+
+  Kierunek: dzien 5 wygrywa na kazdej metryce CAGR/Sharpe/Calmar na wszystkich 3 faworytach
+  (MaxDD bez zmian - ten sam najgorszy miesiac/okres, niezalezny od dnia wykonania w tym
+  przypadku), z NIZSZYM turnoverem niz dzien 1 - ale to prawdopodobnie w duzej mierze artefakt
+  KONKRETNEJ historii cen (5-10 dzien miesiaca akurat czesciej trafial na lepsza cene w tym
+  oknie), NIE dowod, ze dzien 5 jest strukturalnie lepszy - do potwierdzenia potrzeba by
+  train/OOS split (jak przy innych sweepach w tym repo) zanim to zmienimy na trwale w
+  `strategy_spec.json`. Zmiana NIE zostala zapisana jako nowy domyslny dzien - to eksploracyjny
+  wynik do decyzji usera, nie wdrozona poprawka. Pelny pakiet testow: 609/609 (601 + 8 nowych),
+  bez regresji.
+
 ## 2026-07-16 (2)
 
 - **BUGFIX: DBC-slot w UK uzywal `icom.uk` zamiast `cmod.uk`** - user: "Zarowno best17 jak i
