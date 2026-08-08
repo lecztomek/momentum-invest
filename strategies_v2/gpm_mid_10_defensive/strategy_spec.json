@@ -1,0 +1,116 @@
+{
+    "name": "gpm_mid_10_defensive_v0",
+    "hypothesis": "EKSPERYMENT (2026-08-08, user: 'może warto spróbować zrobić bardziej ofensywne best17 i bardziej defensywne gpm czyli best17 pozbywamy się etf dbc vwra gild a gpm pozbywamy się ofensywy no i ich połączenie jako test') - z `risky_assets` `gpm_mid_10` (spy/qqq/vwo/vnq/dbc/gld/hyg/lqd/tlt/xle) usuniete WSZYSTKIE 'ofensywne' (czysto-akcyjne/equity-like) pozycje: spy.us (akcje USA), qqq.us (Nasdaq100), vwo.us (rynki wschodzace), vnq.us (nieruchomosci/REIT), xle.us (sektor energetyczny) - zostaje 5-aktywowy, w pelni 'defensywny' pool ryzykowny: dbc.us (surowce), gld.us (zloto), hyg.us (obligacje high yield), lqd.us (obligacje IG), tlt.us (dlugoterminowe Treasury). Ochrona bez zmian: ief.us/shy.us. Mechanika bloku identyczna (`momentum_avg_month_end`, `corr_to_basket_month_end` na nowym, mniejszym koszyku 5 aktywow, `momentum_times_decorrelation`, `gpm_breadth_protective_split` - blok WSPOLNY, bez zmian kodu, tylko inny `risky_assets` w params). `top_n_risky=3` bez zmian (top3 z 5, tak jak top3 z 10/13 w innych wariantach). `full_protective_max_n=2`/`protective_scale_denominator=3` (2+3=5=len(risky_assets), ta sama konwencja suma=len co w `gpm_mid_10` (5+5=10) i pelnym `gpm` (6+6=12~13) - przeskalowane proporcjonalnie do 5-aktywowego uniwersum). Test: czy usuniecie calej ekspozycji akcyjnej z 'ryzykownej' strony gpm (zostawiajac tylko surowce/zloto/obligacje, ktore i tak sluzyly wczesniej jako 'najlepsza alternatywa gdy akcje slabe') daje sensowna, dalej dodatnia strategie, i jak wypada w kombinacji z ofensywnym `best17_a_offensive` (patrz `gpm_mid_10_defensive_best17_a_offensive`).",
+    "universe": [
+        "dbc.us",
+        "gld.us",
+        "hyg.us",
+        "lqd.us",
+        "tlt.us",
+        "ief.us",
+        "shy.us"
+    ],
+    "blocks": {
+        "data_loader": "stooq_csv_dividend_adjusted",
+        "data_cleaner": "trim_and_interpolate",
+        "asset_scoring": "momentum_times_decorrelation",
+        "selector": "top_n",
+        "alpha_weighting": "rank_weights",
+        "portfolio_risk_engine": "gpm_breadth_protective_split",
+        "overlays": "none",
+        "execution": "hysteresis",
+        "reporting": "monthly_csv_export"
+    },
+    "base_params": {
+        "data_loader": {
+            "data_dir": "data/us",
+            "uk_data_dir": "data/uk",
+            "frequency": "monthly",
+            "dividend_adjustment_mapping": {
+                "dbc.us": "icom",
+                "gld.us": "igln",
+                "hyg.us": "ihya",
+                "lqd.us": "lqda",
+                "tlt.us": "dtla",
+                "ief.us": "cbu0",
+                "shy.us": "ibta"
+            }
+        },
+        "data_cleaner": {},
+        "indicators": {
+            "r": {
+                "impl": "momentum_avg_month_end",
+                "windows": [
+                    1,
+                    3,
+                    6,
+                    12
+                ]
+            },
+            "c": {
+                "impl": "corr_to_basket_month_end",
+                "basket_assets": [
+                    "dbc.us",
+                    "gld.us",
+                    "hyg.us",
+                    "lqd.us",
+                    "tlt.us"
+                ],
+                "window": 12
+            }
+        },
+        "asset_filters": {},
+        "asset_scoring": {
+            "momentum_key": "r",
+            "corr_key": "c"
+        },
+        "selector": {
+            "top_n": 1
+        },
+        "alpha_weighting": {
+            "weights": [
+                1.0
+            ],
+            "redistribute_if_short": true
+        },
+        "portfolio_risk_engine": {
+            "risky_assets": [
+                "dbc.us",
+                "gld.us",
+                "hyg.us",
+                "lqd.us",
+                "tlt.us"
+            ],
+            "protective_assets": [
+                "ief.us",
+                "shy.us"
+            ],
+            "top_n_risky": 3,
+            "full_protective_max_n": 2,
+            "protective_scale_denominator": 3
+        },
+        "execution": {
+            "hysteresis_pct": 0.0,
+            "cost_bps": 40
+        },
+        "reporting": {
+            "output_path": "results/monthly/gpm_mid_10_defensive.csv",
+            "annual_tax_rate": 0.19
+        }
+    },
+    "allowed_param_families": {
+        "portfolio_risk_engine": {
+            "top_n_risky": [
+                2,
+                3,
+                4
+            ],
+            "full_protective_max_n": [
+                1,
+                2,
+                3
+            ]
+        }
+    },
+    "created_at": "2026-08-08"
+}

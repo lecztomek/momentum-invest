@@ -2,6 +2,140 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-08 (1)
+
+- **NOWE STRATEGIE: `best17_a_offensive` (bardziej ofensywne best17) + `gpm_mid_10_defensive`
+  (bardziej defensywne gpm) + ich polaczenie** - user: "może warto spróbować zrobić bardziej
+  ofensywne best17 i bardziej defensywne gpm czyli best17 pozbywamy się etf dbc vwra gild a gpm
+  pozbywamy się ofensywy no i ich połączenie jako test". Czysto konfiguracyjne strategie (BEZ
+  zmian w kodzie silnika) - `run_one`/pipeline juz w pelni obslugujja taki uklad.
+
+  `best17_a_offensive`: z uniwersum `best17_a` (xlk.us/ivv.us/dbc.us/iau.us/vt.us) usuniete
+  `dbc.us` (surowce), `vt.us` ("vwra" - VWRA/swiatowy rynek, byl kanarkiem + rebound trigger),
+  `iau.us` ("gild" - zloto). Zostaje czysta para akcyjna xlk.us/ivv.us. Wymuszone zmiany
+  mechaniczne: `canary.canary_assets` [vt,xlk]->[ivv,xlk], `rebound_starter.rebound_ticker`
+  vt.us->ivv.us, usuniete `iau_gate`/`dbc_gate`/`exclude_canary_from_selection` (aktywa juz nie
+  istnieja), usuniety nieuzywany indicator `mom_r3_gate`. Reszta architektury bez zmian.
+
+  `gpm_mid_10_defensive`: z `risky_assets` `gpm_mid_10` (spy/qqq/vwo/vnq/dbc/gld/hyg/lqd/tlt/xle)
+  usuniete WSZYSTKIE pozycje akcyjne/equity-like ("ofensywa"): spy.us, qqq.us, vwo.us, vnq.us,
+  xle.us. Zostaje 5-aktywowy, czysto defensywny pool: dbc.us/gld.us/hyg.us/lqd.us/tlt.us + ochrona
+  ief.us/shy.us bez zmian. Blok `gpm_breadth_protective_split` (WSPOLNY, bez zmian kodu) -
+  `full_protective_max_n`/`protective_scale_denominator` przeskalowane z 5/5 (na 10 aktywach) na
+  2/3 (na 5 aktywach), ta sama konwencja suma=len(risky_assets). `top_n_risky=3` bez zmian.
+
+  `gpm_mid_10_defensive_best17_a_offensive`: polaczenie obu wyzej, `fixed_capital_weights` 50/50
+  (identyczny combiner jak produkcyjny kandydat `gpm_mid_10_best17_a`). Test roli-rozdzielenia:
+  cala "ofensywa" (akcje) w best17, cala "defensywa" (surowce/zloto/obligacje+cash-ochrona) w gpm.
+
+  Dodano do `test_run_one.py`/`test_reporting_block_combined.py` (liczniki 42->43, +1 nowa
+  strategia z wlasnym `combined_spec.json`). Test suite pelny (silnik NIE byl zmieniany dla tego
+  wpisu - poprzednia zmiana silnika z (2026-07-16 (8)), pelny 634-testowy przebieg juz zrobiony
+  wtedy) - tu tylko targetowany przebieg 107 testow (`test_run_one.py`+
+  `test_reporting_block_combined.py`+`test_all_combined_specs.py`) - wszystkie zielone.
+
+  **Wynik (post-tax, pelna historia)**:
+
+  | | `best17_a` | `best17_a_offensive` | `gpm_mid_10` | `gpm_mid_10_defensive` | `gpm_mid_10_best17_a` | `gpm_mid_10_defensive_best17_a_offensive` |
+  |---|---|---|---|---|---|---|
+  | CAGR | 12.34% | **11.46%** | 4.77% | **3.42%** | 8.34% | **7.53%** |
+  | MaxDD | -31.19% | **-35.33%** | -12.95% | **-16.45%** | -16.15% | **-20.81%** |
+  | Sharpe | 0.736 | **0.668** | 0.597 | **0.520** | 0.806 | **0.767** |
+  | Calmar | 0.396 | **0.324** | 0.369 | **0.208** | 0.517 | **0.362** |
+  | Turnover | 1.44 | 0.54 | 4.03 | 3.58 | 2.69 | 1.91 |
+
+  Jednoznaczny wniosek: usuniecie "dywersyfikatorow" NIE poprawilo zadnej ze strategii, pogorszylo
+  obie na kazdej osi (CAGR nizszy, MaxDD glebszy, Sharpe/Calmar nizsze) - DBC/VT/IAU gate'y w
+  best17 i ekspozycja akcyjna w risky-pool gpm realnie dodawaly wartosc (momentum + dywersyfikacje),
+  nie byly tylko "balastem ograniczajacym ofensywe". Polaczenie z rozdzielonymi rolami (cala
+  ofensywa w best17, cala defensywa w gpm) wypada gorzej niz oryginalny `gpm_mid_10_best17_a` na
+  KAZDEJ metryce - mieszanie obu rol WEWNATRZ kazdej ze strategii (jak w oryginale) dziala lepiej
+  niz sztywny podzial rol miedzy strategiami. 89 plikow wynikowych lacznie.
+
+## 2026-07-16 (8)
+
+- **NOWY BLOK `gpm_breadth_protective_split_cash`** - user: "Czy gpm moze byc w cash?"
+  (odpowiedz: teoretycznie tak - `_CASH` fallback gdy brak uzywalnego kandydata - ale w praktyce
+  NIGDY, 0/232 miesiecy na `gpm_mid_10`/`gpm_mid_13`/`gpm`, `gpm` zawsze jest w 100%
+  zainwestowany, w risky ALBO w IEF/SHY), potem: "A moze test wersji gpm ktora chroni sie w
+  cash". Pierwsza wersja dodawala param `protective_mode` do WSPOLNEGO
+  `gpm_breadth_protective_split.py` (uzywanego przez `gpm`/`gpm_mid_10`/`gpm_mid_13`/`gpm_lite_7`/
+  `gpm_best17_a` i inne) - user: "Nie lepiej zrob osobna strategie" - stad CALKOWICIE OSOBNY,
+  nowy plik blocku `gpm_breadth_protective_split_cash.py` (zarejestrowany pod wlasna nazwa),
+  identyczny mechanizm skalowania udzialu ochronnego wedlug szerokosci rynku, ale CAŁY udzial
+  ochronny idzie WPROST w `_CASH` (ignorujac `protective_assets`, ktory nawet nie jest
+  wymagany). Oryginalny `gpm_breadth_protective_split.py` przywrocony do stanu PRZED ta zmiana
+  bajt-w-bajt (`git diff` puste) - zero ryzyka dla ktorejkolwiek istniejacej strategii gpm.
+  Nowy plik testow `test_gpm_breadth_protective_split_cash.py` (5 testow, analogiczne do
+  oryginalnych - pelna ochrona -> cash, czesciowa ochrona dzielona miedzy cash i top-N ryzykowne,
+  przyciecie do 1.0 bez dzwigni, fallback bez kandydatow, walidacja wymaganych parametrow) -
+  `test_gpm_components.py` (testujacy WSPOLNY blok) pozostal bez zadnych zmian.
+
+  User: "I nie odpalaj testow jak nie zmieniasz silnika" - ustalona zasada na przyszlosc: pelny
+  pakiet testow (~630, 5-7 minut) TYLKO gdy zmiana dotyka `engine_v2/` (blok/pipeline/etc.), NIE
+  dla czysto-konfiguracyjnych nowych strategii (np. `best17_a_qqq` wyzej) - tam wystarczy
+  uruchomic/zwalidowac sama nowa strategie + ewentualnie kilka najbardziej zwiazanych testow.
+
+  Nowe strategie `gpm_mid_10_cash`/`gpm_mid_13_cash` - pelne kopie z
+  `blocks.portfolio_risk_engine: "gpm_breadth_protective_split_cash"` (nie parametr).
+
+  **Wynik (post-tax, pelna historia)**:
+
+  | | `gpm_mid_10` (IEF/SHY) | `gpm_mid_10_cash` | `gpm_mid_13` (IEF/SHY) | `gpm_mid_13_cash` |
+  |---|---|---|---|---|
+  | CAGR | 4.77% | **3.49%** | 4.94% | **3.63%** |
+  | MaxDD | -12.95% | **-12.56%** | -12.57% | **-11.79%** |
+  | Sharpe | **0.597** | 0.499 | **0.616** | 0.516 |
+  | Calmar | **0.369** | 0.278 | **0.393** | 0.308 |
+  | Turnover | 4.03 | 3.43 | 4.15 | 3.61 |
+
+  Obligacje ochronne (IEF/SHY) wygrywaja jednoznacznie na CAGR/Sharpe/Calmar na obu wariantach -
+  przewaga `gpm` nie jest tylko mechanizmem skalowania udzialu, realnie pochodzi (przynajmniej
+  czesciowo) z trzymania obligacji (dochod z odsetek + "flight to quality" rally obligacji w
+  trakcie wyprzedazy akcji). Cash wygrywa jedynie na MaxDD (nieco lepszy, plytszy) i turnover
+  (nizszy - bez rebalansow miedzy IEF/SHY w miare zmiany ich wzglednego score). 86 plikow
+  wynikowych lacznie. Pelny pakiet testow: patrz weryfikacja koncowa.
+
+## 2026-07-16 (7)
+
+- **Nowa strategia `best17_a_qqq` - test odpornosci na wybor ETF** - user: "Brakuje mi jeszcze
+  takiego testu ze np w gpm oraz best17 wymieniamy Etf na inne ale reprezentujace ten sam
+  podobny sektor". Sprawdzono dostepne dane (`data/us/nyse`, 31 tickerow) - 3 "darmowe" zamiany
+  (ta sama ekspozycja, inny dostawca funduszu: `dbc.us`<->`gsg.us` surowce, `iau.us`<->`gld.us`
+  zloto, `ivv.us`<->`spy.us` S&P500) byly by praktycznie null-testem (korelacja >99.9%, prawie
+  na pewno "brak roznicy" - nie z powodu odpornosci strategii, tylko bo to w praktyce ten sam
+  instrument). User wybral `xlk.us` (Technology Select Sector SPDR - czysty sektor tech) - brak
+  w danych innego czysto-tech ETF-u (VGT/IYW), wiec uzyto `qqq.us` (juz w repo, uzywany w
+  `gpm_mid_10`/`gpm_mid_13`) - Nasdaq-100, szerszy niz czysty sektor, ale silnie tech-wazony
+  (m.in. AMZN/GOOGL/META, formalnie inne sektory GICS, ktorych XLK NIE zawiera) - to prawdziwy
+  test (realna dywergencja skladu), nie null-test jak SPY/IVV.
+
+  Nowa strategia `strategies_v2/best17_a_qqq/` - pelna kopia `best17_a` z `xlk.us` zamienionym na
+  `qqq.us` we WSZYSTKICH miejscach (`universe`, `canary.canary_assets`, `canary.target_assets`,
+  `require_positive_score.assets`) - kanarek regime, ranking EMA7/16, gate'y IAU/DBC bez zmian.
+
+  **Wynik (post-tax, pelna historia)**:
+
+  | | `best17_a` (XLK) | `best17_a_qqq` (QQQ) |
+  |---|---|---|
+  | CAGR | 12.34% | **10.47%** |
+  | MaxDD | -31.19% | -31.62% |
+  | Sharpe | 0.736 | **0.655** |
+  | Calmar | 0.396 | 0.331 |
+  | Turnover | 1.44 | 1.33 |
+
+  QQQ wypada wyraznie GORZEJ niz XLK na kazdej metryce - w przeciwienstwie do SPY/IVV/DBC/GSG,
+  ktore prawdopodobnie dalyby wynik nieodrozniany od oryginalu. Prawdopodobna przyczyna: QQQ ma
+  wyzsza korelacje z IVV (S&P500, juz w uniwersum) niz XLK, wiec kanarek+ranking widzi mniej
+  zroznicowany sygnal miedzy "aktywami ryzykownymi" - mniejsza dywersyfikacja realna w tym samym
+  uniwersum 4 aktywow. Nie zaimplementowano jeszcze analogicznego testu dla `gpm_mid_10`/
+  `gpm_mid_13` (user wspomnial "w gpm oraz best17", ale konkretny wybor `xlk`/QQQ byl tylko dla
+  best17_a) - do rozwazenia jako nastepny krok, jesli user zechce.
+
+  Wygenerowano `results/best17_a_qqq.json` + `results/monthly/best17_a_qqq.csv`, scalony
+  `SUMMARY.md` (84 pliki). Brak zmian w kodzie silnika - to czysto konfiguracyjny wariant
+  (ticker to tylko string w JSON, zero nowego kodu potrzebne).
+
 ## 2026-07-16 (6)
 
 - **Rozszerzenie sweepu `execution_day_of_month` o dni 15/20/25** - user: "dodaj jeszcze dzień

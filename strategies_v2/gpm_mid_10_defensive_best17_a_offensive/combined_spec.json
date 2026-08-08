@@ -1,0 +1,21 @@
+{
+    "name": "gpm_mid_10_defensive_best17_a_offensive_v0",
+    "hypothesis": "EKSPERYMENT (2026-08-08, user: 'może warto spróbować zrobić bardziej ofensywne best17 i bardziej defensywne gpm czyli best17 pozbywamy się etf dbc vwra gild a gpm pozbywamy się ofensywy no i ich połączenie jako test') - polaczenie `gpm_mid_10_defensive` (risky_assets bez ekspozycji akcyjnej: dbc/gld/hyg/lqd/tlt + ochrona ief/shy) z `best17_a_offensive` (czysta para akcyjna xlk/ivv, bez dbc/vt/iau) tym samym prostym combinerem `fixed_capital_weights` 50/50 co produkcyjny kandydat `gpm_mid_10_best17_a`. Idea: skoncentrowac cala 'ofense' (ekspozycje akcyjna, wyzsze beta) w polowie best17, a cala 'defense' (surowce/zloto/obligacje + gotowka ochronna) w polowie gpm - test czy takie rozdzielenie rol (miast obu polow czesciowo pokrywajacych sie na akcjach/surowcach jak w oryginalnym `gpm_mid_10_best17_a`) daje lepszy czy gorszy compound wynik/dywersyfikacje.",
+    "strategy_spec_paths": [
+        "../gpm_mid_10_defensive/strategy_spec.json",
+        "../best17_a_offensive/strategy_spec.json"
+    ],
+    "combiner": "fixed_capital_weights",
+    "combiner_params": {
+        "capital_weights": {
+            "gpm_mid_10_defensive_v0": 0.5,
+            "best17_a_offensive_v0": 0.5
+        }
+    },
+    "reporting": "monthly_csv_export",
+    "reporting_params": {
+        "output_path": "results/monthly/gpm_mid_10_defensive_best17_a_offensive.csv",
+        "annual_tax_rate": 0.19
+    },
+    "created_at": "2026-08-08"
+}

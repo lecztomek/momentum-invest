@@ -1,0 +1,8 @@
+{
+  "strategy_spec": "strategy_spec.json",
+  "test_spec": "test_spec.json",
+  "acceptance_spec": "acceptance_spec.json",
+
+  "mode": "final",
+  "notes": "User: 'Chce nowa wersje strategii gpm - dodajmy tickery rsp xlp xlv'. Baza gpm_mid_10 (10 aktywow ryzykownych) + RSP/XLP/XLV = 13. Ochrona IEF/SHY bez zmian. Ta sama architektura blokow co gpm_mid_10/gpm, korekta dywidend od razu wlaczona dla wszystkich 15 tickerow uniwersum (RSP/XLP/XLV maja juz realne dane Acc: speq/iucs/iuhc)."
+}

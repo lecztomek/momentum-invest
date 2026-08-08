@@ -1,0 +1,59 @@
+{
+  "name": "best17_a_qqq_v0",
+  "hypothesis": "Odtworzenie realnej strategii uzytkownika 'best17_3m' - strategia bazowa A, BEZ hedge overlay (tlt.us). Uniwersum XLK/IVV/DBC/IAU, kanarek regime na VT+XLK (EMA5/EMA12), ranking wg EMA7/EMA16 na cenach konca miesiaca, top2, wagi 0.8/0.2, asset gates na IAU/DBC (3m momentum > +1% - patrz POPRAWKA 2026-07-15), histereza po roznicy score (0.005), rebound-starter (VT 3m return > 5% gdy cash), koszt 40bps. Odtworzone wg dokladnej analizy engine/build_data.py + engine/backtest_hybrid_search.py + ideas/best17_3m_tlt_dtla_40/hybrid_config.json - NIE zawiera rocznego podatku 19% (jeszcze niezaimplementowany w engine_v2). POPRAWKA 2026-07-11: iau_gate/dbc_gate uzywaly `mom_r3` (momentum_month_end, ceny KONCA miesiaca) - to bylo BLEDNE, stary silnik liczy `min_return_3m` w asset gates przez `trailing_compound_return` na cenach STARTU miesiaca (execution), czyli DOKLADNIE `momentum_monthly` (juz istniejacy blok, uzywany gdzie indziej w repo) - NOWA instancja `mom_r3_gate` (momentum_monthly, window=3) dla obu gate'ow, `mom_r3` (momentum_month_end) zostaje BEZ ZMIAN dla rebound_starter (ten w starym silniku POPRAWNIE uzywa cen konca miesiaca - inny mechanizm, inna podstawa, potwierdzone w kodzie zrodlowym starego silnika). Zweryfikowane na 428 parach (data,aktywo) z prawdziwego CSV starego silnika (2008-2026) - 100% zgodnosci wszedzie, gdzie kanarek NIE wyklucza juz calej grupy (24 pozorne 'niezgodnosci' to miesiace gdzie kanarek i tak juz blokuje wszystko, gate nie ma znaczenia dla wyniku). POPRAWKA 2026-07-15 (user: 'Mamy bledny prog gate powinien byc plus 1 procent'): `iau_gate`/`dbc_gate` mialy `threshold=-0.01` (eligibilny gdy 3m momentum > -1% - bardzo lagodny warunek, wykluczal tylko przy naprawde zlym momentum) - POPRAWIONE na `threshold=0.01` (eligibilny gdy 3m momentum > +1% - bardziej restrykcyjne, wymaga realnie dodatniego momentum, nie tylko 'niezbyt zlego'). Ten sam blad byl skopiowany do `best17_a_uk`/`synergy_v1`/`synergy_v2` - poprawione tam rowniez. EKSPERYMENT ODPORNOSCI NA WYBOR ETF (2026-07-16, user: 'Brakuje mi jeszcze takiego testu ze np w gpm oraz best17 wymieniamy Etf na inne ale reprezentujace ten sam podobny sektor', potem: 'Wolalbym wymienic np xlk', potem: 'Ad 1 zrob nowe best 17qqq') - `xlk.us` (Technology Select Sector SPDR - czysty sektor technologiczny) zamieniony na `qqq.us` (Invesco QQQ Trust - Nasdaq-100, SZERSZY niz czysty sektor tech, ale silnie tech-wazony) we WSZYSTKICH miejscach konfiguracji (universe, canary.canary_assets, canary.target_assets, require_positive_score.assets). To NIE jest 'darmowy' null-test jak IVV<->SPY czy IAU<->GLD (ktore sledza DOKLADNIE ten sam indeks) - QQQ i XLK maja realnie inny sklad (QQQ ma m.in. AMZN/GOOGL/META - spolki technologicznie-adjacentne, ale formalnie sklasyfikowane w innych sektorach GICS, ktorych XLK NIE zawiera), wiec to prawdziwy test, czy mechanika strategii (kanarek regime + ranking EMA7/16 + top2) zalezy od DOKLADNEGO skladu 'aktywa tech' czy jest odporna na szerszy, ale wciaz tech-zdominowany substytut. Brak w danych czystszego zamiennika (VGT/IYW) - QQQ wybrany jako jedyny dostepny bez dograwania nowych danych (patrz CHANGELOG).",
+  "universe": ["qqq.us", "ivv.us", "dbc.us", "iau.us", "vt.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "rebound_starter",
+    "overlays": "none",
+    "execution": "score_gap_hysteresis",
+    "reporting": "monthly_csv_export"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "ema7_16": {"impl": "ema_ratio_monthly", "fast_span": 7, "slow_span": 16},
+      "ema5_12": {"impl": "ema_ratio_monthly", "fast_span": 5, "slow_span": 12},
+      "mom_r3": {"impl": "momentum_month_end", "window": 3},
+      "mom_r3_gate": {"impl": "momentum_monthly", "window": 3}
+    },
+    "asset_filters": {
+      "canary": {
+        "impl": "canary_regime_gate",
+        "canary_assets": ["vt.us", "qqq.us"],
+        "indicator_key": "ema5_12",
+        "bad_threshold": -0.02,
+        "max_bad_count": 0,
+        "target_assets": ["qqq.us", "ivv.us", "dbc.us", "iau.us"]
+      },
+      "iau_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3_gate", "threshold": 0.01, "assets": ["iau.us"]},
+      "dbc_gate": {"impl": "indicator_positive", "indicator_key": "mom_r3_gate", "threshold": 0.01, "assets": ["dbc.us"]},
+      "require_positive_score": {"impl": "indicator_positive", "indicator_key": "ema7_16", "threshold": 0.0, "assets": ["qqq.us", "ivv.us", "dbc.us", "iau.us"]},
+      "exclude_canary_from_selection": {"impl": "never_eligible", "assets": ["vt.us"]}
+    },
+    "asset_scoring": {"weights": {"ema7_16": 1.0}},
+    "selector": {"top_n": 2},
+    "alpha_weighting": {"weights": [0.8, 0.2], "redistribute_if_short": true},
+    "portfolio_risk_engine": {
+      "rebound_ticker": "vt.us",
+      "indicator_key": "mom_r3",
+      "threshold": 0.05
+    },
+    "execution": {"min_score_gap": 0.005, "cost_bps": 40, "full_position_size": 2},
+    "reporting": {"output_path": "results/monthly/best17_a_qqq.csv", "annual_tax_rate": 0.19}
+  },
+
+  "allowed_param_families": {
+    "execution": {"min_score_gap": [0.0, 0.0025, 0.005, 0.0075, 0.01]},
+    "asset_filters": {"canary.bad_threshold": [-0.03, -0.02, -0.01]}
+  },
+
+  "created_at": "2026-07-16"
+}

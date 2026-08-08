@@ -1,0 +1,115 @@
+{
+    "name": "best17_a_offensive_v0",
+    "hypothesis": "EKSPERYMENT (2026-08-08, user: 'może warto spróbować zrobić bardziej ofensywne best17 i bardziej defensywne gpm czyli best17 pozbywamy się etf dbc vwra gild a gpm pozbywamy się ofensywy no i ich połączenie jako test') - z uniwersum `best17_a` (xlk.us/ivv.us/dbc.us/iau.us/vt.us) usunieto TRZY dywersyfikujace/defensywne ETF: `dbc.us` (surowce), `vt.us` (VWRA - swiatowy rynek akcji, uzywany jako kanarek regime + rebound trigger), `iau.us` (zloto, tu 'gild' - GLD-jak). Zostaje CZYSTA para akcyjna xlk.us (sektor tech)/ivv.us (S&P500) - bez zadnego commodity/gold/world hedge'a, celowo bardziej 'ofensywna' (wyzsza beta na akcje, brak dywersyfikacji poza equity). Zmiany mechaniczne wymuszone usunieciem `vt.us`: `canary.canary_assets` zmienione z [vt.us,xlk.us] na [ivv.us,xlk.us] (regime na obu pozostalych aktywach), `portfolio_risk_engine.rebound_ticker` (rebound_starter) zmieniony z vt.us na ivv.us (jedyny pozostaly szeroki-rynek proxy), usuniete `iau_gate`/`dbc_gate` (aktywa juz nie istnieja), usuniety nieuzywany juz indicator `mom_r3_gate` (byl tylko dla iau_gate/dbc_gate), usuniety `exclude_canary_from_selection` (nie ma juz osobnego kanarka-nie-do-wyboru - ivv.us jest jednoczesnie kanarkiem i legalnym kandydatem do selekcji, tak jak xlk.us bylo od zawsze). `require_positive_score.assets` zredukowane do [xlk.us,ivv.us]. Reszta architektury (ema7_16 ranking, top_n=2, wagi 0.8/0.2, histereza 0.005, koszt 40bps) BEZ ZMIAN. Test: czy pozbycie sie DBC/VT/IAU (ktore w best17_a glownie ograniczaly ryzyko przez gate'y i dawaly alternatywe gdy akcje slabe) poprawia czy psuje wynik wzgledem oryginalnego best17_a - i jak wypada w kombinacji z defensywnym gpm_mid_10_defensive (patrz `gpm_mid_10_defensive_best17_a_offensive`).",
+    "universe": [
+        "xlk.us",
+        "ivv.us"
+    ],
+    "blocks": {
+        "data_loader": "stooq_csv",
+        "data_cleaner": "trim_and_interpolate",
+        "asset_scoring": "weighted_sum",
+        "selector": "top_n",
+        "alpha_weighting": "rank_weights",
+        "portfolio_risk_engine": "rebound_starter",
+        "overlays": "none",
+        "execution": "score_gap_hysteresis",
+        "reporting": "monthly_csv_export"
+    },
+    "base_params": {
+        "data_loader": {
+            "data_dir": "data/us",
+            "frequency": "monthly"
+        },
+        "data_cleaner": {},
+        "indicators": {
+            "ema7_16": {
+                "impl": "ema_ratio_monthly",
+                "fast_span": 7,
+                "slow_span": 16
+            },
+            "ema5_12": {
+                "impl": "ema_ratio_monthly",
+                "fast_span": 5,
+                "slow_span": 12
+            },
+            "mom_r3": {
+                "impl": "momentum_month_end",
+                "window": 3
+            }
+        },
+        "asset_filters": {
+            "canary": {
+                "impl": "canary_regime_gate",
+                "canary_assets": [
+                    "ivv.us",
+                    "xlk.us"
+                ],
+                "indicator_key": "ema5_12",
+                "bad_threshold": -0.02,
+                "max_bad_count": 0,
+                "target_assets": [
+                    "xlk.us",
+                    "ivv.us"
+                ]
+            },
+            "require_positive_score": {
+                "impl": "indicator_positive",
+                "indicator_key": "ema7_16",
+                "threshold": 0.0,
+                "assets": [
+                    "xlk.us",
+                    "ivv.us"
+                ]
+            }
+        },
+        "asset_scoring": {
+            "weights": {
+                "ema7_16": 1.0
+            }
+        },
+        "selector": {
+            "top_n": 2
+        },
+        "alpha_weighting": {
+            "weights": [
+                0.8,
+                0.2
+            ],
+            "redistribute_if_short": true
+        },
+        "portfolio_risk_engine": {
+            "rebound_ticker": "ivv.us",
+            "indicator_key": "mom_r3",
+            "threshold": 0.05
+        },
+        "execution": {
+            "min_score_gap": 0.005,
+            "cost_bps": 40,
+            "full_position_size": 2
+        },
+        "reporting": {
+            "output_path": "results/monthly/best17_a_offensive.csv",
+            "annual_tax_rate": 0.19
+        }
+    },
+    "allowed_param_families": {
+        "execution": {
+            "min_score_gap": [
+                0.0,
+                0.0025,
+                0.005,
+                0.0075,
+                0.01
+            ]
+        },
+        "asset_filters": {
+            "canary.bad_threshold": [
+                -0.03,
+                -0.02,
+                -0.01
+            ]
+        }
+    },
+    "created_at": "2026-08-08"
+}
