@@ -11,6 +11,7 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `gpm_mid_10_best17_a_day5` | combined_final | 8.49% | -15.00% | 0.809 | 0.566 | 2.62 | fail (patrz JSON) |
 | `gpm_mid_10_best17_a_day25` | combined_final | 9.66% | -17.25% | 0.893 | 0.560 | 2.65 | fail (patrz JSON) |
 | `gpm_mid_10_best17_a_day15` | combined_final | 9.37% | -17.18% | 0.873 | 0.546 | 2.61 | fail (patrz JSON) |
+| `gpm_mid_10_best17_a_rank_aware` | combined_final | 8.71% | -16.15% | 0.839 | 0.540 | 2.74 | fail (patrz JSON) |
 | `gpm_mid_13_best17_a_day5` | combined_final | 8.58% | -15.91% | 0.812 | 0.539 | 2.68 | fail (patrz JSON) |
 | `gpm_mid_13_best17_a_day25` | combined_final | 9.72% | -18.03% | 0.890 | 0.539 | 2.71 | fail (patrz JSON) |
 | `gpm_mid_13_best17_a_day20` | combined_final | 9.01% | -17.28% | 0.831 | 0.522 | 2.71 | fail (patrz JSON) |
@@ -24,6 +25,7 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `best17_a_day10` | final | 13.52% | -29.01% | 0.783 | 0.466 | 1.28 | fail (patrz JSON) |
 | `best17_a_day5` | final | 13.11% | -28.58% | 0.765 | 0.459 | 1.28 | fail (patrz JSON) |
 | `best17_a_day20` | final | 13.87% | -31.71% | 0.786 | 0.437 | 1.35 | fail (patrz JSON) |
+| `best17_a_rank_aware` | final | 13.48% | -31.19% | 0.791 | 0.432 | 1.54 | fail (patrz JSON) |
 | `combined_triple` | combined_final | 8.55% | -20.41% | 0.745 | 0.419 | 2.38 | - |
 | `gtaa_agg6_mid_best17_a` | combined_final | 8.50% | -21.09% | 0.737 | 0.403 | 2.21 | fail (patrz JSON) |
 | `best17_a_tlt_hedge` | combined_final | 10.65% | -26.86% | 0.743 | 0.397 | 1.14 | - |

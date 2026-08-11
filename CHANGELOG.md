@@ -2,6 +2,60 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-08 (2)
+
+- **NOWY BLOK `score_gap_hysteresis_rank_aware`** - user analizowal miesiac-po-miesiacu wynik
+  `best17_a` w 2022 (patrz rozmowa), przeszedl przez: "moze kanarek na podwyzki stop/inflacje?" ->
+  "sprawdz to na internecie" (research: krzywa 2s10s odwrocila sie DOPIERO w kwietniu 2022, 3
+  miesiace PO szczycie S&P500 - wskaznik spozniony, nie liderujacy; TIP/TLT teoretycznie dobry
+  proxy inflacji, ale brak danych TIP lokalnie; CTA/trend-following mial jeden z najlepszych lat
+  w historii w 2022, wiec sam "trend-following" jako koncepcja dziala - problem musi byc gdzie
+  indziej) -> weryfikacja we WLASNYM kodzie: ranking `ema7_16` pokazal, ze `dbc.us` wyprzedzil
+  `xlk.us` juz w MARCU 2022 (roznica rosnaca do +0.112 w czerwcu), ale realne wagi w backteście
+  zostaly na xlk.us=80%/dbc.us=20% AZ DO LIPCA. Przyczyna: `score_gap_hysteresis` (execution)
+  sprawdza TYLKO czy ZBIOR trzymanych tickerow sie zmienil - jesli xlk.us+dbc.us byly juz oba w
+  top-2 (od grudnia 2021), histereza "keep"uje DOKLADNIE stare wagi, calkowicie ignorujac
+  odwrocenie RANKINGU wewnatrz tego zbioru. To wierne odtworzenie starego silnika
+  (`should_keep_current_assets_by_hysteresis`), NIE nowy blad - ale user: "No to zle to dziala ten
+  gap trzeba go zmienic".
+
+  Nowy, CELOWO OSOBNY plik `score_gap_hysteresis_rank_aware.py` (nie modyfikacja
+  `score_gap_hysteresis.py`, z ktorego korzysta 12 innych strategii best17 - zero ryzyka dla
+  nich). Identyczny mechanizm co oryginal (asset gate forced-exit, `full_position_size`,
+  `min_score_gap` na wyzwaniowcach spoza zbioru), z JEDNYM dodatkiem: gdy zbior trzymanych
+  tickerow sie NIE zmienil, dodatkowo sprawdza, czy KTORYS nizej wazony aktyw ma score wyzszy o
+  wiecej niz `min_score_gap` od ktoregokolwiek wyzej wazonego - jesli tak, wymusza pelny rebalans
+  do `target` (ktory poprawnie przypisuje wagi wg aktualnego rankingu). 9 nowych testow w
+  `test_score_gap_hysteresis_rank_aware.py` (w tym dokladnie ten scenariusz xlk.us/dbc.us z
+  realnych danych 2022).
+
+  Nowa strategia `best17_a_rank_aware` (pelna kopia `best17_a`, `blocks.execution` zmienione na
+  nowy blok) + `gpm_mid_10_best17_a_rank_aware` (ten sam miks 50/50 co produkcyjny kandydat, ale z
+  `best17_a_rank_aware` zamiast `best17_a`).
+
+  **Wynik (post-tax)**:
+
+  | | `best17_a` | `best17_a_rank_aware` | `gpm_mid_10_best17_a` (produkcja) | `gpm_mid_10_best17_a_rank_aware` |
+  |---|---|---|---|---|
+  | CAGR (pelna historia) | 12.34% | **13.48%** | 8.34% | **8.71%** |
+  | MaxDD | -31.19% | -31.19% (bez zmian) | -16.15% | -16.15% (bez zmian) |
+  | Sharpe | 0.736 | **0.791** | 0.806 | **0.839** |
+  | Calmar | 0.396 | **0.432** | 0.517 | **0.540** |
+  | Turnover | 1.44 | 1.54 | 2.69 | 2.74 |
+  | 2022 (`inflation_bear`) | -19.56% | **-7.15%** | -12.20% | **-7.90%** |
+
+  Weryfikacja "to nie overfitting na 2022": `gfc_crash`/`post_gfc_recovery`/`covid_crash_rebound`
+  BEZ ZMIAN (identyczne CAGR co oryginal - mechanizm w ogole sie tam nie uruchamia, zero
+  efektow ubocznych); TRAIN window (2010-2019) minimalnie GORSZY (Sharpe 0.794->0.785, CAGR
+  11.73%->11.53% - szum, nie poprawa "na sile"); OOS window (2020-2026, zawiera 2022) WYRAZNIE
+  lepszy (Sharpe 0.730->0.873, Calmar 0.464->0.583) - poprawa jest w OOS, nie w danych, na
+  ktorych "dostrajalismy" (bo nic nie dostrajalismy - to naprawa realnej niespojnosci
+  mechanizmu, nie nowy parametr). Turnover marginalnie wyzszy (oczekiwane - histereza rzadziej
+  "keep"uje). Pelny test suite (nowy blok w `engine_v2/` - dotyczy silnika): 647 testow
+  (9 nowych dla `score_gap_hysteresis_rank_aware` + liczniki combined strategii 43->44 w
+  `test_run_one.py`/`test_reporting_block_combined.py`), wszystkie zielone. 91 plikow
+  wynikowych lacznie.
+
 ## 2026-08-08 (1)
 
 - **NOWE STRATEGIE: `best17_a_offensive` (bardziej ofensywne best17) + `gpm_mid_10_defensive`

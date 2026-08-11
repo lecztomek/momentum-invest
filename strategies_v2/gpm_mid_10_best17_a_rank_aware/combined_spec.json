@@ -1,0 +1,21 @@
+{
+    "name": "gpm_mid_10_best17_a_rank_aware_v0",
+    "hypothesis": "EKSPERYMENT (2026-08-08) - identyczny miks jak produkcyjny kandydat 'gpm_mid_10_best17_a' (fixed_capital_weights 50/50), ale best17_a zastapione przez 'best17_a_rank_aware' (nowy blok execution 'score_gap_hysteresis_rank_aware' - naprawia brak reakcji na odwrocenie rankingu WEWNATRZ juz trzymanego zbioru aktywow, patrz hypothesis best17_a_rank_aware). Test: czy poprawa 2022 w samym best17_a przeklada sie na poprawe produkcyjnego miksu.",
+    "strategy_spec_paths": [
+        "../gpm_mid_10/strategy_spec.json",
+        "../best17_a_rank_aware/strategy_spec.json"
+    ],
+    "combiner": "fixed_capital_weights",
+    "combiner_params": {
+        "capital_weights": {
+            "gpm_mid_10_v0": 0.5,
+            "best17_a_rank_aware_v0": 0.5
+        }
+    },
+    "reporting": "monthly_csv_export",
+    "reporting_params": {
+        "output_path": "results/monthly/gpm_mid_10_best17_a_rank_aware.csv",
+        "annual_tax_rate": 0.19
+    },
+    "created_at": "2026-08-08"
+}
