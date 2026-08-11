@@ -18,6 +18,23 @@ mogl zostac trzymany w nieskonczonosc, dopoki score PO ZOSTALYCH pozycjach nie u
 rebalansu z innego powodu - gate bindowalby tylko na SELEKCJI nowych pozycji, nie na wyjsciu
 ze starych.
 
+**POPRAWKA 2026-08-08 (user analizowal miesiac-po-miesiacu `best17_a` w 2022, patrz CHANGELOG):
+ranking WEWNATRZ niezmienionego zbioru byl calkowicie ignorowany**. `set(current_held) ==
+set(target_held)` zwraca True nie tylko gdy sklad portfela naprawde sie nie zmienil, ale TEZ gdy
+oba aktywa byly juz trzymane, ale ich WZAJEMNA KOLEJNOSC (a wiec i docelowe wagi z
+`alpha_weighting`, np. 0.8/0.2 wg rankingu) sie odwrocila - w takim przypadku histereza
+"keep"owala DOKLADNIE stare wagi w nieskonczonosc, bo nigdy nie porownywala score wewnatrz
+zbioru, tylko sam fakt jego niezmiennosci. Realny przyklad: `best17_a` trzymal xlk.us (80%) +
+dbc.us (20%) od grudnia 2021 - `dbc.us` mial WYZSZY score juz od marca 2022 (roznica rosnaca do
++0.112 w czerwcu), ale wagi zostaly zamrozone na xlk.us=80%/dbc.us=20% az do lipca, bo oba tickery
+caly czas nalezaly do tego samego zbioru top-2. Naprawione: gdy zbior sie nie zmienil, dodatkowo
+sprawdzamy `_rank_order_violated` - czy ktorykolwiek NIZEJ wazony obecnie trzymany aktyw ma score
+wyzszy o wiecej niz `min_score_gap` od KTOREGOKOLWIEK WYZEJ wazonego - jesli tak, wymuszamy pelny
+rebalans do `target` (ktory poprawnie przypisuje wagi wg aktualnego rankingu). Zweryfikowane jako
+NIE-overfitting na jeden rok: `gfc_crash`/`post_gfc_recovery`/`covid_crash_rebound` bez zmian
+(mechanizm w ogole sie tam nie uruchamia), TRAIN window (2010-2019) minimalnie gorszy (szum), OOS
+window (2020-2026, zawiera 2022) wyraznie lepszy - patrz CHANGELOG po pelne liczby.
+
 Wymaga `context.score_row` (biezacy wiersz SCORE - patrz types.ExecutionContext) - inaczej niz
 "hysteresis", ktora potrzebuje tylko wag i zwrotow.
 
@@ -52,6 +69,23 @@ from engine_v2.registry import register
 from engine_v2.types import ExecutionContext, PeriodExecutionResult
 
 
+def _rank_order_violated(current_held, current_weights, score_row, min_gap: float) -> bool:
+    """Czy ktorys NIZEJ wazony obecnie trzymany aktyw ma score wyzszy o wiecej niz `min_gap` od
+    KTOREGOKOLWIEK WYZEJ wazonego obecnie trzymanego aktywa - odtwarza kolejnosc slotow z
+    `alpha_weighting` (najwyzsza waga = najlepszy rank). Patrz POPRAWKA 2026-08-08 w docstring
+    modulu."""
+    held_by_weight_desc = sorted(current_held, key=lambda t: -current_weights.get(t, 0.0))
+    for i, higher_weight_ticker in enumerate(held_by_weight_desc):
+        higher_score = score_row.get(higher_weight_ticker)
+        if pd.isna(higher_score):
+            continue
+        for lower_weight_ticker in held_by_weight_desc[i + 1 :]:
+            lower_score = score_row.get(lower_weight_ticker)
+            if pd.notna(lower_score) and (lower_score - higher_score) > min_gap:
+                return True
+    return False
+
+
 @register(REGISTRY, "score_gap_hysteresis")
 def score_gap_hysteresis(
     target_weights_row: pd.Series, context: ExecutionContext, params: Dict[str, Any]
@@ -81,7 +115,10 @@ def score_gap_hysteresis(
     if current_held_ineligible:
         keep_current = False
     elif set(current_held) == set(target_held):
-        keep_current = True
+        if not current_held:
+            keep_current = True
+        else:
+            keep_current = not _rank_order_violated(current_held, current_weights, score_row, min_gap)
     elif not current_held and not target_held:
         keep_current = True
     elif full_position_size is not None and len(current_held) != int(full_position_size):

@@ -16,4 +16,3 @@ REGISTRY = make_registry()
 
 from engine_v2.blocks.execution import hysteresis  # noqa: E402,F401  (rejestruje "hysteresis")
 from engine_v2.blocks.execution import score_gap_hysteresis  # noqa: E402,F401  (rejestruje "score_gap_hysteresis")
-from engine_v2.blocks.execution import score_gap_hysteresis_rank_aware  # noqa: E402,F401  (rejestruje "score_gap_hysteresis_rank_aware")

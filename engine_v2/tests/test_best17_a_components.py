@@ -229,6 +229,40 @@ def test_both_cash_kept():
     assert result.signal_changed is False
 
 
+def test_rank_flip_within_held_set_forces_rebalance():
+    """POPRAWKA 2026-08-08 (user analizowal miesiac-po-miesiacu `best17_a` w 2022, patrz
+    CHANGELOG) - sedno naprawy: xlk.us (80%) + dbc.us (20%) - ten sam zbior co target (xlk.us 20%
+    / dbc.us 80%, bo dbc.us wyprzedzil w scorze o wiecej niz min_score_gap) - MUSI przeliczyc
+    wagi. Przed poprawka histereza by to zignorowala (set niezmieniony -> zawsze 'keep')."""
+    target = pd.Series({"xlk.us": 0.2, "dbc.us": 0.8})
+    ctx = _exec_ctx(
+        {"xlk.us": 0.8, "dbc.us": 0.2},
+        {"xlk.us": -0.05, "dbc.us": 0.03},
+        {"xlk.us": 0.033, "dbc.us": 0.145},  # roznica 0.112 >> prog 0.005
+    )
+
+    result = score_gap_hysteresis(target, ctx, {"min_score_gap": 0.005})
+
+    assert result.signal_changed is True
+    assert result.weights_used == {"xlk.us": 0.2, "dbc.us": 0.8}
+
+
+def test_rank_flip_within_min_gap_still_kept():
+    """Roznica score wewnatrz niezmienionego zbioru mniejsza niz prog - nadal 'keep', jak w
+    reszcie mechanizmu histerezy (unikanie whipsawu na szumie)."""
+    target = pd.Series({"xlk.us": 0.2, "dbc.us": 0.8})
+    ctx = _exec_ctx(
+        {"xlk.us": 0.8, "dbc.us": 0.2},
+        {"xlk.us": -0.01, "dbc.us": 0.01},
+        {"xlk.us": 0.100, "dbc.us": 0.103},  # roznica 0.003 < prog 0.005
+    )
+
+    result = score_gap_hysteresis(target, ctx, {"min_score_gap": 0.005})
+
+    assert result.signal_changed is False
+    assert result.weights_used == {"xlk.us": 0.8, "dbc.us": 0.2}
+
+
 def test_forced_exit_when_currently_held_asset_becomes_ineligible():
     """POPRAWKA 2026-07-11 (patrz CHANGELOG) - odtwarza `forced_exit_due_to_asset_gate` ze
     starego silnika. Trzymamy "a" (0.8) i "b" (0.2, full_position_size=2); "a" wlasnie stal sie

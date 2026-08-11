@@ -127,11 +127,11 @@ def test_best17_a_full_chain_on_real_data(us_data_dir):
 
 
 def test_best17_a_metrics_regression_baseline(us_data_dir):
-    """Zamrozony wynik na realnych danych (2026-07-15, PO poprawce progu iau_gate/dbc_gate
-    -1%->+1%, patrz CHANGELOG) - lapie regresje w blokach uzywanych przez best17_a
-    (canary_regime_gate, rebound_starter, score_gap_hysteresis, rank_weights) bez potrzeby
-    przechowywania calej tabeli FINAL PORTFOLIO. Poprzednia baseline (prog -1%, przed poprawka):
-    cagr=0.1674, max_drawdown=-0.3119, sharpe=0.961."""
+    """Zamrozony wynik na realnych danych (2026-08-08, PO poprawce `score_gap_hysteresis` -
+    ranking WEWNATRZ juz trzymanego zbioru byl ignorowany, patrz CHANGELOG) - lapie regresje w
+    blokach uzywanych przez best17_a (canary_regime_gate, rebound_starter, score_gap_hysteresis,
+    rank_weights) bez potrzeby przechowywania calej tabeli FINAL PORTFOLIO. Poprzednia baseline
+    (przed poprawka rankingu w histerezie): cagr=0.1512, max_drawdown=-0.3119, sharpe=0.883."""
     from engine_v2.backtest_engine import daily_equity_curve
     from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
     from engine_v2.metrics import compute_metrics
@@ -144,9 +144,9 @@ def test_best17_a_metrics_regression_baseline(us_data_dir):
     equity_curve = daily_equity_curve(final_portfolio, market_data.prices, {})
     metrics = compute_metrics(equity_curve, final_portfolio, {})
 
-    assert metrics["cagr"] == pytest.approx(0.1512, abs=0.01)
+    assert metrics["cagr"] == pytest.approx(0.1648, abs=0.01)
     assert metrics["max_drawdown"] == pytest.approx(-0.3119, abs=0.01)
-    assert metrics["sharpe"] == pytest.approx(0.883, abs=0.05)
+    assert metrics["sharpe"] == pytest.approx(0.948, abs=0.05)
 
 
 def test_best17_a_uk_mapping_end_to_end(us_data_dir, uk_data_dir):

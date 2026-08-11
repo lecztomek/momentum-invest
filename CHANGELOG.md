@@ -2,7 +2,83 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
-## 2026-08-08 (2)
+## 2026-08-08 (3)
+
+- **BUGFIX `score_gap_hysteresis` bezposrednio w WSPOLNYM bloku** - user (po zobaczeniu wyniku
+  (2) nizej): "Ma zastapic to byl bug nie tworz nowej strategi to jest poprawka". Korekta
+  podejscia z (2): to NIE byl eksperyment do przetestowania obok oryginalu (jak np. `gpm cash`
+  wczesniej w sesji), tylko realny, wczesniej nieznaleziony bug w produkcyjnym mechanizmie -
+  wiec naprawiony WPROST w `score_gap_hysteresis.py` (nie w osobnym pliku), z pelna regeneracja
+  wszystkich strategii ktore z niego korzystaja. Usuniete: `score_gap_hysteresis_rank_aware.py`,
+  jego test, oraz eksperymentalne strategie `best17_a_rank_aware`/`gpm_mid_10_best17_a_rank_aware`
+  (zbedne - ich logika jest teraz w oryginale). Scenariusze testowe z usunietego pliku przeniesione
+  do `test_best17_a_components.py` (gdzie zyja pozostale testy `score_gap_hysteresis`) -
+  `test_rank_flip_within_held_set_forces_rebalance` + `test_rank_flip_within_min_gap_still_kept`.
+
+  Sam mechanizm naprawy bez zmian wzgledem (2): gdy `set(current_held) == set(target_held)`,
+  dodatkowo sprawdzamy `_rank_order_violated` - czy ktorykolwiek NIZEJ wazony obecnie trzymany
+  aktyw ma score wyzszy o wiecej niz `min_score_gap` od KTOREGOKOLWIEK WYZEJ wazonego - jesli tak,
+  wymuszamy pelny rebalans do `target`. Patrz (2) po pelny opis odkrycia (analiza miesiac-po-
+  miesiacu 2022 dla `best17_a`: `dbc.us` wyprzedzil `xlk.us` w rankingu ema7_16 juz w marcu 2022,
+  ale wagi zostaly zamrozone na xlk.us=80%/dbc.us=20% az do lipca, bo oba tickery caly czas
+  nalezaly do tego samego zbioru top-2).
+
+  **Blast radius**: 12 strategii solo uzywajacych `score_gap_hysteresis` (`best17_a`,
+  `best17_a_day5/10/15/20/25`, `best17_a_offensive`, `best17_a_qqq`, `best17_a_uk`, `best17_b`,
+  `synergy_v1`, `synergy_v2`) + 32 strategie combined ktore je uzywaja jako skladnik (kazda
+  kombinacja z `best17_a`/`best17_b`/ich wariantami) - wszystkie 44 przeliczone i zapisane na
+  nowo (`results/*.json` + `results/monthly/*.csv`).
+
+  **Wynik solo (post-tax, pelna historia)**:
+
+  | Strategia | CAGR przed | CAGR po | MaxDD przed | MaxDD po | Sharpe przed | Sharpe po | Calmar przed | Calmar po |
+  |---|---|---|---|---|---|---|---|---|
+  | `best17_a` | 12.34% | **13.48%** | -31.19% | -31.19% | 0.736 | **0.791** | 0.396 | **0.432** |
+  | `best17_a_day5` | 13.11% | 13.61% | -28.58% | -28.58% | 0.765 | 0.788 | 0.459 | 0.476 |
+  | `best17_a_day10` | 13.52% | 14.37% | -29.01% | -29.01% | 0.783 | 0.825 | 0.466 | 0.495 |
+  | `best17_a_day15` | 14.43% | 14.75% | -30.51% | -30.51% | 0.819 | 0.838 | 0.473 | 0.484 |
+  | `best17_a_day20` | 13.87% | 14.00% | -31.71% | -31.71% | 0.786 | 0.795 | 0.437 | 0.441 |
+  | `best17_a_day25` | 15.53% | 15.68% | -31.69% | -31.69% | 0.867 | 0.878 | 0.490 | 0.495 |
+  | `best17_a_offensive` | 11.46% | 11.10% | -35.33% | -35.33% | 0.668 | 0.655 | 0.324 | 0.314 |
+  | `best17_a_qqq` | 10.47% | 11.69% | -31.62% | -31.62% | 0.655 | 0.715 | 0.331 | 0.369 |
+  | `best17_a_uk` | 10.94% | **12.83%** | -31.10% | -31.10% | 0.636 | **0.718** | 0.352 | **0.412** |
+  | `best17_b` | 5.04% | 5.04% (bez zmian) | -30.53% | -30.53% | 0.396 | 0.396 | 0.165 | 0.165 |
+  | `synergy_v1` | 10.62% | 10.55% | -29.99% | -29.99% | 0.659 | 0.658 | 0.354 | 0.352 |
+  | `synergy_v2` | 11.96% | 13.10% | -31.19% | -31.19% | 0.705 | 0.759 | 0.383 | 0.420 |
+
+  `best17_b` bez zmian - mechanizm w jego historii nigdy nie trafil na scenariusz rank-flip
+  wewnatrz niezmienionego zbioru. `best17_a_offensive`/`synergy_v1` lekko GORSZE (szum, wieksza
+  wrazliwosc na whipsaw przy mniejszym/bardziej skoncentrowanym uniwersum) - oczekiwany, drobny
+  koszt czestszego rebalansu.
+
+  **Wynik combined - najwazniejsze** (produkcyjny kandydat i najwieksze poprawy MaxDD):
+
+  | Strategia | CAGR przed | CAGR po | MaxDD przed | MaxDD po | Sharpe przed | Sharpe po | Calmar przed | Calmar po |
+  |---|---|---|---|---|---|---|---|---|
+  | `gpm_mid_10_best17_a` (**produkcja**) | 8.34% | **8.71%** | -16.15% | -16.15% | 0.806 | **0.839** | 0.517 | **0.540** |
+  | `gpm_best17_a` (sesyjny rekord) | 7.51% | **8.00%** | -15.05% | **-13.22%** | 0.750 | **0.793** | 0.499 | **0.605** |
+  | `best17_a_tlt_hedge` | 10.65% | 11.77% | -26.86% | **-19.80%** | 0.743 | 0.808 | 0.397 | **0.594** |
+  | `combined_best2_dynamic` | 10.02% | 10.66% | -30.24% | **-23.69%** | 0.696 | 0.734 | 0.331 | **0.450** |
+  | `vaa_g4_best17_a` | 7.84% | 8.32% | -21.43% | **-19.09%** | 0.713 | 0.750 | 0.366 | **0.436** |
+
+  Pozostale 27 combined (`gpm_mid_10/13_best17_a_day{5,10,15,20,25}`, `gpm_uk_best17_a_uk`,
+  `gtaa_agg6(_mid)_best17_a`, `dual_momentum_best17_a`, `best17_a_all_weather_4`,
+  `best17_a_best17_b`, `best17_a_gfm`, `best17_a_tlt_timing`, `combined_best2`,
+  `combined_triple`, `gpm_mid_10_defensive_best17_a_offensive` i te uzywajace tylko `best17_b`
+  jako skladnika) - podobny wzorzec, w pelni w `results/SUMMARY.md` i odpowiadajacych
+  `results/*.json`. Wszedzie MaxDD identyczny LUB lepszy, nigdy gorszy.
+
+  **Zaktualizowane 3 zamrozone "metrics regression baseline"** (realne dane, nie mockowane) -
+  `test_best17_a_strategy_spec.py` (cagr 0.1512->0.1648, sharpe 0.883->0.948, maxdd bez zmian),
+  `test_best17_a_tlt_hedge.py` (cagr 0.1301->0.1434, maxdd -0.2370->-0.1808, sharpe 0.897->0.974),
+  `test_synergy_strategy_specs.py::test_synergy_v2` (cagr 0.1464->0.1600, sharpe 0.844->0.908,
+  maxdd bez zmian). Liczniki combined w `test_run_one.py`/`test_reporting_block_combined.py`
+  wrocily do 43 (usunieta 1 eksperymentalna strategia z (2), zero netto nowych combined w tym
+  wpisie). Pelny test suite (zmiana w rdzeniu silnika, uzywanym przez 12+44=56 strategii): 638
+  testow, wszystkie zielone. 89 plikow wynikowych lacznie (2 mniej niz w (2) - usuniete
+  eksperymentalne warianty).
+
+## 2026-08-08 (2) - ⚠️ ODRZUCONE PODEJSCIE (osobny blok/strategia), patrz poprawka (3)
 
 - **NOWY BLOK `score_gap_hysteresis_rank_aware`** - user analizowal miesiac-po-miesiacu wynik
   `best17_a` w 2022 (patrz rozmowa), przeszedl przez: "moze kanarek na podwyzki stop/inflacje?" ->
