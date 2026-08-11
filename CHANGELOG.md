@@ -2,6 +2,52 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-11 (1)
+
+- **NOWA STRATEGIA `tbf_hedge`** - user dorzucil dane `data/us/nyse/tbf.us.txt` (ProShares Short
+  20+ Year Treasury, -1x TLT, dostepne od 2009-08-20) po researchu o funduszach CTA/trend-
+  following, ktore zarabialy w 2022 (shortujac obligacje). Dwie pierwsze proby dodania tbf.us
+  DO ISTNIEJACYCH strategii na tych samych zasadach co inne aktywa wyszly NETTO ujemnie:
+  (1) `gpm_mid_10` - w `risky_assets` (mechanizm breadth-protective najpierw decyduje "ile % w
+  ochrone" na podstawie SZEROKOSCI koszyka ryzykownego, wiec tbf.us ledwo dostawal alokacje nawet
+  z dobrym sygnalem) - Sharpe 0.54->0.46, Calmar 0.31->0.24; w `protective_assets` (protective
+  share idzie w calosci w NAJLEPSZY wg score kandydat) - zlapal +37% w 2022, ale kosztowal w
+  2015/2018/2021/2023/2024/2025 (winner-take-all na duzo bardziej zmiennym aktywie niz IEF/SHY) -
+  Sharpe 0.54->0.43, Calmar 0.31->0.24, MaxDD -13.3%->-17.2%. (2) `best17_a` - jako 5. kandydat w
+  top-2 rankingu EMA7/16 (jak dbc.us/iau.us) - user: "w best jest ten problem ze wszystko jest
+  tej samej ema oraz canary xlk oraz vt czyli ten tbf nam nie spasuje" - prawie caly czas bez
+  zmian wzgledem oryginalu (tbf.us rzadko wygrywal ranking), ALE listopad/grudzien 2023 (pivot
+  Fed, obligacje odbily) TBF na 80% wagi dal -4.72%/-5.44% - 2023 z +27.96% na -7.89%, netto
+  gorzej (CAGR 16.48%->15.12%, Sharpe 0.948->0.877, Calmar 0.528->0.485).
+
+  User: "zaproponuj strategie odwrotna - siedzaca w cash na wzrostach akcji i zarabiajaca na tbf
+  jak jest kiepskie w akcjach" - NOWA, samodzielna strategia `tbf_hedge`: `canary_regime_gate` z
+  `invert=True` (juz istniejacy, dotad nieuzywany w zadnej innej strategii parametr blocku) na
+  VT/XLK EMA5/12 (ten sam kanarek co `best17_a`) - `tbf.us` ELIGIBLE TYLKO gdy kanarek "zle"
+  (akcje slabe), inaczej portfel w `_CASH`. Dodatkowy `tbf_momentum_gate` (3m momentum tbf.us >
+  +1%, ten sam mechanizm co `iau_gate`/`dbc_gate`) wymaga WLASNEGO dodatniego trendu tbf.us - to
+  unika pulapki "akcje spadaja, ale obligacje TEZ rosna" (flight-to-quality, np. kryzys SVB marzec
+  2023 - tam tbf.us mialby ujemny momentum, gate by go wykluczyl).
+
+  **Wynik**: 0% zwrotu w 14 z 16 lat (2010-2021, 2024-2025 - caly czas w `_CASH`, ZERO kosztu w
+  normalnych latach, w odroznieniu od obu poprzednich prob, ktore kosztowaly regularnie). 2022:
+  **+5.57%**. 2023: **-6.62%** (styczen 2023 - kanarek jeszcze "zly" z opoznieniem, tbf.us wlasny
+  momentum jeszcze formalnie > prog, ale trend juz sie odwracal - jeden kosztowny miesiac, po
+  czym mechanizm prawidlowo wyszedl do cash od lutego 2023, UNIKAJAC katastrofy z
+  listopada/grudnia 2023, ktora zabila probe (2) wyzej). Netto na epizodzie 2022+2023: praktycznie
+  zero (CAGR calej historii -0.35% przed podatkiem, -0.59% po, MaxDD -15.97%, Sharpe -0.01,
+  Calmar -0.02). NIE jest to zrodlo dodatkowego zwrotu - to tania, prawie-darmowa "polisa"
+  (zero kosztu w normalnych latach) do ewentualnego domieszania w malej wadze do glownego
+  portfela, jeszcze niezweryfikowana w takim zastosowaniu.
+
+  Czysto konfiguracyjna strategia (zero nowego kodu silnika - `canary_regime_gate.invert` i
+  `indicator_positive` juz istnialy i byly przetestowane) - brak danych UK dla tbf.us, tylko
+  wariant US, `test_spec.uk_mapping.enabled=false`. `acceptance_spec.json` celowo bardzo luzny
+  (jak `tlt_hedge`) - to nie jest strategia do oceny wg zwykłych progow, z zalozenia 0% w
+  wiekszosci lat. Targetowany test (`test_run_one.py` - deklaracja bloku reporting) zielony, bez
+  pelnego 638-testowego przebiegu (zero zmian w `engine_v2/`, per ustalona zasada). 90 plikow
+  wynikowych lacznie.
+
 ## 2026-08-08 (3)
 
 - **BUGFIX `score_gap_hysteresis` bezposrednio w WSPOLNYM bloku** - user (po zobaczeniu wyniku

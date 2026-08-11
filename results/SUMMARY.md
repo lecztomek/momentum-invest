@@ -93,3 +93,4 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `daa_g4_keller` | final | 2.86% | -32.12% | 0.343 | 0.089 | 4.82 | - |
 | `tlt_hedge` | final | 1.46% | -49.23% | 0.172 | 0.030 | 0.05 | - |
 | `tlt_timing` | final | 0.13% | -45.89% | 0.067 | 0.003 | 3.12 | - |
+| `tbf_hedge` | final | -0.59% | -15.97% | -0.043 | -0.037 | 0.98 | - |

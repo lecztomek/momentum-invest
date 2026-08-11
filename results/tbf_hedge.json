@@ -1,0 +1,89 @@
+{
+  "acceptance": {
+    "max_annual_turnover": true,
+    "max_consecutive_negative_months": true,
+    "max_drawdown": true,
+    "max_time_underwater_months": true,
+    "min_cagr": true,
+    "min_calmar": true,
+    "min_sharpe": true
+  },
+  "metrics": {
+    "annual_turnover": 0.9792225201072386,
+    "best_year_return": 0.04591600171980392,
+    "cagr": -0.005869597231282331,
+    "calmar": -0.036752021242572375,
+    "max_consecutive_negative_months": 2,
+    "max_drawdown": -0.15970814754762863,
+    "max_time_underwater_months": 45,
+    "sharpe": -0.04289047506407566,
+    "worst_year_return": -0.06616614279299482
+  },
+  "metrics_pre_tax": {
+    "annual_turnover": 0.9792225201072386,
+    "best_year_return": 0.0557443821123067,
+    "cagr": -0.0035439368943283034,
+    "calmar": -0.022190082026162253,
+    "max_consecutive_negative_months": 2,
+    "max_drawdown": -0.15970814754762863,
+    "max_time_underwater_months": 45,
+    "sharpe": -0.010903717266900082,
+    "worst_year_return": -0.06616614279299482
+  },
+  "mode": "final",
+  "named_periods_all": {
+    "covid_crash_rebound": {
+      "checks": {},
+      "covered": false,
+      "metrics": null
+    },
+    "gfc_crash": {
+      "checks": {},
+      "covered": false,
+      "metrics": null
+    },
+    "inflation_bear": {
+      "checks": {},
+      "covered": true,
+      "metrics": {
+        "annual_turnover": 7.161764705882353,
+        "best_year_return": 0.04591600171980392,
+        "cagr": 0.09427763084455898,
+        "calmar": 0.5903119677500688,
+        "max_consecutive_negative_months": 1,
+        "max_drawdown": -0.15970814754762863,
+        "max_time_underwater_months": 2,
+        "sharpe": 0.5585431479109241,
+        "worst_year_return": 0.04591600171980392
+      }
+    },
+    "post_gfc_recovery": {
+      "checks": {},
+      "covered": false,
+      "metrics": null
+    }
+  },
+  "param_stability_full": null,
+  "train_oos": {
+    "test_oos": {
+      "annual_turnover": 1.020964360587002,
+      "best_year_return": 0.04591600171980392,
+      "cagr": -0.005877614099426887,
+      "calmar": -0.0368022182316907,
+      "max_consecutive_negative_months": 2,
+      "max_drawdown": -0.15970814754762863,
+      "max_time_underwater_months": 44,
+      "sharpe": -0.04293325881904368,
+      "worst_year_return": -0.06616614279299482
+    },
+    "test_window": {
+      "end": "2026-06-30",
+      "start": "2020-01-01"
+    },
+    "train": null,
+    "train_window": {
+      "end": "2019-12-31",
+      "start": "2009-08-01"
+    }
+  }
+}

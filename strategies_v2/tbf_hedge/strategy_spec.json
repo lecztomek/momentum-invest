@@ -1,0 +1,55 @@
+{
+  "name": "tbf_hedge_v0",
+  "hypothesis": "EKSPERYMENT (2026-08-11, user: 'zaproponuj strategie odwrotna - siedzaca w cash na wzrostach akcji i zarabiajaca na tbf jak jest kiepskie w akcjach') - po tym jak dodanie tbf.us (ProShares Short 20+ Year Treasury, -1x TLT) do best17_a/gpm NA TYCH SAMYCH zasadach co dbc/iau/protective_assets wyszlo NETTO ujemnie (dobre 2022, ale kosztowne w innych latach - user: 'w best jest ten problem ze wszystko jest tej samej ema oraz canary xlk oraz vt czyli ten tbf nam nie spasuje') - ODWROTNA konstrukcja: `canary_regime_gate` z `invert=True` (juz istniejacy parametr blocku, nieuzywany dotad w zadnej innej strategii) na kanarku VT/XLK (EMA5/12, ten sam co best17_a) - tbf.us jest ELIGIBLE TYLKO gdy kanarek jest 'zle' (akcje slabe), w przeciwnym razie portfel jest w CASH. Dodatkowy `tbf_momentum_gate` (3m momentum tbf.us > +1%, ten sam mechanizm co iau_gate/dbc_gate w best17_a) wymaga, zeby tbf.us mial WLASNY dodatni trend - to unika pulapki 'akcje spadaja, ale obligacje TEZ rosna' (klasyczna ucieczka do bezpiecznych aktywow, np. kryzys SVB marzec 2023 - tam tbf.us mialby ujemny momentum, gate by go wykluczyl). Wynik: 0% zwrotu w 14 z 16 lat (2010-2021, 2024-2025 - caly czas w cash, ZERO kosztu w normalnych latach), 2022: +5.57%, 2023: -6.62% (jeden miesiac, styczen 2023, gate jeszcze nie zdazyl zareagowac na odwrocenie trendu obligacji, potem prawidlowo wyszedl do cash od lutego 2023 - unikajac katastrofy z listopada/grudnia 2023, ktora zabila wczesniejsza probe wewnatrz best17_a). Netto na epizodzie 2022+2023: praktycznie zero - to NIE jest zrodlo dodatkowego zwrotu, ale POTENCJALNIE tania 'polisa' (prawie darmowa w normalnych latach) do domieszania w malej wadze do glownego portfela, do dalszej weryfikacji. Brak danych UK dla tbf.us - tylko wariant US.",
+  "universe": ["tbf.us", "xlk.us", "vt.us"],
+
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "none",
+    "overlays": "none",
+    "execution": "score_gap_hysteresis",
+    "reporting": "monthly_csv_export"
+  },
+
+  "base_params": {
+    "data_loader": {"data_dir": "data/us", "frequency": "monthly"},
+    "data_cleaner": {},
+    "indicators": {
+      "ema7_16": {"impl": "ema_ratio_monthly", "fast_span": 7, "slow_span": 16},
+      "ema5_12": {"impl": "ema_ratio_monthly", "fast_span": 5, "slow_span": 12},
+      "mom_r3_gate": {"impl": "momentum_monthly", "window": 3}
+    },
+    "asset_filters": {
+      "canary_inverted": {
+        "impl": "canary_regime_gate",
+        "canary_assets": ["vt.us", "xlk.us"],
+        "indicator_key": "ema5_12",
+        "bad_threshold": -0.02,
+        "max_bad_count": 0,
+        "target_assets": ["tbf.us"],
+        "invert": true
+      },
+      "tbf_momentum_gate": {
+        "impl": "indicator_positive",
+        "indicator_key": "mom_r3_gate",
+        "threshold": 0.01,
+        "assets": ["tbf.us"]
+      },
+      "exclude_canary_from_selection": {"impl": "never_eligible", "assets": ["vt.us", "xlk.us"]}
+    },
+    "asset_scoring": {"weights": {"ema7_16": 1.0}},
+    "selector": {"top_n": 1},
+    "alpha_weighting": {"weights": [1.0], "redistribute_if_short": true},
+    "portfolio_risk_engine": {},
+    "execution": {"min_score_gap": 0.0, "cost_bps": 40, "full_position_size": 1},
+    "reporting": {"output_path": "results/monthly/tbf_hedge.csv", "annual_tax_rate": 0.19}
+  },
+
+  "allowed_param_families": {},
+
+  "created_at": "2026-08-11"
+}
