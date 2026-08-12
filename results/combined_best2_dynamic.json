@@ -2,25 +2,25 @@
   "annual_tax_rate_assumed": 0.19,
   "capital_weight_sensitivity": null,
   "metrics": {
-    "annual_turnover": 3.8788076368876077,
+    "annual_turnover": 4.075537471612415,
     "best_year_return": 0.28447616443961454,
-    "cagr": 0.10660362682557945,
-    "calmar": 0.44991643771698675,
+    "cagr": 0.1125773322979855,
+    "calmar": 0.47512822802983284,
     "max_consecutive_negative_months": 4,
     "max_drawdown": -0.2369409470045566,
     "max_time_underwater_months": 23,
-    "sharpe": 0.7341671382656499,
+    "sharpe": 0.75412410219761,
     "worst_year_return": -0.1415042015063125
   },
   "metrics_pre_tax": {
-    "annual_turnover": 3.8788076368876077,
+    "annual_turnover": 4.075537471612415,
     "best_year_return": 0.3512051412834747,
-    "cagr": 0.13004878186129654,
-    "calmar": 0.5488657975980633,
+    "cagr": 0.13736332420045172,
+    "calmar": 0.5797365374664851,
     "max_consecutive_negative_months": 4,
     "max_drawdown": -0.2369409470045568,
     "max_time_underwater_months": 22,
-    "sharpe": 0.8816495701737268,
+    "sharpe": 0.9053792029005421,
     "worst_year_return": -0.1415042015063126
   },
   "mode": "combined_final",
@@ -44,14 +44,14 @@
       "checks": {},
       "covered": true,
       "metrics": {
-        "annual_turnover": 5.156470588235294,
-        "best_year_return": 0.07891187716522019,
-        "cagr": -0.028102561262170034,
-        "calmar": -0.16877970802251294,
+        "annual_turnover": 9.018518518518519,
+        "best_year_return": 0.08324485659158665,
+        "cagr": -0.04117004251206191,
+        "calmar": -0.2472610126043611,
         "max_consecutive_negative_months": 2,
         "max_drawdown": -0.16650438368113263,
-        "max_time_underwater_months": 4,
-        "sharpe": -0.14576247735804776,
+        "max_time_underwater_months": 3,
+        "sharpe": -0.1569918620368018,
         "worst_year_return": -0.10540508591421482
       }
     },
@@ -87,5 +87,6 @@
     }
   },
   "train_oos": null,
-  "uk_mapping": null
+  "uk_mapping": null,
+  "valid_window_start": "2008-07-01"
 }

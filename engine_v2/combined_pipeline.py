@@ -204,6 +204,41 @@ def combined_execution_day_of_month(combined_spec: CombinedSpec, base_dir: Path)
     return strategy_execution_day_of_month(strategy_spec.base_params)
 
 
+def find_combined_valid_window_start(combined_spec: CombinedSpec, base_dir: Path) -> pd.Timestamp:
+    """POPRAWKA 2026-08-12 (user zauwazyl: "watpie zeby gpm tak dlugo mial dane etf" dla
+    `gpm_uk_best17_a` - okazalo sie, ze problem jest SYSTEMOWY, dotyczy WIEKSZOSCI strategii
+    laczonych w projekcie, w tym produkcyjnego kandydata `gpm_mid_10_best17_a`).
+
+    `fixed_capital_weights` (i inne combinery) dokladnie zgodnie ze swoim kontraktem wypelniaja
+    brakujace daty jednej skladowej `_CASH`=1.0 (patrz jej docstring) - to jest POPRAWNE
+    zachowanie combinera SAMEGO W SOBIE (kazda skladowa moze miec inne okno rozgrzewki
+    wskaznikow, roznica typowo kilka tygodni/miesiecy jest nieszkodliwa). PROBLEM byl gdzie
+    indziej: `_generate_combined`/`_generate_single` liczyly `metrics`/`named_periods_all`/
+    `train_oos` na CALYM dostepnym oknie dat POLACZONEGO portfela, od momentu gdy KTORAKOLWIEK
+    skladowa zaczyna dawac dane - nie od momentu, gdy WSZYSTKIE skladowe juz naprawde
+    handlowaly. Skala problemu w projekcie: `gpm_mid_10_best17_a` (produkcja) - 427 dni
+    (~14 miesiecy) rozjazdu miedzy `gpm_mid_10` (start 2007-05) i `best17_a` (start 2008-07) -
+    pierwsza polowa `gfc_crash` (2008) byla wiec 50% prawdziwy gpm_mid_10 + 50% bezczynna
+    gotowka, NIE 50/50 realny miks. Najgorszy przypadek w projekcie: `gpm_uk_best17_a` (~9.9
+    roku rozjazdu, `gpm_uk` start 2018-06 vs `best17_a` start 2008-07).
+
+    Zwraca NAJPOZNIEJSZA z dat, w ktorych KAZDA skladowa strategia (jej WLASNY, solo
+    `run_strategy_pipeline`) zaczyna faktycznie produkowac wiersze - to jest pierwszy moment, w
+    ktorym POLACZONY portfel jest w calosci "realny" (zero fragmentu jednej strony wypelnionego
+    domyslna gotowka z powodu brakujacych danych). Uzywana do PRZYCIECIA `final_portfolio`/
+    `equity_curve` PRZED liczeniem metryk - `results/monthly/<nazwa>.csv` (peny miesieczny
+    ledger) zostaje NIEPRZYCIETY (mechanicznie poprawny zapis tego, co faktycznie zrobilby
+    combiner, wliczajac wczesny okres 50%-gotowki - to jest uzyteczna, przejrzysta informacja
+    sama w sobie), tylko liczby podsumowujace (`metrics`, `named_periods_all`, `train_oos`) sa
+    liczone od tego pozniejszego, w pelni realnego momentu."""
+    starts = []
+    for rel_path in combined_spec.strategy_spec_paths:
+        strategy_spec = StrategySpec.load(base_dir / rel_path)
+        final_portfolio = run_strategy_pipeline(strategy_spec)
+        starts.append(final_portfolio["date"].min())
+    return max(starts)
+
+
 def run_combined_pipeline_with_reporting(combined_spec: CombinedSpec, base_dir: Path) -> pd.DataFrame:
     """Jak `run_combined_pipeline()`, ale DODATKOWO odpala opcjonalny blok `reporting`
     (2026-07-15, user: "Run one tez powinno dzialac dla laczonych" - analogia do

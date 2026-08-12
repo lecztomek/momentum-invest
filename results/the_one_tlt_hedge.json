@@ -2,25 +2,25 @@
   "annual_tax_rate_assumed": 0.19,
   "capital_weight_sensitivity": null,
   "metrics": {
-    "annual_turnover": 5.296875,
+    "annual_turnover": 5.973838471558836,
     "best_year_return": 0.22599554230649588,
-    "cagr": 0.04683530204602904,
-    "calmar": 0.16638429171841507,
+    "cagr": 0.052976144512576484,
+    "calmar": 0.1881998812356282,
     "max_consecutive_negative_months": 5,
     "max_drawdown": -0.28148872446019135,
     "max_time_underwater_months": 69,
-    "sharpe": 0.39035675734675374,
+    "sharpe": 0.41459772132616907,
     "worst_year_return": -0.19510083310937265
   },
   "metrics_pre_tax": {
-    "annual_turnover": 5.296875,
+    "annual_turnover": 5.973838471558836,
     "best_year_return": 0.2790068423536989,
-    "cagr": 0.05645745620950593,
-    "calmar": 0.21036060084956834,
+    "cagr": 0.06389792421176699,
+    "calmar": 0.23808380031058282,
     "max_consecutive_negative_months": 5,
     "max_drawdown": -0.2683841745150719,
     "max_time_underwater_months": 69,
-    "sharpe": 0.45615536328874756,
+    "sharpe": 0.48448924366332136,
     "worst_year_return": -0.19510083310937254
   },
   "mode": "combined_final",
@@ -87,5 +87,6 @@
     }
   },
   "train_oos": null,
-  "uk_mapping": null
+  "uk_mapping": null,
+  "valid_window_start": "2007-08-01"
 }

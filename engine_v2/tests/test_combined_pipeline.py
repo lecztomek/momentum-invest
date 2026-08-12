@@ -9,9 +9,10 @@ Uruchomienie: .venv/bin/pytest engine_v2/tests/test_combined_pipeline.py -v
 import json
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
-from engine_v2.combined_pipeline import run_combined_pipeline
+from engine_v2.combined_pipeline import find_combined_valid_window_start, run_combined_pipeline
 from engine_v2.combined_spec import CombinedSpec
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -38,6 +39,21 @@ def test_invalid_combined_spec_raises():
     spec = CombinedSpec(name="x", hypothesis="y", strategy_spec_paths=["only_one.json"], combiner="c")
     with pytest.raises(ValueError, match="niepoprawny"):
         run_combined_pipeline(spec, Path("."))
+
+
+def test_find_combined_valid_window_start_uses_latest_component_start():
+    """POPRAWKA 2026-08-12 (user: "watpie zeby gpm tak dlugo mial dane etf" dla
+    `gpm_uk_best17_a`, patrz CHANGELOG) - `gpm_mid_10_best17_a` (produkcyjny kandydat) ma
+    zamrozony, znany rozjazd startu skladowych: `gpm_mid_10` zaczyna dawac dane 2007-05-01,
+    `best17_a` (przez wlasne wymagania rozgrzewki wskaznikow) dopiero 2008-07-01 - funkcja musi
+    zwrocic tę PÓŹNIEJSZĄ z dwoch dat, nie wczesniejsza (unikanie liczenia metryk na oknie, gdzie
+    jedna skladowa jeszcze nie handluje, tylko siedzi w domyslnej gotowce z `fixed_capital_weights`)."""
+    combined_dir = REPO_ROOT / "strategies_v2" / "gpm_mid_10_best17_a"
+    spec = CombinedSpec.load(combined_dir / "combined_spec.json")
+
+    start = find_combined_valid_window_start(spec, combined_dir)
+
+    assert start == pd.Timestamp("2008-07-01")
 
 
 def test_combined_pipeline_end_to_end_on_real_data(us_data_dir, us_universe):

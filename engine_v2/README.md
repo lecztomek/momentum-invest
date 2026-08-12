@@ -25,6 +25,16 @@ dowolny blok da się podmienić albo przetestować osobno, bez ruszania reszty.
 > tych strategii W CAŁYM PONIŻSZYM DOKUMENCIE sprzed tej daty jest NIEAKTUALNA** - aktualne wyniki
 > zawsze w `results/SUMMARY.md`/`results/<strategia>.json`, pełny opis zmiany i tabele przed/po w
 > `CHANGELOG.md`.
+>
+> **AKTUALIZACJA 2026-08-12 - bugfix systemowy we WSZYSTKICH 44 strategiach łączonych** (patrz
+> CHANGELOG): `metrics`/`named_periods_all`/`train_oos`/`capital_weight_sensitivity` liczone były
+> od unii dat składowych, nie od momentu gdy WSZYSTKIE naprawdę handlują (`fixed_capital_weights`
+> wcześniej "wypełniał" brakującą stronę gotówką na starcie, co rozwadniało pełną-historię CAGR/
+> Sharpe/Calmar - skala w projekcie: 62 dni do >9 lat rozjazdu). Dotyczy też produkcyjnego
+> kandydata `gpm_mid_10_best17_a` (427-dniowy rozjazd) - poprawione wyniki: CAGR 8.71%->9.02%,
+> Sharpe 0.839->0.848, Calmar 0.540->0.558, MaxDD bez zmian (-16.15%). **Każda liczba dotycząca
+> strategii łączonych W CAŁYM PONIŻSZYM DOKUMENCIE sprzed tej daty jest NIEAKTUALNA** - aktualne
+> wyniki zawsze w `results/SUMMARY.md`/`results/<strategia>.json`.
 
 ## Cztery specy (pre-rejestracja w stylu funduszowym)
 

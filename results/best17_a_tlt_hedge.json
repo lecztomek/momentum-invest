@@ -2,26 +2,26 @@
   "annual_tax_rate_assumed": 0.19,
   "capital_weight_sensitivity": null,
   "metrics": {
-    "annual_turnover": 1.2232583407899784,
+    "annual_turnover": 1.4488342165026498,
     "best_year_return": 0.44713174377627785,
-    "cagr": 0.117688910717344,
-    "calmar": 0.5942480326366721,
+    "cagr": 0.14121889824732348,
+    "calmar": 0.7130582817283488,
     "max_consecutive_negative_months": 4,
     "max_drawdown": -0.19804678224202032,
     "max_time_underwater_months": 18,
-    "sharpe": 0.8077668243407787,
-    "worst_year_return": -0.11181917569946909
+    "sharpe": 0.8810778730080518,
+    "worst_year_return": -0.10825218443721796
   },
   "metrics_pre_tax": {
-    "annual_turnover": 1.2232583407899784,
+    "annual_turnover": 1.4488342165026498,
     "best_year_return": 0.5497382861889115,
-    "cagr": 0.1433815848446225,
-    "calmar": 0.7931563407751748,
+    "cagr": 0.17237795067802186,
+    "calmar": 0.9535580509747111,
     "max_consecutive_negative_months": 4,
     "max_drawdown": -0.18077342066570568,
     "max_time_underwater_months": 12,
-    "sharpe": 0.9743359159165539,
-    "worst_year_return": -0.11181917569946909
+    "sharpe": 1.0626345757935813,
+    "worst_year_return": -0.10825218443721796
   },
   "mode": "combined_final",
   "named_periods_all": {
@@ -44,15 +44,15 @@
       "checks": {},
       "covered": true,
       "metrics": {
-        "annual_turnover": 1.7188235294117646,
+        "annual_turnover": 3.006172839506173,
         "best_year_return": 0.0,
-        "cagr": -0.09099017709909518,
-        "calmar": -0.7373237659063094,
-        "max_consecutive_negative_months": 2,
+        "cagr": -0.1421166425548478,
+        "calmar": -1.1516185749631127,
+        "max_consecutive_negative_months": 1,
         "max_drawdown": -0.12340600060171825,
-        "max_time_underwater_months": 9,
-        "sharpe": -1.4085909706520396,
-        "worst_year_return": -0.11181917569946909
+        "max_time_underwater_months": 8,
+        "sharpe": -1.7593177694297348,
+        "worst_year_return": -0.10825218443721796
       }
     },
     "inflation_bear": {
@@ -87,5 +87,6 @@
     }
   },
   "train_oos": null,
-  "uk_mapping": null
+  "uk_mapping": null,
+  "valid_window_start": "2008-07-01"
 }

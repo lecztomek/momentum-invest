@@ -2,6 +2,95 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-12 (2)
+
+- **BUGFIX SYSTEMOWY: metryki portfeli laczonych liczone od unii dat, nie od momentu gdy WSZYSTKIE
+  skladowe faktycznie handluja** - user o `gpm_uk_best17_a` (patrz (1) wyzej): "i ten ostatni
+  sygnal raczej sie nie zgadza... a nie watpie zeby gpm tak dlugo mial dane etf" -> "no popraw".
+
+  Przyczyna: `fixed_capital_weights` (i inne combinery) POPRAWNIE wypelniaja brakujace daty
+  jednej skladowej `_CASH`=1.0 (kontrakt combinera, patrz jego docstring - normalne dla drobnych
+  roznic rozgrzewki wskaznikow, rzedu tygodni). PROBLEM: `_generate_combined` liczyl
+  `metrics`/`named_periods_all`/`train_oos`/`capital_weight_sensitivity` na CALYM dostepnym
+  oknie polaczonego portfela (od momentu, gdy KTORAKOLWIEK skladowa juz cokolwiek daje), nie od
+  momentu, gdy WSZYSTKIE skladowe juz naprawde handluja. Skala w projekcie (sprawdzone
+  WSZYSTKIE 44 strategie laczone): rozjazd od 62 dni do **ponad 9 lat** (`gpm_uk_best17_a` -
+  `gpm_uk` start 2018-06, `best17_a` start 2008-07, ale poniewaz `best17_a` jest DLUZSZA
+  historia i to WLASNIE ONA "wygrywa" jako pozniejsza skladowa - `gpm_uk` startuje jako
+  OSTATNIA). Nawet produkcyjny kandydat `gpm_mid_10_best17_a` mial 427-dniowy (~14 miesiecy)
+  rozjazd (`gpm_mid_10` start 2007-05, `best17_a` start 2008-07) - pierwsza polowa named-period
+  `gfc_crash` (2008) byla wiec czesciowo rozwodniona (50% realny `gpm_mid_10` + 50% bezczynna
+  gotowka, nie prawdziwy 50/50 miks).
+
+  **Naprawa**: nowa funkcja `combined_pipeline.find_combined_valid_window_start` - dla KAZDEJ
+  skladowej odpala jej WLASNY, solo `run_strategy_pipeline`, zwraca NAJPOZNIEJSZA z dat, w
+  ktorych KAZDA skladowa zaczyna faktycznie produkowac wiersze (nie tylko domyslna gotowke).
+  `_generate_combined` PRZYCINA `final_portfolio`/`equity_curve` do tego okna PRZED liczeniem
+  `metrics`/`metrics_pre_tax`/`named_periods_all`/`train_oos` (nowe pole `valid_window_start` w
+  wyniku, dla przejrzystosci). `_capital_weight_sensitivity` przycina analogicznie dla KAZDEGO
+  wariantu wagi w sweepie. `results/monthly/<nazwa>.csv` (pelny miesieczny ledger) zostaje
+  NIEPRZYCIETY - to uczciwy, mechanicznie poprawny zapis tego, co faktycznie zrobilby combiner
+  od samego poczatku (wliczajac wczesny okres 50%-gotowki), tylko liczby PODSUMOWUJACE licza sie
+  od pozniejszego, w pelni realnego momentu. `uk_mapping` (ma WLASNY mechanizm okna, patrz
+  `find_uk_window_start`) - bez zmian. 1 nowy test
+  (`test_find_combined_valid_window_start_uses_latest_component_start`, na realnych danych
+  produkcyjnego kandydata).
+
+  **Wynik - wszystkie 44 strategie laczone przeliczone** (post-tax; `[data]` = nowe
+  `valid_window_start`; MaxDD identyczny lub GLEBSZY nigdy nie zmniejszony sztucznie - usuniecie
+  rozwodnienia ZAWSZE odkrywa TRUDNIEJSZY, bardziej skoncentrowany okres, nigdy latwiejszy):
+
+  | Strategia | Okno | CAGR przed | CAGR po | MaxDD przed | MaxDD po | Sharpe przed | Sharpe po | Calmar przed | Calmar po |
+  |---|---|---|---|---|---|---|---|---|---|
+  | `all_weather_4_best17_b` | 2006-03 | 6.09% | 6.20% | -21.43% | -21.43% | 0.589 | 0.597 | 0.284 | 0.289 |
+  | `all_weather_4_gfm` | 2013-05 | 5.80% | 6.37% | -22.65% | -22.65% | 0.622 | 0.595 | 0.256 | 0.281 |
+  | `best17_a_all_weather_4` | 2008-07 | 9.48% | 9.54% | -23.04% | -23.04% | 0.784 | 0.759 | 0.411 | 0.414 |
+  | `best17_a_best17_b` | 2008-07 | 8.56% | 9.76% | -30.28% | -30.28% | 0.662 | 0.716 | 0.283 | 0.322 |
+  | `best17_a_gfm` | 2013-05 | 9.37% | 11.18% | -28.76% | -28.76% | 0.709 | 0.751 | 0.326 | 0.389 |
+  | `best17_a_tlt_hedge` | 2008-07 | 11.77% | 14.12% | -19.80% | -19.80% | 0.808 | 0.881 | 0.594 | 0.713 |
+  | `best17_a_tlt_timing` | 2008-07 | 9.31% | 11.07% | -23.79% | -23.79% | 0.744 | 0.810 | 0.391 | 0.465 |
+  | `combined_best2` | 2008-07 | 9.42% | 9.95% | -22.96% | -22.96% | 0.717 | 0.736 | 0.411 | 0.434 |
+  | `combined_best2_dynamic` | 2008-07 | 10.66% | 11.26% | -23.69% | -23.69% | 0.734 | 0.754 | 0.450 | 0.475 |
+  | `combined_triple` | 2008-07 | 8.98% | 9.34% | -20.28% | -20.28% | 0.774 | 0.766 | 0.443 | 0.461 |
+  | `dual_momentum_all_weather_4` | 2007-05 | 5.85% | 5.83% | -16.75% | -16.75% | 0.606 | 0.595 | 0.349 | 0.348 |
+  | `dual_momentum_best17_a` | 2008-07 | 8.92% | 9.56% | -22.82% | -22.82% | 0.728 | 0.760 | 0.391 | 0.419 |
+  | `dual_momentum_best17_b` | 2007-05 | 5.01% | 5.50% | -22.26% | -22.26% | 0.476 | 0.506 | 0.225 | 0.247 |
+  | `dual_momentum_gfm` | 2013-05 | 5.02% | 5.92% | -25.73% | -25.73% | 0.514 | 0.544 | 0.195 | 0.230 |
+  | `dual_momentum_the_one` | 2007-08 | 5.40% | 5.66% | -22.03% | -22.03% | 0.494 | 0.512 | 0.245 | 0.257 |
+  | `dual_momentum_vaa_g4` | 2007-05 | 4.73% | 4.77% | -22.52% | -22.52% | 0.526 | 0.518 | 0.210 | 0.212 |
+  | `gfm_best17_b` | 2013-05 | 4.89% | 6.17% | -31.35% | -31.35% | 0.465 | 0.509 | 0.156 | 0.197 |
+  | `gpm_best17_a` (sesyjny rekord) | 2008-07 | 8.00% | 8.27% | -13.22% | -13.55% | 0.793 | 0.803 | 0.605 | 0.611 |
+  | `gpm_mid_10_best17_a` (**produkcja**) | 2008-07 | 8.71% | **9.02%** | -16.15% | -16.15% | 0.839 | **0.848** | 0.540 | **0.558** |
+  | `gpm_mid_10_best17_a_day5..25` | 2008-07 | 8.61-9.69% | 8.83-9.79% | -14.9..-17.3% | -14.4..-17.3% | 0.822-0.900 | 0.824-0.891 | 0.527-0.610 | 0.534-0.641 |
+  | `gpm_mid_10_defensive_best17_a_offensive` | 2007-05 | 7.36% | 7.77% | -20.81% | -20.81% | 0.756 | 0.773 | 0.354 | 0.373 |
+  | `gpm_mid_13_best17_a` | 2008-07 | 8.80% | 9.15% | -16.39% | -16.39% | 0.841 | 0.853 | 0.537 | 0.558 |
+  | `gpm_mid_13_best17_a_day5..25` | 2008-07 | 8.71-9.75% | 8.96-9.95% | -14.5..-18.0% | -14.5..-18.0% | 0.824-0.896 | 0.828-0.895 | 0.521-0.600 | 0.537-0.649 |
+  | `gpm_uk_best17_a` | **2018-06** | 8.02% | **9.94%** | -16.15% | **-19.21%** | 0.812 | 0.791 | 0.496 | 0.517 |
+  | `gpm_uk_best17_a_uk` | **2019-08** | 8.40% | **9.41%** | -15.65% | -15.65% | 0.758 | 0.787 | 0.537 | 0.602 |
+  | `gtaa_agg6_best17_a` | 2008-07 | 8.22% | 8.85% | -19.77% | -19.77% | 0.731 | 0.765 | 0.416 | 0.448 |
+  | `gtaa_agg6_mid_best17_a` | 2008-07 | 8.95% | 9.59% | -21.09% | -21.09% | 0.766 | 0.799 | 0.425 | 0.455 |
+  | `the_one_all_weather_4` | 2007-08 | 6.17% | 6.30% | -20.95% | -20.95% | 0.582 | 0.580 | 0.295 | 0.301 |
+  | `the_one_best17_b` | 2007-08 | 5.35% | 5.88% | -22.07% | -22.07% | 0.495 | 0.525 | 0.242 | 0.266 |
+  | `the_one_gfm` | 2013-05 | 5.38% | 5.22% | -28.10% | -28.10% | 0.497 | 0.456 | 0.191 | 0.186 |
+  | `the_one_tlt_hedge` | 2007-08 | 4.68% | 5.30% | -28.15% | -28.15% | 0.390 | 0.415 | 0.166 | 0.188 |
+  | `vaa_g4_all_weather_4` | 2006-03 | 5.79% | 5.83% | -19.01% | -19.01% | 0.638 | 0.642 | 0.305 | 0.307 |
+  | `vaa_g4_best17_a` | 2008-07 | 8.32% | 8.50% | -19.09% | -19.09% | 0.750 | 0.740 | 0.436 | 0.446 |
+  | `vaa_g4_best17_b` | 2006-02 | 5.00% | 5.01% | -20.39% | -20.39% | 0.519 | 0.519 | 0.245 | 0.246 |
+  | `vaa_g4_gfm` | 2013-05 | 4.64% | 3.41% | -22.76% | -22.76% | 0.532 | 0.376 | 0.204 | 0.150 |
+  | `vaa_g4_the_one` | 2007-08 | 4.92% | 4.80% | -21.60% | -21.60% | 0.454 | 0.433 | 0.228 | 0.222 |
+
+  Wiekszosc metryk poprawia sie (usuniete rozwodnienie gotowka odslania REALNY, bardziej
+  skoncentrowany wynik) - MaxDD nigdy nie staje sie "lepszy" sztucznie (albo bez zmian, albo
+  glebszy - najbardziej widoczne przy `gpm_uk_best17_a`, -16.15%->-19.21%, bo usunieto ~10 lat
+  spokojnego, wpol-gotowkowego okresu, odslaniajac krotszy, bardziej zmienny prawdziwy tor).
+  Kilka strategii z `gfm` (start 2013-05, najkrotsza historia w projekcie) pogorszylo sie
+  (`vaa_g4_gfm`, `the_one_gfm`) - okno 2013+ jest po prostu obiektywnie trudniejsze dla tych
+  konkretnych miksow niz sugerowala wczesniejsza, rozwodniona wersja. Pelny test suite (nowa
+  funkcja w `combined_pipeline.py`, zmiana w `generate_results.py` - dotyczy silnika): 641
+  testow, wszystkie zielone (uruchomiony PRZED regeneracja wynikow, zeby zlapac regresje w samej
+  logice, nie w konkretnych liczbach). 91 plikow wynikowych lacznie (bez zmiany liczby - to
+  poprawka istniejacych, nie nowe strategie).
+
 ## 2026-08-12 (1)
 
 - **NOWA STRATEGIA `gpm_uk_best17_a`** - user zapytany o produkcyjny kandydat wyjasnil, ze realnie

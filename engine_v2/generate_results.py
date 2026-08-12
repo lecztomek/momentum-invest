@@ -61,7 +61,12 @@ from engine_v2.acceptance_spec import AcceptanceSpec, Criteria, UkMappingAccepta
 from engine_v2.annual_tax import apply_annual_tax
 from engine_v2.backtest_engine import daily_equity_curve
 from engine_v2.blocks.data_loader import REGISTRY as DATA_LOADER_REGISTRY
-from engine_v2.combined_pipeline import combined_execution_day_of_month, load_combined_daily_prices, run_combined_pipeline
+from engine_v2.combined_pipeline import (
+    combined_execution_day_of_month,
+    find_combined_valid_window_start,
+    load_combined_daily_prices,
+    run_combined_pipeline,
+)
 from engine_v2.combined_spec import CombinedSpec
 from engine_v2.metrics import compute_metrics
 from engine_v2.named_periods import KNOWN_PERIODS, compute_named_period_metrics
@@ -224,13 +229,19 @@ def _uk_mapping_combined(
     }
 
 
-def _capital_weight_sensitivity(combined_dir: Path, combined_spec: CombinedSpec) -> Dict[str, Any] | None:
+def _capital_weight_sensitivity(
+    combined_dir: Path, combined_spec: CombinedSpec, valid_window_start: pd.Timestamp
+) -> Dict[str, Any] | None:
     """Analogon `param_stability` dla portfeli LACZONYCH (nie maja wlasnego
     `allowed_param_families`) - sweep udzialu kapitalu pierwszej skladowej strategii, ten sam
     wzorzec co recznie zrobiony sweep dla `gpm_best17_a` (CHANGELOG (31)). Tylko dla
     `fixed_capital_weights` z DOKLADNIE 2 skladowymi - inne combinery (`dynamic_capital_weights`,
     `signal_tilted_capital_weights`, `momentum_hedge_overlay`) nie maja jednego, ciaglego
-    parametru wagi do sweepowania w ten sam sposob."""
+    parametru wagi do sweepowania w ten sam sposob.
+
+    `valid_window_start` (patrz `find_combined_valid_window_start`, POPRAWKA 2026-08-12) - ten
+    sam dla KAZDEGO wariantu wagi (zalezy tylko od dat startu skladowych, nie od ich udzialu
+    kapitalu), wiec liczony RAZ przez wolajacego (`_generate_combined`), nie tu ponownie."""
     if combined_spec.combiner != "fixed_capital_weights":
         return None
     names = sorted(combined_spec.combiner_params.get("capital_weights", {}).keys())
@@ -248,6 +259,7 @@ def _capital_weight_sensitivity(combined_dir: Path, combined_spec: CombinedSpec)
             combiner_params={"capital_weights": {name_a: weight_a, name_b: round(1.0 - weight_a, 10)}},
         )
         final_portfolio = run_combined_pipeline(variant, combined_dir)
+        final_portfolio = final_portfolio[final_portfolio["date"] >= valid_window_start].reset_index(drop=True)
         day_params = {"execution_day_of_month": combined_execution_day_of_month(variant, combined_dir)}
         equity_curve = daily_equity_curve(final_portfolio, daily_prices, day_params)
         equity_curve = apply_annual_tax(equity_curve, _COMBINED_ANNUAL_TAX_RATE)
@@ -308,18 +320,32 @@ def _generate_combined(combined_dir: Path) -> Dict[str, Any]:
 
     day_params = {"execution_day_of_month": combined_execution_day_of_month(combined_spec, combined_dir)}
     equity_curve = daily_equity_curve(final_portfolio, daily_prices, day_params)
-    metrics_pre_tax = compute_metrics(equity_curve, final_portfolio, {})
-    equity_curve_after_tax = apply_annual_tax(equity_curve, _COMBINED_ANNUAL_TAX_RATE)
-    metrics = compute_metrics(equity_curve_after_tax, final_portfolio, {})
+
+    # POPRAWKA 2026-08-12 (user: "watpie zeby gpm tak dlugo mial dane etf" dla gpm_uk_best17_a,
+    # patrz CHANGELOG) - `metrics`/`named_periods_all`/`train_oos`/`capital_weight_sensitivity`
+    # liczone TYLKO od momentu, gdy WSZYSTKIE skladowe strategie faktycznie juz handluja (nie od
+    # unii dat, gdzie `fixed_capital_weights` wypelnia brakujaca strone domyslna gotowka - patrz
+    # `find_combined_valid_window_start`). `final_portfolio`/`equity_curve` PONIZEJ (uzywane przez
+    # `run_combined_pipeline_with_reporting` do zapisu `results/monthly/<nazwa>.csv`) zostaja
+    # NIEPRZYCIETE - pelny ledger jest uzytecznym, przejrzystym zapisem tego, co faktycznie
+    # zrobilby combiner od samego poczatku, wliczajac wczesny okres 50%-gotowki.
+    valid_window_start = find_combined_valid_window_start(combined_spec, combined_dir)
+    final_portfolio_valid = final_portfolio[final_portfolio["date"] >= valid_window_start].reset_index(drop=True)
+    equity_curve_valid = equity_curve[equity_curve["date"] >= valid_window_start].reset_index(drop=True)
+
+    metrics_pre_tax = compute_metrics(equity_curve_valid, final_portfolio_valid, {})
+    equity_curve_after_tax = apply_annual_tax(equity_curve_valid, _COMBINED_ANNUAL_TAX_RATE)
+    metrics = compute_metrics(equity_curve_after_tax, final_portfolio_valid, {})
 
     return {
         "mode": "combined_final",
         "annual_tax_rate_assumed": _COMBINED_ANNUAL_TAX_RATE,
+        "valid_window_start": valid_window_start.strftime("%Y-%m-%d"),
         "metrics": metrics,
         "metrics_pre_tax": metrics_pre_tax,
-        "named_periods_all": _named_periods_all(equity_curve_after_tax, final_portfolio),
-        "train_oos": _train_oos_combined(combined_dir, combined_spec, equity_curve_after_tax, final_portfolio),
-        "capital_weight_sensitivity": _capital_weight_sensitivity(combined_dir, combined_spec),
+        "named_periods_all": _named_periods_all(equity_curve_after_tax, final_portfolio_valid),
+        "train_oos": _train_oos_combined(combined_dir, combined_spec, equity_curve_after_tax, final_portfolio_valid),
+        "capital_weight_sensitivity": _capital_weight_sensitivity(combined_dir, combined_spec, valid_window_start),
         "uk_mapping": _uk_mapping_combined(
             combined_dir, combined_spec, final_portfolio, daily_prices, _COMBINED_ANNUAL_TAX_RATE
         ),
