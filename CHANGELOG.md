@@ -2,6 +2,50 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-12 (3)
+
+- **NOWY MODUL `engine_v2/crash_replay.py`: "CRASH REPLAY" - symulacja hipotetycznego krachu od
+  dzisiaj** - user: "chcialbym zebys jakos zasymulowal krach ktory wlasnie teraz sie wydarza - i
+  zeby przypominal ten z 2008 - na naszej najlepszej strategii - moze to jakis nowy tryb", potem:
+  "i moze ten tryb dzialac tak ze tylko co miesiac generuje dane a nie dzienne - bedzie latwiej".
+
+  Mechanizm (miesieczna granulacja, jeden syntetyczny wiersz/miesiac): dla kazdego tickera bierze
+  PRAWDZIWA sekwencje miesiecznych zwrotow z okresu referencyjnego (domyslnie `gfc_crash` z
+  `named_periods.KNOWN_PERIODS`), "dokleja" ja do dzisiejszej (ostatniej realnej) ceny - kazdy
+  syntetyczny miesiac = poprzednia cena * (1 + ten sam % zwrotu co w 2008/2009, w tej samej
+  kolejnosci). Real+synthetic zapisywane jako jeden plik `.txt` w formacie stooq w tymczasowym
+  katalogu - PIPELINE NIE WIE, ze dane sa syntetyczne, dziala w 100% swoja normalna logika
+  (kanarek/gate'y/breadth-protective/histereza) - clue podejscia: nie zgadujemy WYNIKU strategii,
+  tylko podajemy jej syntetyczne dane wejsciowe i pozwalamy jej samej zareagowac. Dziala na
+  pojedynczej strategii (`strategy_spec.json`) i na laczonej (`combined_spec.json` - kazda
+  skladowa dostaje wlasna podmieniona kopie w workspace mirrorujacym layout `strategies_v2/`, ten
+  sam combiner dziala bez zmian na podmienionych danych). Wejscie: `run_crash_replay(spec_dir,
+  reference="gfc_crash")`.
+
+  **BUGFIX podczas budowy** (zlapany przed commitem, nie w produkcji): pierwsza wersja liczyla
+  equity repliki przez `backtest_engine.daily_equity_curve` (jak normalny solo/combined pipeline)
+  - ta funkcja zaklada GESTA, faktycznie dzienna serie cen (dnia po dniu wewnatrz kazdego okresu
+  miedzy rebalansami), a syntetyczna seria ma z definicji JEDEN wiersz/miesiac. Efekt: kazdy okres
+  po pierwszym mial tylko 1 punkt cenowy w oknie, `daily_equity_curve` nie mial z czym policzyc
+  stosunku cen (potrzebuje >=2 punktow w okresie) i CICHO gubil caly zwrot tego miesiaca - equity
+  repliki zamrazala sie na plasko od pierwszego syntetycznego miesiaca (test na `bh_spy` - czysty
+  buy&hold spy.us - wychwycil to: `strategy_return`=0.0% mimo benchmarku -51%). Naprawa: equity
+  repliki liczona teraz z WLASNYCH miesiecznych `net_return` z `final_portfolio` (cumprod) -
+  execution juz poprawnie liczy `net_return` na prawdziwych (real lub syntetycznych) cenach
+  wykonania, wiec to jedyne poprawne miejsce do zbudowania miesiecznej equity. `compute_metrics`
+  wolane z `trading_days_per_year=12` (equity repliki jest z definicji miesieczna, nie dzienna).
+
+  Po naprawie, `gpm_mid_10_best17_a` (produkcyjny kandydat) na replice GFC-podobnego krachu:
+  trough -25.3% vs naiwny benchmark (pierwszy ticker uniwersum) -51.4% - alokacje miesiac po
+  miesiacu widoczne w wyniku (`monthly_allocations`) pokazuja realne przejscie w defensywe
+  (shy/ief/cash) ok. 10-11 miesiaca repliki, kiedy trend/kanarek/breadth lapie pogarszajacy sie
+  rynek.
+
+  Testy: `engine_v2/tests/test_crash_replay.py` (11 testow - jednostkowe na
+  `extract_reference_monthly_returns`/`build_replay_price_series`, integracyjne na `bh_spy`
+  (prosty fixture, 1 ticker) i na `gpm_mid_10_best17_a` na realnych danych). Pelny pakiet testow
+  (nowy modul silnika): 652 testy, wszystkie zielone.
+
 ## 2026-08-12 (2)
 
 - **BUGFIX SYSTEMOWY: metryki portfeli laczonych liczone od unii dat, nie od momentu gdy WSZYSTKIE

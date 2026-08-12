@@ -798,6 +798,47 @@ metryki+checki dla pokrytego okresu, `covered=False` gdy equity_curve nie siega 
 slownik = brak wpisu) + `test_run_spec_runner.py` (2 nowe: wiring pojawia sie/znika wg
 `named_periods` w spec).
 
+## CRASH REPLAY (`crash_replay.py`) - symulacja hipotetycznego krachu od dzisiaj
+
+User: "chcialbym zebys jakos zasymulowal krach ktory wlasnie teraz sie wydarza - i zeby
+przypominal ten z 2008 - na naszej najlepszej strategii - moze to jakis nowy tryb", potem: "i
+moze ten tryb dzialac tak ze tylko co miesiac generuje dane a nie dzienne - bedzie latwiej".
+
+Rozne od `named_periods.py` (metryki na PRAWDZIWYM historycznym oknie, np. faktyczny `gfc_crash`
+2008-2009 w danych) - tu bierzemy PRAWDZIWA sekwencje miesiecznych zwrotow z takiego okresu
+referencyjnego i "doklejamy" ja do DZISIEJSZEJ, ostatniej realnej ceny kazdego tickera, jeden
+syntetyczny wiersz na miesiac (zwrot identyczny co w oknie referencyjnym, w tej samej kolejnosci).
+Real+synthetic ladowane jako jeden plik `.txt` w formacie stooq w tymczasowym katalogu - PIPELINE
+NIE WIE, ze dane sa syntetyczne, dziala w 100% swoja normalna logika (kanarek/gate'y/breadth-
+protective/histereza) - to jest clue podejscia: nie zgadujemy WYNIKU strategii, tylko podajemy
+jej syntetyczne dane wejsciowe i pozwalamy jej samej zareagowac.
+
+Dziala na pojedynczej strategii (`strategy_spec.json`) i na laczonej (`combined_spec.json` -
+kazda skladowa dostaje wlasna podmieniona kopie w workspace mirrorujacym layout `strategies_v2/`,
+ten sam combiner dziala bez zmian na podmienionych danych). Wejscie:
+
+```python
+from engine_v2.crash_replay import run_crash_replay
+result = run_crash_replay(Path("strategies_v2/gpm_mid_10_best17_a"), reference="gfc_crash")
+# result: replay_start/replay_end, strategy_return/strategy_trough, strategy_metrics
+# (CAGR/MaxDD/Sharpe/Calmar - trading_days_per_year=12, replika jest miesieczna, nie dzienna),
+# benchmark_ticker/benchmark_return/benchmark_trough (naiwny buy&hold pierwszego tickera
+# uniwersum pierwszej skladowej), monthly_allocations (co strategia trzymala kazdy miesiac repliki)
+```
+
+`reference` - nazwa znanego okresu z `named_periods.KNOWN_PERIODS` (domyslnie `"gfc_crash"`) albo
+para dat `(start, end)`. Wymusza plain `stooq_csv` (nie dividend-adjusted) dla wszystkich
+skladowych - unika komplikacji z syntetycznymi danymi UK, nieistotne dla kierunkowego stress-testu.
+
+Equity repliki liczona z WLASNYCH miesiecznych `net_return` z `final_portfolio` (cumprod), NIE
+przez `backtest_engine.daily_equity_curve` - ta zaklada gesta, faktycznie dzienna serie cen
+wewnatrz kazdego okresu, a syntetyczna seria ma z definicji jeden wiersz/miesiac (zlapane przed
+commitem testem na `bh_spy` - `daily_equity_curve` mial tylko 1 punkt/okres, nie mial z czym
+policzyc stosunku cen, i CICHO gubil caly zwrot kazdego syntetycznego miesiaca).
+
+11 testow w `test_crash_replay.py` (jednostkowe na wyciaganiu zwrotow referencyjnych/budowie
+syntetycznej ceny, integracyjne na `bh_spy` i na `gpm_mid_10_best17_a` na realnych danych).
+
 ## Struktura folderów
 
 ```
