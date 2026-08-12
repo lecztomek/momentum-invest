@@ -1,0 +1,21 @@
+{
+    "name": "gpm_uk_best17_a_v0",
+    "hypothesis": "User realnie handluje: best17 z sygnalami liczonymi na danych US, ale wykonanie/gpm na tickerach UK (\"Uzywam best17 us mapowane na uk oraz gpm na uk\"). To NIE jest to samo co produkcyjny kandydat `gpm_mid_10_best17_a` (tam gpm to `gpm_mid_10` - tickery US z danymi dywidendowymi zmapowanymi na UK, nie `gpm_uk` natywny) ani co `gpm_uk_best17_a_uk` (tam best17 to `best17_a_uk`, w pelni natywny UK, nie US-sygnal-UK-wykonanie). Miks `best17_a` (US, bez zmian) + `gpm_uk` (w pelni natywny UK, zero ekstrapolacji z US) - `fixed_capital_weights` 50/50, ten sam prosty combiner co produkcyjny kandydat. `load_combined_daily_prices` juz obslugowal mieszanie komponentow z roznych loaderow/data_dir (naprawione 2026-07-15 dla dokladnie tego przypadku - gpm_uk/best17_a_uk), wiec zero nowego kodu silnika potrzebne. Weryfikacja UK-mapowania best17_a solo (patrz results/best17_a.json, uk_mapping) juz wczesniej pokazala, ze US-tickery i UK-tickery dla best17_a daja praktycznie identyczny wynik (cagr_gap 0.09pp, korelacja 0.97) - wiec ten miks (best17_a na US tickerach + gpm_uk na UK tickerach) jest wiarygodnym przyblizeniem tego, co user realnie handluje (best17 wykonywane na UK, tylko z sygnalem liczonym na US). `_uk_mapping_combined` wymaga wlasnego `uk_ticker_mapping.json` przy KAZDEJ skladowej, inaczej zwraca None - `gpm_uk` (juz natywny UK) nie ma i nie potrzebuje takiego pliku, wiec sekcja `uk_mapping` w wyniku tej strategii bedzie `None` (oczekiwane, nie blad).",
+    "strategy_spec_paths": [
+        "../gpm_uk/strategy_spec.json",
+        "../best17_a/strategy_spec.json"
+    ],
+    "combiner": "fixed_capital_weights",
+    "combiner_params": {
+        "capital_weights": {
+            "gpm_uk_v0": 0.5,
+            "best17_a_v0": 0.5
+        }
+    },
+    "reporting": "monthly_csv_export",
+    "reporting_params": {
+        "output_path": "results/monthly/gpm_uk_best17_a.csv",
+        "annual_tax_rate": 0.19
+    },
+    "created_at": "2026-08-12"
+}

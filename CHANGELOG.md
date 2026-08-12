@@ -2,6 +2,38 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-12 (1)
+
+- **NOWA STRATEGIA `gpm_uk_best17_a`** - user zapytany o produkcyjny kandydat wyjasnil, ze realnie
+  handluje: "best17 us mapowane na uk oraz gpm na uk" - to NIE jest to samo co produkcyjny
+  kandydat `gpm_mid_10_best17_a` (tam `gpm_mid_10` - tickery US z danymi dywidendowymi
+  zmapowanymi na UK, nie `gpm_uk` natywny) ani `gpm_uk_best17_a_uk` (tam `best17_a_uk` - w pelni
+  natywny UK, nie US-sygnal-UK-wykonanie best17). Zbudowano dokladny odpowiednik: `best17_a`
+  (US, bez zmian) + `gpm_uk` (natywny UK) - `fixed_capital_weights` 50/50. Zero nowego kodu
+  silnika - `load_combined_daily_prices` juz obslugiwal mieszanie komponentow z roznych
+  loaderow/data_dir (naprawione 2026-07-15 dla dokladnie tego przypadku). `uk_mapping` sekcja w
+  wyniku = `None` (oczekiwane - `_uk_mapping_combined` wymaga wlasnego `uk_ticker_mapping.json`
+  przy KAZDEJ skladowej, `gpm_uk` juz jest natywny UK, nie potrzebuje/nie ma takiego pliku).
+
+  **Wynik (post-tax, pelna historia)**:
+
+  | | `gpm_mid_10_best17_a` (dotychczasowy faworyt) | `gpm_uk_best17_a_uk` (w pelni UK) | **`gpm_uk_best17_a` (realny setup usera)** |
+  |---|---|---|---|
+  | CAGR | 8.71% | 8.40% | **8.02%** |
+  | MaxDD | -16.15% | -15.65% | **-16.15%** |
+  | Sharpe | 0.839 | 0.758 | **0.812** |
+  | Calmar | 0.540 | 0.537 | **0.496** |
+  | Turnover | 2.74 | 2.60 | **1.59** |
+
+  Aktualna alokacja (2026-08-01, sygnal z realnych danych do 2026-07-02 - PO tej dacie nie mamy
+  zadnych realnych cen, ostatnie 2 wiersze miesiecznego ledgera maja `gross_return=0.0`, tylko
+  koszt transakcyjny - user zauwazyl to poprawnie): 50% `_CASH`, 10% `cbu0.uk` (IEF-eq), 13.3%
+  `cmod.uk` (DBC-eq), 13.3% `cndx.uk` (QQQ-eq), 13.3% `iues.uk` (XLE-eq) - polowa `best17_a` (US)
+  akurat w calosci w cash (kanarek risk-off), cala alokacja pochodzi z `gpm_uk`. Czysto
+  konfiguracyjna strategia (reuzyte juz istniejace, przetestowane `best17_a`/`gpm_uk`/
+  `fixed_capital_weights`) - targetowany test, bez pelnego 638-testowego przebiegu. 91 plikow
+  wynikowych lacznie.
+
 ## 2026-08-11 (1)
 
 - **NOWA STRATEGIA `tbf_hedge`** - user dorzucil dane `data/us/nyse/tbf.us.txt` (ProShares Short

@@ -20,6 +20,7 @@ Posortowane wg Calmar. `combined_final` = portfel laczony (podatek 19% zalozony 
 | `gpm_mid_10_best17_a_day5` | combined_final | 8.61% | -16.18% | 0.822 | 0.532 | 2.66 | fail (patrz JSON) |
 | `gpm_mid_10_best17_a_day20` | combined_final | 8.94% | -16.95% | 0.836 | 0.527 | 2.70 | fail (patrz JSON) |
 | `gpm_mid_13_best17_a_day20` | combined_final | 9.00% | -17.28% | 0.833 | 0.521 | 2.75 | fail (patrz JSON) |
+| `gpm_uk_best17_a` | combined_final | 8.02% | -16.15% | 0.812 | 0.496 | 1.59 | - |
 | `best17_a_day10` | final | 14.37% | -29.01% | 0.825 | 0.495 | 1.38 | fail (patrz JSON) |
 | `best17_a_day25` | final | 15.68% | -31.69% | 0.878 | 0.495 | 1.45 | fail (patrz JSON) |
 | `best17_a_day15` | final | 14.75% | -30.51% | 0.838 | 0.484 | 1.37 | fail (patrz JSON) |
