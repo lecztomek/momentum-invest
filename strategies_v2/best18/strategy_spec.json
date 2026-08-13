@@ -1,0 +1,172 @@
+{
+  "name": "best18_v0",
+  "hypothesis": "User: \"A moze dodac cos co by pomoglo w best17\" -> seria testow poprzez crash_replay.py na 3 wzorcach krachu (gfc_crash, inflation_bear, covid_crash_rebound): xle.us (sektor energetyczny) i shy.us (obligacje krotkoterminowe) dodane jako DODATKOWI kandydaci w tym samym rankingu momentum (ema7_16) co xlk/ivv/dbc/iau - top_n/wagi (2, 0.8/0.2) BEZ ZMIAN. xle.us: ten sam wzorzec co dbc_gate/iau_gate (wlasny 3m momentum > +1%, gate mom_r3_gate) + dolaczony do canary.target_assets/require_positive_score (traktowany jak kolejne aktywo OFENSYWNE - wymaga risk-on). shy.us: wzorzec z synergy_v1/tlt_gate (wlasny 12m momentum > 0, mom_12) - NIE dolaczony do canary/require_positive_score (kandydat DEFENSYWNY, nie ma sensu wymagac od niego risk-on). Wybrane z serii odrzuconych alternatyw (patrz CHANGELOG): sh.us (inverse S&P) - volatility decay kosztuje wiecej niz zyskuje (49-55 miesiecy pod woda w pelnej historii); vnq.us (REIT) - pogarsza WLASNIE gfc_crash (REIT-y byly epicentrum tego kryzysu, realny spadek 2008-2009 -67%, gorzej niz benchmark); xlp.us (staples) i tlt.us (obligacje dlugoterminowe) - zbyt maly/kosztowny efekt. top_n=1 (wieksza koncentracja) i top_n=3 (60/20/20, wieksze rozproszenie) sprawdzone i odrzucone - obie pogarszaja gfc_crash wzgledem top_n=2 (zob. CHANGELOG). Wynik solo (pelna historia): CAGR 16.48%->14.99%, MaxDD identyczny -31.19%, Sharpe 0.948->0.873. Replika gfc_crash: -39.60%->-37.47%. Replika inflation_bear: -14.44%->-9.20%. Replika covid_crash_rebound: bez zmian (+30.06%). Maly koszt normalnego wzrostu za realna, mierzalna ochrone w dwoch z trzech przetestowanych typow kryzysu.",
+  "universe": [
+    "xlk.us",
+    "ivv.us",
+    "dbc.us",
+    "iau.us",
+    "vt.us",
+    "xle.us",
+    "shy.us"
+  ],
+  "blocks": {
+    "data_loader": "stooq_csv",
+    "data_cleaner": "trim_and_interpolate",
+    "asset_scoring": "weighted_sum",
+    "selector": "top_n",
+    "alpha_weighting": "rank_weights",
+    "portfolio_risk_engine": "rebound_starter",
+    "overlays": "none",
+    "execution": "score_gap_hysteresis",
+    "reporting": "monthly_csv_export"
+  },
+  "base_params": {
+    "data_loader": {
+      "data_dir": "data/us",
+      "frequency": "monthly"
+    },
+    "data_cleaner": {},
+    "indicators": {
+      "ema7_16": {
+        "impl": "ema_ratio_monthly",
+        "fast_span": 7,
+        "slow_span": 16
+      },
+      "ema5_12": {
+        "impl": "ema_ratio_monthly",
+        "fast_span": 5,
+        "slow_span": 12
+      },
+      "mom_r3": {
+        "impl": "momentum_month_end",
+        "window": 3
+      },
+      "mom_r3_gate": {
+        "impl": "momentum_monthly",
+        "window": 3
+      },
+      "mom_12": {
+        "impl": "momentum_month_end",
+        "window": 12
+      }
+    },
+    "asset_filters": {
+      "canary": {
+        "impl": "canary_regime_gate",
+        "canary_assets": [
+          "vt.us",
+          "xlk.us"
+        ],
+        "indicator_key": "ema5_12",
+        "bad_threshold": -0.02,
+        "max_bad_count": 0,
+        "target_assets": [
+          "xlk.us",
+          "ivv.us",
+          "dbc.us",
+          "iau.us",
+          "xle.us"
+        ]
+      },
+      "iau_gate": {
+        "impl": "indicator_positive",
+        "indicator_key": "mom_r3_gate",
+        "threshold": 0.01,
+        "assets": [
+          "iau.us"
+        ]
+      },
+      "dbc_gate": {
+        "impl": "indicator_positive",
+        "indicator_key": "mom_r3_gate",
+        "threshold": 0.01,
+        "assets": [
+          "dbc.us"
+        ]
+      },
+      "require_positive_score": {
+        "impl": "indicator_positive",
+        "indicator_key": "ema7_16",
+        "threshold": 0.0,
+        "assets": [
+          "xlk.us",
+          "ivv.us",
+          "dbc.us",
+          "iau.us",
+          "xle.us"
+        ]
+      },
+      "exclude_canary_from_selection": {
+        "impl": "never_eligible",
+        "assets": [
+          "vt.us"
+        ]
+      },
+      "xle_gate": {
+        "impl": "indicator_positive",
+        "indicator_key": "mom_r3_gate",
+        "threshold": 0.01,
+        "assets": [
+          "xle.us"
+        ]
+      },
+      "shy_gate": {
+        "impl": "indicator_positive",
+        "indicator_key": "mom_12",
+        "threshold": 0.0,
+        "assets": [
+          "shy.us"
+        ]
+      }
+    },
+    "asset_scoring": {
+      "weights": {
+        "ema7_16": 1.0
+      }
+    },
+    "selector": {
+      "top_n": 2
+    },
+    "alpha_weighting": {
+      "weights": [
+        0.8,
+        0.2
+      ],
+      "redistribute_if_short": true
+    },
+    "portfolio_risk_engine": {
+      "rebound_ticker": "vt.us",
+      "indicator_key": "mom_r3",
+      "threshold": 0.05
+    },
+    "execution": {
+      "min_score_gap": 0.005,
+      "cost_bps": 40,
+      "full_position_size": 2
+    },
+    "reporting": {
+      "output_path": "results/monthly/best18.csv",
+      "annual_tax_rate": 0.19
+    }
+  },
+  "allowed_param_families": {
+    "execution": {
+      "min_score_gap": [
+        0.0,
+        0.0025,
+        0.005,
+        0.0075,
+        0.01
+      ]
+    },
+    "asset_filters": {
+      "canary.bad_threshold": [
+        -0.03,
+        -0.02,
+        -0.01
+      ]
+    }
+  },
+  "created_at": "2026-08-13"
+}

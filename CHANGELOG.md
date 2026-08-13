@@ -2,6 +2,61 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-13
+
+- **NOWA STRATEGIA `strategies_v2/best18/`** - `best17_a` + `xle.us` (energetyka) + `shy.us`
+  (obligacje krotkoterminowe) jako DODATKOWI kandydaci w tym samym rankingu momentum (`ema7_16`)
+  co xlk/ivv/dbc/iau - `top_n`/wagi (2, 0.8/0.2) BEZ ZMIAN. Znalezione poprzez serie testow
+  `crash_replay.py` (patrz wpis (3) nizej) na 3 wzorcach krachu (`gfc_crash`, `inflation_bear`,
+  `covid_crash_rebound`) - user: "A gdybysmy do best17 dodali cos co by pomoglo".
+
+  `xle.us` - traktowany jak kolejne aktywo OFENSYWNE: dolaczony do `canary.target_assets` +
+  `require_positive_score` (wymaga risk-on) + wlasny gate `mom_r3_gate > +1%` (ten sam wzorzec co
+  `dbc_gate`/`iau_gate`). Zlapal `inflation_bear` (2022) - energetyka rosla, gdy reszta portfela
+  spadala (wojna w Ukrainie, ceny ropy).
+
+  `shy.us` - traktowany jak kandydat DEFENSYWNY (wzorzec z `synergy_v1`/`tlt_gate`): eligibilny
+  TYLKO gdy wlasny 12-miesieczny momentum > 0, NIE dolaczony do `canary`/`require_positive_score`
+  (nie ma sensu wymagac risk-on od aktywa defensywnego). Zlapal `gfc_crash` (2008) - niska
+  zmiennosc `shy.us` oznacza maly koszt nawet gdy wygrywa slot niepotrzebnie w normalnych czasach.
+
+  **Odrzucone alternatywy** (sprawdzone tym samym schematem - solo + `crash_replay` na 3
+  scenariuszach + pelna historia - przed wybraniem `xle.us`/`shy.us`):
+  - `sh.us` (inverse S&P, ten sam wzorzec co `tlt_gate`) - volatility decay kosztuje wiecej niz
+    zyskuje: solo CAGR 16.48%→14.67% (z gate)/14.10% (bez gate), `max_time_underwater`
+    9→49/55 miesiecy. Ten sam mechanizm/wniosek co wczesniejsze odrzucenie TBF (patrz README,
+    sekcja TBF/SH) - user: "dobra olewamy zostawiamy jak jest nie ma sensu z tymi shortami"
+    potwierdzone ponownie na innym instrumencie.
+  - `vnq.us` (REIT) - POGARSZA wlasnie `gfc_crash` (-39.60%→-42.03%!) - REIT-y byly epicentrum
+    tego kryzysu (realny spadek 2008-2009 `vnq.us`: -67%, gorzej niz benchmark S&P -51%).
+  - `xlp.us` (staples), `tlt.us` (obligacje dlugoterminowe) - efekt zbyt maly (`xlp.us`) albo
+    zbyt kosztowny (`tlt.us`: solo CAGR 16.48%→12.85%, `max_time_underwater` 9→31 miesiecy, za
+    prawie zerowa poprawe `gfc_crash`).
+  - `top_n=1` (wieksza koncentracja) - CAGR praktycznie bez zmian (+0.09pp na combo), ale
+    pogarsza OBA glowne kryzysy (`gfc_crash`/`inflation_bear`) i MaxDD/Sharpe/Calmar w calej
+    historii - sprawdzone i solo, i na combo (z i bez `xle.us`/`shy.us`).
+  - `top_n=3` (60/20/20, wieksze rozproszenie) - poprawia `inflation_bear`, ale pogarsza
+    `gfc_crash` i `covid_crash_rebound` wzgledem `top_n=2` - przesuniecie ryzyka, nie zysk netto.
+
+  **Wynik solo** (`best18` vs `best17_a`, pelna historia pre-tax): CAGR 16.48%→14.99%, MaxDD
+  identyczny -31.19%, Sharpe 0.948→0.873, Calmar 0.528→0.481. Replika `gfc_crash`:
+  -39.60%→-37.47%. Replika `inflation_bear`: -14.44%→-9.20%. Replika `covid_crash_rebound`: bez
+  zmian (+30.06%).
+
+  **Nowa strategia laczona `strategies_v2/gpm_mid_10_best18/`** - ten sam combiner/wagi co
+  produkcyjny kandydat `gpm_mid_10_best17_a` (`fixed_capital_weights` 50/50), `best17_a`
+  zastapiony `best18`. Wynik (post-tax, okno od 2008-07): CAGR 11.07%→10.58%, MaxDD identyczny
+  -16.15%, Sharpe 1.040→0.988, Calmar 0.685→0.655. Repliki (vs benchmark spy.us): `gfc_crash`
+  -25.35%→**-22.42%** (benchmark -51.40%), `inflation_bear` -9.53%→**-6.63%** (benchmark
+  -13.45%), `covid_crash_rebound`/`post_gfc_recovery` bez zmian/lekko lepiej. Maly koszt CAGR
+  (~0.5pp) za realna, mierzalna ochrone w dwoch z trzech przetestowanych typow kryzysu, bez
+  pogorszenia zadnego innego.
+
+  8 nowych testow (`test_best18_strategy_spec.py`, wzorowany na `test_best17_a_strategy_spec.py`,
+  wlaczajac "ostateczny test" UK mapping na realnych danych) + 2 nowe (`test_gpm_mid_10_best18_
+  uk_mapping.py`, wzorowany na `test_gpm_mid_10_best17_a_uk_mapping.py`) - wszystkie zielone.
+  Zmiana tylko strategii/config (nie silnika) - pelny pakiet testow NIE uruchamiany.
+
 ## 2026-08-12 (3)
 
 - **NOWY MODUL `engine_v2/crash_replay.py`: "CRASH REPLAY" - symulacja hipotetycznego krachu od
