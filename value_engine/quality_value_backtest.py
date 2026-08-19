@@ -57,6 +57,20 @@ class QualityValueConfig:
     max_holding_months: int = 24
     max_replacements_per_month: int = 1
     rebalance_to_target: bool = False
+    # WERSJA v3 (user): "Bez comiesiecznej podmiany na podstawie score. Nowy kandydat zastepuje
+    # istniejaca pozycje tylko jesli: (1) obecna nie przechodzi quality gate, albo (2) osiagnela
+    # 36 miesiecy. Score sluzy tylko do wyboru najlepszego kandydata do wolnego slotu."
+    # Te dwa warunki to DOKLADNIE istniejace wyjscia `fundamental_fail` i `timeout`, po ktorych
+    # zwolniony slot i tak jest wypelniany najlepszym kandydatem - wiec v3 = v2 z wylaczona
+    # podmiana po score. Osobny silnik nie jest potrzebny, wystarczy ta flaga.
+    allow_score_replacement: bool = True
+    # TRAILING STOP (user): "Po wejsciu zapisujemy highest_close_since_entry. Trailing stop:
+    # sprzedaj, jesli kurs spadnie np. 20% od najwyzszego close od momentu zakupu."
+    # None = wylaczony. Sprawdzany CODZIENNIE, nie tylko w dniu decyzyjnym - stop jest zleceniem
+    # stojacym, a sprawdzanie go raz w miesiacu przepuszczaloby obsuniecia znacznie glebsze niz
+    # zadeklarowany prog (przy 20% progu i miesiecznej kontroli realna strata siegala by tyle, ile
+    # kurs zdazyl spasc do najblizszego 1. dnia miesiaca).
+    trailing_stop: Optional[float] = None
     cost_bps: float = 40.0
     high_lookback_days: int = 252  # 52W high
     relative_lookback_days: int = 126  # ~6M do REL
@@ -69,6 +83,7 @@ class Position:
     entry_price: float
     shares: float
     entry_score: float
+    highest_close: float = 0.0  # najwyzszy close OD MOMENTU ZAKUPU - baza trailing stopu
 
 
 @dataclass
@@ -119,7 +134,14 @@ def run_quality_value_backtest(
     decision_dates: Sequence[pd.Timestamp],
     config: QualityValueConfig,
     ticker_to_fundamental_key: Optional[Dict[str, str]] = None,
+    eligible_universe: Optional[Dict[pd.Timestamp, List[str]]] = None,
 ) -> Dict[str, Any]:
+    """`eligible_universe` (opcjonalne): uniwersum POINT-IN-TIME, data -> lista spolek realnie
+    inwestowalnych w tym momencie (patrz `universe.py`). Ogranicza WYLACZNIE NOWE WEJSCIA; pozycja
+    juz trzymana, ktora wypadla z uniwersum (np. spadla plynnosc), NIE jest sprzedawana na sile -
+    wychodzi normalnymi reguami (fundamental fail / max holding). Wymuszona sprzedaz przy spadku
+    plynnosci bylaby zresztą nierealistyczna: wtedy najtrudniej wyjsc.
+    Gdy `None` - uniwersum stale, `config.tickers` przez cala historie."""
     if config.max_positions < 1:
         raise ValueError(f"max_positions musi byc >= 1, dostalem {config.max_positions}.")
 
@@ -182,11 +204,26 @@ def run_quality_value_backtest(
             entry_price=price,
             shares=(spend * (1.0 - cost_rate)) / price,
             entry_score=score,
+            highest_close=price,
         )
         cash -= spend
 
     for date in prices.index:
         row_price = priced.loc[date]
+
+        # --- 0) TRAILING STOP: aktualizacja szczytu i kontrola CODZIENNIE (zlecenie stojace) ---
+        # Robione PRZED blokiem decyzyjnym, zeby slot zwolniony stopem byl od razu dostepny, jesli
+        # dzis wypada dzien decyzyjny, i PRZED wycena, zeby equity odzwierciedlalo sprzedaz.
+        for ticker in list(positions):
+            price = row_price.get(ticker)
+            if price is None or pd.isna(price):
+                continue
+            position = positions[ticker]
+            position.highest_close = max(position.highest_close, float(price))
+            if config.trailing_stop is not None and float(price) <= position.highest_close * (
+                1.0 - config.trailing_stop
+            ):
+                sell(ticker, date, float(price), "trailing_stop")
 
         if date in decision_set:
             # --- 1) WYJSCIA: fundamental fail albo przetrzymanie ---
@@ -226,11 +263,16 @@ def run_quality_value_backtest(
             )
             by_ticker = {s.ticker: s for s in scored}
 
+            investable = None if eligible_universe is None else set(eligible_universe.get(date, []))
+
             if first_decision_date is None and any(
-                qualities[t].values["net_income_ttm"] is not None for t in qualities
+                qualities[t].values["net_income_ttm"] is not None
+                and (investable is None or t in investable)
+                for t in qualities
             ):
-                # Metryki liczymy od momentu, gdy sygnaly cenowe (52W high, 6M relative) I
-                # OPUBLIKOWANE fundamenty realnie istnialy dla co najmniej jednej spolki.
+                # Metryki liczymy od momentu, gdy dla co najmniej jednej spolki byly JEDNOCZESNIE:
+                # sygnaly cenowe (52W high, 6M relative), OPUBLIKOWANE fundamenty ORAZ obecnosc w
+                # uniwersum point-in-time.
                 # UWAGA: samo `scored` nie wystarcza jako warunek - `compute_quality` zwraca
                 # poprawny obiekt ze score 0 takze gdy fundamentow NIE MA (brak danych = kryterium
                 # niespelnione), wiec ranking istnieje juz od 1995 (same ceny), a fundamenty
@@ -239,7 +281,13 @@ def run_quality_value_backtest(
                 # w `engine_v2` dla strategii laczonych (CHANGELOG 2026-08-12 (2)).
                 first_decision_date = date
 
-            candidates = [s for s in scored if s.passes_entry_gate and s.ticker not in positions]
+            candidates = [
+                s
+                for s in scored
+                if s.passes_entry_gate
+                and s.ticker not in positions
+                and (investable is None or s.ticker in investable)
+            ]
 
             # --- 3) WEJSCIA na wolne sloty ---
             free_slots = config.max_positions - len(positions)
@@ -253,7 +301,8 @@ def run_quality_value_backtest(
             # --- 4) PODMIANA najslabszej pozycji, gdy portfel pelny ---
             replacements = 0
             while (
-                len(positions) >= config.max_positions
+                config.allow_score_replacement
+                and len(positions) >= config.max_positions
                 and replacements < config.max_replacements_per_month
             ):
                 held_scored = [(by_ticker[t].score, t) for t in positions if t in by_ticker]

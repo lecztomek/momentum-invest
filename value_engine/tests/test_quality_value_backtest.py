@@ -297,3 +297,175 @@ def test_max_positions_zero_is_rejected():
     prices = pd.DataFrame({"a": [100.0] * 60}, index=index)
     with pytest.raises(ValueError, match="max_positions"):
         _run(prices, _config(["a"], max_positions=0))
+
+
+# --- v3: BEZ PODMIANY PO SCORE ---
+
+
+def test_v3_disables_score_replacement_entirely():
+    """v3 (user): "Bez comiesiecznej podmiany na podstawie score." Ten sam uklad cen, ktory w v2
+    wywoluje podmiane, przy `allow_score_replacement=False` NIE moze jej wywolac."""
+    index = pd.bdate_range("2019-01-01", periods=200)
+    prices = _replacement_prices(index)
+
+    v2 = _run(prices, _config(["held", "newcomer"], max_positions=1, replace_margin=10.0))
+    v3 = _run(
+        prices,
+        _config(["held", "newcomer"], max_positions=1, replace_margin=10.0, allow_score_replacement=False),
+    )
+
+    assert [t for t in v2["trades"] if t.exit_reason == "replaced"]
+    assert [t for t in v3["trades"] if t.exit_reason == "replaced"] == []
+
+
+def test_v3_still_fills_slot_freed_by_quality_fail():
+    """Score ma dalej sluzyc do WYBORU kandydata na wolny slot - tylko nie do przetasowywania.
+    Slot zwolniony przez `fundamental_fail` musi zostac wypelniony najlepszym kandydatem."""
+    index = pd.bdate_range("2019-01-01", periods=300)
+    held = ([100.0] * _HIGH_LOOKBACK + [70.0] * len(index))[: len(index)]
+    # NEWCOMER musi zjezdzac CIAGLE (1%/dzien), a nie raz spasc na staly poziom - inaczej jego
+    # obsuniecie "zdrowieje" (szczyt wypada z okna 52W high) i przestaje byc kandydatem, zanim
+    # zwolni sie slot.
+    newcomer = [100.0] * _HIGH_LOOKBACK + [100.0 * (0.99**i) for i in range(len(index))]
+    prices = pd.DataFrame({"held": held, "newcomer": newcomer[: len(index)]}, index=index)
+
+    panel = FundamentalPanel.from_reports(
+        [
+            ParsedReport(
+                ticker="HELD",
+                report_type="mixed",
+                periodicity="quarterly",
+                periods=_PERIODS + ["2019/Q2 (x)"],
+                publication_dates=_DATES + ["2019-08-01"],  # HELD traci jakosc 2019-08-01
+                metrics={
+                    "IncomeNetProfit": [10.0] * 8 + [-1000.0],
+                    "CashflowOperatingCashflow": [20.0] * 8 + [-1000.0],
+                    "BalanceCurrentBorrowings": [100.0] * 4 + [50.0] * 4 + [500.0],
+                    "BalanceNoncurrentBorrowings": [0.0] * 9,
+                    "BalanceTotalAssets": [1000.0] * 9,
+                },
+            ),
+            ParsedReport(
+                ticker="NEWCOMER",
+                report_type="mixed",
+                periodicity="quarterly",
+                periods=_PERIODS,
+                publication_dates=_DATES,
+                metrics={
+                    "IncomeNetProfit": [10.0] * 8,
+                    "CashflowOperatingCashflow": [20.0] * 8,
+                    "BalanceCurrentBorrowings": [100.0] * 4 + [50.0] * 4,
+                    "BalanceNoncurrentBorrowings": [0.0] * 8,
+                    "BalanceTotalAssets": [1000.0] * 8,
+                },
+            ),
+        ]
+    )
+
+    result = _run(
+        prices,
+        _config(["held", "newcomer"], max_positions=1, allow_score_replacement=False, max_holding_months=99),
+        panel=panel,
+    )
+
+    assert [t for t in result["trades"] if t.exit_reason == "fundamental_fail"]
+    assert any(d["held"] == ["newcomer"] for d in result["decisions"]), "wolny slot nie zostal wypelniony"
+
+
+# --- UNIWERSUM POINT-IN-TIME ---
+
+
+def test_eligible_universe_blocks_new_entries():
+    index = pd.bdate_range("2019-01-01", periods=150)
+    prices = pd.DataFrame({"a": _flat_then_drop(len(index), 50.0)}, index=index)
+    config = _config(["a"], max_positions=1)
+    panel = _panel({"A": "good"})
+    benchmark = pd.Series(100.0, index=prices.index)
+    dates = month_start_decision_dates(prices)
+
+    from value_engine.quality_value_backtest import run_quality_value_backtest as run_engine
+
+    blocked = run_engine(prices, benchmark, panel, dates, config, eligible_universe={d: [] for d in dates})
+    allowed = run_engine(prices, benchmark, panel, dates, config, eligible_universe={d: ["a"] for d in dates})
+
+    assert blocked["trades"] == []
+    assert allowed["trades"], "spolka w uniwersum PIT powinna byc kupiona"
+
+
+def test_position_is_not_force_sold_when_it_leaves_universe():
+    """Pozycja, ktora wypadla z uniwersum (np. spadla plynnosc), NIE jest sprzedawana na sile -
+    wychodzi normalnymi reguami. Wymuszona sprzedaz przy spadku plynnosci bylaby nierealistyczna."""
+    index = pd.bdate_range("2019-01-01", periods=200)
+    prices = pd.DataFrame({"a": _flat_then_drop(len(index), 50.0)}, index=index)
+    dates = month_start_decision_dates(prices)
+    cutoff = dates[4]
+    universe = {d: (["a"] if d <= cutoff else []) for d in dates}
+
+    from value_engine.quality_value_backtest import run_quality_value_backtest as run_engine
+
+    result = run_engine(
+        prices,
+        pd.Series(100.0, index=prices.index),
+        _panel({"A": "good"}),
+        dates,
+        _config(["a"], max_positions=1, max_holding_months=99),
+        eligible_universe=universe,
+    )
+
+    assert result["trades"], "pozycja powinna byc otwarta przed wypadnieciem z uniwersum"
+    assert result["trades"][-1].exit_reason == "end_of_data"  # nie sprzedana przy wypadnieciu
+    assert any(d["date"] > cutoff and d["held"] == ["a"] for d in result["decisions"])
+
+
+# --- TRAILING STOP ---
+
+
+def test_trailing_stop_sells_after_drop_from_peak_since_entry():
+    """Szczyt liczony OD MOMENTU ZAKUPU, nie od 52W high: wejscie po 50, szczyt 80, spadek do 60
+    to -25% od szczytu -> stop 20% musi zadzialac."""
+    index = pd.bdate_range("2019-01-01", periods=200)
+    values = ([100.0] * _HIGH_LOOKBACK + [50.0] * 25 + [80.0] * 25 + [60.0] * len(index))[: len(index)]
+    prices = pd.DataFrame({"a": values}, index=index)
+
+    result = _run(prices, _config(["a"], max_positions=1, max_holding_months=99, trailing_stop=0.20))
+
+    stops = [t for t in result["trades"] if t.exit_reason == "trailing_stop"]
+    assert stops, f"stop nie zadzialal, powody: {[t.exit_reason for t in result['trades']]}"
+    assert stops[0].exit_price == pytest.approx(60.0)
+    assert stops[0].gross_return == pytest.approx(60 / 50 - 1)  # nadal na plusie wzgledem wejscia
+
+
+def test_trailing_stop_does_not_fire_on_shallow_pullback():
+    index = pd.bdate_range("2019-01-01", periods=200)
+    # wejscie 50, szczyt 80, cofniecie do 70 = -12.5% od szczytu (mniej niz prog 20%)
+    values = ([100.0] * _HIGH_LOOKBACK + [50.0] * 25 + [80.0] * 25 + [70.0] * len(index))[: len(index)]
+    prices = pd.DataFrame({"a": values}, index=index)
+
+    result = _run(prices, _config(["a"], max_positions=1, max_holding_months=99, trailing_stop=0.20))
+
+    assert [t for t in result["trades"] if t.exit_reason == "trailing_stop"] == []
+
+
+def test_trailing_stop_is_checked_daily_not_only_on_decision_dates():
+    """Stop to zlecenie stojace. Spadek zaczyna sie i konczy WEWNATRZ miesiaca (kurs wraca przed
+    kolejnym 1. dniem miesiaca) - kontrola miesieczna by go przegapila, dzienna nie."""
+    index = pd.bdate_range("2019-01-01", periods=200)
+    values = [100.0] * _HIGH_LOOKBACK + [50.0] * 25
+    values += [80.0] * 15 + [55.0] * 3 + [80.0] * (len(index) - len(values) - 18)
+    prices = pd.DataFrame({"a": values[: len(index)]}, index=index)
+
+    monthly_only = _run(prices, _config(["a"], max_positions=1, max_holding_months=99))
+    with_stop = _run(prices, _config(["a"], max_positions=1, max_holding_months=99, trailing_stop=0.20))
+
+    assert [t for t in monthly_only["trades"] if t.exit_reason == "trailing_stop"] == []
+    assert [t for t in with_stop["trades"] if t.exit_reason == "trailing_stop"]
+
+
+def test_trailing_stop_disabled_by_default():
+    index = pd.bdate_range("2019-01-01", periods=200)
+    values = ([100.0] * _HIGH_LOOKBACK + [50.0] * 25 + [80.0] * 25 + [10.0] * len(index))[: len(index)]
+    prices = pd.DataFrame({"a": values}, index=index)
+
+    result = _run(prices, _config(["a"], max_positions=1, max_holding_months=99))
+
+    assert all(t.exit_reason != "trailing_stop" for t in result["trades"])

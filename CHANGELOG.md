@@ -2,6 +2,89 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-19 (3)
+
+- **UNIWERSUM POINT-IN-TIME (`value_engine/universe.py`) + KONCEPCJA v3 + TRAILING STOP.** User
+  ustawil priorytet jednoznacznie: "Najpierw jednak poprawilbym universe point-in-time. Test z CDR
+  praktycznie udowodnil, ze obecny survivorship bias moze calkowicie zmienic wniosek. Dopiero potem
+  warto oceniac V3."
+
+  **NOWY MODUL `universe.py`** - uniwersum liczone NA KAZDA DATE DECYZYJNA z danych dostepnych do
+  tej daty: (a) min. 252 sesje historii cen, (b) mediana obrotu dziennego (CLOSE x VOL) z ostatnich
+  6M >= progu, (c) opcjonalnie top-N po plynnosci. Mediana, nie srednia - jeden dzien z ogromnym
+  wolumenem nie moze kwalifikowac spolki na pol roku. Wolumen czytany osobno, bo loader
+  `engine_v2.stooq_csv` zwraca tylko CLOSE (engine_v2 nietkniety).
+
+  Rozdzielenie dwoch roznych bledow, ktore dotad byly zlepione w jedno "survivorship":
+  - **hindsight co do plynnosci/rozmiaru - NAPRAWIONE.** Zmierzona mediana obrotu: KGH 2008 = 66.6
+    mln PLN/dzien, **CDR 2008 = 0.39 mln** (~170x mniej), DOM 2015 = 0.02 mln. CDR w 2008 nie byl
+    "duza i plynna spolka" - a przy stalej liscie byl w uniwersum przez cala historie i to WLASNIE on
+    odwracal wnioski v2. Filtr PIT wyklucza go do 2011, wpuszcza na stale od 2015.
+  - **survivorship (brak spolek wycofanych z obrotu) - NIENAPRAWIALNE tymi danymi.** Zapisane jawnie
+    w README; filtr plynnosci nie odtworzy brakujacych szeregow.
+
+  **BLAD METODOLOGICZNY ZLAPANY W TRAKCIE**: poczatkowo porownywalem uczciwa strategie (uniwersum
+  PIT) z NIEUCZCIWYM benchmarkiem (rownowazona srednia 22 dzisiejszych ocalalych) - taki uklad z
+  definicji przegrywa, niezaleznie od jakosci strategii. Dodany `buy_hold_pit`: rownowazony portfel
+  spolek REALNIE inwestowalnych w danym miesiacu, rebalansowany miesiecznie. Skala bledu: benchmark
+  survivorship 14.56% CAGR vs benchmark PIT **9.64%** - sam survivorship w benchmarku byl wart ~5pp
+  CAGR rocznie. Przy okazji drugi blad tej samej klasy: pierwsza wersja `buy_hold_pit` budowala
+  krzywa MIESIECZNA, wiec `compute_metrics` annualizowal Sharpe przy zalozeniu 252 punktow/rok i dawal
+  absurd 2.52 - przebudowane na krzywa dzienna (ta sama pulapka, co naprawiona w `crash_replay.py`).
+
+  **v3 NIE WYMAGALO NOWEGO SILNIKA.** Warunki podmiany ze spec ("obecna pozycja nie przechodzi
+  quality gate" albo "osiagnela 36 miesiecy") to DOKLADNIE istniejace wyjscia `fundamental_fail` i
+  `timeout`, po ktorych zwolniony slot i tak jest wypelniany najlepszym kandydatem. Wystarczyla flaga
+  `allow_score_replacement=False` + `max_holding_months=36`.
+
+  **TRAILING STOP** - nowe pole `Position.highest_close` (szczyt OD MOMENTU ZAKUPU), aktualizowane i
+  sprawdzane **CODZIENNIE**, nie tylko w dniu decyzyjnym: stop jest zleceniem stojacym, a kontrola raz
+  w miesiacu przepuszczalaby obsuniecia znacznie glebsze niz zadeklarowany prog.
+
+  **WYNIKI - uniwersum decyduje o wszystkim:**
+
+  | wariant | CAGR | MaxDD | Sharpe | Calmar | n |
+  |---|---|---|---|---|---|
+  | v2 (podmiana po score, 24m), stale | 10.61% | -65.82% | 0.540 | 0.161 | 114 |
+  | v2, PIT | 8.25% | -48.84% | 0.463 | 0.169 | 63 |
+  | v3 (bez podmiany, 36m), stale | 13.34% | -60.99% | 0.645 | 0.219 | 34 |
+  | v3, PIT | 3.17% | -66.43% | 0.252 | 0.048 | 26 |
+  | **v3 + trailing stop 20%, stale** | **23.34%** | -57.10% | **1.011** | **0.409** | 137 |
+  | **v3 + trailing stop 20%, PIT** | **5.74%** | -47.07% | **0.360** | 0.122 | 130 |
+  | *benchmark survivorship* | *14.56%* | *-69.89%* | *0.634* | *0.208* | - |
+  | *benchmark PIT (uczciwy)* | *9.64%* | *-55.06%* | *0.525* | *0.175* | - |
+
+  Ta sama strategia daje **23.34% albo 5.74%** w zaleznosci WYLACZNIE od definicji uniwersum -
+  poprawa uniwersum okazala sie wazniejsza niz wszystkie zmiany regul razem.
+
+  **TRAILING STOP PRZESZEDL TEST KRUCHOSCI, w przeciwienstwie do "odkrycia" z v2.** Leave-one-out po
+  wszystkich 22 spolkach (uniwersum stale): bije wlasny benchmark **22/22** razy, rozrzut CAGR
+  16.28%-25.28%, a usuniecie CDR praktycznie nic nie zmienia (23.17% vs 23.34%). To jakosciowo inna
+  sytuacja niz `QUALITY>=0` z v2, ktore bylo w calosci CDR-owe. Ale robustnosc na leave-one-out NIE
+  ratuje przed survivorship - LOO testuje wrazliwosc na pojedyncze nazwy W PULI, nie na nazwy
+  BRAKUJACE.
+
+  **DLACZEGO PIT tak bardzo psuje wynik: zwroty siedzialy w nazwach NIEPLYNNYCH.** Sweep progu
+  plynnosci (v3, bez stopu): prog 0 (tylko data debiutu) -> CAGR **11.65%**; prog 0.5 mln -> 2.72%;
+  1 mln -> 2.12%; 2 mln -> 3.17%; 5 mln -> 3.88%; 10 mln -> 4.09%. Urwisko miedzy 0 i 0.5 mln
+  pokazuje, ze caly efekt pochodzil z malych/nieplynnych spolek - a spec zakladal "duze i plynne".
+  Dodatkowo w tej probce nieplynne nazwy to dokladnie te, ktore urosly kilkukrotnie (CDR w latach
+  mikrospolki, DNP, TEN, TXT, DVL), wiec czesc "efektu malych spolek" to survivorship w innym
+  przebraniu.
+
+  **Obserwacja o charakterze strategii**: trailing stop przejal 92% wyjsc (126/137), limit 36 miesiecy
+  zadzialal 1 raz. Trafnosc 45%, ale sredni zwrot +21.00% - klasyczna asymetria trend-followingu.
+  Strategia przestaje byc "cierpliwym value" i staje sie trend-followingiem z valuowym filtrem
+  wejscia. Ten sam wzorzec co w v2 (tam role wyjscia przejela regula podmiany).
+
+  **v2 > v3 na uniwersum PIT** (8.25% vs 3.17%) - zaleznosc odwrotna niz na stalym. Przy waskim
+  uniwersum (3-15 spolek) trzymanie 36 miesiecy bez podmiany jest kosztowne, bo nie ma z czego
+  wybierac przy nastepnej okazji.
+
+  Zadna z trzech wersji nie bije uczciwego benchmarku PIT. 17 nowych testow (`test_universe.py` +
+  testy v3/trailing stop/uniwersum PIT w `test_quality_value_backtest.py`), lacznie **81** w
+  `value_engine/tests/`, wszystkie zielone.
+
 ## 2026-08-19 (2)
 
 - **KONCEPCJA v2 W `value_engine/`: "quality value" ze score 0-100 i slotami** - user podal
