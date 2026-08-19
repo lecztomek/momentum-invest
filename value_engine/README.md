@@ -1,31 +1,43 @@
-# value_engine - koncepcja "przeceniona ale zdrowa spolka GPW"
+# value_engine - strategie "value" na GPW
 
-Osobny silnik, poza `engine_v2`. Testuje koncepcje: **kup spolke mocno przecenona wzgledem 52W
-high, ale fundamentalnie zdrowa; sprzedaj po odbiciu albo po X miesiacach.**
+Osobny silnik, poza `engine_v2`. Trzy przetestowane koncepcje, wszystkie oparte na tych samych,
+wspolnych fundamentach technicznych (parser BiznesRadaru + panel point-in-time + ceny PL +
+uniwersum point-in-time).
+
+| koncepcja | plik silnika | runner | wynik |
+|---|---|---|---|
+| v1: przeceniona + zdrowa, profit target | `backtest.py` | `run_test.py` | odrzucona (niszczy wartosc) |
+| v2: quality value, score 0-100, sloty + podmiana | `quality_value_backtest.py` | `run_quality_value.py` | blisko benchmarku, nie bije |
+| v3: bez podmiany, 36m, opcjonalny trailing stop | ten sam silnik, `allow_score_replacement=False` | `run_v3_comparison.py` | **zaleznie od uniwersum** - patrz nizej |
+| **v4: Value + Quality + Momentum, top4/top8** | `factor_backtest.py` | `run_factor.py` | **pierwsza wersja z przewaga nad uczciwym benchmarkiem (21/22 leave-one-out)** |
+
+**Najwazniejszy wniosek calej serii**: wyniki v3 zmieniaja sie DRASTYCZNIE w zaleznosci od tego, czy
+uniwersum jest uczciwe (point-in-time) czy obciazone survivorship. Na stalej liscie dzisiejszych
+ocalalych v3 z trailing stopem daje CAGR 23.34% / Sharpe 1.011; na uniwersum point-in-time ta sama
+strategia daje 5.74% / Sharpe 0.360 i przegrywa z benchmarkiem. To najlepszy dowod, ze poprawa
+uniwersum byla wazniejsza od kazdej zmiany regul.
 
 ## Dlaczego osobny folder, a nie `engine_v2`
 
 Ocena zrobiona PRZED napisaniem kodu. Z pieciu elementow koncepcji **cztery** mieszcza sie w
 `engine_v2` bez problemu, ale **piaty go lamie**:
 
-| element koncepcji | `engine_v2` |
+| element | `engine_v2` |
 |---|---|
 | ceny dzienne PL | ✅ ten sam format stooq co US/UK - `stooq_csv` czyta `data/pl` bez zmian |
-| sygnal cenowy (>=25% pod 52W high) | ✅ zwykly wskaznik + filtr, standardowy ksztalt |
-| filtr fundamentalny | ✅ moglby byc wskaznikiem (pipeline nie pyta, skad wartosci) |
-| ranking + portfel (top 2-3, equal weight) | ✅ `top_n` + `rank_weights`, natywnie |
-| **exit po odbiciu / po 6 miesiacach** | ❌ **nie da sie** |
+| sygnal cenowy (>=25% pod 52W high) | ✅ zwykly wskaznik + filtr |
+| filtr/score fundamentalny | ✅ moglby byc wskaznikiem (pipeline nie pyta, skad wartosci) |
+| ranking + portfel (top N, equal weight) | ✅ `top_n` + `rank_weights` |
+| **exit po odbiciu / po N miesiacach, sloty z podmiana** | ❌ **nie da sie** |
 
 `engine_v2` jest silnikiem **rotacyjnym i bezstanowym wzgledem pozycji**: kazdy miesiac liczy wagi
-docelowe od zera z biezacych wskaznikow, a `PortfolioState` niesie miedzy miesiacami tylko
-`current_weights` / `equity` / `tax_base_equity` / `last_target_signature`. Nie ma tam **ceny
-wejscia** ani **czasu trzymania** pojedynczej pozycji - a exit wymaga obu. Dorzucenie tych pol
-znaczylo by przebudowe wspolnego silnika uzywanego przez ~50 istniejacych strategii, wprost
-przeciwko zasadzie repo ("wariant eksperymentalny = osobny plik, nigdy flaga w produkcyjnym
-bloku"). To tez inny **paradygmat** (portfel zawsze zaalokowany wg biezacego sygnalu vs dyskretne
-transakcje z wlasnym cyklem zycia), a nie brakujacy parametr.
+docelowe od zera z biezacych wskaznikow, a `PortfolioState` niesie tylko `current_weights` /
+`equity` / `tax_base_equity` / `last_target_signature`. Nie ma tam **ceny wejscia**, **czasu
+trzymania** ani **tozsamosci pozycji** - a te koncepcje wymagaja wszystkich trzech. Dorzucenie ich
+znaczylo by przebudowe wspolnego silnika ~50 istniejacych strategii, wprost przeciwko zasadzie repo
+("wariant eksperymentalny = osobny plik, nigdy flaga w produkcyjnym bloku").
 
-**Co jednak jest ponownie uzyte z `engine_v2`** (bez kopiowania kodu): loader cen `stooq_csv` oraz
+**Co JEST ponownie uzyte z `engine_v2`** (bez kopiowania kodu): loader cen `stooq_csv` oraz
 `metrics.compute_metrics` - te same definicje CAGR/MaxDD/Sharpe/Calmar, wiec liczby sa
 porownywalne 1:1 z reszta repo.
 
@@ -37,16 +49,57 @@ porownywalne 1:1 z reszta repo.
 | `br_parser.py` | surowy HTML -> uporzadkowane szeregi (okresy, **daty publikacji**, metryki) |
 | `fundamentals.py` | panel **point-in-time**: co bylo publicznie znane na dana date |
 | `signals.py` | obsuniecie od 52W high, daty decyzyjne (1. dzien handlowy miesiaca) |
-| `backtest.py` | silnik dyskretnych transakcji (wejscie -> trzymanie -> wlasny warunek wyjscia) |
-| `run_test.py` | odpalenie end-to-end |
+| `scoring.py` | QUALITY (4 kryteria x 25 pkt), percentyle DD/REL, skladanie SCORE 0-100 |
+| `backtest.py` | silnik koncepcji v1 |
+| `quality_value_backtest.py` | silnik koncepcji v2 (sloty + regula podmiany) |
 
 ```
-.venv/bin/python3 -m value_engine.run_test
-.venv/bin/python3 -m value_engine.run_test --min-drawdown -0.35 --exit-gain 0.30 --show-trades
+.venv/bin/python3 -m value_engine.run_quality_value
+.venv/bin/python3 -m value_engine.run_quality_value --sweep
+.venv/bin/python3 -m value_engine.run_quality_value --max-holding-months 36 --show-trades
 .venv/bin/pytest value_engine/tests/ -v
 ```
 
-## Najwazniejsza rzecz: point-in-time (look-ahead bias)
+## Fundament wspolny 2: uniwersum POINT-IN-TIME (`universe.py`)
+
+User: "Najpierw jednak poprawilbym universe point-in-time. Test z CDR praktycznie udowodnil, ze
+obecny survivorship bias moze calkowicie zmienic wniosek."
+
+Uniwersum bylo LISTA STALA, wybrana z dzisiejszej perspektywy. To wnosilo **dwa rozne** bledy i
+tylko jeden z nich da sie naprawic tymi danymi:
+
+**(1) HINDSIGHT CO DO ROZMIARU/PLYNNOSCI - NAPRAWIONE.** Spolka byla w uniwersum przez cala
+historie, takze w latach, gdy byla mikrospolka. Zmierzona mediana obrotu dziennego:
+
+| ticker | 2008 | 2015 | 2026 |
+|---|---|---|---|
+| KGH | 66.6 mln | 82.3 mln | 271.2 mln |
+| **CDR** | **0.39 mln** | 4.1 mln | 75.1 mln |
+| DOM | 0.21 mln | **0.02 mln** | 1.5 mln |
+| RBW | 0.01 mln | 0.28 mln | 5.3 mln |
+
+CDR w 2008 mial obrot ~170x mniejszy niz KGH - nie byl "duza i plynna spolka". A to WLASNIE CDR
+odwracal wnioski v2. Filtr plynnosci liczony z danych z TAMTEGO momentu (mediana obrotu z 6M,
+liczona krocząco wstecz - zero look-ahead) wyklucza go do 2011 i wpuszcza na stale od 2015.
+
+**(2) SURVIVORSHIP - NIENAPRAWIALNE tymi danymi.** W `data/pl` nie ma spolek wycofanych z
+obrotu/upadlych. Filtr plynnosci nie odtworzy brakujacych szeregow. Po poprawce wynik jest wciaz
+zawyzony, tylko mniej - i to trzeba pamietac przy kazdej liczbie ponizej.
+
+Rozmiar uniwersum PIT (prog 2 mln PLN/dzien): 2006: 3.0, 2010: 5.2, 2014: 9.5, 2018: 10.7,
+2022: 15.2, 2026: 14.9 spolek. Wczesny okres jest wiec bardzo waski - przy 4 slotach praktycznie
+nie ma z czego wybierac.
+
+**Uniwersum PIT ogranicza tylko NOWE WEJSCIA.** Pozycja, ktora wypadla z uniwersum (spadla
+plynnosc), nie jest sprzedawana na sile - wychodzi normalnymi reguami. Wymuszona sprzedaz przy
+zaniku plynnosci bylaby nierealistyczna: wtedy najtrudniej wyjsc.
+
+**Benchmark tez musial zostac poprawiony** (`buy_hold_pit`). Poczatkowo porownywalem uczciwa
+strategie (PIT) z nieuczciwym benchmarkiem (rownowazona srednia 22 dzisiejszych ocalalych) - taki
+uklad z definicji przegrywa. Skala bledu: benchmark survivorship 14.56% CAGR vs benchmark PIT
+**9.64%** - sam survivorship w benchmarku byl wart ~5pp CAGR rocznie.
+
+## Fundament wspolny: point-in-time fundamentow (look-ahead bias)
 
 Raport za okres konczacy sie 2020-12-31 **nie jest znany** 2020-12-31. Zmierzone na tych danych:
 mediana opoznienia publikacji **35-58 dni**, maksimum **115 dni**.
@@ -67,67 +120,351 @@ danych z przyszlosci.
 wyrownanie po dacie publikacji naprawia **timing**, nie **tresc**. Prawdziwa historia
 point-in-time powstanie z czasem, bo `snapshots` trzyma `fetched_at`.
 
-## Wyniki pierwszego testu (uczciwie)
+---
 
-Uniwersum: DNP, CDR, KGH, PKN. Okno **2006-03 -> 2026-08** (liczone od momentu, gdy sygnal cenowy
-**i** fundamenty realnie istnialy - inaczej kilkanascie lat martwej gotowki cicho rozwadnialoby
-CAGR, ten sam blad co naprawiony w `engine_v2`, CHANGELOG 2026-08-12 (2)).
+# Koncepcja v2: "quality value" (aktualna)
 
-Konfiguracja bazowa: dd <= -25%, exit +20% albo 6 miesiecy, max 3 pozycje, 40 bps.
+Uniwersum: **22 spolki GPW** (bez bankow i ubezpieczycieli): acp ale asb car cdr cps dnp dom dvl
+kgh kru lpp lwb neu opl pep pge pkn rbw ten tpe txt.
+
+    SCORE = 0.50 * DD + 0.25 * REL + 0.25 * QUALITY
+
+- **DD** - percentyl obsuniecia od 52W high (najbardziej przeceniona ~100)
+- **REL** - percentyl slabosci wzgledem rynku za 6M (najbardziej odstajaca w tyl ~100)
+- **QUALITY** - 0/25/50/75/100, po 25 pkt za: zysk TTM > 0; CFO TTM > 0; CFO >= zysk;
+  dlug/aktywa <= rok wczesniej
+
+Bramka wejscia: `drawdown >= 25%` ORAZ `QUALITY >= 50`. Max 4 pozycje po 25%. Wolny slot -> najlepszy
+kandydat. Portfel pelny -> podmiana najslabszej, gdy nowy ma score wyzszy o >= 10 pkt. Wyjscie:
+fundamental fail albo max holding 24m; bez profit targetu. Decyzje raz w miesiacu.
+
+## Wynik (okno 2006-03 -> 2026-08)
 
 | | CAGR | MaxDD | Sharpe | Calmar |
 |---|---|---|---|---|
-| strategia (srednia ekspozycja **31%**) | 3.27% | -42.72% | 0.288 | 0.077 |
-| buy&hold 4 spolki (100%) | 18.94% | -80.04% | 0.651 | 0.237 |
-| **buy&hold skalowany do 31%, ZERO timingu** | **7.15%** | **-37.22%** | **0.651** | **0.192** |
+| strategia (ekspozycja 97%) | 10.61% | -65.82% | 0.540 | 0.161 |
+| buy&hold uniwersum (100%) | **14.56%** | -69.89% | **0.634** | **0.208** |
+| buy&hold skalowany do 97%, zero timingu | **14.23%** | -68.75% | **0.634** | **0.207** |
 
-**Wniosek: koncepcja w tej postaci niszczy wartosc.** Trzecia linia to najuczciwsze porownanie -
-"trzymaj 31% tych spolek na stale, bez zadnego sygnalu" bije strategie na **kazdej** metryce
-(2x CAGR, plytszy MaxDD, 2x Sharpe i Calmar). Czyli timing wejsc/wyjsc nie jest tylko ostrozny,
-on aktywnie szkodzi. Statystyki transakcji wygladaja przy tym niewinnie (47 transakcji, 62%
-zyskownych, srednio +6.08%) - dlatego sam "win rate" jest myslacym mylnie miernikiem.
+**Strategia nie bije benchmarku** - ani na zwrocie, ani na miarach ryzyka. Poprawia jedynie MaxDD
+(-65.8% vs -68.8%), i to nieznacznie. Jest to jednak **duzo blizej** niz koncepcja v1 (tam
+stosunek CAGR do benchmarku byl 0.46, tu 0.75).
 
-### Sweep parametrow - gdzie dokladnie jest problem
+## Sweep 12 wariantow
 
 | wariant | CAGR | MaxDD | Sharpe | Calmar | transakcji | ekspozycja |
 |---|---|---|---|---|---|---|
-| exit +20% / **3m** | 2.38% | -47.73% | 0.231 | 0.050 | 74 | 28% |
-| exit +20% / 6m | 3.27% | -42.72% | 0.288 | 0.077 | 47 | 31% |
-| exit +20% / 12m | 4.51% | -42.83% | 0.358 | 0.105 | 35 | 36% |
-| exit +20% / **24m** | **8.16%** | -47.68% | 0.545 | 0.171 | 29 | 46% |
-| exit **+10%** / 6m | 2.55% | -42.72% | 0.247 | 0.060 | 51 | 28% |
-| exit **+60%** / 6m | 5.91% | -42.72% | 0.429 | 0.138 | 44 | 35% |
-| dd <= -15% | 5.15% | -43.63% | 0.363 | 0.118 | 71 | 48% |
-| dd <= -45% | 3.63% | -23.54% | 0.473 | 0.154 | 12 | 7% |
-| **bez filtra fundamentalnego** | 1.98% | -62.17% | 0.199 | 0.032 | 87 | 41% |
+| bazowa (24m, margin 10) | 10.61% | -65.82% | 0.540 | 0.161 | 114 | 97% |
+| max holding 36m | 11.96% | -62.47% | 0.598 | 0.191 | 109 | 98% |
+| max holding 12m | 8.97% | -57.65% | 0.477 | 0.156 | 129 | 90% |
+| margin podmiany 0 | 10.56% | -65.82% | 0.543 | 0.161 | 140 | 97% |
+| margin podmiany 20 | 8.82% | -67.65% | 0.474 | 0.130 | 93 | 97% |
+| bramka dd >= 15% | 9.14% | -58.52% | 0.494 | 0.156 | 150 | 99% |
+| bramka dd >= 35% | 7.68% | -68.90% | 0.428 | 0.112 | 70 | 82% |
+| QUALITY >= 75 | 9.12% | -59.95% | 0.487 | 0.152 | 106 | 89% |
+| **QUALITY >= 0 (bez bramki jakosci)** | **15.36%** | -63.63% | **0.694** | **0.241** | 129 | 100% |
+| rebalans do 25% co miesiac | 10.42% | **-74.06%** | 0.503 | 0.141 | 114 | 97% |
+| max 2 pozycje | 5.94% | -77.53% | 0.341 | 0.077 | 83 | 99% |
+| max 6 pozycji | 11.25% | -67.99% | 0.612 | 0.165 | 125 | 92% |
 
-Dwa czyste, monotoniczne wnioski:
+## Najwazniejsze: dlaczego "QUALITY >= 0" to NIE odkrycie
 
-1. **Regula wyjscia jest zla.** Im dluzej trzymamy i im wyzszy prog realizacji zysku, tym lepiej
-   (3m -> 24m: CAGR 2.38% -> 8.16%; +10% -> +60%: 2.55% -> 5.91%). Sprzedawanie po +20% i
-   przymusowe zamykanie po 6 miesiacach systematycznie **ucina zwyciezcow**. W granicy (trzymaj i
-   nie realizuj zysku) koncepcja zbiega do buy&hold, ktory jest znacznie lepszy.
-2. **Filtr fundamentalny realnie pomaga** - bez niego CAGR 1.98% i MaxDD -62%, z nim 3.27% i
-   -42.7%. To jedyny element koncepcji, ktory dodaje wartosc.
+Jedyny wariant bijacy benchmark (15.36% / Sharpe 0.694) to ten **bez bramki jakosci**. Wygladalo
+to na realne odkrycie ("bramka jakosci szkodzi"), ale sprawdzenie pokazalo, ze to **artefakt
+jednej spolki** - CD Projekt (86x w oknie). Bez bramki strategia kupuje CDR 13 razy, w tym w
+momentach o QUALITY 0-25.
 
-## Ograniczenia tego testu (istotne)
+Wystarczylo usunac CDR z uniwersum (21 spolek zamiast 22), zeby wniosek sie odwrocil:
 
-- **Uniwersum to 4 recznie wybrane spolki, ktore przetrwaly i wygraly** - CDR zrobil 86x, KGH 13x,
-  DNP 8.7x, PKN 5x. Sam benchmark buy&hold (18.94% CAGR) jest tym zawyzony. Prawdziwy test
-  strategii "value" wymaga tez spolek, ktore zbankrutowaly lub uwiadly - inaczej "kup przecenione"
-  jest testowane wylacznie na przecenach, po ktorych nastapilo odbicie.
-- **Male probki**: 12-87 transakcji zaleznie od wariantu, portfel 2-3 pozycji z uniwersum 4 spolek
-  (czyli 50-75% uniwersum naraz - to prawie brak selekcji). Zadna z powyzszych liczb nie jest
-  statystycznie mocna. Kierunek wniosku jest jednak spojny we **wszystkich 14 wariantach**, co
-  daje pewnosc co do kierunku, nie co do wartosci.
-- Brak indeksu odniesienia (WIG20/WIG) - benchmark to equal-weight tych samych 4 spolek.
+| | CAGR | MaxDD | Sharpe | Calmar |
+|---|---|---|---|---|
+| **z CDR** QUALITY>=50 | 10.61% | -65.82% | 0.540 | 0.161 |
+| **z CDR** QUALITY>=0 | 15.36% | -63.63% | 0.694 | 0.241 |
+| **z CDR** buy&hold | 14.56% | -69.89% | 0.634 | 0.208 |
+| **bez CDR** QUALITY>=50 | 10.96% | -65.55% | 0.560 | 0.167 |
+| **bez CDR** QUALITY>=0 | 12.31% | -63.53% | 0.594 | 0.194 |
+| **bez CDR** buy&hold | **13.27%** | -70.39% | **0.607** | 0.189 |
+
+Przewaga "bez bramki" nad "z bramka" spada z +4.75pp do +1.35pp, a przewaga nad benchmarkiem
+(+0.80pp) zamienia sie w strate (-0.96pp). **Jedna spolka z 22 przewraca wniosek** - to miara
+tego, jak krucha jest ta probka.
+
+## Obserwacja strukturalna: regula podmiany to de facto szybkie wyjscie
+
+Spec mowil "bez szybkiego profit targetu" i "max holding 24/36 miesiecy", ale w praktyce:
+
+| powod wyjscia | udzial |
+|---|---|
+| podmiana (`replaced`) | **77%** (88/114) |
+| fundamental fail | 11% (13) |
+| timeout 24m | **8%** (9) |
+| koniec danych | 4% (4) |
+
+Mediana czasu trzymania: **182 dni**, 51% pozycji trzymane krocej niz 6 miesiecy. Limit 24 miesiecy
+zadzialal 9 razy. Czyli **regula podmiany przejela role profit targetu**, ktorego spec chcial
+uniknac - strategia realnie zachowuje sie jak miesieczna rotacja po obsunieciu, a nie jak
+cierpliwy value. To najwazniejsza rozbieznosc miedzy intencja spec a jej faktycznym dzialaniem.
+
+## Wnioski powtarzalne miedzy v1 i v2
+
+1. **Dluzsze trzymanie jest lepsze** - v2: 12m -> 24m -> 36m daje 8.97% -> 10.61% -> 11.96%;
+   v1: 3m -> 24m daje 2.38% -> 8.16%. Spojne w obu koncepcjach.
+2. **Koncentracja szkodzi** - max 2 pozycje: CAGR 5.94% i MaxDD -77.5% (najgorszy wariant).
+3. **Wymuszony rebalans do 25% co miesiac pogarsza MaxDD** (-65.8% -> -74.1%) przy tym samym CAGR.
+4. **Bramka jakosci nie pomaga** (v2), choc w v1 filtr fundamentalny pomagal - roznica: w v1 byl
+   jedynym filtrem, w v2 QUALITY jest juz w score, wiec bramka dubluje ten sam sygnal i tylko
+   zawęża wybor.
+
+## Ograniczenia (istotne)
+
+- **Uniwersum to spolki, ktore PRZETRWALY do dzis** - brak spolek wycofanych z obrotu/upadlych.
+  Zawyza to i strategie, i benchmark, ale najbardziej "kup przecenione", bo testujemy je wylacznie
+  na przecenach, po ktorych nastapilo odbicie.
+- **Brak WIG20**: `REL` liczony wzgledem rownowazonej sredniej uniwersum (fallback z jawnym
+  ostrzezeniem w kazdym uruchomieniu). To NIE to samo co spec - dodatkowo taki REL jest czesciowo
+  redundantny z DD (oba mierza slabosc wzgledem grupy). Wystarczy wrzucic `data/pl/wig20.txt`
+  w formacie stooq, silnik uzyje go automatycznie.
+- 114 transakcji w oknie 20 lat, portfel 4 z 22 spolek - probka mala, MaxDD ~-65% bardzo wysoki.
 - Fundamenty: TTM z kwartalow (zweryfikowane, ze kwartaly sa jednostkowe - suma 4Q = wartosc
   roczna, 8/8 sprawdzonych par).
+- `Debt` = oprocentowane zadluzenie (`Borrowings` biezace + dlugoterminowe), **bez leasingu** -
+  leasing wszedl do bilansow z IFRS 16 (~2019) i jego wliczenie dawalo by sztuczny skok zadluzenia
+  u kazdej spolki naraz w roku przejscia.
 
-## Co dalej (jesli wracamy do tej koncepcji)
+## Co dalej
 
-Kolejnosc wynikajaca z wynikow, nie z gustu:
-1. **Poszerzyc uniwersum** o spolki, ktorym sie NIE udalo - bez tego kazdy wynik jest zawyzony.
-2. **Wyrzucic albo mocno rozluznic regule wyjscia** (to ona kosztuje), np. wyjscie dopiero gdy
-   psuja sie fundamenty, a nie po x% albo po n miesiacach.
-3. Zostawic filtr fundamentalny - to jedyna czesc, ktora sie obronila.
+1. **Wrzucic WIG20** - jedyna brakujaca czesc spec, i jedyny sposob, zeby REL byl niezaleznym
+   sygnalem, a nie powtorzeniem DD.
+2. **Poszerzyc uniwersum o spolki wycofane z obrotu** - bez tego kazdy wynik "value" jest zawyzony,
+   a wnioski krucha (patrz test bez CDR).
+3. **Rozstrzygnac konflikt regula-podmiany vs cierpliwe trzymanie** - albo podniesc margin i
+   swiadomie trzymac dluzej, albo przyjac, ze to strategia rotacyjna i przestac ja opisywac jako
+   value.
+
+---
+
+# Koncepcja v4: Value + Quality + Momentum (aktualna, jedyna z przewaga)
+
+Spec (user): uniwersum duze/plynne PIT; rebalans miesieczny; `FINAL = 0.40*Value + 0.30*Quality +
+0.30*Momentum`; portfel top 4 po 25% bez wyrownywania; replacement gdy trzymana spolka wypadnie z
+top 8, a kandydat jest w top 4 (histereza); **brak trailing stopu, profit targetu i timeoutu** -
+sprzedaz wynika wylacznie z pogorszenia rankingu. Testowana DOKLADNIE ta jedna wersja, bez sweepu wag.
+
+## Wynik
+
+| | CAGR | MaxDD | Sharpe | Calmar | transakcji |
+|---|---|---|---|---|---|
+| **v4** | **14.42%** | -57.97% | **0.660** | **0.249** | 26 |
+| buy&hold uniwersum PIT (uczciwy benchmark) | 9.64% | -55.06% | 0.525 | 0.175 | - |
+| buy&hold STALE 22 spolki (survivorship!) | 14.56% | -69.89% | 0.634 | 0.208 | - |
+
+Przewaga nad uczciwym benchmarkiem: **+4.78pp CAGR**, Sharpe 0.660 vs 0.525, Calmar 0.249 vs 0.175.
+MaxDD nieco gorszy (-58.0% vs -55.1%). Warto zauwazyc, ze v4 mierzone na UCZCIWYM uniwersum
+dorownuje benchmarkowi liczonemu na uniwersum OBCIAZONYM (14.42% vs 14.56%).
+
+## Test kruchosci: 21/22
+
+| | wynik |
+|---|---|
+| bije wlasny benchmark na CAGR | **21/22** |
+| bije wlasny benchmark na Sharpe | **21/22** |
+| rozrzut CAGR | 8.22pp (8.19% - 16.41%) |
+| zakres przewagi | -0.03pp do +6.96pp |
+
+Jedyny wariant bez przewagi to "bez CDR" i jest to praktycznie remis (8.42% vs 8.45%, -0.03pp).
+Czyli: CD Projekt odpowiada za duza czesc BEZWZGLEDNEGO zwrotu, ale przewaga nad benchmarkiem
+utrzymuje sie w 21 z 22 przypadkow - jakosciowo inaczej niz v2 (gdzie usuniecie CDR odwracalo
+wniosek) i niz v3+stop (0/22 na uczciwym uniwersum).
+
+## Wazne zastrzezenie: histereza jest niemal bezwladna
+
+| | wartosc |
+|---|---|
+| obserwacje "trzymana poza top 8" | **22/970 (2.3%)** |
+| miesiace z jakimkolwiek dropoutem | 21/246 (8.5%) |
+| mediana liczby rankowanych spolek | **10** |
+| transakcji | 26 w 246 miesiacach (1 na 9.5 mies.) |
+| mediana czasu trzymania | 632 dni (1.7 roku), max 5997 dni (16.4 roku) |
+
+Uniwersum PIT ma mediane **10 spolek**, wiec "poza top 8" znaczy w praktyce "badz w najgorszej
+DWOJCE z dziesieciu". Regula podmiany prawie nie dziala - **v4 zachowuje sie glownie jak "wybierz 4
+najlepsze wg score i trzymaj latami"**. To znaczy, ze przewaga pochodzi z RANKINGU PRZY WEJSCIU, a
+nie z rotacji. Konsekwencja praktyczna: parametr `keep_rank=8` jest dostrojony do uniwersum
+znacznie wiekszego niz to, ktore realnie mamy - przy 20-30 spolkach zachowywalby sie inaczej.
+
+Najlepsza pojedyncza transakcja: **CDR +967.2%** (2016-01 -> 2019-08, 3.6 roku). Przy 4 pozycjach
+jedna taka transakcja wazy bardzo duzo - dlatego test leave-one-out byl tu konieczny, a nie
+opcjonalny.
+
+## Decyzje implementacyjne wobec spec
+
+1. **Value liczone jako RENTOWNOSCI, nie mnozniki**: `earnings_yield` (odwrotnosc P/E),
+   `book_to_price` (odwrotnosc P/BV), `fcf_yield`. Ta sama tresc czynnika, ale odwrocenie usuwa dwie
+   patologie: przy stracie P/E jest NIEOKRESLONE, a przy zysku bliskim zera leci do
+   +nieskonczonosci (spolka na granicy rentownosci wygladalaby na "najdrozsza na rynku", mimo ze
+   jest tuz obok tej ze strata). Rentownosc jest monotoniczna i ciagla przez zero.
+2. **`ROA > 0` jest REDUNDANTNE z `zysk TTM > 0`** (przy dodatnich aktywach to dokladnie ten sam
+   warunek), wiec te dwa kryteria zawsze zapalaja sie razem i "dodatni zysk" wazy w praktyce 40, a
+   nie 20 pkt Quality. Zaimplementowane doslownie jak w spec, ale warto o tym wiedziec.
+3. **Spolka poza top 8 zostaje, jesli nie ma kto jej zastapic** - spec wiaze sprzedaz z istnieniem
+   kandydata z top 4, wiec sam spadek rankingu nie wypycha do gotowki (strategia jest zawsze
+   zainwestowana, ekspozycja 99%).
+4. **WIG20 przestal byc potrzebny**: v4 uzywa momentum ABSOLUTNEGO 12-1, a nie slabosci relatywnej
+   wzgledem indeksu (jak v2/v3), wiec brak `wig20.txt` nie ogranicza tej wersji.
+
+## Kapitalizacja point-in-time (`market_cap.py`) - warunek konieczny dla Value
+
+BiznesRadar podaje `Liczba akcji` i `Kapitalizacja` TYLKO jako wartosc dzisiejsza. Uzycie
+dzisiejszej liczby akcji dla calej historii bylo by powaznym bledem - `BalanceShareCapital` zmienil
+sie miedzy najstarszym i najnowszym raportem np. CDR **10.6x**, TEN **22.3x**, PEP 4.3x. Liczbe
+akcji odtwarzamy wiec z kapitalu zakladowego:
+
+    nominal   = kapital_zakladowy_dzisiaj / akcje_dzisiaj
+    akcje(t)  = kapital_zakladowy(t) / nominal
+
+Splity nie wymagaja korekty: nie zmieniaja kapitalu zakladowego, a ceny stooq sa juz o nie
+skorygowane. "Dzisiejsza" jest tylko KOTWICA JEDNOSTEK (liczba akcji), nie informacja o przyszlych
+zwrotach; sam szereg kapitalu zakladowego jest w pelni point-in-time.
+
+**Weryfikacja**: `ostatnia cena * liczba akcji` vs `Kapitalizacja` z BiznesRadaru - zgodnosc
+0.988-1.027 dla **22/22** spolek. Ten test zlapal realny blad regexa (wzorzec przeskakiwal zwykly
+`<td>` i zwracal Enterprise Value zamiast kapitalizacji - dla LWB 314 mln zamiast 755 mln, co
+dawalo ilorazy od 0.46 do 2.38).
+
+**Ograniczenie**: metoda zaklada stala wartosc nominalna akcji. Zmiana denominacji ja lamie -
+wykrywalne (dla ALE iloraz kapitalu zakladowego to 0.024, czyli 40-krotny SPADEK) i odrzucane
+(zwracamy None zamiast bledna wartosc).
+
+## Co dalej
+
+1. **Poszerzyc uniwersum** - to wciaz jedyne, co realnie moze podwazyc ten wynik. Przy 10 spolkach w
+   rankingu i 4 slotach histereza top-8 jest bezwladna, a 26 transakcji to mala probka. Priorytet:
+   spolki wycofane z obrotu (survivorship), potem wiecej nazw ogolem.
+2. **Dopasowac `keep_rank` do realnego rozmiaru uniwersum** (np. polowa rankingu, nie stale 8) -
+   inaczej testujemy "kup i trzymaj 4 najlepsze", a nie zadeklarowana rotacje.
+3. Dopiero potem sweep wag - zgodnie z zasada, ze nie ratujemy optymalizacja czegos, co nie ma
+   przewagi. Tutaj przewaga jest, wiec sweep ma sens, ale najpierw fundament danych.
+
+---
+
+# Koncepcja v3: bez podmiany po score + trailing stop
+
+Spec (user): entry `DD >= 25%` + quality gate; max 4 pozycje; holding **36 miesiecy**; bez profit
+targetu; **bez comiesiecznej podmiany po score** - nowy kandydat zastepuje pozycje tylko gdy ta (1)
+nie przechodzi quality gate albo (2) osiagnela 36 miesiecy. Score sluzy WYLACZNIE do wyboru
+kandydata na wolny slot. Plus: `highest_close_since_entry` i **trailing stop** (sprzedaj przy
+spadku o np. 20% od szczytu od zakupu).
+
+**v3 nie wymagalo nowego silnika.** Warunki "nie przechodzi quality gate" i "osiagnela 36 miesiecy"
+to DOKLADNIE istniejace wyjscia `fundamental_fail` i `timeout`, po ktorych zwolniony slot i tak jest
+wypelniany najlepszym kandydatem. Wystarczyla flaga `allow_score_replacement=False` +
+`max_holding_months=36`. Trailing stop to nowe pole `Position.highest_close`, aktualizowane
+**codziennie** (stop jest zleceniem stojacym - kontrola raz w miesiacu przepuszczalaby obsuniecia
+znacznie glebsze niz zadeklarowany prog).
+
+## Wyniki - i dlaczego uniwersum decyduje o wszystkim
+
+| wariant | CAGR | MaxDD | Sharpe | Calmar | transakcji |
+|---|---|---|---|---|---|
+| v2 (podmiana po score, 24m), uniwersum stale | 10.61% | -65.82% | 0.540 | 0.161 | 114 |
+| v2, uniwersum PIT | 8.25% | -48.84% | 0.463 | 0.169 | 63 |
+| v3 (bez podmiany, 36m), uniwersum stale | 13.34% | -60.99% | 0.645 | 0.219 | 34 |
+| v3, uniwersum PIT | 3.17% | -66.43% | 0.252 | 0.048 | 26 |
+| **v3 + trailing stop 20%, uniwersum stale** | **23.34%** | -57.10% | **1.011** | **0.409** | 137 |
+| **v3 + trailing stop 20%, uniwersum PIT** | **5.74%** | -47.07% | **0.360** | 0.122 | 130 |
+| v3 + trailing stop 30%, uniwersum PIT | 7.84% | -68.65% | 0.425 | 0.114 | 77 |
+| v3 + trailing stop 15%, uniwersum PIT | 3.94% | -51.32% | 0.291 | 0.077 | 190 |
+| *benchmark: buy&hold 22 spolki (survivorship!)* | *14.56%* | *-69.89%* | *0.634* | *0.208* | - |
+| *benchmark: buy&hold uniwersum PIT (uczciwy)* | *9.64%* | *-55.06%* | *0.525* | *0.175* | - |
+
+Dwa czytania tej tabeli:
+
+1. **Na stalej liscie ocalalych v3 + trailing stop wyglada znakomicie**: CAGR 23.34%, Sharpe 1.011,
+   Calmar 0.409 - bije survivorship-benchmark o ~9pp CAGR. I NIE jest to artefakt jednej spolki:
+   leave-one-out po wszystkich 22 nazwach bije wlasny benchmark **22/22** razy (rozrzut CAGR
+   16.28%-25.28%), a usuniecie CDR praktycznie nic nie zmienia (23.17% vs 23.34%) - w przeciwienstwie
+   do "odkrycia" z v2, ktore bylo w calosci CDR-owe.
+2. **Na uczciwym uniwersum PIT ta sama strategia przegrywa**: 5.74% vs 9.64% benchmarku, Sharpe
+   0.360 vs 0.525. Zmiana jednej rzeczy - definicji uniwersum - zabiera 17.6pp CAGR.
+
+## Test kruchosci leave-one-out: wynik jest jednoznaczny w OBU kierunkach
+
+Ten sam test (usun po kolei kazda z 22 spolek, porownaj z benchmarkiem liczonym na tej samej,
+pomniejszonej puli) na obu definicjach uniwersum:
+
+| uniwersum | bije wlasny benchmark | rozrzut CAGR | zakres przewagi |
+|---|---|---|---|
+| **stale (survivorship)** | **22/22** | 9.00pp (16.28%-25.28%) | od +2.32pp do +10.50pp |
+| **point-in-time (uczciwe)** | **0/22** | 4.24pp (3.11%-7.35%) | od -1.10pp do -5.08pp |
+
+To nie jest szum. Na obciazonym uniwersum strategia wygrywa ZAWSZE, na uczciwym przegrywa ZAWSZE, a
+rozrzut na PIT jest waski (4.24pp) - czyli wynik nie zalezy od zadnej pojedynczej spolki, tylko od
+tego, jak zdefiniowane jest uniwersum. Ciekawostka: na PIT najlepszy wariant to ten BEZ CDR
+(7.35%, luka tylko -1.10pp) - CDR pogarsza wynik, gdy nie mozna go kupic w latach mikrospolki, bo
+strategia lapie go dopiero po duzej czesci wzrostu.
+
+## Skad ta roznica: zwroty siedzialy w nazwach NIEPLYNNYCH
+
+Sweep progu plynnosci (v3, bez trailing stopu):
+
+| prog plynnosci | srednio spolek | CAGR | Sharpe |
+|---|---|---|---|
+| 0.0 mln (tylko data debiutu) | 11.9 | **11.65%** | 0.594 |
+| 0.5 mln | 9.0 | 2.72% | 0.233 |
+| 1.0 mln | 7.9 | 2.12% | 0.208 |
+| 2.0 mln | 7.0 | 3.17% | 0.252 |
+| 5.0 mln | 5.8 | 3.88% | 0.281 |
+| 10.0 mln | 4.4 | 4.09% | 0.293 |
+
+Urwisko miedzy progiem 0 i 0.5 mln jest kluczowe: **caly wynik pochodzil z nazw malych i
+nieplynnych**. W uniwersum faktycznie "duzych i plynnych" - a takie bylo zalozenie spec - efekt
+znika. Do tego te nieplynne nazwy to w tej probce dokladnie te, ktore urosly kilkukrotnie (CDR w
+latach mikrospolki, DNP, TEN, TXT, DVL), wiec czesc tego "efektu malych spolek" to po prostu
+survivorship w innym przebraniu.
+
+## Trailing stop: mechanicznie dziala, ale zmienia charakter strategii
+
+Statystyki (uniwersum stale, prog 20%): 137 transakcji, **126 wyjsc stopem**, 6 fundamental fail,
+tylko **1 timeout 36m**. Trafnosc 45% (61/137), ale sredni zwrot **+21.00%**. Mediana trzymania 126
+dni, zero transakcji 0-dniowych (brak churnu).
+
+To klasyczna asymetria trend-followingu: ucinaj straty na -20%, pozwol zwyciezcom rosnac. Ale
+konsekwencja jest taka, ze **trailing stop przejal role glownego mechanizmu wyjscia** (92% wyjsc) -
+limit 36 miesiecy praktycznie nie dziala, a strategia przestaje byc "cierpliwym value" i staje sie
+trend-followingiem z valuowym filtrem wejscia. To ten sam wzorzec, co w v2 (tam role wyjscia przejela
+regula podmiany) - warto o tym wiedziec swiadomie, bo spec zaklada cos innego.
+
+## Wniosek
+
+- **Poprawa uniwersum byla wazniejsza niz wszystkie zmiany regul razem.** Ta sama strategia daje
+  23.34% albo 5.74% w zaleznosci od tego, czy uniwersum jest uczciwe. Zadna zmiana parametrow nie ma
+  takiej sily.
+- **v3 > v2 na stalym uniwersum** (13.34% vs 10.61%, Sharpe 0.645 vs 0.540) - usuniecie podmiany po
+  score realnie pomoglo, przy 3x mniejszej liczbie transakcji. To potwierdza wczesniejsza diagnoze,
+  ze podmiana dzialala jak ukryty profit target.
+- **v2 > v3 na uniwersum PIT** (8.25% vs 3.17%) - zaleznosc sie odwraca. Przy waskim uniwersum
+  (3-15 spolek) trzymanie pozycji 36 miesiecy bez mozliwosci podmiany jest kosztowne, bo nie ma
+  z czego wybierac przy nastepnej okazji.
+- **Trailing stop jest jedyna zmiana, ktora przeszla test leave-one-out 22/22** - ale tylko na
+  uniwersum obciazonym. Na PIT nie ratuje wyniku.
+- Zadna z trzech wersji nie bije uczciwego benchmarku PIT.
+
+---
+
+# Koncepcja v1: "przeceniona + zdrowa, profit target" (odrzucona)
+
+Uniwersum 4 spolki (DNP, CDR, KGH, PKN), okno 2006-03 -> 2026-08. Bramka: dd <= -25% + zdrowe
+fundamenty. Wyjscie: +20% od wejscia albo 6 miesiecy.
+
+| | CAGR | MaxDD | Sharpe | Calmar |
+|---|---|---|---|---|
+| strategia (ekspozycja 31%) | 3.27% | -42.72% | 0.288 | 0.077 |
+| buy&hold 4 spolki (100%) | 18.94% | -80.04% | 0.651 | 0.237 |
+| **buy&hold skalowany do 31%, zero timingu** | **7.15%** | **-37.22%** | **0.651** | **0.192** |
+
+**Koncepcja niszczy wartosc**: "trzymaj 31% tych spolek na stale, bez zadnego sygnalu" bije ja na
+kazdej metryce. Statystyki transakcji wygladaly przy tym niewinnie (47 transakcji, 62% zyskownych,
+srednio +6.08%) - dowod, ze sam "win rate" jest mylacym miernikiem.
+
+Sweep 14 wariantow: (1) regula wyjscia ucina zwyciezcow (3m->24m: CAGR 2.38%->8.16%; +10%->+60%:
+2.55%->5.91%); (2) filtr fundamentalny realnie pomagal (bez niego 1.98% / MaxDD -62%).
