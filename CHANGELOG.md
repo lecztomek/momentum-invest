@@ -2,6 +2,76 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-19
+
+- **NOWY SILNIK `value_engine/`** - calkiem nowa koncepcja na GPW (user: "robimy test calkiem nowej
+  koncepcji... nie wiem czy nasz engine sie nada jesli tak to super jesli nie to robimy to w nowym
+  folderze"): kup spolke mocno przecenona wzgledem 52W high, ale fundamentalnie zdrowa; sprzedaj po
+  odbiciu albo po X miesiacach. Dane dostarczone przez usera: ceny dzienne PL (`data/pl`, format
+  stooq) + surowe strony BiznesRadaru w SQLite (`biznesradar_raw.sqlite3` + scraper).
+
+  **OCENA `engine_v2` (zrobiona przed napisaniem kodu): nie nadaje sie, ale tylko z jednego
+  powodu.** Cztery z pieciu elementow koncepcji mieszcza sie natywnie (ceny PL czyta istniejacy
+  `stooq_csv` BEZ ZMIAN - ten sam format co US/UK; sygnal 52W to zwykly wskaznik+filtr; filtr
+  fundamentalny moglby byc wskaznikiem; top 2-3 equal weight to `top_n`+`rank_weights`). Lamie sie
+  **piaty - regula wyjscia**: `engine_v2` jest silnikiem ROTACYJNYM i BEZSTANOWYM WZGLEDEM POZYCJI
+  (kazdy miesiac liczy wagi od zera, `PortfolioState` niesie tylko `current_weights`/`equity`/
+  `tax_base_equity`/`last_target_signature`), a "exit po odbiciu" wymaga CENY WEJSCIA, a "exit po
+  6 miesiacach" wymaga CZASU TRZYMANIA - obu tam nie ma. Dodanie ich znaczylo by przebudowe
+  wspolnego silnika ~50 strategii, przeciwko zasadzie "wariant eksperymentalny = osobny plik".
+  Stad osobny folder, ale z REALNYM ponownym uzyciem `engine_v2`: loader `stooq_csv` i
+  `metrics.compute_metrics` (te same definicje CAGR/MaxDD/Sharpe/Calmar, liczby porownywalne 1:1).
+
+  **Moduly**: `br_parser.py` (HTML -> szeregi), `fundamentals.py` (panel point-in-time),
+  `signals.py` (obsuniecie od 52W high), `backtest.py` (silnik dyskretnych transakcji),
+  `run_test.py`. 34 nowe testy (`value_engine/tests/`), wszystkie zielone.
+
+  **POINT-IN-TIME (najwazniejsza czesc poprawnosci)**: raport za okres konczacy sie 2020-12-31 nie
+  jest znany 2020-12-31 - zmierzona mediana opoznienia publikacji **35-58 dni**, maksimum **115
+  dni**. BiznesRadar podaje wiersz "Data publikacji" (`data-field="PrimaryReport"`), wiec panel
+  indeksuje wartosci po dacie publikacji, nie po koncu okresu. Test na prawdziwych danych: CD
+  Projekt, raport za 2020 opublikowany 2021-04-22 - 2021-04-21 strategia "zna" TTM zysk 279 tys.,
+  2021-04-23 juz 1 154 tys. (4x skok w jeden dzien). Bez tego backtest decydowalby na danych z
+  przyszlosci. NIE naprawia to korekt/restatements (timing tak, tresc nie).
+
+  **Dwa bledy zlapane w trakcie budowy** (oba przez kontrole, ktore celowo rzucaja blad zamiast
+  cicho dzialac dalej):
+  - parser gubil OSTATNIA kolumne (najswiezsze dane), bo ostatnia komorka ma `class="h newest"`,
+    a regex wymagal dokladnie `class="h"` - zlapane przez kontrole "liczba komorek == liczba
+    okresow";
+  - okno metryk startowalo 1995 (od pierwszych CEN), a fundamenty zaczynaja sie 2005-2008 (DNP
+    dopiero 2016) - kilkanascie lat martwej gotowki rozwadnialo CAGR (3.27% -> bylo 2.15%).
+    Dokladnie ten sam blad, co naprawiony 2026-08-12 (2) dla strategii laczonych w `engine_v2`.
+  - Parser czyta POZYCYJNIE per komorke, bo czesc komorek (realnie w `balance`) ma tylko
+    `changeqq` bez `span.value` - "zbierz wszystkie liczby z wiersza" przesunelo by wartosci na
+    zle okresy. Osobny test tego pilnuje.
+
+  **WYNIK: koncepcja w tej postaci niszczy wartosc.** Okno 2006-03 -> 2026-08, uniwersum
+  DNP/CDR/KGH/PKN, konfiguracja bazowa (dd <= -25%, exit +20% albo 6m, max 3 pozycje, 40 bps):
+
+  | | CAGR | MaxDD | Sharpe | Calmar |
+  |---|---|---|---|---|
+  | strategia (srednia ekspozycja 31%) | 3.27% | -42.72% | 0.288 | 0.077 |
+  | buy&hold 4 spolki (100%) | 18.94% | -80.04% | 0.651 | 0.237 |
+  | **buy&hold skalowany do 31%, ZERO timingu** | **7.15%** | **-37.22%** | **0.651** | **0.192** |
+
+  Trzecia linia to najuczciwsze porownanie: "trzymaj 31% tych spolek na stale, bez zadnego sygnalu"
+  bije strategie na KAZDEJ metryce. Statystyki transakcji wygladaja przy tym niewinnie (47
+  transakcji, 62% zyskownych, srednio +6.08%) - dowod, ze sam "win rate" jest mylacym miernikiem.
+
+  Sweep 14 wariantow dal dwa czyste, monotoniczne wnioski: (1) **regula wyjscia jest zla** - im
+  dluzej trzymamy i im wyzszy prog realizacji, tym lepiej (3m->24m: CAGR 2.38%->8.16%; +10%->+60%:
+  2.55%->5.91%), czyli sprzedawanie po +20% i przymusowe zamykanie po 6m systematycznie UCINA
+  ZWYCIEZCOW; (2) **filtr fundamentalny realnie pomaga** - bez niego CAGR 1.98%/MaxDD -62%, z nim
+  3.27%/-42.7%. To jedyny element koncepcji, ktory sie obronil.
+
+  **Ograniczenia zapisane jawnie** (patrz `value_engine/README.md`): uniwersum to 4 recznie wybrane
+  spolki, ktore PRZETRWALY i wygraly (CDR 86x, KGH 13x, DNP 8.7x, PKN 5x) - benchmark buy&hold jest
+  tym zawyzony, a "kup przecenione" jest testowane wylacznie na przecenach, po ktorych nastapilo
+  odbicie; 12-87 transakcji zaleznie od wariantu; portfel 2-3 z uniwersum 4 spolek to prawie brak
+  selekcji. Zadna liczba nie jest statystycznie mocna - ale kierunek jest spojny we wszystkich 14
+  wariantach.
+
 ## 2026-08-13
 
 - **NOWA STRATEGIA `strategies_v2/best18/`** - `best17_a` + `xle.us` (energetyka) + `shy.us`
