@@ -9,6 +9,7 @@ uniwersum point-in-time).
 | v1: przeceniona + zdrowa, profit target | `backtest.py` | `run_test.py` | odrzucona (niszczy wartosc) |
 | v2: quality value, score 0-100, sloty + podmiana | `quality_value_backtest.py` | `run_quality_value.py` | blisko benchmarku, nie bije |
 | v3: bez podmiany, 36m, opcjonalny trailing stop | ten sam silnik, `allow_score_replacement=False` | `run_v3_comparison.py` | **zaleznie od uniwersum** - patrz nizej |
+| **v4: Value + Quality + Momentum, top4/top8** | `factor_backtest.py` | `run_factor.py` | **pierwsza wersja z przewaga nad uczciwym benchmarkiem (21/22 leave-one-out)** |
 
 **Najwazniejszy wniosek calej serii**: wyniki v3 zmieniaja sie DRASTYCZNIE w zaleznosci od tego, czy
 uniwersum jest uczciwe (point-in-time) czy obciazone survivorship. Na stalej liscie dzisiejszych
@@ -239,6 +240,110 @@ cierpliwy value. To najwazniejsza rozbieznosc miedzy intencja spec a jej faktycz
 3. **Rozstrzygnac konflikt regula-podmiany vs cierpliwe trzymanie** - albo podniesc margin i
    swiadomie trzymac dluzej, albo przyjac, ze to strategia rotacyjna i przestac ja opisywac jako
    value.
+
+---
+
+# Koncepcja v4: Value + Quality + Momentum (aktualna, jedyna z przewaga)
+
+Spec (user): uniwersum duze/plynne PIT; rebalans miesieczny; `FINAL = 0.40*Value + 0.30*Quality +
+0.30*Momentum`; portfel top 4 po 25% bez wyrownywania; replacement gdy trzymana spolka wypadnie z
+top 8, a kandydat jest w top 4 (histereza); **brak trailing stopu, profit targetu i timeoutu** -
+sprzedaz wynika wylacznie z pogorszenia rankingu. Testowana DOKLADNIE ta jedna wersja, bez sweepu wag.
+
+## Wynik
+
+| | CAGR | MaxDD | Sharpe | Calmar | transakcji |
+|---|---|---|---|---|---|
+| **v4** | **14.42%** | -57.97% | **0.660** | **0.249** | 26 |
+| buy&hold uniwersum PIT (uczciwy benchmark) | 9.64% | -55.06% | 0.525 | 0.175 | - |
+| buy&hold STALE 22 spolki (survivorship!) | 14.56% | -69.89% | 0.634 | 0.208 | - |
+
+Przewaga nad uczciwym benchmarkiem: **+4.78pp CAGR**, Sharpe 0.660 vs 0.525, Calmar 0.249 vs 0.175.
+MaxDD nieco gorszy (-58.0% vs -55.1%). Warto zauwazyc, ze v4 mierzone na UCZCIWYM uniwersum
+dorownuje benchmarkowi liczonemu na uniwersum OBCIAZONYM (14.42% vs 14.56%).
+
+## Test kruchosci: 21/22
+
+| | wynik |
+|---|---|
+| bije wlasny benchmark na CAGR | **21/22** |
+| bije wlasny benchmark na Sharpe | **21/22** |
+| rozrzut CAGR | 8.22pp (8.19% - 16.41%) |
+| zakres przewagi | -0.03pp do +6.96pp |
+
+Jedyny wariant bez przewagi to "bez CDR" i jest to praktycznie remis (8.42% vs 8.45%, -0.03pp).
+Czyli: CD Projekt odpowiada za duza czesc BEZWZGLEDNEGO zwrotu, ale przewaga nad benchmarkiem
+utrzymuje sie w 21 z 22 przypadkow - jakosciowo inaczej niz v2 (gdzie usuniecie CDR odwracalo
+wniosek) i niz v3+stop (0/22 na uczciwym uniwersum).
+
+## Wazne zastrzezenie: histereza jest niemal bezwladna
+
+| | wartosc |
+|---|---|
+| obserwacje "trzymana poza top 8" | **22/970 (2.3%)** |
+| miesiace z jakimkolwiek dropoutem | 21/246 (8.5%) |
+| mediana liczby rankowanych spolek | **10** |
+| transakcji | 26 w 246 miesiacach (1 na 9.5 mies.) |
+| mediana czasu trzymania | 632 dni (1.7 roku), max 5997 dni (16.4 roku) |
+
+Uniwersum PIT ma mediane **10 spolek**, wiec "poza top 8" znaczy w praktyce "badz w najgorszej
+DWOJCE z dziesieciu". Regula podmiany prawie nie dziala - **v4 zachowuje sie glownie jak "wybierz 4
+najlepsze wg score i trzymaj latami"**. To znaczy, ze przewaga pochodzi z RANKINGU PRZY WEJSCIU, a
+nie z rotacji. Konsekwencja praktyczna: parametr `keep_rank=8` jest dostrojony do uniwersum
+znacznie wiekszego niz to, ktore realnie mamy - przy 20-30 spolkach zachowywalby sie inaczej.
+
+Najlepsza pojedyncza transakcja: **CDR +967.2%** (2016-01 -> 2019-08, 3.6 roku). Przy 4 pozycjach
+jedna taka transakcja wazy bardzo duzo - dlatego test leave-one-out byl tu konieczny, a nie
+opcjonalny.
+
+## Decyzje implementacyjne wobec spec
+
+1. **Value liczone jako RENTOWNOSCI, nie mnozniki**: `earnings_yield` (odwrotnosc P/E),
+   `book_to_price` (odwrotnosc P/BV), `fcf_yield`. Ta sama tresc czynnika, ale odwrocenie usuwa dwie
+   patologie: przy stracie P/E jest NIEOKRESLONE, a przy zysku bliskim zera leci do
+   +nieskonczonosci (spolka na granicy rentownosci wygladalaby na "najdrozsza na rynku", mimo ze
+   jest tuz obok tej ze strata). Rentownosc jest monotoniczna i ciagla przez zero.
+2. **`ROA > 0` jest REDUNDANTNE z `zysk TTM > 0`** (przy dodatnich aktywach to dokladnie ten sam
+   warunek), wiec te dwa kryteria zawsze zapalaja sie razem i "dodatni zysk" wazy w praktyce 40, a
+   nie 20 pkt Quality. Zaimplementowane doslownie jak w spec, ale warto o tym wiedziec.
+3. **Spolka poza top 8 zostaje, jesli nie ma kto jej zastapic** - spec wiaze sprzedaz z istnieniem
+   kandydata z top 4, wiec sam spadek rankingu nie wypycha do gotowki (strategia jest zawsze
+   zainwestowana, ekspozycja 99%).
+4. **WIG20 przestal byc potrzebny**: v4 uzywa momentum ABSOLUTNEGO 12-1, a nie slabosci relatywnej
+   wzgledem indeksu (jak v2/v3), wiec brak `wig20.txt` nie ogranicza tej wersji.
+
+## Kapitalizacja point-in-time (`market_cap.py`) - warunek konieczny dla Value
+
+BiznesRadar podaje `Liczba akcji` i `Kapitalizacja` TYLKO jako wartosc dzisiejsza. Uzycie
+dzisiejszej liczby akcji dla calej historii bylo by powaznym bledem - `BalanceShareCapital` zmienil
+sie miedzy najstarszym i najnowszym raportem np. CDR **10.6x**, TEN **22.3x**, PEP 4.3x. Liczbe
+akcji odtwarzamy wiec z kapitalu zakladowego:
+
+    nominal   = kapital_zakladowy_dzisiaj / akcje_dzisiaj
+    akcje(t)  = kapital_zakladowy(t) / nominal
+
+Splity nie wymagaja korekty: nie zmieniaja kapitalu zakladowego, a ceny stooq sa juz o nie
+skorygowane. "Dzisiejsza" jest tylko KOTWICA JEDNOSTEK (liczba akcji), nie informacja o przyszlych
+zwrotach; sam szereg kapitalu zakladowego jest w pelni point-in-time.
+
+**Weryfikacja**: `ostatnia cena * liczba akcji` vs `Kapitalizacja` z BiznesRadaru - zgodnosc
+0.988-1.027 dla **22/22** spolek. Ten test zlapal realny blad regexa (wzorzec przeskakiwal zwykly
+`<td>` i zwracal Enterprise Value zamiast kapitalizacji - dla LWB 314 mln zamiast 755 mln, co
+dawalo ilorazy od 0.46 do 2.38).
+
+**Ograniczenie**: metoda zaklada stala wartosc nominalna akcji. Zmiana denominacji ja lamie -
+wykrywalne (dla ALE iloraz kapitalu zakladowego to 0.024, czyli 40-krotny SPADEK) i odrzucane
+(zwracamy None zamiast bledna wartosc).
+
+## Co dalej
+
+1. **Poszerzyc uniwersum** - to wciaz jedyne, co realnie moze podwazyc ten wynik. Przy 10 spolkach w
+   rankingu i 4 slotach histereza top-8 jest bezwladna, a 26 transakcji to mala probka. Priorytet:
+   spolki wycofane z obrotu (survivorship), potem wiecej nazw ogolem.
+2. **Dopasowac `keep_rank` do realnego rozmiaru uniwersum** (np. polowa rankingu, nie stale 8) -
+   inaczej testujemy "kup i trzymaj 4 najlepsze", a nie zadeklarowana rotacje.
+3. Dopiero potem sweep wag - zgodnie z zasada, ze nie ratujemy optymalizacja czegos, co nie ma
+   przewagi. Tutaj przewaga jest, wiec sweep ma sens, ale najpierw fundament danych.
 
 ---
 

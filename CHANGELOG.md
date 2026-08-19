@@ -2,6 +2,74 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-19 (4)
+
+- **KONCEPCJA v4: Value + Quality + Momentum - PIERWSZA WERSJA Z PRZEWAGA NAD UCZCIWYM
+  BENCHMARKIEM.** Spec usera: `FINAL = 0.40*Value + 0.30*Quality + 0.30*Momentum`, top 4 po 25%,
+  histereza (wypada poza top 8, wchodzi z top 4), brak stopu/targetu/timeoutu, rebalans miesieczny,
+  uniwersum PIT. Testowana DOKLADNIE ta jedna wersja, bez sweepu wag ("jesli juz ona nie ma przewagi
+  nad PIT buy&hold, nie bedziemy jej ratowac optymalizacja").
+
+  Nowe moduly: `market_cap.py` (kapitalizacja PIT), `factor_scoring.py` (Value/Quality/Momentum),
+  `factor_backtest.py` (silnik top4/top8), `run_factor.py`. 41 nowych testow, lacznie **122** w
+  `value_engine/tests/`, wszystkie zielone.
+
+  **WYNIK:**
+
+  | | CAGR | MaxDD | Sharpe | Calmar | n |
+  |---|---|---|---|---|---|
+  | **v4** | **14.42%** | -57.97% | **0.660** | **0.249** | 26 |
+  | buy&hold uniwersum PIT (uczciwy) | 9.64% | -55.06% | 0.525 | 0.175 | - |
+  | buy&hold STALE 22 spolki (survivorship!) | 14.56% | -69.89% | 0.634 | 0.208 | - |
+
+  Przewaga **+4.78pp CAGR**, Sharpe +0.135, Calmar +0.074 (MaxDD nieco gorszy). v4 mierzone na
+  UCZCIWYM uniwersum dorownuje benchmarkowi liczonemu na uniwersum OBCIAZONYM.
+
+  **TEST KRUCHOSCI leave-one-out: 21/22 na CAGR i 21/22 na Sharpe**, rozrzut 8.22pp (8.19%-16.41%),
+  zakres przewagi -0.03pp do +6.96pp. Jedyny wariant bez przewagi to "bez CDR" i to praktycznie remis
+  (8.42% vs 8.45%). Czyli CD Projekt odpowiada za duza czesc BEZWZGLEDNEGO zwrotu (najlepsza
+  transakcja: CDR +967% w 2016-2019), ale PRZEWAGA utrzymuje sie w 21 z 22 przypadkow - jakosciowo
+  inaczej niz v2 (usuniecie CDR odwracalo wniosek) i niz v3+trailing stop (0/22 na uczciwym uniwersum).
+
+  **ZASTRZEZENIE, ktore trzeba czytac razem z wynikiem: histereza jest niemal bezwladna.**
+  Obserwacje "trzymana poza top 8": **22/970 (2.3%)**; mediana liczby rankowanych spolek to **10**,
+  wiec "poza top 8" znaczy "badz w najgorszej DWOJCE z dziesieciu". 26 transakcji w 246 miesiacach
+  (1 na 9.5 mies.), mediana trzymania 632 dni, maks 5997 dni (16.4 roku). **v4 zachowuje sie glownie
+  jak "wybierz 4 najlepsze wg score i trzymaj latami"** - przewaga pochodzi z rankingu PRZY WEJSCIU,
+  nie z rotacji. `keep_rank=8` jest dostrojone do uniwersum znacznie wiekszego niz realnie mamy.
+
+  **NOWY MODUL `market_cap.py`** - warunek konieczny dla Value (P/E, P/BV, FCF/MC potrzebuja
+  kapitalizacji, ktorej BiznesRadar podaje TYLKO wartosc dzisiejsza). Liczba akcji odtwarzana z
+  `BalanceShareCapital`: `nominal = kapital_dzisiaj/akcje_dzisiaj`, `akcje(t) = kapital(t)/nominal`.
+  Konieczne, bo kapital zakladowy zmienil sie np. CDR **10.6x**, TEN **22.3x**, PEP 4.3x - przy
+  stalej liczbie akcji historyczne P/E i P/BV bylyby bledne o rzad wielkosci. Splity nie wymagaja
+  korekty (nie zmieniaja kapitalu zakladowego, a ceny stooq sa o nie skorygowane). Weryfikacja:
+  `cena * akcje` vs `Kapitalizacja` z BiznesRadaru - zgodnosc 0.988-1.027 dla **22/22** spolek.
+
+  **BLAD ZLAPANY PRZEZ TE WERYFIKACJE**: regex `Kapitalizacja:.*?<span[^>]*>` przeskakiwal zwykly
+  `<td>` i zwracal NASTEPNY wiersz tabeli, czyli Enterprise Value (dla LWB 314 mln zamiast 755 mln) -
+  ilorazy wychodzily od 0.46 do 2.38. Po poprawce wszystkie 22 w granicach 3%.
+
+  **DRUGI BLAD - w logu diagnostycznym silnika**: `held_ranks` zapisywane PO podmianach, wiec pozycja
+  wyrzucona nie byla juz w portfelu i "poza top 8" nigdy sie nie pokazywalo (log dawal 0/970 przy 22
+  faktycznych dropoutach). Naprawione: rangi zapisywane PRZED podmianami. Bez tego caly wniosek o
+  bezwladnosci histerezy byl by niewidoczny.
+
+  **DECYZJE WOBEC SPEC** (zapisane w README i pilnowane testami): (a) Value liczone jako RENTOWNOSCI
+  (`earnings_yield`/`book_to_price`/`fcf_yield`), nie mnozniki - odwrocenie usuwa dwie patologie P/E:
+  nieokreslonosc przy stracie i wybuch do nieskonczonosci przy zysku bliskim zera; (b) `ROA > 0` jest
+  REDUNDANTNE z `zysk TTM > 0` (przy dodatnich aktywach to ten sam warunek), wiec "dodatni zysk" wazy
+  w praktyce 40, a nie 20 pkt Quality - zaimplementowane doslownie, ale udokumentowane; (c) spolka
+  poza top 8 zostaje w portfelu, gdy nie ma kandydata z top 4 (ekspozycja 99%); (d) **WIG20 przestal
+  byc potrzebny** - v4 uzywa momentum ABSOLUTNEGO 12-1, nie slabosci relatywnej jak v2/v3.
+
+  **BLAD W MOICH TESTACH, ktory ujawnil wlasnosc strategii**: pierwsza wersja testow zakladala, ze
+  przy identycznych fundamentach drozejaca spolka wygrywa ranking. Jest odwrotnie - VALUE (40%)
+  przebija MOMENTUM (30%), wiec wygrywa TANSZA, czyli ta po spadku (zmierzone: FINAL 77.5 dla
+  najtanszej vs 70.0 dla najdrozszej). Testy przepisane tak, by sterowac rankingiem przez Quality
+  (niezalezne od ceny), a niezmiennik wejsc sprawdzany wzgledem WLASNEGO rankingu silnika, nie
+  wzgledem mojego zalozenia.
+
 ## 2026-08-19 (3)
 
 - **UNIWERSUM POINT-IN-TIME (`value_engine/universe.py`) + KONCEPCJA v3 + TRAILING STOP.** User
