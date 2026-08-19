@@ -143,7 +143,11 @@ def test_real_snapshots_all_parse_with_consistent_lengths():
     _skip_if_no_db()
     reports = load_snapshots(DB_PATH)
 
-    assert len(reports) == 24  # 4 tickery x 3 typy raportow x 2 czestotliwosci
+    # 3 typy raportow x 2 czestotliwosci na kazdy ticker - liczba tickerow rosnie wraz z
+    # uniwersum, wiec sprawdzamy KOMPLETNOSC per ticker, a nie zaszyta liczbe raportow
+    tickers = {r.ticker for r in reports}
+    assert len(tickers) >= 20, f"oczekiwane uniwersum ~20-25 spolek, jest {len(tickers)}"
+    assert len(reports) == 6 * len(tickers), "nie kazdy ticker ma pelne 6 kombinacji raportow"
     for report in reports:
         assert report.periods, f"{report.ticker}/{report.report_type}: zero okresow"
         assert len(report.publication_dates) == len(report.periods)

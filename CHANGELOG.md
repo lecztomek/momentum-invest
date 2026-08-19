@@ -2,7 +2,76 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
-## 2026-08-19
+## 2026-08-19 (2)
+
+- **KONCEPCJA v2 W `value_engine/`: "quality value" ze score 0-100 i slotami** - user podal
+  precyzyjna specyfikacje: uniwersum ~20-25 duzych spolek GPW bez bankow/ubezpieczycieli, max 4
+  pozycje po 25%, bramka `drawdown >= 25%` I `QUALITY >= 50`,
+  `SCORE = 0.50*DD + 0.25*REL + 0.25*QUALITY` (DD/REL jako percentyle, QUALITY 0/25/50/75/100),
+  wolny slot -> najlepszy kandydat, portfel pelny -> podmiana najslabszej gdy nowy lepszy o >= 10
+  pkt, wyjscie na fundamental fail albo max holding 24/36m BEZ profit targetu, decyzje miesieczne.
+
+  Uniwersum realnie **22 spolki** (user dorzucil 18 nowych + baze SQLite 16MB -> 72MB): acp ale asb
+  car cdr cps dnp dom dvl kgh kru lpp lwb neu opl pep pge pkn rbw ten tpe txt. Parser przeszedl na
+  wszystkich 132 stronach bez zmian.
+
+  Nowe moduly: `scoring.py` (QUALITY + percentyle + skladanie SCORE), `quality_value_backtest.py`
+  (sloty + regula podmiany), `run_quality_value.py` (runner + sweep + benchmarki). 30 nowych
+  testow, lacznie 64 w `value_engine/tests/`, wszystkie zielone.
+
+  **WYNIK (okno 2006-03 -> 2026-08): strategia NIE bije benchmarku, ale jest duzo blizej niz v1.**
+
+  | | CAGR | MaxDD | Sharpe | Calmar |
+  |---|---|---|---|---|
+  | strategia (ekspozycja 97%) | 10.61% | -65.82% | 0.540 | 0.161 |
+  | buy&hold uniwersum (100%) | **14.56%** | -69.89% | **0.634** | **0.208** |
+  | buy&hold skalowany do 97%, zero timingu | **14.23%** | -68.75% | **0.634** | **0.207** |
+
+  Stosunek CAGR strategii do benchmarku: v1 = 0.46, v2 = **0.75**. Poprawa jest realna, ale
+  benchmark wciaz wygrywa na zwrocie i na obu miarach ryzyka; strategia poprawia tylko MaxDD
+  (-65.8% vs -68.8%) i to nieznacznie.
+
+  **NAJWAZNIEJSZE USTALENIE - "brak bramki jakosci" to NIE odkrycie, tylko artefakt jednej
+  spolki.** W sweepie 12 wariantow jedyny bijacy benchmark to `QUALITY >= 0` (CAGR 15.36%, Sharpe
+  0.694, Calmar 0.241). Wygladalo na realne odkrycie ("bramka jakosci szkodzi"). Sprawdzenie:
+  bez bramki strategia kupuje CD Projekt 13 razy, w tym przy QUALITY 0-25. Po usunieciu CDR
+  (86x w oknie) z uniwersum wniosek sie ODWRACA:
+
+  | | CAGR | Sharpe |
+  |---|---|---|
+  | bez CDR, QUALITY>=0 | 12.31% | 0.594 |
+  | bez CDR, buy&hold | **13.27%** | **0.607** |
+
+  Przewaga nad benchmarkiem +0.80pp zamienia sie w -0.96pp. **Jedna spolka z 22 przewraca
+  wniosek** - miara kruchosci tej probki i przypomnienie, dlaczego sweep bez weryfikacji jest
+  niebezpieczny.
+
+  **OBSERWACJA STRUKTURALNA: regula podmiany przejela role profit targetu**, ktorego spec chcial
+  uniknac. Powody wyjscia: podmiana **77%** (88/114), fundamental fail 11%, timeout 24m tylko
+  **8%** (9 razy). Mediana trzymania **182 dni**, 51% pozycji krocej niz 6 miesiecy. Strategia
+  realnie zachowuje sie jak miesieczna rotacja po obsunieciu, nie jak cierpliwy value - to
+  najwazniejsza rozbieznosc miedzy intencja spec a jej dzialaniem.
+
+  **Wnioski powtarzalne miedzy v1 i v2**: (1) dluzsze trzymanie lepsze (v2: 12m->24m->36m daje
+  8.97%->10.61%->11.96%; v1: 3m->24m daje 2.38%->8.16%); (2) koncentracja szkodzi (max 2 pozycje:
+  CAGR 5.94%, MaxDD -77.5%, najgorszy wariant); (3) wymuszony rebalans do 25% co miesiac pogarsza
+  MaxDD (-65.8% -> -74.1%) przy tym samym CAGR.
+
+  **Bledy zlapane w trakcie budowy**: (a) okno metryk startowalo 1995 (od pierwszych CEN) mimo ze
+  fundamenty zaczynaja sie ~2005 - `compute_quality` zwraca poprawny obiekt ze score 0 takze przy
+  BRAKU danych, wiec ranking istnial od 1995 i dekada martwej gotowki rozwadniala CAGR (10.61% vs
+  bledne 6.89%); to TRZECI raz ten sam wzorzec bledu w repo (patrz 2026-08-12 (2) i wpis (1)
+  ponizej); (b) raportowana ekspozycja dzielila przez zaszyte 4 zamiast przez `max_positions`, co
+  dawalo niemozliwe 139% dla wariantu z 6 pozycjami.
+
+  **Ograniczenia zapisane jawnie** (`value_engine/README.md`): brak WIG20 - `REL` liczony wzgledem
+  rownowazonej sredniej uniwersum (fallback z ostrzezeniem w kazdym uruchomieniu; dodatkowo taki
+  REL jest czesciowo redundantny z DD); uniwersum zawiera tylko spolki, ktore PRZETRWALY do dzis;
+  114 transakcji w 20 latach; MaxDD ~-65% bardzo wysoki. `Debt` = oprocentowane zadluzenie
+  (`Borrowings`), swiadomie BEZ leasingu, bo IFRS 16 (~2019) dalby sztuczny skok u kazdej spolki
+  naraz.
+
+## 2026-08-19 (1)
 
 - **NOWY SILNIK `value_engine/`** - calkiem nowa koncepcja na GPW (user: "robimy test calkiem nowej
   koncepcji... nie wiem czy nasz engine sie nada jesli tak to super jesli nie to robimy to w nowym
