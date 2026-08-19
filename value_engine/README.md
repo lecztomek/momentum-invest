@@ -282,6 +282,22 @@ Dwa czytania tej tabeli:
 2. **Na uczciwym uniwersum PIT ta sama strategia przegrywa**: 5.74% vs 9.64% benchmarku, Sharpe
    0.360 vs 0.525. Zmiana jednej rzeczy - definicji uniwersum - zabiera 17.6pp CAGR.
 
+## Test kruchosci leave-one-out: wynik jest jednoznaczny w OBU kierunkach
+
+Ten sam test (usun po kolei kazda z 22 spolek, porownaj z benchmarkiem liczonym na tej samej,
+pomniejszonej puli) na obu definicjach uniwersum:
+
+| uniwersum | bije wlasny benchmark | rozrzut CAGR | zakres przewagi |
+|---|---|---|---|
+| **stale (survivorship)** | **22/22** | 9.00pp (16.28%-25.28%) | od +2.32pp do +10.50pp |
+| **point-in-time (uczciwe)** | **0/22** | 4.24pp (3.11%-7.35%) | od -1.10pp do -5.08pp |
+
+To nie jest szum. Na obciazonym uniwersum strategia wygrywa ZAWSZE, na uczciwym przegrywa ZAWSZE, a
+rozrzut na PIT jest waski (4.24pp) - czyli wynik nie zalezy od zadnej pojedynczej spolki, tylko od
+tego, jak zdefiniowane jest uniwersum. Ciekawostka: na PIT najlepszy wariant to ten BEZ CDR
+(7.35%, luka tylko -1.10pp) - CDR pogarsza wynik, gdy nie mozna go kupic w latach mikrospolki, bo
+strategia lapie go dopiero po duzej czesci wzrostu.
+
 ## Skad ta roznica: zwroty siedzialy w nazwach NIEPLYNNYCH
 
 Sweep progu plynnosci (v3, bez trailing stopu):

@@ -57,12 +57,22 @@ Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co 
   Ta sama strategia daje **23.34% albo 5.74%** w zaleznosci WYLACZNIE od definicji uniwersum -
   poprawa uniwersum okazala sie wazniejsza niz wszystkie zmiany regul razem.
 
-  **TRAILING STOP PRZESZEDL TEST KRUCHOSCI, w przeciwienstwie do "odkrycia" z v2.** Leave-one-out po
-  wszystkich 22 spolkach (uniwersum stale): bije wlasny benchmark **22/22** razy, rozrzut CAGR
-  16.28%-25.28%, a usuniecie CDR praktycznie nic nie zmienia (23.17% vs 23.34%). To jakosciowo inna
-  sytuacja niz `QUALITY>=0` z v2, ktore bylo w calosci CDR-owe. Ale robustnosc na leave-one-out NIE
-  ratuje przed survivorship - LOO testuje wrazliwosc na pojedyncze nazwy W PULI, nie na nazwy
-  BRAKUJACE.
+  **TEST KRUCHOSCI LEAVE-ONE-OUT (usun po kolei kazda z 22 spolek, benchmark liczony na tej samej
+  pomniejszonej puli) - wynik jednoznaczny w OBU kierunkach:**
+
+  | uniwersum | bije wlasny benchmark | rozrzut CAGR | zakres przewagi |
+  |---|---|---|---|
+  | stale (survivorship) | **22/22** | 9.00pp (16.28%-25.28%) | +2.32pp do +10.50pp |
+  | point-in-time (uczciwe) | **0/22** | 4.24pp (3.11%-7.35%) | -1.10pp do -5.08pp |
+
+  Na obciazonym uniwersum strategia wygrywa ZAWSZE, na uczciwym przegrywa ZAWSZE, a rozrzut na PIT
+  jest waski (4.24pp) - wiec wynik nie zalezy od zadnej pojedynczej spolki, tylko od definicji
+  uniwersum. Na stalym uniwersum usuniecie CDR praktycznie nic nie zmienia (23.17% vs 23.34%), czyli
+  jakosciowo inna sytuacja niz `QUALITY>=0` z v2, ktore bylo w calosci CDR-owe. Ale robustnosc na LOO
+  NIE ratuje przed survivorship - LOO testuje wrazliwosc na pojedyncze nazwy W PULI, nie na nazwy
+  BRAKUJACE. Ciekawostka: na PIT najlepszy wariant to ten BEZ CDR (7.35%, luka -1.10pp) - CDR
+  pogarsza wynik, gdy nie mozna go kupic w latach mikrospolki, bo strategia lapie go dopiero po duzej
+  czesci wzrostu.
 
   **DLACZEGO PIT tak bardzo psuje wynik: zwroty siedzialy w nazwach NIEPLYNNYCH.** Sweep progu
   plynnosci (v3, bez stopu): prog 0 (tylko data debiutu) -> CAGR **11.65%**; prog 0.5 mln -> 2.72%;
