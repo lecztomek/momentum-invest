@@ -44,6 +44,7 @@ from typing import Dict, Optional
 
 import pandas as pd
 
+from value_engine.br_parser import decode_body
 from value_engine.fundamentals import FundamentalPanel
 
 SHARE_CAPITAL_METRIC = "BalanceShareCapital"
@@ -78,7 +79,7 @@ def load_shares_outstanding(db_path: Path) -> Dict[str, float]:
 
     out: Dict[str, float] = {}
     for ticker, body in rows:
-        match = _SHARES_RE.search(body.decode("utf-8", errors="replace"))
+        match = _SHARES_RE.search(decode_body(body))
         if match:
             shares = _parse_number(match.group(1))
             if shares:
@@ -104,7 +105,7 @@ def load_reported_market_cap(db_path: Path) -> Dict[str, float]:
 
     out: Dict[str, float] = {}
     for ticker, body in rows:
-        match = _MARKET_CAP_RE.search(body.decode("utf-8", errors="replace"))
+        match = _MARKET_CAP_RE.search(decode_body(body))
         if match:
             value = _parse_number(match.group(1))
             if value:

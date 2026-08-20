@@ -11,11 +11,12 @@ Testy BR PARSER. Dwie grupy:
 Uruchomienie: .venv/bin/pytest value_engine/tests/test_br_parser.py -v
 """
 
+import gzip
 from pathlib import Path
 
 import pytest
 
-from value_engine.br_parser import load_snapshots, parse_report_html
+from value_engine.br_parser import decode_body, load_snapshots, parse_report_html
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = REPO_ROOT / "value_engine" / "biznesradar_raw.sqlite3"
@@ -47,6 +48,40 @@ def _change_only_cell() -> str:
         '<td class="h"><div class="changeqq">k/k <span class="pv"><span>'
         '<span class="q_ch_per cminus">-100.00%</span></span></span></div></td>'
     )
+
+
+def test_decode_body_handles_gzip_raw_and_str():
+    """Scraper trzyma strony SPAKOWANE GZIPEM (72 MB -> 10.8 MB) i migruje stare rekordy w miejscu,
+    wiec w bazie moga byc oba formaty. Rozpoznanie po naglowku `\\x1f\\x8b`, a nie tylko po kolumnie
+    `compression` - ta jest dodawana przez ALTER TABLE, wiec dla starszego rekordu bywa NULL mimo
+    spakowanej tresci. Bez tego `body.decode()` zwracalby smieci, parser nie znajdowalby tabeli, a
+    backtest dostawalby ZERO fundamentow - po cichu, bez bledu."""
+    html = "<html>zażółć gęślą jaźń</html>"
+
+    assert decode_body(html) == html
+    assert decode_body(html.encode("utf-8")) == html
+    assert decode_body(gzip.compress(html.encode("utf-8"))) == html
+    # spakowane, ale kolumna `compression` pusta - najgrozniejszy przypadek
+    assert decode_body(gzip.compress(html.encode("utf-8")), None) == html
+    # zadeklarowane jako gzip i faktycznie gzip
+    assert decode_body(gzip.compress(html.encode("utf-8")), "gzip") == html
+
+
+def test_real_snapshots_are_gzipped_and_parse_after_decompression():
+    """Kontrola z rzeczywistoscia: baza JEST spakowana, a mimo to parser widzi tabele raportu."""
+    _skip_if_no_db()
+    import sqlite3
+
+    connection = sqlite3.connect(str(DB_PATH))
+    try:
+        body, compression = connection.execute(
+            "SELECT body, compression FROM snapshots ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    finally:
+        connection.close()
+
+    assert bytes(body)[:2] == b"\x1f\x8b", "baza nie jest spakowana - sprawdz scraper"
+    assert 'class="report-table"' in decode_body(body, compression)
 
 
 def test_parses_values_and_periods():

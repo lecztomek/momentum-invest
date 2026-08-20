@@ -119,7 +119,7 @@ def main() -> None:
     if metrics:
         benchmark_harness = Harness(tickers)
         print(_row("buy&hold uniwersum PIT (uczciwy)", benchmark_harness.buy_hold_pit(harness.universe, metrics["start"])))
-        print(_row("buy&hold STALE 22 spolki (survivorship!)", benchmark_harness.buy_hold(metrics["start"])))
+        print(_row(f"buy&hold STALE {len(tickers)} spolek (survivorship!)", benchmark_harness.buy_hold(metrics["start"])))
 
         trades = result["trades"]
         wins = [t for t in trades if t.gross_return > 0]

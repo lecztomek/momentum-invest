@@ -29,8 +29,22 @@ GPW"). To wnosi dwa rozne bledy:
       zawyzony, tylko mniej.
 
 Dodatkowo: data debiutu jest respektowana automatycznie (ceny sa NaN przed pierwsza sesja), ale
-liczba spolek realnie dostepnych rosnie w czasie i warto o tym pamietac przy czytaniu wynikow:
-2006: 10/22, 2010: 17/22, 2018: 21/22, od 2020: 22/22.
+liczba spolek realnie dostepnych rosnie w czasie i warto o tym pamietac przy czytaniu wynikow.
+Zmierzone na obecnym zbiorze **41 spolek** (stan 2026-08-20; wczesniej bylo 22):
+
+    | rok  | ma jakakolwiek cene | w uniwersum PIT (srednio) |
+    |---|---|---|
+    | 2006 | 12/41 |  3.0 |
+    | 2010 | 22/41 |  5.2 |
+    | 2014 | 31/41 | 12.1 |
+    | 2018 | 37/41 | 15.2 |
+    | 2022 | 41/41 | 21.2 |
+    | 2026 | 41/41 | 22.8 |
+
+Roznica miedzy kolumnami to wlasnie filtr plynnosci: w 2010 notowanych bylo 22 spolek, ale tylko
+~5 mialo mediane obrotu >= 2 mln PLN/dzien. Poszerzenie zbioru zrodlowego z 22 do 41 nazw podnioslo
+mediane rankowanego uniwersum z 10 do 14 spolek - i to WYSTARCZYLO, zeby przewaga koncepcji v4
+zniknela (patrz README).
 
 WSZYSTKIE KRYTERIA SA LICZONE WYLACZNIE Z DANYCH DOSTEPNYCH DO DANEJ DATY (obrot kroczacy,
 historia cen) - zero look-ahead.
@@ -44,6 +58,8 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Set
 
 import pandas as pd
+
+from value_engine.br_parser import decode_body
 
 # `<th>Branza:</th><td> <a href="/gielda/branza:wierzytelnosci" ...>Wierzytelnosci</a> </td>`
 # BiznesRadar NIE ma pola "Sektor" - jest tylko "Branza", i tylko w sekcji profilu spolki.
@@ -83,9 +99,7 @@ def load_industries(db_path: Path) -> Dict[str, str]:
 
     out: Dict[str, str] = {}
     for ticker, body in rows:
-        if isinstance(body, bytes):
-            body = body.decode("utf-8", errors="replace")
-        match = _INDUSTRY_RE.search(body)
+        match = _INDUSTRY_RE.search(decode_body(body))
         if match:
             out[ticker] = match.group(1).strip()
     return out

@@ -1,22 +1,29 @@
 # value_engine - strategie "value" na GPW
 
-Osobny silnik, poza `engine_v2`. Trzy przetestowane koncepcje, wszystkie oparte na tych samych,
+Osobny silnik, poza `engine_v2`. Piec przetestowanych koncepcji, wszystkie oparte na tych samych,
 wspolnych fundamentach technicznych (parser BiznesRadaru + panel point-in-time + ceny PL +
 uniwersum point-in-time).
 
-| koncepcja | plik silnika | runner | wynik |
-|---|---|---|---|
-| v1: przeceniona + zdrowa, profit target | `backtest.py` | `run_test.py` | odrzucona (niszczy wartosc) |
-| v2: quality value, score 0-100, sloty + podmiana | `quality_value_backtest.py` | `run_quality_value.py` | blisko benchmarku, nie bije |
-| v3: bez podmiany, 36m, opcjonalny trailing stop | ten sam silnik, `allow_score_replacement=False` | `run_v3_comparison.py` | **zaleznie od uniwersum** - patrz nizej |
-| **v4: Value + Quality + Momentum, top4/top8** | `factor_backtest.py` | `run_factor.py` | **pierwsza wersja z przewaga nad uczciwym benchmarkiem (21/22 leave-one-out)** |
-| v5: Quality Defensive (50% Quality + 50% LowVol), top 5 | ten sam silnik, `scorer=` | `run_defensive.py` | remis na zwrocie, lepszy Sharpe/MaxDD, ale leave-one-out **6/21** |
+| koncepcja | plik silnika | runner | wynik na 22 spolkach | **wynik na 41 spolkach** |
+|---|---|---|---|---|
+| v1: przeceniona + zdrowa, profit target | `backtest.py` | `run_test.py` | odrzucona (niszczy wartosc) | – |
+| v2: quality value, sloty + podmiana | `quality_value_backtest.py` | `run_quality_value.py` | 8.25% vs 9.64% bench | **-1.34% vs 7.99%** |
+| v3: bez podmiany, 36m, opcjonalny trailing stop | ten sam silnik, `allow_score_replacement=False` | `run_v3_comparison.py` | 5.74% vs 9.64% (ze stopem) | **3.55% vs 7.99%** |
+| v4: Value + Quality + Momentum, top4/top8 | `factor_backtest.py` | `run_factor.py` | 14.42% vs 9.64% (**+4.78pp**, 21/22 LOO) | **6.63% vs 7.99% (-1.36pp)** |
+| v5: Quality Defensive (Quality + LowVol), top 5 | ten sam silnik, `scorer=` | `run_defensive.py` | 9.61% vs 9.61% (remis, 6/21 LOO) | **7.08% vs 7.95% (-0.87pp)** |
 
-**Najwazniejszy wniosek calej serii**: wyniki v3 zmieniaja sie DRASTYCZNIE w zaleznosci od tego, czy
-uniwersum jest uczciwe (point-in-time) czy obciazone survivorship. Na stalej liscie dzisiejszych
-ocalalych v3 z trailing stopem daje CAGR 23.34% / Sharpe 1.011; na uniwersum point-in-time ta sama
-strategia daje 5.74% / Sharpe 0.360 i przegrywa z benchmarkiem. To najlepszy dowod, ze poprawa
-uniwersum byla wazniejsza od kazdej zmiany regul.
+**NAJWAZNIEJSZY WNIOSEK CALEJ SERII: zaden z pieciu pomyslow nie bije uczciwego benchmarku PIT na
+szerszym uniwersum.** Wynik kazdej wersji zalezy DRASTYCZNIE od tego, na czym jest liczony - i to
+zaleznosc silniejsza niz jakakolwiek zmiana regul strategii:
+
+1. **survivorship w benchmarku**: v3 + trailing stop daje 23.34% CAGR na stalej liscie dzisiejszych
+   ocalalych i 5.74% na uniwersum point-in-time. Ta sama strategia, ta sama historia cen.
+2. **liczba kandydatow**: przewaga v4 (+4.78pp, potwierdzona leave-one-out 21/22) **znikla po
+   dolozeniu 19 spolek** - te same reguly daja teraz -1.36pp. Szczegoly i mechanizm nizej.
+
+Praktyczny wniosek: kazdy pozytywny wynik w tym folderze nalezy traktowac jako hipoteze do
+falsyfikacji przez poszerzenie danych, nie jako przewage. Dwa razy z rzedu poszerzenie danych
+falsyfikowalo wniosek.
 
 ## Dlaczego osobny folder, a nie `engine_v2`
 
@@ -46,7 +53,7 @@ porownywalne 1:1 z reszta repo.
 
 | plik | rola |
 |---|---|
-| `biznesradar_scraper.py` | (dostarczony) zapis surowych stron BiznesRadaru do SQLite |
+| `biznesradar_scraper.py` | (dostarczony) zapis surowych stron BiznesRadaru do SQLite (**gzip**) + kopiowanie plikow cen |
 | `br_parser.py` | surowy HTML -> uporzadkowane szeregi (okresy, **daty publikacji**, metryki) |
 | `fundamentals.py` | panel **point-in-time**: co bylo publicznie znane na dana date |
 | `signals.py` | obsuniecie od 52W high, daty decyzyjne (1. dzien handlowy miesiaca) |
@@ -59,6 +66,19 @@ porownywalne 1:1 z reszta repo.
 | `factor_scoring.py` | scoring v4: Value (rentownosci) + Quality (5 kryteriow) + Momentum 12-1 |
 | `factor_backtest.py` | silnik koncepcji v4 i v5 - **scoring wstrzykiwany przez `scorer=`** |
 | `defensive_scoring.py` | scoring v5: 50% Quality (ROE/ROIC/Debt-MC) + 50% LowVol (6M/12M) |
+
+### Gdzie leza dane
+
+| co | gdzie | uwaga |
+|---|---|---|
+| fundamenty (surowy HTML) | `value_engine/biznesradar_raw.sqlite3` | **spakowane gzipem**, czytane przez `br_parser.decode_body` |
+| ceny dzienne, ktore czytaja runnery | `data/pl/*.txt` | + `wig20.txt` na kanarka i benchmark v2/v3 |
+| ceny zrzucone przez scraper | `value_engine/ticker_files/*.txt` | katalog docelowy `--ticker-files-dest`, domyslnie obok bazy |
+
+`PL_DATA_DIR` wskazuje na `data/pl`, wiec nowe pliki z `ticker_files` trzeba tam skopiowac (albo
+uruchomic scraper z `--ticker-files-dest data/pl`). UWAGA: `unique_destination` w scraperze NIE
+nadpisuje istniejacych plikow, tylko dokleja `_2` - po drugim przebiegu na tych samych tickerach
+katalog mial 82 pliki, z czego 41 bylo bajt w bajt duplikatami (usuniete).
 
 ```
 .venv/bin/python3 -m value_engine.run_quality_value
@@ -96,18 +116,31 @@ liczona krocząco wstecz - zero look-ahead) wyklucza go do 2011 i wpuszcza na st
 obrotu/upadlych. Filtr plynnosci nie odtworzy brakujacych szeregow. Po poprawce wynik jest wciaz
 zawyzony, tylko mniej - i to trzeba pamietac przy kazdej liczbie ponizej.
 
-Rozmiar uniwersum PIT (prog 2 mln PLN/dzien): 2006: 3.0, 2010: 5.2, 2014: 9.5, 2018: 10.7,
-2022: 15.2, 2026: 14.9 spolek. Wczesny okres jest wiec bardzo waski - przy 4 slotach praktycznie
-nie ma z czego wybierac.
+Rozmiar uniwersum PIT (prog 2 mln PLN/dzien), przed i po poszerzeniu zbioru zrodlowego:
+
+| rok | zbior 22 spolek | **zbior 41 spolek (obecny)** |
+|---|---|---|
+| 2006 | 3.0 | 3.0 |
+| 2010 | 5.2 | 5.2 |
+| 2014 | 9.5 | **12.1** |
+| 2018 | 10.7 | **15.2** |
+| 2022 | 15.2 | **21.2** |
+| 2026 | 14.9 | **22.8** |
+
+Wczesny okres jest identyczny (nowe spolki albo nie byly notowane, albo nie mialy jeszcze plynnosci)
+i pozostaje bardzo waski - przy 4 slotach praktycznie nie ma tam z czego wybierac. Realna zmiana
+zaczyna sie od ~2014. Mediana rankowanego uniwersum w calym oknie wzrosla z **10 do 14** spolek - i
+to wystarczylo, zeby odwrocic wniosek o v4 (patrz sekcja o przeliczeniu na 41 spolkach).
 
 **Uniwersum PIT ogranicza tylko NOWE WEJSCIA.** Pozycja, ktora wypadla z uniwersum (spadla
 plynnosc), nie jest sprzedawana na sile - wychodzi normalnymi reguami. Wymuszona sprzedaz przy
 zaniku plynnosci bylaby nierealistyczna: wtedy najtrudniej wyjsc.
 
 **Benchmark tez musial zostac poprawiony** (`buy_hold_pit`). Poczatkowo porownywalem uczciwa
-strategie (PIT) z nieuczciwym benchmarkiem (rownowazona srednia 22 dzisiejszych ocalalych) - taki
-uklad z definicji przegrywa. Skala bledu: benchmark survivorship 14.56% CAGR vs benchmark PIT
-**9.64%** - sam survivorship w benchmarku byl wart ~5pp CAGR rocznie.
+strategie (PIT) z nieuczciwym benchmarkiem (rownowazona srednia dzisiejszych ocalalych) - taki uklad
+z definicji przegrywa. Skala bledu jest duza i ROSNIE z liczba spolek: przy 22 nazwach benchmark
+survivorship dawal 14.56% CAGR vs 9.64% PIT (~5pp), przy 41 nazwach **14.23% vs 7.99% (~6.2pp)**.
+Kazda liczba "vs benchmark" w tym pliku odnosi sie do benchmarku PIT.
 
 ## Fundament wspolny: point-in-time fundamentow (look-ahead bias)
 
@@ -132,7 +165,84 @@ point-in-time powstanie z czasem, bo `snapshots` trzyma `fetched_at`.
 
 ---
 
-# Koncepcja v2: "quality value" (aktualna)
+# PRZELICZENIE NA 41 SPOLKACH - przewaga v4 znika
+
+User: "wrzucilem wiecej danych spolek (...) trzeba zrobic na nowo testy bo mamy wiecej kandydatow
+wiec moze cos sie zmienic". Zmienilo sie - i to najwazniejsza rzecz w tym pliku.
+
+**Co doszlo**: 19 nowych spolek (11B, APR, ATT, BDX, BFT, CLN, ENA, ENG, GPP, HUG, JSW, KTY, MRC,
+PCR, SEL, SNT, VRG, WPL, ZEP), lacznie **41** zamiast 22. Mediana rankowanego uniwersum wzrosla z
+**10 do 14** spolek (a w ostatnich latach do ~22). Fundamenty w SQLite sa teraz **spakowane gzipem**
+(72 MB -> 10.8 MB) - patrz `br_parser.decode_body`.
+
+## Wszystkie koncepcje, to samo okno (2006-03 -> 2026-08), ten sam uczciwy benchmark
+
+| wariant | CAGR (22) | **CAGR (41)** | MaxDD (41) | Sharpe (41) | n (41) |
+|---|---|---|---|---|---|
+| **benchmark: buy&hold uniwersum PIT** | 9.64% | **7.99%** | -59.43% | 0.456 | - |
+| v2 (podmiana po score, 24m), PIT | 8.25% | **-1.34%** | -65.50% | 0.060 | 84 |
+| v3 (bez podmiany, 36m), PIT | 3.17% | **0.60%** | -62.63% | 0.148 | 28 |
+| v3 + trailing stop 20%, PIT | 5.74% | **3.55%** | -63.13% | 0.267 | 150 |
+| v4 (Value+Quality+Momentum, top4/top8) | **14.42%** | **6.63%** | -62.49% | 0.383 | 52 |
+| v5 (Quality+LowVol, top 5) | 9.61% | **7.08%** | -57.05% | 0.431 | 128 |
+| v4 + kanarek WIG20 | 5.55% | 4.86% | -39.43% | 0.372 | 100 |
+| v5 + kanarek WIG20 | 4.58% | 5.11% | -33.10% | 0.422 | 155 |
+| *buy&hold STALE 41 spolek (survivorship!)* | *14.56%* | *14.23%* | *-72.29%* | *0.637* | - |
+
+**Zadna wersja nie bije benchmarku PIT.** Najblizej jest v5 (-0.87pp), v4 traci -1.36pp, v2 wychodzi
+wrecz na minus. Benchmark tez spadl (9.64% -> 7.99%), bo nowe spolki sa slabsze - ale v4 spadl
+**5-krotnie mocniej** (-7.79pp vs -1.65pp), czyli jego ranking wybiera z nowej puli GORZEJ niz losowo.
+
+## Mechanizm: dwie rzeczy, obie sprawdzone na transakcjach
+
+**(1) Nowe spolki to value trapy, a Value ma 40% wagi w v4.** Transakcje v4 wg pochodzenia spolki:
+
+| spolki | transakcji | sredni zwrot | **mediana** |
+|---|---|---|---|
+| stare 22 | 35 | +24.0% | +15.4% |
+| **nowe 19** | 17 | -4.3% | **-23.3%** |
+
+Najgorsze wejscia to ATT (-49%), ENG (-48%), MRC (-40%), ENA (-35%, -33%), KTY (-35%) - chemia,
+energetyka, gornictwo, w duzej czesci spolki kontrolowane przez skarb panstwa. Sa TANIE (niskie P/E,
+P/BV, wysoki FCF yield) i wlasnie dlatego czynnik Value je wybiera. Nowe nazwy to 20% uniwersum PIT,
+ale 24% pozycji v4 - lekkie przewazenie, na dodatek tych najslabszych.
+
+**(2) Histereza, ktora byla bezwladna, teraz WYCINA ZWYCIEZCE.** Na 22 spolkach "poza top 8"
+znaczylo "w najgorszej dwojce z dziesieciu" i praktycznie nie zachodzilo (2.3% obserwacji) - dzieki
+temu v4 trzymal CDR **3.6 roku i zrobil na nim +967%**, co samo w sobie odpowiadalo za wiekszosc
+przewagi. Na 41 spolkach "top 8 z 14-22" jest realnym ograniczeniem i ta sama regula sprzedaje CDR
+po **8 miesiacach z +76%**:
+
+| | 22 spolki | 41 spolek |
+|---|---|---|
+| najlepsza transakcja | **CDR +967.2%** (2016-01 -> 2019-08, 1338d) | KGH +294.8% (2006-03 -> 2013-12) |
+| transakcja na CDR | +967.2%, 1338 dni | **+76.1%, 243 dni** |
+| transakcji ogolem | 26 | 52 |
+| mediana czasu trzymania | 632 dni | 350 dni |
+
+Powod jest wbudowany w konstrukcje: gdy kurs rosnie, score Value SPADA, wiec zwyciezca sam schodzi w
+rankingu - a przy szerszej puli zawsze znajdzie sie tanszy kandydat, ktory go wypchnie. **v4 na 41
+spolkach systematycznie sprzedaje to, co rosnie.** README ostrzegal o tym wczesniej ("parametr
+`keep_rank=8` jest dostrojony do uniwersum znacznie wiekszego niz to, ktore realnie mamy") - tylko ze
+skutek okazal sie odwrotny do oczekiwanego: przy wiekszym uniwersum regula nie zaczyna dzialac
+lepiej, ona zaczyna szkodzic.
+
+## Co to znaczy
+
+- **Przewaga v4 byla artefaktem waskiego uniwersum, nie odkryciem.** Test leave-one-out 21/22
+  sprawdzal odpornosc na usuniecie spolki, ale nie mial szans wykryc wrazliwosci na DODANIE spolek.
+  To osobny wymiar kruchosci i od teraz trzeba go sprawdzac osobno.
+- **Kanarek WIG20 nadal szkodzi na zwrocie** (v4: 6.63% -> 4.86%), ale przy tak slabych wynikach
+  bazowych jego przewaga w MaxDD (-62% -> -39%) przestaje byc bez znaczenia. Wniosek "nie wdrazac"
+  zostaje, bo bierne trzymanie ~55% benchmarku nadal wypada lepiej.
+- **Nie ma sensu sweep wag** ani dobieranie `keep_rank` pod nowe uniwersum. Zgodnie z zasada
+  przyjeta przy v4 ("jesli nie ma przewagi, nie ratujemy jej optymalizacja") - a teraz doszedl
+  drugi argument: kazdy parametr dobrany pod 41 spolek bedzie mial dokladnie ten sam problem, ktory
+  wlasnie zlapalismy przy przejsciu z 22 na 41.
+
+---
+
+# Koncepcja v2: "quality value" (uniwersum 22 spolki)
 
 Uniwersum: **22 spolki GPW** (bez bankow i ubezpieczycieli): acp ale asb car cdr cps dnp dom dvl
 kgh kru lpp lwb neu opl pep pge pkn rbw ten tpe txt.
@@ -253,7 +363,7 @@ cierpliwy value. To najwazniejsza rozbieznosc miedzy intencja spec a jej faktycz
 
 ---
 
-# Koncepcja v4: Value + Quality + Momentum (aktualna, jedyna z przewaga)
+# Koncepcja v4: Value + Quality + Momentum (uniwersum 22 spolki)
 
 Spec (user): uniwersum duze/plynne PIT; rebalans miesieczny; `FINAL = 0.40*Value + 0.30*Quality +
 0.30*Momentum`; portfel top 4 po 25% bez wyrownywania; replacement gdy trzymana spolka wypadnie z
@@ -404,7 +514,7 @@ zgodny z rezimem), nie w valuowej.
 
 ---
 
-# Koncepcja v5: Quality Defensive (50% Quality + 50% LowVol)
+# Koncepcja v5: Quality Defensive (uniwersum 22 spolki)
 
 Spec (user): uniwersum duze/plynne PIT, "na poczatek non-financials"; QUALITY 0-100 z wysokiego
 **ROE TTM**, wysokiego **ROIC TTM** i niskiego **Debt / Market Cap**; DEFENSIVE 0-100 z niskiej
@@ -540,7 +650,7 @@ jako priorytet po v4. Wersja do porownania pozostaje v4 (+4.78pp CAGR, 21/22 lea
 
 ---
 
-# Koncepcja v3: bez podmiany po score + trailing stop
+# Koncepcja v3: bez podmiany po score + trailing stop (uniwersum 22 spolki)
 
 Spec (user): entry `DD >= 25%` + quality gate; max 4 pozycje; holding **36 miesiecy**; bez profit
 targetu; **bez comiesiecznej podmiany po score** - nowy kandydat zastepuje pozycje tylko gdy ta (1)

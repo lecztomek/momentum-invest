@@ -382,9 +382,17 @@ def test_build_scorer_matches_engine_signature():
 
 
 def test_real_data_quality_metrics_are_in_plausible_ranges():
-    """Kontrola zdrowia rozsadku na realnych spolkach: ROE/ROIC duzych spolek GPW musza miescic sie
-    w rozsadnym przedziale. Blad w jednostkach (tysiace vs zlote) albo w mianowniku dawal by tu
-    wartosci rzedu setek procent."""
+    """Kontrola zdrowia rozsadku na realnych spolkach. Blad w jednostkach (tysiace vs zlote) albo w
+    mianowniku przesuwa CALY rozklad, wiec test patrzy na MEDIANE, a nie na kazda wartosc osobno.
+
+    DLACZEGO NIE PROG NA KAZDEJ SPOLCE: w szerszym uniwersum sa realne skrajnosci, ktore NIE sa
+    bledem parsera (sprawdzone recznie na surowych szeregach):
+      - **ATT** (Grupa Azoty): kapital wlasny scisniety do 348 mln przy stracie TTM 5.0 mld, wiec
+        ROE = **-1444%** jest arytmetycznie poprawne dla spolki na granicy wyplacalnosci,
+      - **SNT** (Synektik): rok obrotowy konczy sie we WRZESNIU, a w 2026/Q2 byl jednorazowy zysk
+        296 mln przy EBIT 54 mln - ROE 244% tez jest prawdziwe.
+    Percentylowy ranking jest na to odporny (liczy sie KOLEJNOSC, nie wielkosc), wiec te wartosci
+    nie psuja scoringu - ale unieważnialy poprzedni, ciasny prog +/-150%."""
     if not DB_PATH.exists():
         pytest.skip("Brak bazy")
     from engine_v2.blocks.data_loader import REGISTRY as LOADER_REGISTRY
@@ -411,11 +419,21 @@ def test_real_data_quality_metrics_are_in_plausible_ranges():
             debt_values.append(inputs.debt_to_market_cap)
 
     assert len(roe_values) >= 15
-    for value in roe_values:
-        assert -1.0 < value < 1.5, f"ROE = {value:.2%}"
     assert len(debt_values) >= 15
+
+    # Typowa duza spolka GPW: ROE kilka-kilkanascie procent, dlug rzedu kilkudziesieciu procent
+    # kapitalizacji. Blad jednostek (x1000) albo pomyleniu mianownika przesuwa mediane o rzedy
+    # wielkosci, wiec to te progi lapia realny blad.
+    roe_median = float(pd.Series(roe_values).median())
+    debt_median = float(pd.Series(debt_values).median())
+    assert 0.0 < roe_median < 0.40, f"mediana ROE = {roe_median:.2%}"
+    assert 0.0 <= debt_median < 1.0, f"mediana Debt/MarketCap = {debt_median:.2f}"
+
+    # Luzny bezpiecznik na skrajnosciach: x1000 dalo by tysiace, nie dziesiatki.
+    for value in roe_values:
+        assert -50.0 < value < 50.0, f"ROE = {value:.2%}"
     for value in debt_values:
-        assert 0.0 <= value < 20.0, f"Debt/MarketCap = {value:.2f}"
+        assert 0.0 <= value < 100.0, f"Debt/MarketCap = {value:.2f}"
 
 
 def test_real_data_volatility_is_in_plausible_ranges():

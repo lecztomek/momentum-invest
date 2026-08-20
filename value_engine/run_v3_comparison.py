@@ -211,7 +211,12 @@ def main() -> None:
     print()
     for label, start in starts.items():
         if "PIT" in label and "v3" in label:
-            print(_row(f"buy&hold STALE 22 spolki (survivorship!) od {start.date()}", harness.buy_hold(start)))
+            print(
+                _row(
+                    f"buy&hold STALE {len(tickers)} spolek (survivorship!) od {start.date()}",
+                    harness.buy_hold(start),
+                )
+            )
             print(_row(f"buy&hold uniwersum PIT (uczciwy) od {start.date()}", harness.buy_hold_pit(universe, start)))
             break
 

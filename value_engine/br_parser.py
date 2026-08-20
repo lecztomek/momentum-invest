@@ -49,11 +49,12 @@ na tyle regularna, ze celowany parser jest pewniejszy niz nowa zaleznosc).
 
 from __future__ import annotations
 
+import gzip
 import re
 import sqlite3
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 # Ta tabela (a nie `qTableFull contentList`/`profileSummary`, ktore tez sa na stronie) trzyma raport.
 _REPORT_TABLE_RE = re.compile(r'<table class="report-table"[^>]*>(.*?)</table>', re.S)
@@ -170,6 +171,23 @@ def parse_report_html(html: str, ticker: str, report_type: str, periodicity: str
     return report
 
 
+def decode_body(body: Any, compression: Optional[str] = None) -> str:
+    """Surowy `snapshots.body` -> HTML. Scraper trzyma strony **spakowane gzipem** (kolumna
+    `compression`; 72 MB -> 10.8 MB na 376 snapshotach) i migruje stare, niespakowane rekordy w
+    miejscu, wiec w bazie moga wystapic OBA formaty.
+
+    Rozpoznajemy po NAGLOWKU (`\\x1f\\x8b`), a nie tylko po kolumnie `compression`: kolumna jest
+    dodawana przez `ALTER TABLE`, wiec dla rekordu zapisanego starsza wersja scrapera moze byc NULL
+    mimo spakowanej tresci. Bez tego `body.decode()` zwracalby smieci, parser nie znalazlby zadnej
+    tabeli i backtest po cichu dostalby ZERO fundamentow - nie blad, tylko pusty panel."""
+    if isinstance(body, str):
+        return body
+    raw = bytes(body)
+    if raw[:2] == b"\x1f\x8b" or (compression or "").lower() == "gzip":
+        raw = gzip.decompress(raw)
+    return raw.decode("utf-8", errors="replace")
+
+
 def load_snapshots(db_path: Path) -> List[ParsedReport]:
     """Parsuje NAJNOWSZY snapshot kazdej kombinacji (ticker, report_type, periodicity) z bazy."""
     connection = sqlite3.connect(str(db_path))
@@ -191,6 +209,6 @@ def load_snapshots(db_path: Path) -> List[ParsedReport]:
         connection.close()
 
     return [
-        parse_report_html(body.decode("utf-8", errors="replace"), ticker, report_type, periodicity)
+        parse_report_html(decode_body(body), ticker, report_type, periodicity)
         for ticker, report_type, periodicity, body in rows
     ]
