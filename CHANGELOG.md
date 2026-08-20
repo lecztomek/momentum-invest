@@ -2,6 +2,64 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-20 (5)
+
+- **KONCEPCJA v8: `50% percentyl(B/M) + 50% percentyl(F-Score)`, top 4 (`fscore.combined_scores`,
+  `fscore_backtest.py` z `combined_ranking=True`, `run_combined.py`) - MIERZALNA, ale przegrywa
+  0/40 w leave-one-out, najbardziej jednoznaczny wynik calej serii.** User: "zamiast `top 20% B/M
+  AND F>=8` masz najlepsza kombinacje taniosci i poprawy fundamentow". Cale uniwersum non-financials
+  PIT, ranking zamiast dwoch bramek, top 4, equal weight, holding 12 miesiecy. 13 nowych testow,
+  lacznie **246**.
+
+  **BEZ NOWEGO SILNIKA** - `fscore_backtest.py` dostal `combined_ranking: bool`, ktory zamienia
+  bramke dwustopniowa na ranking `combined_scores()` (nowa funkcja w `fscore.py`). Cykl roczny,
+  equal weight i ksiegowanie sa identyczne z v7 - trzecia kopia mechaniki bylaby zbedna (ta sama
+  decyzja co przy v5/`scorer=`).
+
+  **DIAGNOSTYCZNIE POPRAWNE**: v7 SPEC siedzialo w gotowce 82% czasu (dwie bramki mnozyly sie na
+  malym uniwersum), v8 jest w rynku **91%** i trzyma srednio 3.64 spolki - ranking nie ma
+  naturalnego "braku kandydatow". To jedyna dobra wiadomosc.
+
+  | wariant | CAGR | MaxDD | Sharpe | w rynku |
+  |---|---|---|---|---|
+  | **v8 SPEC (50/50, top 4)** | **-4.46%** | -78.33% | -0.079 | 91% |
+  | v8 100% Value (0% F-Score) | **+4.75%** | -62.55% | 0.307 | 91% |
+  | v8 100% F-Score (0% Value) | -0.38% | -63.16% | 0.100 | 91% |
+  | v8 top 8 | 3.17% | -62.83% | 0.252 | 91% |
+  | **benchmark PIT** | **10.33%** | -58.50% | 0.547 | - |
+
+  **-14.79pp wzgledem benchmarku**, stabilnie w czasie (od 2011 -15.30pp, od 2015 -17.72pp). Koszty
+  to tylko 0.71pp - problem nie jest w nich.
+
+  **DIAGNOZA: to POLOWA F-SCORE psuje wynik, nie polowa Value.** Rozbicie na czyste skladniki:
+
+  | ranking | sredni B/M kupionych | sredni F kupionych | CAGR |
+  |---|---|---|---|
+  | 100% Value | 2.38 | 5.7 | **+4.75%** |
+  | 50/50 | 1.88 | 6.8 | -4.46% |
+  | 100% F-Score | 1.25 | **7.4** | -0.38% |
+
+  Dolozenie polowy F-Score oddaje taniosc i kupuje "poprawe" - kosztuje **9.2pp CAGR**. Nawet czysty
+  Value (+4.75%) przegrywa z benchmarkiem (10.33%); im wiecej spolek trzymamy (top 4 -> 6 -> 8),
+  tym blizej benchmarku - podpis negatywnej umiejetnosci selekcji.
+
+  **F-SCORE ANTY-PROGNOZUJE DRUGI RAZ, na niezaleznym doborze spolek.** Mediana zwrotu 12M wg
+  F-Score kupionej spolki: F=6 -1.6%, F=7 -4.8%, F=8 **-8.4%**, F=9 **-24.8%** (v8, n=80) - ta sama
+  monotoniczna zaleznosc co w v7 (F=7 -1.4%, F=8 -0.4%, F=9 -17.6%, n=107). Dwa niezalezne dobory
+  spolek, ten sam kierunek na 187 transakcjach lacznie: im wyzszy F-Score, tym gorszy zwrot.
+  Mechanizm jak w v6/v7: piec z dziewieciu sygnalow to zmiany r/r, a najwieksza poprawe pokazuje
+  spolka wychodzaca z dolka cyklu. Faktycznie kupowane nazwy (ACP, OPL, ENA, TPE, PKN, PGE) to
+  telekom i sektor panstwowy - te same, ktore ciagnely w dol v4, v6 i v7.
+
+  **LEAVE-ONE-OUT: 0/40** - zaden z 40 przebiegow nie bije benchmarku, przewaga ujemna w kazdym
+  mozliwym podzbiorze uniwersum. Rozrzut tylko 5.96pp (-5.15% do +0.81%), najmniejszy w calej serii
+  v4-v8: wynik jest nie tylko zly, jest STABILNIE zly - jakosciowo inaczej niz v4/v6/v7, gdzie
+  porazka zalezala od doboru konkretnych spolek.
+
+  **Wniosek calej serii v4-v8**: kazdy czynnik liczony z ostatnich raportow - tanio (v4, v7, v8),
+  jakosc (v5, v6), poprawa (v7, v8) - wskazuje na 40 duzych spolkach GPW ten sam zestaw nazw z
+  sektora panstwowego. Przy 40 spolkach to nie jest test czynnika, to jest test jednego sektora.
+
 ## 2026-08-20 (4)
 
 - **KONCEPCJA v7: Piotroski F-Score 8-9 na top 20% B/M (`fscore.py`, `fscore_backtest.py`,

@@ -64,6 +64,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import pandas as pd
 
 from value_engine.fundamentals import FundamentalPanel, Observation
+from value_engine.scoring import percentile_scores
 
 SIGNALS = (
     "roa_positive",
@@ -270,6 +271,74 @@ def book_to_market(
     if book is None or market_cap in (None, 0) or market_cap < 0:
         return None
     return book * statement_unit / market_cap
+
+
+VALUE_WEIGHT = 0.50
+FSCORE_WEIGHT = 0.50
+
+
+@dataclass
+class CombinedScore:
+    """Wynik rankingu v8: `FINAL = 50% percentyl(B/M) + 50% percentyl(F-Score)`."""
+
+    ticker: str
+    final: float
+    value_percentile: float
+    fscore_percentile: float
+    book_to_market: float
+    fscore: int
+
+
+def combined_scores(
+    ratios: Dict[str, float],
+    scores: Dict[str, FScore],
+    value_weight: float = VALUE_WEIGHT,
+    fscore_weight: float = FSCORE_WEIGHT,
+    require_complete_fscore: bool = True,
+) -> List[CombinedScore]:
+    """Ranking malejaco po `final`. Spolka wchodzi, gdy ma DODATNI B/M i F-Score.
+
+    DWIE DECYZJE, KTORYCH SPEC NIE PRZESADZAL:
+
+    1. **F-Score musi byc KOMPLETNY (9/9 dostepnych sygnalow)**, inaczej percentyl mieszalby liczby
+       z roznych podstaw: `score=6` z szesciu dostepnych sygnalow to co innego niz `6` z dziewieciu.
+       Realny koszt tej restrykcji jest maly - na tych danych 279 z 286 spolko-lat ma pelne 9/9.
+    2. **Ujemny B/M (ujemny kapital wlasny) wyklucza spolke**, a nie daje jej najgorszego percentyla.
+       Spolka z ujemnym kapitalem nie jest "najdrozsza", jest ta miara niewyceniana - a wrzucenie jej
+       na dno rankingu B/M dawaloby jej mimo wszystko szanse na wejscie dzieki wysokiemu F-Score.
+
+    Oba percentyle licza sie "wiecej = lepiej": wyzszy B/M = taniej, wyzszy F-Score = lepsza poprawa
+    fundamentow."""
+    usable = [
+        ticker
+        for ticker, ratio in ratios.items()
+        if ratio is not None
+        and ratio > 0
+        and ticker in scores
+        and (scores[ticker].complete or not require_complete_fscore)
+    ]
+    if not usable:
+        return []
+
+    value_percentiles = percentile_scores({t: ratios[t] for t in usable}, higher_is_better=True)
+    fscore_percentiles = percentile_scores(
+        {t: float(scores[t].score) for t in usable}, higher_is_better=True
+    )
+
+    out = [
+        CombinedScore(
+            ticker=ticker,
+            final=value_weight * value_percentiles[ticker] + fscore_weight * fscore_percentiles[ticker],
+            value_percentile=value_percentiles[ticker],
+            fscore_percentile=fscore_percentiles[ticker],
+            book_to_market=ratios[ticker],
+            fscore=scores[ticker].score,
+        )
+        for ticker in usable
+    ]
+    # Przy remisie `final` decyduje wyzszy F-Score, potem wyzszy B/M - deterministycznie.
+    out.sort(key=lambda s: (-s.final, -s.fscore, -s.book_to_market))
+    return out
 
 
 def top_book_to_market(

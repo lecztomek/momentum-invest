@@ -380,3 +380,116 @@ def test_real_data_lpp_january_fiscal_year_is_handled():
 
     assert ends, "brak danych rocznych LPP"
     assert any(end.month == 1 for end in ends), f"koncowki okresow LPP: {sorted({e.month for e in ends})}"
+
+
+# --- KOMBINACJA v8: 50% percentyl(B/M) + 50% percentyl(F-Score) ---
+
+
+def _fscore_stub(score: int, available: int = 9):
+    """Minimalny obiekt o interfejsie `FScore` - testujemy `combined_scores` w izolacji od tego,
+    jak F-Score zostal policzony."""
+    from value_engine.fscore import FScore as _FScore
+
+    return _FScore(ticker="x", score=score, available=available)
+
+
+def test_combined_score_uses_fifty_fifty_weights():
+    from value_engine.fscore import combined_scores
+
+    ranked = combined_scores(
+        ratios={"tania_slaba": 3.0, "droga_dobra": 0.3},
+        scores={"tania_slaba": _fscore_stub(2), "droga_dobra": _fscore_stub(9)},
+    )
+    by_ticker = {s.ticker: s for s in ranked}
+
+    # dwie spolki -> percentyle 100 i 50; kazda wygrywa w jednym wymiarze, wiec FINAL jest rowny
+    assert by_ticker["tania_slaba"].value_percentile == 100.0
+    assert by_ticker["tania_slaba"].fscore_percentile == 50.0
+    assert by_ticker["droga_dobra"].value_percentile == 50.0
+    assert by_ticker["droga_dobra"].fscore_percentile == 100.0
+    assert by_ticker["tania_slaba"].final == pytest.approx(75.0)
+    assert by_ticker["droga_dobra"].final == pytest.approx(75.0)
+
+
+def test_combined_score_ranks_cheap_and_improving_highest():
+    from value_engine.fscore import combined_scores
+
+    ranked = combined_scores(
+        ratios={"idealna": 3.0, "tania": 2.5, "dobra": 0.5, "nijaka": 0.4},
+        scores={
+            "idealna": _fscore_stub(9),
+            "tania": _fscore_stub(3),
+            "dobra": _fscore_stub(8),
+            "nijaka": _fscore_stub(4),
+        },
+    )
+
+    assert ranked[0].ticker == "idealna", "tania ORAZ poprawiajaca sie musi byc pierwsza"
+    assert ranked[-1].ticker == "nijaka"
+
+
+def test_combined_score_weights_are_configurable():
+    from value_engine.fscore import combined_scores
+
+    ratios = {"tania": 3.0, "dobra": 0.3}
+    scores = {"tania": _fscore_stub(2), "dobra": _fscore_stub(9)}
+
+    only_value = combined_scores(ratios, scores, value_weight=1.0, fscore_weight=0.0)
+    only_fscore = combined_scores(ratios, scores, value_weight=0.0, fscore_weight=1.0)
+
+    assert only_value[0].ticker == "tania"
+    assert only_fscore[0].ticker == "dobra"
+
+
+def test_combined_score_requires_complete_fscore():
+    """Percentyl z `score=6` policzonego z SZESCIU sygnalow nie jest porownywalny z `6` z dziewieciu
+    - niepelna spolka wypada z rankingu, chyba ze jawnie na to pozwolimy."""
+    from value_engine.fscore import combined_scores
+
+    ratios = {"pelna": 1.0, "niepelna": 5.0}
+    scores = {"pelna": _fscore_stub(5), "niepelna": _fscore_stub(6, available=6)}
+
+    strict = combined_scores(ratios, scores)
+    loose = combined_scores(ratios, scores, require_complete_fscore=False)
+
+    assert [s.ticker for s in strict] == ["pelna"]
+    assert {s.ticker for s in loose} == {"pelna", "niepelna"}
+
+
+def test_combined_score_excludes_negative_book_to_market():
+    """Spolka z ujemnym kapitalem wlasnym NIE moze wejsc do rankingu przez wysoki F-Score - to nie
+    jest spolka "droga", to spolka niewyceniana ta miara."""
+    from value_engine.fscore import combined_scores
+
+    ranked = combined_scores(
+        ratios={"zdrowa": 1.0, "ujemny_kapital": -2.0},
+        scores={"zdrowa": _fscore_stub(4), "ujemny_kapital": _fscore_stub(9)},
+    )
+
+    assert [s.ticker for s in ranked] == ["zdrowa"]
+
+
+def test_combined_score_is_sorted_and_handles_empty_input():
+    from value_engine.fscore import combined_scores
+
+    ranked = combined_scores(
+        ratios={"a": 1.0, "b": 2.0, "c": 3.0},
+        scores={"a": _fscore_stub(3), "b": _fscore_stub(6), "c": _fscore_stub(9)},
+    )
+
+    assert [s.final for s in ranked] == sorted([s.final for s in ranked], reverse=True)
+    assert combined_scores({}, {}) == []
+    assert combined_scores({"a": 1.0}, {}) == []
+
+
+def test_combined_score_breaks_ties_deterministically():
+    """Dwie spolki o identycznym FINAL musza wyjsc w powtarzalnej kolejnosci (wyzszy F-Score
+    pierwszy) - inaczej "top 4" zalezaloby od kolejnosci wpisow w slowniku."""
+    from value_engine.fscore import combined_scores
+
+    ranked = combined_scores(
+        ratios={"x": 2.0, "y": 2.0},
+        scores={"x": _fscore_stub(4), "y": _fscore_stub(7)},
+    )
+
+    assert [s.ticker for s in ranked] == ["y", "x"]

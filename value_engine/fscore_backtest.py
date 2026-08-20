@@ -1,13 +1,25 @@
 """
-FSCORE BACKTEST - silnik koncepcji v7 (Piotroski F-Score na spolkach o wysokim B/M).
+FSCORE BACKTEST - silnik koncepcji v7 i v8. Rozni je WYLACZNIE sposob selekcji.
 
-SPEC (user): raz w roku top 20% po Book-to-Market -> z nich tylko F-Score 8-9 -> equal weight ->
-holding 12 miesiecy -> dane z roku `t` uzywane od 1.07.t+1.
+SPEC v7 (odtworzenie polskiego badania): raz w roku top 20% po Book-to-Market -> z nich tylko
+F-Score 8-9 -> equal weight -> holding 12 miesiecy -> dane z roku `t` uzywane od 1.07.t+1.
+
+SPEC v8 (user): "zamiast `top 20% B/M AND F>=8` masz najlepsza kombinacje taniosci i poprawy
+fundamentow" - cale uniwersum non-financials PIT, `FINAL = 50% percentyl(B/M) + 50% percentyl
+(F-Score)`, kupujemy **top 4**, equal weight, holding 12 miesiecy, bez stopow i filtrow.
+
+v8 nie dostal osobnego pliku, bo zmienia sie TYLKO jedna rzecz: bramka dwustopniowa zamieniona na
+ranking (`combined_ranking=True`). Cykl roczny, equal weight, ksiegowanie i regula "+6 miesiecy" sa
+identyczne - kopiowanie tego bylo by trzecia kopia tej samej mechaniki. To ta sama decyzja co przy
+v5, ktore weszlo do `factor_backtest.py` przez `scorer=`.
+
+**Roznica praktyczna miedzy v7 i v8 jest duza**: v7 to BRAMKA, ktora moze nie przepuscic nikogo (na
+41 spolkach przepuszcza cos w 4 z 22 lat i siedzi w gotowce 82% czasu), a v8 to RANKING, ktory ma
+zawsze top 4 - wiec jest zawsze zainwestowany.
 
 Silnik jest CELOWO najprostszy w calym module i nie dziedziczy nic po v4-v6: nie ma histerezy,
 progu percentyla, trailing stopu ani podmian w trakcie roku. Cykl zycia pozycji to DOKLADNIE jeden
-rok - 1 lipca sprzedajemy wszystko i skladamy portfel od zera. Kazdy dodatkowy mechanizm bylby
-odejsciem od odtwarzanego badania.
+rok - 1 lipca sprzedajemy wszystko i skladamy portfel od zera.
 
 DOPRECYZOWANIA SPEC:
 
@@ -33,6 +45,7 @@ from value_engine.fscore import (
     DEFAULT_MIN_LAG_MONTHS,
     FScore,
     book_to_market,
+    combined_scores,
     compute_fscore,
     top_book_to_market,
 )
@@ -43,12 +56,18 @@ from value_engine.market_cap import SharesEstimator
 @dataclass
 class FScoreConfig:
     tickers: List[str]
-    book_to_market_fraction: float = 0.20  # spec: "20% spolek z najwyzszym B/M"
-    min_fscore: int = 8  # spec: "kupujemy tylko F-Score 8-9"
+    book_to_market_fraction: float = 0.20  # spec v7: "20% spolek z najwyzszym B/M"
+    min_fscore: int = 8  # spec v7: "kupujemy tylko F-Score 8-9"
     require_all_signals: bool = True  # bramka, nie ranking - patrz decyzja 4 w `fscore.py`
     max_positions: Optional[int] = None
     cost_bps: float = 40.0
     min_lag_months: int = DEFAULT_MIN_LAG_MONTHS
+    # TRYB v8: zamiast bramki dwustopniowej - ranking `50% percentyl(B/M) + 50% percentyl(F-Score)`
+    # i top `max_positions`. Wtedy `book_to_market_fraction`, `min_fscore` i `require_all_signals`
+    # nie sa uzywane (bramek nie ma), a `max_positions` jest OBOWIAZKOWE.
+    combined_ranking: bool = False
+    value_weight: float = 0.50
+    fscore_weight: float = 0.50
 
 
 @dataclass
@@ -69,8 +88,10 @@ class YearDecision:
     date: pd.Timestamp
     universe_size: int
     book_to_market_ranked: int
-    candidates: List[str] = field(default_factory=list)  # top X% po B/M
-    selected: List[str] = field(default_factory=list)  # z nich F-Score >= progu
+    # v7: kandydaci = top X% po B/M, wybrani = z nich F-Score >= progu.
+    # v8: kandydaci = CALY ranking po `50/50`, wybrani = top `max_positions`.
+    candidates: List[str] = field(default_factory=list)
+    selected: List[str] = field(default_factory=list)
     scores: Dict[str, int] = field(default_factory=dict)
     in_market: bool = False
 
@@ -90,6 +111,11 @@ def run_fscore_backtest(
         )
     if not 0 <= config.min_fscore <= 9:
         raise ValueError(f"min_fscore musi byc w [0, 9], dostalem {config.min_fscore}.")
+    if config.combined_ranking and not config.max_positions:
+        raise ValueError(
+            "combined_ranking wymaga `max_positions` - ranking bez bramki nie ma naturalnego konca, "
+            "wiec bez limitu kupilby cale uniwersum."
+        )
 
     key_of = ticker_to_fundamental_key or {t: t.upper() for t in config.tickers}
     prices = daily_prices[config.tickers].sort_index()
@@ -145,23 +171,42 @@ def run_fscore_backtest(
                 if ratio is not None:
                     ratios[ticker] = ratio
 
-            candidates = top_book_to_market(ratios, config.book_to_market_fraction)
-            scores: Dict[str, FScore] = {
-                ticker: compute_fscore(
-                    annual_panel, key_of[ticker], date, min_lag_months=config.min_lag_months
+            if config.combined_ranking:
+                # v8: F-Score liczony dla CALEGO uniwersum (nie tylko dla taniej czesci), bo
+                # percentyl musi byc liczony na tym samym zbiorze co percentyl B/M.
+                scores: Dict[str, FScore] = {
+                    ticker: compute_fscore(
+                        annual_panel, key_of[ticker], date, min_lag_months=config.min_lag_months
+                    )
+                    for ticker in ratios
+                }
+                ranked = combined_scores(
+                    ratios,
+                    scores,
+                    value_weight=config.value_weight,
+                    fscore_weight=config.fscore_weight,
+                    require_complete_fscore=config.require_all_signals,
                 )
-                for ticker in candidates
-            }
-            selected = [
-                ticker
-                for ticker in candidates
-                if scores[ticker].score >= config.min_fscore
-                and (scores[ticker].complete or not config.require_all_signals)
-            ]
-            # Przy remisie na F-Score decyduje wyzszy B/M - deterministycznie, bez losowosci.
-            selected.sort(key=lambda t: (-scores[t].score, -ratios[t]))
-            if config.max_positions is not None:
-                selected = selected[: config.max_positions]
+                candidates = [s.ticker for s in ranked]
+                selected = candidates[: config.max_positions]
+            else:
+                candidates = top_book_to_market(ratios, config.book_to_market_fraction)
+                scores = {
+                    ticker: compute_fscore(
+                        annual_panel, key_of[ticker], date, min_lag_months=config.min_lag_months
+                    )
+                    for ticker in candidates
+                }
+                selected = [
+                    ticker
+                    for ticker in candidates
+                    if scores[ticker].score >= config.min_fscore
+                    and (scores[ticker].complete or not config.require_all_signals)
+                ]
+                # Przy remisie na F-Score decyduje wyzszy B/M - deterministycznie, bez losowosci.
+                selected.sort(key=lambda t: (-scores[t].score, -ratios[t]))
+                if config.max_positions is not None:
+                    selected = selected[: config.max_positions]
 
             if ratios and first_decision_date is None:
                 # Ranking B/M istnieje dopiero, gdy jest opublikowany raport roczny ORAZ

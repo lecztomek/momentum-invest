@@ -300,3 +300,97 @@ def test_real_data_loosened_variant_is_investable():
     assert metrics is not None
     assert metrics["time_in_market"] > 0.85
     assert metrics["names_per_year"] > 3.0
+
+
+# --- TRYB v8: RANKING 50/50 ZAMIAST BRAMKI ---
+
+
+def test_combined_ranking_buys_top_n_and_is_always_invested():
+    """Rdzen v8: nie ma bramki, wiec zawsze kupujemy `max_positions` najlepszych. To bezposrednia
+    odpowiedz na porazke v7, gdzie dwie bramki zostawialy portfel w gotowce 82% czasu."""
+    panel = _panel(
+        a=_perfect(900.0),  # tania i doskonala
+        b=_perfect(500.0),
+        c=_weak(400.0),
+        d=_weak(100.0),  # droga i slaba
+    )
+    prices = _prices(a=[100.0] * 950, b=[100.0] * 950, c=[100.0] * 950, d=[100.0] * 950)
+
+    result = _run(prices, panel, combined_ranking=True, max_positions=2)
+
+    invested = [d for d in result["decisions"] if d.date >= pd.Timestamp("2021-07-01")]
+    assert invested, "brak dat decyzyjnych z pelnym F-Score"
+    for decision in invested:
+        assert decision.in_market
+        assert len(decision.selected) == 2
+        assert decision.selected == ["a", "b"], f"{decision.date}: {decision.selected}"
+
+
+def test_combined_ranking_requires_max_positions():
+    panel = _panel(a=_perfect(900.0))
+    prices = _prices(a=[100.0] * 500)
+
+    with pytest.raises(ValueError, match="combined_ranking wymaga"):
+        _run(prices, panel, combined_ranking=True)
+
+
+def test_combined_ranking_ignores_the_two_stage_gate():
+    """W trybie v8 `book_to_market_fraction` i `min_fscore` NIE dzialaja - spolka z F-Score 6 moze
+    wejsc, jesli jest w top N rankingu. Gdyby bramka dzialala rownolegle, byloby to ciche
+    zaostrzenie reguly."""
+    panel = _panel(a=_weak(900.0), b=_weak(800.0))
+    prices = _prices(a=[100.0] * 950, b=[100.0] * 950)
+
+    gated = _run(prices, panel, min_fscore=8)
+    ranked = _run(prices, panel, combined_ranking=True, max_positions=2, min_fscore=8)
+
+    assert not gated["trades"], "bramka F>=8 nie moze przepuscic slabych spolek"
+    assert ranked["trades"], "ranking musi kupic top N niezaleznie od progu F-Score"
+
+
+def test_combined_ranking_weights_change_the_selection():
+    """Spolka tania-slaba vs droga-doskonala: przy 100% Value wygrywa pierwsza, przy 100% F-Score
+    druga. To pilnuje, ze wagi trafiaja do scoringu, a nie sa ignorowane."""
+    panel = _panel(tania_slaba=_weak(900.0), droga_dobra=_perfect(50.0))
+    prices = _prices(tania_slaba=[100.0] * 950, droga_dobra=[100.0] * 950)
+
+    only_value = _run(
+        prices, panel, combined_ranking=True, max_positions=1, value_weight=1.0, fscore_weight=0.0
+    )
+    only_fscore = _run(
+        prices, panel, combined_ranking=True, max_positions=1, value_weight=0.0, fscore_weight=1.0
+    )
+
+    assert {t.ticker for t in only_value["trades"]} == {"tania_slaba"}
+    assert {t.ticker for t in only_fscore["trades"]} == {"droga_dobra"}
+
+
+def test_combined_ranking_still_rebuilds_annually_and_charges_costs():
+    panel = _panel(a=_perfect(900.0), b=_perfect(500.0))
+    prices = _prices(a=[100.0] * 950, b=[100.0] * 950)
+
+    free = _run(prices, panel, combined_ranking=True, max_positions=2, cost_bps=0.0)
+    costly = _run(prices, panel, combined_ranking=True, max_positions=2, cost_bps=100.0)
+
+    assert free["equity_curve"]["equity"].iloc[-1] == pytest.approx(1.0, abs=1e-9)
+    assert costly["equity_curve"]["equity"].iloc[-1] < free["equity_curve"]["equity"].iloc[-1]
+    entries = {t.entry_date for t in free["trades"]}
+    assert len(entries) >= 2, "portfel musi byc skladany od zera co roku"
+
+
+def test_real_data_combined_ranking_is_always_invested():
+    """KLUCZOWA ROZNICA v8 wobec v7 zapisana jako test na prawdziwych danych: ranking nie ma bramki,
+    wiec strategia jest w rynku niemal caly czas (v7 SPEC: 18%)."""
+    if not DB_PATH.exists() or not PL_DATA_DIR.exists():
+        pytest.skip("Brak danych")
+    from value_engine.run_fscore import FScoreHarness
+    from value_engine.run_quality_value import discover_tickers
+    from value_engine.universe import load_industries, non_financial_tickers
+
+    tickers = non_financial_tickers(discover_tickers(), load_industries(DB_PATH))
+    harness = FScoreHarness(tickers)
+    _, metrics = harness.run(combined_ranking=True, max_positions=4)
+
+    assert metrics is not None
+    assert metrics["time_in_market"] > 0.85, f"w rynku {metrics['time_in_market']:.0%}"
+    assert metrics["names_per_year"] > 3.0

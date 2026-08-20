@@ -1,6 +1,6 @@
 # value_engine - strategie "value" na GPW
 
-Osobny silnik, poza `engine_v2`. Siedem przetestowanych koncepcji, wszystkie oparte na tych samych,
+Osobny silnik, poza `engine_v2`. Osiem przetestowanych koncepcji, wszystkie oparte na tych samych,
 wspolnych fundamentach technicznych (parser BiznesRadaru + panel point-in-time + ceny PL +
 uniwersum point-in-time).
 
@@ -13,6 +13,7 @@ uniwersum point-in-time).
 | v5: Quality Defensive (Quality + LowVol), top 5 | ten sam silnik, `scorer=` | `run_defensive.py` | 9.61% vs 9.61% (remis, LOO 6/21) | **7.08% vs 7.95% (-0.87pp, LOO 2/40)** |
 | v6: czysta jakosc, top 20-25%, rebalans kwartalny | `quality_backtest.py` | `run_quality.py` | – (nie testowana) | **0.39%-8.38% vs 8.54% (LOO 2/41)** |
 | v7: Piotroski F-Score 8-9 na top 20% B/M, holding 12M | `fscore_backtest.py` | `run_fscore.py` | – (nie testowana) | **-3.66% vs 10.33%, w rynku 18%** |
+| v8: 50% percentyl(B/M) + 50% percentyl(F-Score), top 4 | ten sam silnik, `combined_ranking=True` | `run_combined.py` | – (nie testowana) | **-4.46% vs 10.33% (-14.79pp)** |
 
 **NAJWAZNIEJSZY WNIOSEK CALEJ SERII: zaden z pieciu pomyslow nie bije uczciwego benchmarku PIT na
 szerszym uniwersum.** Wynik kazdej wersji zalezy DRASTYCZNIE od tego, na czym jest liczony - i to
@@ -82,7 +83,7 @@ porownywalne 1:1 z reszta repo.
 | `quality_scoring.py` | scoring v6: 4 percentyle (ROE/ROIC/CFO-Assets/Debt-Assets) + 2 kryteria binarne |
 | `quality_backtest.py` | silnik koncepcji v6 - **zmienna liczba pozycji, histereza percentylowa, equal weight** |
 | `fscore.py` | Piotroski F-Score 0-9 na panelu ROCZNYM + Book-to-Market + regula "+6 miesiecy" |
-| `fscore_backtest.py` | silnik koncepcji v7 - roczny cykl, bramka dwustopniowa, gotowka gdy brak kandydatow |
+| `fscore_backtest.py` | silnik koncepcji v7 i v8 - roczny cykl; bramka dwustopniowa ALBO ranking 50/50 |
 
 ### Gdzie leza dane
 
@@ -107,6 +108,7 @@ katalog mial 82 pliki, z czego 41 bylo bajt w bajt duplikatami (usuniete).
 .venv/bin/python3 -m value_engine.run_quality
 .venv/bin/python3 -m value_engine.run_quality --leave-one-out
 .venv/bin/python3 -m value_engine.run_fscore
+.venv/bin/python3 -m value_engine.run_combined
 .venv/bin/pytest value_engine/tests/ -v
 ```
 
@@ -182,6 +184,104 @@ danych z przyszlosci.
 **Czego to NIE naprawia:** BiznesRadar pokazuje liczby po ewentualnych korektach (restatements) -
 wyrownanie po dacie publikacji naprawia **timing**, nie **tresc**. Prawdziwa historia
 point-in-time powstanie z czasem, bo `snapshots` trzyma `fetched_at`.
+
+---
+
+# Koncepcja v8: 50% percentyl(B/M) + 50% percentyl(F-Score), top 4
+
+Spec (user): "zamiast `top 20% B/M AND F>=8` masz najlepsza kombinacje taniosci i poprawy
+fundamentow". Cale uniwersum non-financials PIT; raz w roku percentyl B/M i percentyl F-Score;
+`FINAL = 50% Value + 50% F-Score`; kupujemy **top 4**, equal weight, holding 12 miesiecy, bez
+stopow, kanarka i dodatkowych filtrow.
+
+**To bylo dobre posuniecie diagnostyczne** i naprawilo dokladnie ten problem, ktory zabil v7:
+zamiana dwoch bramek na ranking sprawia, ze rozmiar uniwersum nie decyduje o tym, czy w ogole cos
+kupimy. v7 SPEC siedzialo w gotowce 82% czasu, v8 jest w rynku **91%** i trzyma srednio 3.64 spolki.
+Strategia stala sie wiec MIERZALNA - i to jest jedyna dobra wiadomosc.
+
+## Wynik: mierzalna i wyraznie niszczaca wartosc
+
+| wariant | CAGR | MaxDD | Sharpe | n | w rynku |
+|---|---|---|---|---|---|
+| **v8 SPEC: 50% B/M + 50% F-Score, top 4** | **-4.46%** | -78.33% | -0.079 | 80 | 91% |
+| v8 - top 6 | 1.29% | -63.43% | 0.172 | 116 | 91% |
+| v8 - top 8 | 3.17% | -62.83% | 0.252 | 148 | 91% |
+| **v8 - tylko Value (100% B/M), top 4** | **+4.75%** | -62.55% | 0.307 | 80 | 91% |
+| v8 - tylko F-Score (100%), top 4 | -0.38% | -63.16% | 0.100 | 80 | 91% |
+| v8 - top 4, koszty 0 bps | -3.75% | -75.69% | -0.047 | 80 | 91% |
+| **benchmark: buy&hold uniwersum PIT** | **10.33%** | -58.50% | 0.547 | - | - |
+| *buy&hold STALE 40 spolek (survivorship!)* | *13.93%* | *-73.17%* | *0.630* | - | - |
+
+**-14.79pp wzgledem benchmarku**, i to stabilnie w czasie: od 2011 -15.30pp, od 2015 -17.72pp.
+Koszty transakcyjne to tylko 0.71pp (-4.46% vs -3.75% przy 0 bps), wiec nie w nich jest problem.
+41% transakcji zyskownych, mediana zwrotu 12M **-4.81%**.
+
+## Diagnoza: to polowa F-Score psuje wynik, nie polowa Value
+
+Rozbicie na czyste skladniki jest tu najwazniejsza liczba w calej koncepcji:
+
+| ranking | sredni B/M kupionych | sredni F-Score kupionych | CAGR | mediana zwrotu 12M |
+|---|---|---|---|---|
+| **100% Value** | **2.38** | 5.7 | **+4.75%** | **+1.7%** |
+| 50% / 50% | 1.88 | 6.8 | -4.46% | -4.8% |
+| 100% F-Score | 1.25 | **7.4** | -0.38% | -1.7% |
+
+Dolozenie polowy F-Score **oddaje taniosc** (B/M spada z 2.38 do 1.88) i **kupuje poprawe** (F rosnie
+z 5.7 do 6.8) - i kosztuje **9.2pp CAGR**. Kierunek jest jednoznaczny; dokladna kolejnosc miedzy
+"100% F" (-0.38%) i "50/50" (-4.46%) juz nie, bo to tylko ~20 rocznych portfeli po 4 spolki.
+
+**Uwaga: nawet czysty Value (+4.75%) przegrywa z benchmarkiem (10.33%).** Zaden tilt na tym
+uniwersum nie bije rownowagi - a im WIECEJ spolek trzymamy, tym blizej benchmarku jestesmy
+(top 4: -4.46%, top 6: +1.29%, top 8: +3.17%). To podpis negatywnej umiejetnosci selekcji:
+koncentracja szkodzi, rozproszenie pomaga.
+
+## F-Score anty-prognozuje - drugi raz, na niezaleznym doborze spolek
+
+| F-Score kupionej spolki | v8 (n=80) mediana 12M | v7 (n=107) mediana 12M |
+|---|---|---|
+| 6 | -1.6% | - |
+| 7 | -4.8% | -1.4% |
+| 8 | **-8.4%** | -0.4% |
+| 9 | **-24.8%** | **-17.6%** |
+
+Dwa niezalezne dobory spolek (v7 bez filtra B/M z progiem F>=7; v8 ranking 50/50), dwa razy ta sama
+monotoniczna zaleznosc: **im wyzszy F-Score, tym gorszy zwrot za nastepne 12 miesiecy**. Probki na
+F=9 sa male (12 i 4 transakcje), ale caly szereg 6 -> 9 idzie w jedna strone na 187 transakcjach
+lacznie.
+
+Mechanizm jest ten sam, ktory zdiagnozowalismy w v6: **piec z dziewieciu sygnalow F-Score to ZMIANY
+rok do roku**. Najwieksza poprawe r/r pokazuje spolka wychodzaca z dolka cyklu - a na 40 duzych
+spolkach GPW to znaczy energetyka, gornictwo i chemia panstwowa w momencie, gdy ceny surowcow albo
+taryfy wlasnie osiagnely szczyt. Lista faktycznie kupionych nazw v8 to ACP 13x, OPL 12x, ENA 10x,
+TPE 10x, PKN 7x, PGE 7x - telekom i sektor panstwowy, dokladnie te same nazwy, ktore ciagnely w dol
+v4, v6 i v7.
+
+## Test kruchosci leave-one-out: 0/40 - najbardziej jednoznaczny wynik calej serii
+
+| | wynik |
+|---|---|
+| bije wlasny benchmark na CAGR | **0/40** |
+| rozrzut CAGR | 5.96pp (-5.15% do +0.81%) |
+| najlepszy przypadek (nadal przegrywa) | bez ENA: **+0.81%** vs benchmark 10.50% (**-9.70pp**) |
+| najgorszy przypadek | bez KGH: **-5.15%** vs benchmark 5.88% (**-11.04pp**) |
+
+Zaden z 40 przebiegow nie bije benchmarku - **przewaga ujemna w kazdym mozliwym podzbiorze
+uniwersum**. To jakosciowo inny wynik niz v4/v6/v7 (gdzie leave-one-out dawal 2-12 wygranych na
+kilkadziesiat prob): tam porazka zalezala od doboru spolek, tu nie zalezy od niczego. Rozrzut
+5.96pp jest tez najmniejszy w calej serii v4-v8 - wynik jest nie tylko zly, jest STABILNIE zly.
+
+## Wniosek
+
+v8 poprawilo to, co mialo poprawic - strategia jest zawsze zainwestowana i da sie ja zmierzyc. Ale
+zmierzona wychodzi **-14.79pp wzgledem benchmarku**, a rozbicie na skladniki pokazuje, ze **czynnik
+F-Score na tym rynku dziala odwrotnie niz w literaturze** i kosztuje 9.2pp CAGR wzgledem samego
+Value. Nie warto tego ratowac zmiana wag: przy 0/100 (czysty Value) wynik jest najlepszy z tej rodziny
+i wciaz o 5.6pp gorszy od rownowagi.
+
+To osma koncepcja z rzedu, ktora przegrywa z equal-weight uniwersum PIT, i piata, w ktorej wprost
+widac ten sam mechanizm: **kazdy czynnik liczony z ostatnich raportow - tanio (v4, v7, v8), jakosc
+(v5, v6), poprawa (v7, v8) - wskazuje na 40 duzych spolkach GPW ten sam zestaw nazw z sektora
+panstwowego.** Przy 40 spolkach to nie jest test czynnika, to jest test jednego sektora.
 
 ---
 
