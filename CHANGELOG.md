@@ -2,6 +2,50 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-20 (7)
+
+- **V6 POD LUPA (`run_v6_research.py`): trzy testy odpornosci na 381 spolkach. Wniosek: przewaga
+  konczy sie okolo 2022 i zaleza od dwoch spolek.** User: "dalszy research robilbym tylko na V6.
+  Nastepne 3 testy: leave-one-out / leave-top-5-winners-out, rolling 5Y CAGR vs benchmark, wyniki per
+  dekada / rezim rynku." Wariant: top 25% / trzymaj >= 45 percentyla, progi plynnosci 2.0 i 0.5 mln.
+
+  **JAK LEAVE-ONE-OUT PO 381 SPOLKACH DA SIE POLICZYC**: kryteria uniwersum PIT sa niezalezne miedzy
+  spolkami, wiec uniwersum bez spolki X to dokladnie uniwersum pelne minus X. Naiwne przeliczanie od
+  zera to >2 h, skrot skraca to do samego backtestu. Poprawnosc pilnowana testem
+  (`test_v6_research.py`) razem z kontrola NEGATYWNA: przy kryterium przekrojowym (`top_n`) skrot
+  MUSI sie rozjechac - i test to sprawdza, zeby bylo jasne, dlaczego runner nie moze uzywac `top_n`.
+
+  **TEST 3 (okresy): cala przewaga siedzi w jednym okresie, a od 2020 jest strata.**
+
+  | okres | 2.0 mln (v6/bench/przewaga) | 0.5 mln |
+  |---|---|---|
+  | 2006-2009 (GFC) | **15.24% / -7.66% / +22.90pp** | -6.42% / -4.99% / -1.43pp |
+  | 2010-2014 | -1.52% / -5.14% / +3.61pp | 14.01% / 0.64% / +13.37pp |
+  | 2015-2019 | 7.29% / 3.01% / +4.29pp | 18.89% / 3.91% / +14.98pp |
+  | **2020-2026** | **0.26% / 15.52% / -15.26pp** | **7.60% / 16.38% / -8.78pp** |
+
+  Dwa progi daja SPRZECZNE odpowiedzi, skad bierze sie przewaga (przy 2 mln z GFC, przy 0.5 mln z
+  lat 2010-2019, gdzie w GFC jest strata) - czyli lokalizacja przewagi nie jest wlasnoscia strategii,
+  a doboru progu. Zgadzaja sie w jednym: **w 2020-2026 v6 traci na oba progi**.
+
+  Rezim rynku (kanarek WIG20 tylko jako podzial historii, nie jako filtr): przy 2 mln v6 bije
+  benchmark w obu rezimach (+1.59pp risk-on, +2.57pp risk-off), przy 0.5 mln glownie w risk-on
+  (+6.29pp vs +1.36pp). Tez niestabilne miedzy progami.
+
+  **TEST 2 (rolling 5Y): przewaga wyparowala okolo 2022.** Udzial wygranych okien 5Y: przy 2 mln
+  **52.1%** (rzut moneta, mediana +0.38pp), przy 0.5 mln 71.5% (mediana +8.81pp). Ale rozklad w
+  czasie jest jednoznaczny na OBU progach - udzial wygranych okien konczacych sie w roku: 2011-2014
+  100%, 2022 31%/19%, 2023 14%/0%, **2024-2026 0%/0%** przy medianie straty 5-17pp. **Od 2023-2024
+  v6 nie wygralo ani jednego okna 5-letniego na zadnym progu** - to trzy lata z rzedu, nie jeden
+  slaby rok.
+
+  **TEST 1 (leave-top-N-winners-out): DWIE spolki z 381 zeruja przewage.** Prog 2 mln (29
+  transakcji): pelne +1.47pp, bez CDR +1.07pp, **bez CDR+DNP -2.19pp**, bez top 3 -6.19pp. Prog
+  0.5 mln (64 transakcje): pelne +3.77pp, bez 11B +2.26pp, **bez 11B+BDX -0.05pp**. Najwieksi
+  kontrybutorzy: CDR +285.7% w 2 transakcjach i DNP +105.5% w jednej (2 mln); 11B +575% w jednej
+  transakcji i BDX +424% (0.5 mln). Przy 29-64 transakcjach w 20 latach to informacja o tym, ze
+  probka jest za mala na wniosek o przewadze.
+
 ## 2026-08-20 (6)
 
 - **DUZE UNIWERSUM: 381 spolek niefinansowych (bylo 41). Wszystkie koncepcje v2-v8 przeliczone na

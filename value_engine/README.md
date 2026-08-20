@@ -187,6 +187,95 @@ point-in-time powstanie z czasem, bo `snapshots` trzyma `fetched_at`.
 
 ---
 
+# V6 POD LUPA: trzy testy odpornosci na 381 spolkach
+
+User: "dalszy research robilbym tylko na V6. Nastepne 3 testy: leave-one-out / leave-top-5-winners-out,
+rolling 5Y CAGR vs benchmark, wyniki per dekada / rezim rynku." Runner: `run_v6_research.py`.
+
+Wariant badany: **top 25%, trzymaj >= 45 percentyla** (srodek zakresu ze spec), na dwoch progach
+plynnosci - 2.0 mln (13-34 spolki w uniwersum PIT) i 0.5 mln (27-78).
+
+Leave-one-out po 381 spolkach jest policzalny tylko dzieki jednej obserwacji: kryteria uniwersum PIT
+sa NIEZALEZNE MIEDZY SPOLKAMI (historia cen i mediana obrotu danej spolki nie zaleza od tego, jakie
+inne spolki sa w zbiorze), wiec **uniwersum bez spolki X to dokladnie uniwersum pelne minus X**.
+Naiwne przeliczanie od zera to >2 h, skrot skraca to do samego backtestu. Poprawnosc skrotu jest
+pilnowana testem (`tests/test_v6_research.py`), razem z kontrola negatywna: gdyby ktos dodal
+kryterium PRZEKROJOWE (`top_n` najplynniejszych), skrot przestalby byc poprawny.
+
+## Test 3: wyniki per okres - cala przewaga siedzi w JEDNYM okresie, a od 2020 jest strata
+
+| okres | prog 2.0 mln: v6 / bench / przewaga | prog 0.5 mln: v6 / bench / przewaga |
+|---|---|---|
+| 2006-2009 (GFC) | **15.24% / -7.66% / +22.90pp** | -6.42% / -4.99% / -1.43pp |
+| 2010-2014 | -1.52% / -5.14% / +3.61pp | **14.01% / 0.64% / +13.37pp** |
+| 2015-2019 | 7.29% / 3.01% / +4.29pp | **18.89% / 3.91% / +14.98pp** |
+| **2020-2026** | **0.26% / 15.52% / -15.26pp** | **7.60% / 16.38% / -8.78pp** |
+| cala historia | 4.41% / 2.93% / +1.47pp | 9.22% / 5.45% / +3.77pp |
+
+Dwa progi daja **sprzeczne** odpowiedzi na pytanie "skad bierze sie przewaga": przy 2 mln cala z
+kryzysu 2006-2009 (+22.90pp, przy portfelu 2-pozycyjnym, bo uniwersum mialo wtedy 7 nazw), przy
+0.5 mln z lat 2010-2019, a w GFC jest strata. To samo w sobie jest wynikiem: **lokalizacja przewagi
+nie jest wlasnoscia strategii, tylko doboru progu plynnosci.**
+
+Zgadzaja sie natomiast w jednym, najwazniejszym punkcie: **w ostatnim okresie (2020-2026) v6 traci do
+benchmarku na oba progi** - o 15.26pp i 8.78pp. Benchmark w tym czasie zrobil 15-16% rocznie, v6
+0.26% i 7.60%.
+
+## Test 2: rolling 5Y CAGR - przewaga wyparowala okolo 2022
+
+| | prog 2.0 mln | prog 0.5 mln |
+|---|---|---|
+| v6 > benchmark w oknach 5Y | **52.1%** (rzut moneta) | 71.5% |
+| mediana roznicy | +0.38pp | +8.81pp |
+| okna z UJEMNYM 5Y CAGR v6 | 37.5% (bench 40.3%) | 9.8% (bench 22.3%) |
+| najgorsze okno | -23.72pp | -14.08pp |
+
+Ale rozklad w czasie jest jednoznaczny na OBU progach - udzial wygranych okien 5Y konczacych sie w
+danym roku:
+
+| rok konca okna | 2.0 mln | 0.5 mln |
+|---|---|---|
+| 2011-2014 | 100% | 99-100% |
+| 2015-2018 | 6-55% | 100% |
+| 2019-2021 | 51-100% | 100% |
+| 2022 | 31% | 19% |
+| 2023 | 14% | **0%** |
+| **2024** | **0%** (mediana -12.53pp) | **0%** (-4.90pp) |
+| **2025** | **0%** (mediana -17.40pp) | **0%** (-10.25pp) |
+| **2026** | **0%** (mediana -11.49pp) | **0%** (-6.23pp) |
+
+**Od 2023-2024 v6 nie wygralo ANI JEDNEGO okna 5-letniego na zadnym progu.** Nie jest to slaby rok
+w dobrej serii - to trzy lata z rzedu bez jednego wygranego okna, przy medianie straty 5-17pp.
+
+## Test 1: leave-top-N-winners-out - DWIE spolki decyduja o wszystkim
+
+Prog 2.0 mln (29 transakcji w 20 latach):
+
+| usuniete | v6 CAGR | bench | przewaga |
+|---|---|---|---|
+| (nic) | 4.41% | 2.93% | **+1.47pp** |
+| CDR | 3.20% | 2.13% | +1.07pp |
+| **CDR, DNP** | -0.32% | 1.87% | **-2.19pp** |
+| CDR, DNP, KGH | -5.47% | 0.72% | -6.19pp |
+| CDR, DNP, KGH, CPS, ZAB | -5.91% | 0.54% | -6.45pp |
+
+Prog 0.5 mln (64 transakcje):
+
+| usuniete | v6 CAGR | bench | przewaga |
+|---|---|---|---|
+| (nic) | 9.22% | 5.45% | **+3.77pp** |
+| 11B | 7.57% | 5.32% | +2.26pp |
+| **11B, BDX** | 4.85% | 4.89% | **-0.05pp** |
+| 11B, BDX, BFT | 3.09% | 4.69% | -1.61pp |
+| 11B, BDX, BFT, RBW, CDR | 4.15% | 3.33% | +0.81pp |
+
+**Na obu progach usuniecie DWOCH spolek z 381 zeruje albo odwraca przewage.** Przy 29-64
+transakcjach w 20 latach to nie jest zaskoczenie - to informacja o tym, ze probka jest za mala, zeby
+mowic o przewadze. Najwieksi kontrybutorzy: przy 2 mln CDR (+285.7% w 2 transakcjach), DNP (+105.5%
+w jednej), KGH (+81.7%); przy 0.5 mln 11B (+575% w jednej transakcji), BDX (+424%), BFT (+417%).
+
+---
+
 # DUZE UNIWERSUM: 381 spolek niefinansowych (stan 2026-08-20)
 
 User dorzucil ~380 nowych spolek: **412 plikow cen, 403 spolki w bazie fundamentow, 381 po odsianiu
