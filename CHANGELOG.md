@@ -2,6 +2,68 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-20
+
+- **KONCEPCJA v5 "Quality Defensive" (`value_engine/defensive_scoring.py`, `run_defensive.py`) -
+  ZAIMPLEMENTOWANA I ZMIERZONA: remis na zwrocie, przewaga tylko na ryzyku, leave-one-out 6/21.**
+  Spec usera: uniwersum duze/plynne PIT, "na poczatek non-financials"; QUALITY z wysokiego ROE TTM,
+  wysokiego ROIC TTM i niskiego Debt/MarketCap; DEFENSIVE z niskiej zmiennosci,
+  `VOL = srednia(vol_6m, vol_12m)`; `FINAL = 50% QUALITY + 50% LOW_VOL`; top 5, maks 1 wymiana na
+  miesiac. 26 nowych testow, lacznie **161**, wszystkie zielone.
+
+  **Bez nowego silnika.** v5 rozni sie od v4 WYLACZNIE scoringiem, wiec `factor_backtest.py` dostal
+  parametr `scorer=` (funkcja `(data, inwestowalne, ceny) -> ranking`), a v5 wstrzykuje
+  `defensive_scoring.build_scorer`. Mechanika slotow, podmiany i ksiegowania jest ta sama,
+  przetestowana - zadna trzecia kopia. `regime=None` i `scorer=None` zachowuja wyniki v4 bajt w bajt
+  (potwierdzone: 135 testow v4 przeszlo bez zmian po refaktorze).
+
+  | wariant | CAGR | MaxDD | Sharpe | Calmar | n |
+  |---|---|---|---|---|---|
+  | **v5 (top 5, maks 1 wymiana/mies.)** | 9.61% | **-49.63%** | **0.555** | **0.194** | 101 |
+  | buy&hold uniwersum PIT (uczciwy benchmark) | 9.61% | -55.06% | 0.521 | 0.175 | - |
+  | v5 + kanarek WIG20 > 10M MA | 4.58% | -33.59% | 0.389 | 0.136 | 141 |
+  | buy&hold STALE 21 non-financials (survivorship!) | 14.59% | -69.89% | 0.629 | 0.209 | - |
+
+  **Zwrot: dokladny remis** - 9.6142% vs 9.6105%, roznica +0.004pp. Poprawa jest wylacznie po
+  stronie ryzyka (MaxDD -49.6% vs -55.1%, Sharpe 0.555 vs 0.521).
+
+  **LEAVE-ONE-OUT PRZEWRACA INTERPRETACJE REMISU: 6/21 na CAGR**, i tylko **2** to prawdziwe wygrane
+  (ASB +0.38pp, DNP +0.04pp) - pozostale 4 to dokladne remisy +0.00pp, bo DOM/DVL/NEU/PEP nigdy nie
+  wchodza do uniwersum PIT i przebieg jest identyczny z pelnym. 15/21 przegrywa, do -1.91pp (bez
+  ACP). Czyli remis z pelnej probki nie jest "granica przewagi", a SRODKIEM ROZKLADU PRZECHYLONEGO
+  NA MINUS. Na Sharpe jest inaczej: **14/21** - redukcja ryzyka jest powtarzalna, zwrot nie.
+
+  **DLACZEGO: top 5 to 60% rankowanego uniwersum.** Mediana rankowanych spolek to 9 (min 3, max 16),
+  wiec v5 trzyma srednio 60% uniwersum, a w **23% miesiecy rankowanych bylo <=5 spolek** - kupuje
+  wtedy cale dostepne uniwersum. Scoring nie ma na czym pracowac; v5 jest z konstrukcji blisko
+  benchmarku. (v4 trzymal 4 z 10, czyli 40%, i mial +4.78pp.)
+
+  **DRUGA PRZYCZYNA: brak histerezy = 4x rotacja, i to kosztuje dokladnie cala przewage brutto.**
+  `keep_rank = entry_rank = 5` (spec nie przewiduje buforu), wiec pozycja wypada za spadek o jedno
+  miejsce w rankingu; limit "1 wymiana/mies." wiaze w 96 z 246 miesiecy. 101 transakcji vs 26 w v4,
+  mediana trzymania 122 dni vs 632. Przy 0 bps koszty v5 daje 10.16% (+0.55pp nad benchmarkiem), przy
+  realistycznych 40 bps 9.61% - **rotacja zjada 0.55pp, czyli tyle, ile wynosi cala przewaga brutto**.
+
+  **Kanarek: niezalezne potwierdzenie wniosku z v4** - zabiera 5.03pp CAGR (9.61% -> 4.58%) i obniza
+  Sharpe, mimo lepszego MaxDD. Nie wdrazac.
+
+  **Non-financials**: nowy `universe.load_industries` / `non_financial_tickers` czyta branze z
+  profilu BiznesRadaru (pole `Branza:`; pola "Sektor" tam NIE ma). W danych jest dokladnie jedna
+  spolka finansowa - **KRU (Wierzytelnosci)** - wiec uniwersum to 21 z 22 nazw. Dla banku/windykatora
+  `Debt/MarketCap` mierzy skale biznesu, nie ryzyko, i wlasnie dlatego spec mowi "non-financials".
+  Spolka o NIEZNANEJ branzy zostaje w uniwersum (brak wpisu nie jest dowodem, ze to bank).
+
+  **Decyzje, ktorych spec nie przesadzal**: ROIC = `EBIT TTM * (1 - 0.19) / (dlug + kapital wlasny)`
+  (19% = realna stawka CIT, parametr `tax_rate`); **ujemny kapital wlasny uniewaznia ROE i ROIC**
+  (przy ujemnym mianowniku spolka z ogromna STRATA wychodzilaby na najrentowniejsza); **zerowa
+  zmiennosc = wykluczenie**, nie "najbezpieczniejsza spolka swiata" (stala cena = zawieszone
+  notowania, a bez tego LOW_VOL = 100 i taki papier zajmuje caly portfel); zmiennosc z PELNEGO okna
+  126/252 sesji, konczacego sie na dniu decyzyjnym WLACZNIE (dzienna cena jest wtedy znana).
+
+  **Wniosek**: nie ma czego optymalizowac wagami - z 9 nazwami w rankingu i 5 slotami zaden zestaw
+  wag nie zrobi z tego strategii selekcji. Ograniczeniem jest rozmiar uniwersum, ten sam priorytet co
+  po v4. Wersja odniesienia pozostaje v4.
+
 ## 2026-08-19 (5)
 
 - **KANAREK WIG20 > 10M MA (`value_engine/canary.py`) - ZAIMPLEMENTOWANY, SPRAWDZONY, SZKODZI.**

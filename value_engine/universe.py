@@ -38,10 +38,75 @@ historia cen) - zero look-ahead.
 
 from __future__ import annotations
 
+import re
+import sqlite3
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, Iterable, List, Optional, Sequence, Set
 
 import pandas as pd
+
+# `<th>Branza:</th><td> <a href="/gielda/branza:wierzytelnosci" ...>Wierzytelnosci</a> </td>`
+# BiznesRadar NIE ma pola "Sektor" - jest tylko "Branza", i tylko w sekcji profilu spolki.
+_INDUSTRY_RE = re.compile(r"Bran\S*a:</th>\s*<td>\s*(?:<a[^>]*>)?\s*([^<]+)", re.S)
+
+# Branze finansowe: dla banku/ubezpieczyciela/windykatora `Debt / MarketCap` nie mierzy ryzyka, bo
+# dlug jest surowcem biznesu, a nie obciazeniem. Stad user: "na poczatek non-financials".
+FINANCIAL_INDUSTRIES = (
+    "wierzytelnosci",
+    "banki",
+    "ubezpieczenia",
+    "finanse",
+    "rynek kapitalowy",
+    "leasing",
+)
+
+
+def load_industries(db_path: Path) -> Dict[str, str]:
+    """Branza per ticker z sekcji profilu na dowolnej pobranej stronie BiznesRadar.
+
+    To wartosc DZISIEJSZA (BiznesRadar nie podaje historii klasyfikacji) - ale przynaleznosc
+    branzowa duzej spolki praktycznie nie zmienia sie w czasie, a wykluczenie finansowych jest
+    decyzja o KONSTRUKCJI wskaznika, nie sygnalem o przyszlych zwrotach. Uzycie dzisiejszej
+    klasyfikacji nie wnosi wiec look-ahead na zwroty."""
+    connection = sqlite3.connect(str(db_path))
+    try:
+        rows = connection.execute(
+            """
+            SELECT s.ticker, s.body
+            FROM snapshots s
+            JOIN (SELECT ticker, MAX(id) AS max_id FROM snapshots GROUP BY ticker) latest
+              ON s.id = latest.max_id
+            """
+        ).fetchall()
+    finally:
+        connection.close()
+
+    out: Dict[str, str] = {}
+    for ticker, body in rows:
+        if isinstance(body, bytes):
+            body = body.decode("utf-8", errors="replace")
+        match = _INDUSTRY_RE.search(body)
+        if match:
+            out[ticker] = match.group(1).strip()
+    return out
+
+
+def _normalize(text: str) -> str:
+    """Bez polskich znakow i wielkosci liter - klasyfikacje BiznesRadar sa pisane z ogonkami, a
+    porownanie do listy branz musi byc odporne na kodowanie."""
+    table = str.maketrans("ąćęłńóśźż", "acelnoszz")
+    return text.strip().lower().translate(table)
+
+
+def non_financial_tickers(
+    tickers: Sequence[str],
+    industries: Dict[str, str],
+    financial_industries: Iterable[str] = FINANCIAL_INDUSTRIES,
+) -> List[str]:
+    """Tickery po odsianiu branz finansowych. Spolka o NIEZNANEJ branzy ZOSTAJE - brak wpisu w
+    profilu nie jest dowodem, ze to bank, a milczace usuwanie danych zawyzalo by wynik."""
+    blocked: Set[str] = {_normalize(name) for name in financial_industries}
+    return [t for t in tickers if _normalize(industries.get(t.upper(), "")) not in blocked]
 
 
 def load_turnover(tickers: Sequence[str], data_dir: Path) -> pd.DataFrame:

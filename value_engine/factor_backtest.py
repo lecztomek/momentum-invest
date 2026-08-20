@@ -31,7 +31,7 @@ DOPRECYZOWANIA SPEC (podjete tak, zeby regula byla jednoznaczna):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import pandas as pd
 
@@ -95,11 +95,18 @@ def run_factor_backtest(
     ticker_to_fundamental_key: Optional[Dict[str, str]] = None,
     eligible_universe: Optional[Dict[pd.Timestamp, List[str]]] = None,
     regime: Optional[Dict[pd.Timestamp, bool]] = None,
+    scorer: Optional[Callable[[pd.Timestamp, List[str], pd.DataFrame], List[Any]]] = None,
 ) -> Dict[str, Any]:
     """`regime` (opcjonalne): filtr rezimu rynkowego, data -> czy risk-on (patrz `canary.py`,
     kanarek WIG20 > 10M MA). W miesiacu RISK-OFF silnik SPRZEDAJE WSZYSTKO i nie wchodzi w nic
     nowego; wraca do normalnej logiki, gdy rezim znow jest risk-on. `None` = brak kanarka, silnik
-    zachowuje sie dokladnie jak dotad (zawsze zainwestowany)."""
+    zachowuje sie dokladnie jak dotad (zawsze zainwestowany).
+
+    `scorer` (opcjonalne): wlasna funkcja rankingu `(data, inwestowalne, ceny) -> lista obiektow z
+    polami .ticker i .final` (malejaco). Dzieki temu ta sama, przetestowana mechanika slotow,
+    podmiany i ksiegowania obsluguje ROZNE zestawy czynnikow bez kopiowania kodu - v4 (Value +
+    Quality + Momentum) i v5 (Quality + LowVol) roznia sie WYLACZNIE scoringiem, a nie logika
+    portfela. `None` = wbudowany scoring v4."""
     if config.max_positions < 1:
         raise ValueError(f"max_positions musi byc >= 1, dostalem {config.max_positions}.")
     if config.keep_rank < config.entry_rank:
@@ -112,13 +119,32 @@ def run_factor_backtest(
     prices = daily_prices[config.tickers].sort_index()
     priced = prices.ffill()
     cost_rate = config.cost_bps / 10000.0
+    quality_cache_v4: Dict[tuple, Any] = {}
+
+    def default_scorer(date: pd.Timestamp, investable: List[str], price_frame: pd.DataFrame) -> List[FactorScore]:
+        """Wbudowany scoring v4: 0.40*Value + 0.30*Quality + 0.30*Momentum."""
+        row = price_frame.loc[date]
+        momentum = momentum_12_1(price_frame, date, config.momentum_lookback_days, config.momentum_skip_days)
+        value_inputs = {}
+        quality_inputs = {}
+        for ticker in investable:
+            fundamental_key = key_of[ticker]
+            value_inputs[ticker] = compute_value_inputs(panel, estimator, fundamental_key, row.get(ticker), date)
+            cache_key = (fundamental_key, date)
+            if cache_key not in quality_cache_v4:
+                quality_cache_v4[cache_key] = compute_quality(panel, fundamental_key, date)
+            quality_inputs[ticker] = quality_cache_v4[cache_key]
+        return score_universe(
+            investable, value_inputs, quality_inputs, momentum, min_value_metrics=config.min_value_metrics
+        )
+
+    score_fn = scorer or default_scorer
 
     cash = 1.0
     positions: Dict[str, Position] = {}
     trades: List[Trade] = []
     decisions: List[Dict[str, Any]] = []
     equity_records: List[tuple] = []
-    quality_cache: Dict[tuple, Any] = {}
 
     decision_set = set(decision_dates)
     first_decision_date: Optional[pd.Timestamp] = None
@@ -169,22 +195,7 @@ def run_factor_backtest(
             investable = (
                 list(config.tickers) if eligible_universe is None else list(eligible_universe.get(date, []))
             )
-            momentum = momentum_12_1(priced, date, config.momentum_lookback_days, config.momentum_skip_days)
-
-            value_inputs = {}
-            quality_inputs = {}
-            for ticker in investable:
-                price = row_price.get(ticker)
-                fundamental_key = key_of[ticker]
-                value_inputs[ticker] = compute_value_inputs(panel, estimator, fundamental_key, price, date)
-                cache_key = (fundamental_key, date)
-                if cache_key not in quality_cache:
-                    quality_cache[cache_key] = compute_quality(panel, fundamental_key, date)
-                quality_inputs[ticker] = quality_cache[cache_key]
-
-            scored: List[FactorScore] = score_universe(
-                investable, value_inputs, quality_inputs, momentum, min_value_metrics=config.min_value_metrics
-            )
+            scored: List[Any] = score_fn(date, investable, priced)
             rank_of = {s.ticker: i + 1 for i, s in enumerate(scored)}
             score_of = {s.ticker: s.final for s in scored}
 

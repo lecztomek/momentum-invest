@@ -10,6 +10,7 @@ uniwersum point-in-time).
 | v2: quality value, score 0-100, sloty + podmiana | `quality_value_backtest.py` | `run_quality_value.py` | blisko benchmarku, nie bije |
 | v3: bez podmiany, 36m, opcjonalny trailing stop | ten sam silnik, `allow_score_replacement=False` | `run_v3_comparison.py` | **zaleznie od uniwersum** - patrz nizej |
 | **v4: Value + Quality + Momentum, top4/top8** | `factor_backtest.py` | `run_factor.py` | **pierwsza wersja z przewaga nad uczciwym benchmarkiem (21/22 leave-one-out)** |
+| v5: Quality Defensive (50% Quality + 50% LowVol), top 5 | ten sam silnik, `scorer=` | `run_defensive.py` | remis na zwrocie, lepszy Sharpe/MaxDD, ale leave-one-out **6/21** |
 
 **Najwazniejszy wniosek calej serii**: wyniki v3 zmieniaja sie DRASTYCZNIE w zaleznosci od tego, czy
 uniwersum jest uczciwe (point-in-time) czy obciazone survivorship. Na stalej liscie dzisiejszych
@@ -50,13 +51,22 @@ porownywalne 1:1 z reszta repo.
 | `fundamentals.py` | panel **point-in-time**: co bylo publicznie znane na dana date |
 | `signals.py` | obsuniecie od 52W high, daty decyzyjne (1. dzien handlowy miesiaca) |
 | `scoring.py` | QUALITY (4 kryteria x 25 pkt), percentyle DD/REL, skladanie SCORE 0-100 |
+| `universe.py` | uniwersum **point-in-time** (plynnosc, historia) + branze (wykluczenie finansowych) |
+| `market_cap.py` | kapitalizacja point-in-time odtworzona z kapitalu zakladowego |
+| `canary.py` | filtr rezimu WIG20 > 10M MA (sprawdzony - szkodzi strategiom valuowym) |
 | `backtest.py` | silnik koncepcji v1 |
-| `quality_value_backtest.py` | silnik koncepcji v2 (sloty + regula podmiany) |
+| `quality_value_backtest.py` | silnik koncepcji v2/v3 (sloty + regula podmiany) |
+| `factor_scoring.py` | scoring v4: Value (rentownosci) + Quality (5 kryteriow) + Momentum 12-1 |
+| `factor_backtest.py` | silnik koncepcji v4 i v5 - **scoring wstrzykiwany przez `scorer=`** |
+| `defensive_scoring.py` | scoring v5: 50% Quality (ROE/ROIC/Debt-MC) + 50% LowVol (6M/12M) |
 
 ```
 .venv/bin/python3 -m value_engine.run_quality_value
 .venv/bin/python3 -m value_engine.run_quality_value --sweep
-.venv/bin/python3 -m value_engine.run_quality_value --max-holding-months 36 --show-trades
+.venv/bin/python3 -m value_engine.run_v3_comparison --leave-one-out
+.venv/bin/python3 -m value_engine.run_factor
+.venv/bin/python3 -m value_engine.run_defensive
+.venv/bin/python3 -m value_engine.run_defensive --leave-one-out
 .venv/bin/pytest value_engine/tests/ -v
 ```
 
@@ -391,6 +401,142 @@ zgodny z rezimem), nie w valuowej.
    inaczej testujemy "kup i trzymaj 4 najlepsze", a nie zadeklarowana rotacje.
 3. Dopiero potem sweep wag - zgodnie z zasada, ze nie ratujemy optymalizacja czegos, co nie ma
    przewagi. Tutaj przewaga jest, wiec sweep ma sens, ale najpierw fundament danych.
+
+---
+
+# Koncepcja v5: Quality Defensive (50% Quality + 50% LowVol)
+
+Spec (user): uniwersum duze/plynne PIT, "na poczatek non-financials"; QUALITY 0-100 z wysokiego
+**ROE TTM**, wysokiego **ROIC TTM** i niskiego **Debt / Market Cap**; DEFENSIVE 0-100 z niskiej
+zmiennosci, `VOL = srednia(vol_6m, vol_12m)`, nizsza zmiennosc = wyzszy score; `FINAL = 50% QUALITY
++ 50% LOW_VOL`; kupujemy **top 5**, **maks 1 wymiana na miesiac**.
+
+**Nie wymagalo nowego silnika.** v5 rozni sie od v4 WYLACZNIE scoringiem, wiec `factor_backtest.py`
+dostal parametr `scorer=` (funkcja `(data, inwestowalne, ceny) -> ranking`), a v5 wstrzykuje
+`defensive_scoring.build_scorer`. Mechanika slotow, podmiany i ksiegowania jest ta sama,
+przetestowana - zadna trzecia kopia. `keep_rank = entry_rank = 5`, bo spec nie przewiduje histerezy
+(v4 mial top 4 / top 8).
+
+## Wynik (okno 2006-03 -> 2026-08)
+
+| | CAGR | MaxDD | Sharpe | Calmar | transakcji |
+|---|---|---|---|---|---|
+| **v5** | 9.61% | **-49.63%** | **0.555** | **0.194** | 101 |
+| buy&hold uniwersum PIT (uczciwy benchmark) | 9.61% | -55.06% | 0.521 | 0.175 | - |
+| v5 + kanarek WIG20 > 10M MA | 4.58% | -33.59% | 0.389 | 0.136 | 141 |
+| buy&hold STALE 21 non-financials (survivorship!) | 14.59% | -69.89% | 0.629 | 0.209 | - |
+
+**Zwrot: dokladny remis.** CAGR v5 to 9.6142%, benchmarku 9.6105% - roznica **+0.004pp**, czyli
+zero. Poprawa jest wylacznie po stronie ryzyka: MaxDD -49.6% vs -55.1%, Sharpe 0.555 vs 0.521,
+Calmar 0.194 vs 0.175. To spojne z zamyslem "defensive" (mniej ryzyka za ten sam zwrot), ale to NIE
+jest przewaga w zwrocie, jakiej szukalismy w v4.
+
+Kontrola w podokresach - remis nie jest artefaktem jednego okna, ale nie jest tez stabilny:
+
+| od | v5 CAGR | benchmark | roznica |
+|---|---|---|---|
+| 2006-03 | 9.61% | 9.61% | +0.00pp |
+| 2011-01 | 9.68% | 10.30% | **-0.62pp** |
+| 2016-01 | 17.26% | 17.23% | +0.03pp |
+
+## Test kruchosci leave-one-out: remis na pelnej probce NIE jest odporny
+
+| | wynik |
+|---|---|
+| bije wlasny benchmark na **CAGR** | **6/21** - i tylko **2** to prawdziwe wygrane (ASB +0.38pp, DNP +0.04pp) |
+| pozostale 4 "wygrane" | dokladne remisy +0.00pp (DOM, DVL, NEU, PEP **nigdy nie wchodza do uniwersum PIT**, wiec przebieg jest identyczny z pelnym) |
+| przegrywa z wlasnym benchmarkiem | **15/21**, od -0.18pp do **-1.91pp** |
+| bije wlasny benchmark na **Sharpe** | 14/21 |
+| rozrzut CAGR | 3.94pp (5.87% - 9.81%) |
+
+To najwazniejszy wynik tego testu i zmienia interpretacje remisu z pelnej probki. Remis +0.004pp nie
+jest "granica przewagi", jest **srodkiem rozkladu przechylonego na minus**: usuniecie prawie
+dowolnej pojedynczej spolki sprawia, ze v5 wypada PONIZEJ swojego benchmarku na zwrocie. Najgorsze
+przypadki to usuniecie ACP (-1.91pp), CPS (-1.41pp) i CDR (-1.24pp).
+
+Jednoczesnie przewaga na **Sharpe utrzymuje sie w 14 z 21 przypadkow** - czyli redukcja ryzyka jest
+znacznie bardziej powtarzalna niz zwrot. Dla porownania v4 mial 21/22 na OBU metrykach.
+
+## Dlaczego remis: top 5 to 60% uniwersum
+
+| | wartosc |
+|---|---|
+| spolek rankowanych w miesiacu | mediana 9, min 3, max 16 |
+| udzial rankowanego uniwersum trzymany w portfelu | **srednio 60%, mediana 56%** |
+| miesiace, w ktorych trzymamy >=80% uniwersum | 23% |
+| miesiace, w ktorych rankowanych bylo <=5 spolek | **23%** (czyli: kup wszystko) |
+| lata 2006-2010 | 3-5 spolek w rankingu |
+
+Przy 5 slotach i medianie 9 rankowanych spolek v5 **z konstrukcji jest blisko benchmarku** - w co
+czwartym miesiacu kupuje cale dostepne uniwersum, a w pozostalych odrzuca srednio 4 nazwy. Scoring
+nie ma na czym pracowac. Dla porownania v4 trzymal 4 z 10 (40%) i mial przewage +4.78pp; roznica
+miedzy tymi wersjami to nie tylko czynniki, ale i **selektywnosc**.
+
+## Brak histerezy = 4x wieksza rotacja, i to kosztuje
+
+| | v5 (top 5 / top 5) | v4 (top 4 / top 8) |
+|---|---|---|
+| transakcji | **101** | 26 |
+| mediana czasu trzymania | **122 dni** | 632 dni |
+| miesiecy z wymiana | 96/246 (39%) | 21/246 (8.5%) |
+
+Bez buforu miedzy `entry_rank` i `keep_rank` pozycja wypada z portfela za sam spadek o jedno
+miejsce w rankingu. Limit "1 wymiana na miesiac" ze spec to jedyny hamulec i wiaze - w 96 z 246
+miesiecy zostal wykorzystany do konca. Efekt jest mierzalny:
+
+| koszty transakcyjne | CAGR | Sharpe |
+|---|---|---|
+| 40 bps (realistyczne, jak w calym repo) | 9.61% | 0.555 |
+| 0 bps (hipotetyczne) | 10.16% | 0.579 |
+
+**Rotacja zjada 0.55pp CAGR rocznie - czyli dokladnie tyle, ile wynosi cala przewaga brutto v5 nad
+benchmarkiem.** Strategia "zarabia" na scoringu tyle, ile placi maklerowi.
+
+## Kanarek: ten sam wniosek co w v4
+
+Kanarek WIG20 > 10M MA zabiera **5.03pp CAGR** (9.61% -> 4.58%) i obniza Sharpe (0.555 -> 0.389),
+mimo ze poprawia MaxDD. Ekspozycja spada do 54%, a liczba transakcji rosnie z 101 do 141. To
+niezalezne potwierdzenie mechanizmu opisanego przy v4: filtr rezimu blokuje wejscia dokladnie
+wtedy, gdy pojawiaja sie okazje. Nie wdrazac.
+
+## Decyzje implementacyjne wobec spec
+
+1. **ROIC** - spec podaje tylko nazwe. Uzyty mianownik to `dlug oprocentowany + kapital wlasny`
+   (invested capital), licznik `EBIT TTM * (1 - 0.19)`; 19% to realna stawka CIT w Polsce, wiec
+   NOPAT jest przyblizeniem podrecznikowym, nie zgadywaniem. Stawka jest parametrem (`tax_rate`).
+2. **Ujemny kapital wlasny uniewaznia ROE i ROIC** (zwracamy None), a nie daje ujemnej wartosci.
+   Przy ujemnym mianowniku spolka z ogromna STRATA wychodzilaby na najbardziej rentowna w rankingu.
+3. **Zerowa zmiennosc = wykluczenie**, nie "najbezpieczniejsza spolka swiata". Stala cena przez cale
+   okno oznacza zawieszone notowania albo martwy szereg; bez tego takie papiery dostawalyby
+   LOW_VOL = 100 i zajmowaly caly portfel.
+4. **Zmiennosc liczona z PELNEGO okna** (126 / 252 sesji) - swiezo notowana spolka nie moze dostac
+   niskiej zmiennosci z kilku dni. Okno konczy sie na dniu decyzyjnym WLACZNIE, bo dzienna cena z
+   tego dnia jest wtedy znana (inaczej niz kanarek, ktory operuje na zamknieciach miesiecznych).
+5. **Non-financials wykluczone na poziomie uniwersum** (`universe.non_financial_tickers`), nie w
+   scoringu. Dla banku/windykatora `Debt / MarketCap` mierzy skale biznesu, nie ryzyko. W danych jest
+   dokladnie jedna taka spolka: **KRU (Wierzytelnosci)**, wiec uniwersum to 21 z 22 nazw. Branza
+   czytana jest z profilu BiznesRadaru (pole `Branza:`; pola "Sektor" tam NIE ma) i jest wartoscia
+   dzisiejsza - ale przynaleznosc branzowa duzej spolki praktycznie sie nie zmienia, a wykluczenie
+   finansowych jest decyzja o KONSTRUKCJI wskaznika, nie sygnalem o zwrotach. Spolka o nieznanej
+   branzy ZOSTAJE w uniwersum (brak wpisu nie jest dowodem, ze to bank).
+6. **Dlug bez leasingu** - tak jak w `scoring.py` (IFRS 16 wprowadzil nieciaglosc w 2019, ktora
+   dodala wszystkim spolkom "dlug" z dnia na dzien bez zmiany sytuacji ekonomicznej).
+
+## Wniosek
+
+v5 robi to, co obiecuje etykieta "defensive", ale slabiej niz wygladalo to na pelnej probce:
+
+- **zwrot: brak przewagi.** Remis na pelnym oknie (+0.004pp) nie jest odporny - leave-one-out daje
+  6/21, z czego tylko 2 prawdziwe wygrane, a 15 przebiegow przegrywa (do -1.91pp).
+- **ryzyko: przewaga jest, i jest powtarzalna.** MaxDD -49.6% vs -55.1%, Sharpe 0.555 vs 0.521,
+  a na Sharpe 14/21 w leave-one-out. To jedyny realny efekt tej wersji.
+- **przyczyna slabosci jest strukturalna, nie parametryczna.** Top 5 z 9 rankowanych nazw to
+  benchmark z lekkim przechyleniem (w 23% miesiecy kupujemy cale uniwersum), a caly zarobek brutto
+  na scoringu (+0.55pp) jest zjadany przez rotacje wywolana brakiem histerezy (0.55pp kosztow).
+
+**Nie ma tu czego optymalizowac wagami** - z 9 nazwami w rankingu i 5 slotami zaden zestaw wag nie
+zrobi ze v5 strategii selekcji. Ograniczeniem jest rozmiar uniwersum, ten sam, ktory zostal wskazany
+jako priorytet po v4. Wersja do porownania pozostaje v4 (+4.78pp CAGR, 21/22 leave-one-out).
 
 ---
 
