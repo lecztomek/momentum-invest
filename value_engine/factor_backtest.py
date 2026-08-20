@@ -57,6 +57,10 @@ class FactorConfig:
     momentum_skip_days: int = 21
     max_replacements_per_month: Optional[int] = None
     min_value_metrics: int = 2
+    # Tryb kanarka. False (domyslnie) = risk-off SPRZEDAJE wszystko. True = risk-off tylko BLOKUJE
+    # nowe wejscia, istniejace pozycje zostaja. Wariant diagnostyczny: rozdziela koszt wymuszonej
+    # sprzedazy (whipsaw) od kosztu przegapionych zakupow.
+    canary_blocks_entries_only: bool = False
 
 
 @dataclass
@@ -90,7 +94,12 @@ def run_factor_backtest(
     config: FactorConfig,
     ticker_to_fundamental_key: Optional[Dict[str, str]] = None,
     eligible_universe: Optional[Dict[pd.Timestamp, List[str]]] = None,
+    regime: Optional[Dict[pd.Timestamp, bool]] = None,
 ) -> Dict[str, Any]:
+    """`regime` (opcjonalne): filtr rezimu rynkowego, data -> czy risk-on (patrz `canary.py`,
+    kanarek WIG20 > 10M MA). W miesiacu RISK-OFF silnik SPRZEDAJE WSZYSTKO i nie wchodzi w nic
+    nowego; wraca do normalnej logiki, gdy rezim znow jest risk-on. `None` = brak kanarka, silnik
+    zachowuje sie dokladnie jak dotad (zawsze zainwestowany)."""
     if config.max_positions < 1:
         raise ValueError(f"max_positions musi byc >= 1, dostalem {config.max_positions}.")
     if config.keep_rank < config.entry_rank:
@@ -156,6 +165,7 @@ def run_factor_backtest(
         row_price = priced.loc[date]
 
         if date in decision_set:
+            risk_on = True if regime is None else bool(regime.get(date, True))
             investable = (
                 list(config.tickers) if eligible_universe is None else list(eligible_universe.get(date, []))
             )
@@ -183,8 +193,18 @@ def run_factor_backtest(
                 # momentum 12-1 (252 sesje historii), opublikowane fundamenty i obecnosc w uniwersum.
                 first_decision_date = date
 
+            # --- 0) KANAREK: rezim risk-off -> sprzedaj wszystko, nie wchodz w nic nowego ---
+            # Sprawdzany PO scoringu (zeby `first_decision_date` i log byly identyczne jak w
+            # przebiegu bez kanarka - inaczej okna metryk by sie rozjechaly i porownanie
+            # "z kanarkiem vs bez" nie byloby apples-to-apples), ale PRZED wejsciami i podmianami.
+            if not risk_on and not config.canary_blocks_entries_only:
+                for ticker in list(positions):
+                    price = row_price.get(ticker)
+                    if pd.notna(price):
+                        sell(ticker, date, float(price), "canary_risk_off")
+
             # --- 1) WEJSCIA na wolne sloty: najlepsi z rankingu ---
-            free_slots = config.max_positions - len(positions)
+            free_slots = 0 if not risk_on else config.max_positions - len(positions)
             if free_slots > 0:
                 target_size = equity_at(row_price) / config.max_positions
                 for candidate in [s for s in scored if s.ticker not in positions][:free_slots]:
@@ -205,7 +225,9 @@ def run_factor_backtest(
 
             # --- 2) PODMIANA: trzymana poza top `keep_rank` <-> kandydat w top `entry_rank` ---
             replacements = 0
-            while config.max_replacements_per_month is None or replacements < config.max_replacements_per_month:
+            while risk_on and (
+                config.max_replacements_per_month is None or replacements < config.max_replacements_per_month
+            ):
                 # spolka poza rankingiem (np. wypadla z uniwersum) traktowana jak "poza top 8"
                 dropouts = [
                     t for t in positions if rank_of.get(t, len(rank_of) + 1) > config.keep_rank
@@ -240,6 +262,7 @@ def run_factor_backtest(
                     "top": [(s.ticker, round(s.final, 1)) for s in scored[: config.keep_rank]],
                     "held_ranks": ranks_before,
                     "dropouts": dropouts_before,
+                    "risk_on": risk_on,
                     "held_scores": {t: round(score_of.get(t, float("nan")), 1) for t in sorted(positions)},
                 }
             )

@@ -309,3 +309,78 @@ def test_held_ranks_are_logged_before_replacements():
     replacement_months = [d for d in result["decisions"] if d["replacements"] > 0]
     assert dropout_months, "log nie pokazuje zadnego dropoutu"
     assert len(dropout_months) >= len(replacement_months)
+
+
+# --- KANAREK (filtr rezimu) ---
+
+
+def test_canary_risk_off_sells_everything():
+    index = pd.bdate_range("2019-01-01", periods=200)
+    prices = pd.DataFrame({"a": _trend(len(index), 0.002), "b": _trend(len(index), 0.001)}, index=index)
+    dates = month_start_decision_dates(prices)
+    cutoff = dates[6]
+
+    tickers = list(prices.columns)
+    panel = _panel(tickers)
+    estimator = SharesEstimator(panel, {t.upper(): 1_000_000.0 for t in tickers})
+    config = FactorConfig(
+        tickers=tickers, max_positions=2, keep_rank=2, entry_rank=2, cost_bps=0.0,
+        momentum_lookback_days=_MOM_LOOKBACK, momentum_skip_days=_MOM_SKIP,
+    )
+    regime = {d: (d < cutoff) for d in dates}
+
+    result = run_factor_backtest(prices, panel, estimator, dates, config, regime=regime)
+
+    assert [t for t in result["trades"] if t.exit_reason == "canary_risk_off"], "kanarek nie sprzedal"
+    for decision in result["decisions"]:
+        if decision["date"] >= cutoff:
+            assert decision["n_positions"] == 0, f"risk-off, a portfel nie jest pusty: {decision}"
+            assert decision["risk_on"] is False
+
+
+def test_canary_blocks_entries_only_variant_keeps_positions():
+    """Wariant diagnostyczny: risk-off blokuje NOWE wejscia, ale nie sprzedaje. Rozdziela koszt
+    wymuszonej sprzedazy od kosztu przegapionych zakupow."""
+    index = pd.bdate_range("2019-01-01", periods=200)
+    prices = pd.DataFrame({"a": _trend(len(index), 0.002), "b": _trend(len(index), 0.001)}, index=index)
+    dates = month_start_decision_dates(prices)
+    cutoff = dates[6]
+
+    tickers = list(prices.columns)
+    panel = _panel(tickers)
+    estimator = SharesEstimator(panel, {t.upper(): 1_000_000.0 for t in tickers})
+    config = FactorConfig(
+        tickers=tickers, max_positions=2, keep_rank=2, entry_rank=2, cost_bps=0.0,
+        momentum_lookback_days=_MOM_LOOKBACK, momentum_skip_days=_MOM_SKIP,
+        canary_blocks_entries_only=True,
+    )
+    regime = {d: (d < cutoff) for d in dates}
+
+    result = run_factor_backtest(prices, panel, estimator, dates, config, regime=regime)
+
+    assert [t for t in result["trades"] if t.exit_reason == "canary_risk_off"] == []
+    after = [d for d in result["decisions"] if d["date"] >= cutoff]
+    assert after and all(d["n_positions"] > 0 for d in after), "pozycje mialy zostac utrzymane"
+
+
+def test_no_regime_means_no_canary_behaviour_change():
+    """`regime=None` musi dawac DOKLADNIE to samo co brak parametru - inaczej dodanie kanarka
+    cicho zmienialoby wyniki v4."""
+    index = pd.bdate_range("2019-01-01", periods=200)
+    prices = pd.DataFrame({"a": _trend(len(index), 0.002), "b": _trend(len(index), 0.001)}, index=index)
+    dates = month_start_decision_dates(prices)
+    tickers = list(prices.columns)
+    panel = _panel(tickers)
+    estimator = SharesEstimator(panel, {t.upper(): 1_000_000.0 for t in tickers})
+    config = FactorConfig(
+        tickers=tickers, max_positions=2, keep_rank=2, entry_rank=2, cost_bps=0.0,
+        momentum_lookback_days=_MOM_LOOKBACK, momentum_skip_days=_MOM_SKIP,
+    )
+
+    without = run_factor_backtest(prices, panel, estimator, dates, config)
+    explicit_none = run_factor_backtest(prices, panel, estimator, dates, config, regime=None)
+    all_on = run_factor_backtest(prices, panel, estimator, dates, config, regime={d: True for d in dates})
+
+    expected = without["equity_curve"]["equity"].iloc[-1]
+    for other in (explicit_none, all_on):
+        assert other["equity_curve"]["equity"].iloc[-1] == pytest.approx(expected)

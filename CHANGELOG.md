@@ -2,6 +2,44 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-19 (5)
+
+- **KANAREK WIG20 > 10M MA (`value_engine/canary.py`) - ZAIMPLEMENTOWANY, SPRAWDZONY, SZKODZI.**
+  User: "dodajmy kanarek WIG20 > 10M MA - dane wrzucilem do data". Regula: risk-on <=> zamkniecie
+  OSTATNIEGO ZAKONCZONEGO miesiaca > srednia z 10 ostatnich zamkniec miesiecznych. Poprawnosc PIT:
+  w dniu decyzyjnym (1. dzien miesiaca M) srednia siega najdalej do miesiaca M-1 - uzycie
+  zamkniecia miesiaca M byloby look-ahead ("strategia wiedzialaby 1 kwietnia, jak skonczy sie
+  kwiecien"). 13 nowych testow, lacznie **135**, wszystkie zielone.
+
+  Sam filtr dziala poprawnie i trafnie odwzorowuje historie GPW: **2008: 0% risk-on**, 2020: 8%,
+  2022: 8%, hossy (2006, 2017, 2021, 2026) 90-100%. Ogolem 57% miesiecy risk-on.
+
+  | wariant | CAGR | MaxDD | Sharpe | Calmar | n |
+  |---|---|---|---|---|---|
+  | v4 bez kanarka (ekspozycja 99%) | **14.42%** | -57.97% | **0.660** | **0.249** | 26 |
+  | v4 + kanarek (sprzedaje wszystko, 55%) | 5.55% | -38.89% | 0.409 | 0.143 | 86 |
+  | v4 + kanarek (tylko blokuje wejscia, 99%) | 6.36% | -57.97% | 0.379 | 0.110 | 20 |
+  | benchmark PIT 100% | 9.64% | -55.06% | 0.525 | 0.175 | - |
+  | **benchmark PIT skalowany do 55%, ZERO timingu** | **5.87%** | **-34.72%** | **0.525** | **0.169** | - |
+
+  Kanarek zabiera **8.9pp CAGR** i przewraca wynik v4 z "bije benchmark o +4.78pp" na "przegrywa".
+  Poprawia MaxDD (-58% -> -38.9%), ale to zly handel: BIERNE trzymanie 55% benchmarku bije wersje z
+  kanarkiem na KAZDEJ metryce, wliczajac obsuniecie.
+
+  **DLACZEGO SZKODZI - to NIE whipsaw, to konflikt czynnikow.** Naturalna hipoteza to "wymuszona
+  sprzedaz = whipsaw" (19 z 67 wyjsc konczylo sie odkupem tej samej spolki w <=100 dni po WYZSZEJ
+  cenie). Ale wariant diagnostyczny, ktory NIC nie sprzedaje i tylko blokuje wejscia, wypada JESZCZE
+  GORZEJ na Sharpe (0.379) i Calmar (0.110) - wiec glowny koszt to blokowanie wejsc. Zwroty
+  transakcji v4 wg rezimu W MOMENCIE WEJSCIA: risk-OFF n=12, sredni **+107.67%**, mediana +25.81%;
+  risk-ON n=14, sredni +42.73%, mediana +16.79%. v4 ma 40% wagi w Value, a okazje valuowe pojawiaja
+  sie gdy rynek SPADA - czyli dokladnie wtedy, gdy kanarek mowi "nie wchodz". Mechanizmy sa
+  strukturalnie przeciwne. Najlepsza transakcja historii (CDR +967%, wejscie 2016-01) byla wejsciem
+  w risk-OFF; mediana (odporna na ten wynik) tez faworyzuje risk-off, choc probka jest mala.
+
+  Nie wdrazac w v4. Kanarek moglby miec sens w strategii MOMENTUM (kierunek sygnalu zgodny z
+  rezimem), nie w valuowej. `regime=None` (domyslnie) zachowuje wyniki v4 bajt w bajt - pilnowane
+  osobnym testem.
+
 ## 2026-08-19 (4)
 
 - **KONCEPCJA v4: Value + Quality + Momentum - PIERWSZA WERSJA Z PRZEWAGA NAD UCZCIWYM

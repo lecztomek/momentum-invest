@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 
 from value_engine.br_parser import load_snapshots
+from value_engine.canary import Canary, build_regime, load_index_prices
 from value_engine.factor_backtest import FactorConfig, run_factor_backtest
 from value_engine.fundamentals import FundamentalPanel
 from value_engine.market_cap import SharesEstimator, load_shares_outstanding
@@ -39,12 +40,15 @@ class FactorHarness:
         self.universe = point_in_time_universe(
             self.prices[tickers], self.turnover, self.decision_dates, min_median_turnover=MIN_TURNOVER
         )
+        self.canary = Canary(load_index_prices("wig20", PL_DATA_DIR))
+        self.regime = build_regime(self.canary, self.decision_dates)
 
-    def run(self, **overrides) -> Tuple[dict, Optional[Dict[str, float]]]:
+    def run(self, use_canary: bool = False, **overrides) -> Tuple[dict, Optional[Dict[str, float]]]:
         config = FactorConfig(tickers=self.tickers, **overrides)
         result = run_factor_backtest(
             self.prices, self.panel, self.estimator, self.decision_dates, config,
             eligible_universe=self.universe,
+            regime=self.regime if use_canary else None,
         )
         start = result["first_decision_date"]
         if start is None:
@@ -103,9 +107,14 @@ def main() -> None:
         return
 
     result, metrics = harness.run()
+    result_canary, metrics_canary = harness.run(use_canary=True)
+    regime_series = pd.Series(harness.regime)
+    if metrics:
+        regime_series = regime_series[regime_series.index >= metrics["start"]]
     print(f"\n{'wariant':44} {'CAGR':>8} {'MaxDD':>9} {'Sharpe':>7} {'Calmar':>7} {'n':>5}")
     print("-" * 90)
     print(_row("v4: 40% Value + 30% Quality + 30% Momentum", metrics))
+    print(_row(f"v4 + kanarek WIG20 > {harness.canary.ma_months}M MA", metrics_canary))
 
     if metrics:
         benchmark_harness = Harness(tickers)
@@ -124,6 +133,16 @@ def main() -> None:
         exposure = pd.Series({d["date"]: d["n_positions"] for d in result["decisions"] if d["date"] >= metrics["start"]})
         print(f"ekspozycja: {exposure.mean():.2f}/4 pozycji ({exposure.mean()/4*100:.0f}%)")
         print(f"najczesciej kupowane: {Counter(t.ticker for t in trades).most_common(6)}")
+
+        print(f"\nkanarek: risk-on w {regime_series.mean()*100:.0f}% miesiecy ({regime_series.sum()}/{len(regime_series)})")
+        canary_trades = result_canary["trades"]
+        canary_exposure = pd.Series(
+            {d["date"]: d["n_positions"] for d in result_canary["decisions"] if d["date"] >= metrics["start"]}
+        )
+        print(
+            f"z kanarkiem: transakcji {len(canary_trades)}, ekspozycja {canary_exposure.mean()/4*100:.0f}%, "
+            f"powody wyjscia {dict(Counter(t.exit_reason for t in canary_trades))}"
+        )
 
     if args.show_trades:
         print("\ntransakcje:")
