@@ -43,6 +43,14 @@ from value_engine.br_parser import ParsedReport
 
 _QUARTERLY_PERIOD_RE = re.compile(r"^(\d{4})/Q(\d)")
 _ANNUAL_PERIOD_RE = re.compile(r"^(\d{4})\s")
+# "2024 (sty 25)" - etykieta ROKU nie musi konczyc sie w grudniu tego roku. Realnie w danych:
+# LPP konczy rok obrotowy w STYCZNIU nastepnego roku, SNT we WRZESNIU, sa tez cze/mar/kwi/paz.
+# Miesiac i dwucyfrowy rok z nawiasu sa jedynym pewnym zrodlem konca okresu.
+_ANNUAL_MONTH_RE = re.compile(r"^\d{4}\s*\((\w{2,3})\s*(\d{2})\)")
+_POLISH_MONTH_PREFIX = {
+    "sty": 1, "lut": 2, "mar": 3, "kwi": 4, "maj": 5, "cze": 6,
+    "lip": 7, "sie": 8, "wrz": 9, "pa": 10, "lis": 11, "gru": 12,
+}
 
 _QUARTER_END_MONTH = {1: 3, 2: 6, 3: 9, 4: 12}
 
@@ -66,6 +74,20 @@ def parse_period_end(period_label: str, periodicity: str) -> Optional[pd.Timesta
     match = _ANNUAL_PERIOD_RE.match(period_label)
     if match is None:
         return None
+
+    # Najpierw probujemy odczytac FAKTYCZNY koniec roku obrotowego z nawiasu. Zakladanie 31 grudnia
+    # dla kazdej spolki bylo by bledem: LPP z etykieta "2024" konczy rok 2025-01-31, a SNT "2025"
+    # konczy 2025-09-30. Przy regule "dane z roku t uzywane od 1 lipca t+1" (koncepcja v7) taki
+    # blad przesuwalby moment wejscia o kilka miesiecy - w jedna albo w druga strone.
+    month_match = _ANNUAL_MONTH_RE.match(period_label)
+    if month_match is not None:
+        month = _POLISH_MONTH_PREFIX.get(month_match.group(1).lower()[:3]) or _POLISH_MONTH_PREFIX.get(
+            month_match.group(1).lower()[:2]
+        )
+        if month is not None:
+            year = 2000 + int(month_match.group(2))
+            return pd.Timestamp(year=year, month=month, day=1) + pd.offsets.MonthEnd(0)
+
     return pd.Timestamp(year=int(match.group(1)), month=12, day=31)
 
 
@@ -133,6 +155,14 @@ class FundamentalPanel:
         """Najswiezsza OPUBLIKOWANA wartosc pojedynczego okresu."""
         known = self._known_at(ticker, metric, as_of)
         return known[-1].value if known else None
+
+    def history(self, ticker: str, metric: str, as_of: pd.Timestamp) -> List[Observation]:
+        """Wszystkie obserwacje OPUBLIKOWANE do `as_of`, posortowane po koncu okresu.
+
+        Potrzebne tam, gdzie nie wystarczy "wartosc" ani "wartosc cofnieta o N okresow", ale trzeba
+        znac tez KONIEC OKRESU - np. F-Score (v7) porownuje rok do roku i musi sprawdzic, czy dwa
+        najswiezsze raporty roczne sa faktycznie po sobie, a nie oddzielone luka."""
+        return list(self._known_at(ticker, metric, as_of))
 
     def ttm(self, ticker: str, metric: str, as_of: pd.Timestamp, quarters: int = 4) -> Optional[float]:
         """Suma ostatnich `quarters` opublikowanych kwartalow (TTM). None, gdy nie ma pelnego

@@ -2,6 +2,61 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-20 (4)
+
+- **KONCEPCJA v7: Piotroski F-Score 8-9 na top 20% B/M (`fscore.py`, `fscore_backtest.py`,
+  `run_fscore.py`) - ODTWORZONA WIERNIE, ale NIEMIERZALNA na 41 spolkach; F-Score dziala tu
+  ODWROTNIE.** Spec usera (odtworzenie polskiego badania): uniwersum niefinansowe, raz w roku top 20%
+  po Book-to-Market, dla nich klasyczny F-Score 0-9, kupujemy tylko 8-9, equal weight, holding 12
+  miesiecy, dane z roku t od 1.07.t+1. 36 nowych testow, lacznie **233**.
+
+  **CO SIE UDALO ODTWORZYC**: wszystkie 9 sygnalow F-Score liczy sie w PELNI dla **279 z 286
+  spolko-lat**, a rozklad (2:1, 3:9, 4:40, 5:59, 6:62, 7:55, 8:41, 9:12) jest skupiony w okolicy 5-6,
+  dokladnie jak w literaturze. Regula "+6 miesiecy" jest zaimplementowana MOCNIEJ niz w paperze:
+  wymagamy JEDNOCZESNIE faktycznej publikacji (panel PIT) i zamkniecia roku obrotowego 6 miesiecy
+  wczesniej.
+
+  **CZEGO NIE DA SIE ZMIERZYC**: top 20% z uniwersum liczacego 3-23 nazwy to 1-5 kandydatow, a
+  bramka F>=8 przepuszcza z nich **0.32 spolki na rok** - cos wchodzi do portfela w **4 z 22 lat**,
+  strategia siedzi w gotowce **82% czasu**. Polski paper mial cala GPW (20% = 60-80 kandydatow).
+  Siatka wykonalnosci (srednio spolek/rok): top 20% + F>=8 = 0.32, top 60% + F>=8 = 1.41, bez filtra
+  B/M + F>=7 = 4.86.
+
+  | wariant | CAGR | MaxDD | Sharpe | n | w rynku |
+  |---|---|---|---|---|---|
+  | **v7 SPEC (top 20% B/M + F 8-9)** | **-3.66%** | -71.33% | -0.140 | 7 | **18%** |
+  | v7 bez filtra B/M + F >= 7 (mierzalny) | **-0.02%** | -62.47% | 0.117 | 107 | 91% |
+  | **benchmark PIT** | **10.33%** | -58.50% | 0.547 | - | - |
+
+  Kazdy wariant przegrywa o 10-14pp, rownomiernie w czasie (od 2015: SPEC -5.68%, mierzalny +3.32%,
+  benchmark 12.41%).
+
+  **WNIOSEK 1: "wysokie B/M" na 40 duzych spolkach GPW = POLSKA ENERGETYKA PANSTWOWA.** Wszystkie 7
+  transakcji wariantu SPEC to ENA, TPE, PGE, LWB (6 strat na 7). Lista kandydatow B/M rok po roku to
+  ENA/TPE/PGE/ATT/JSW/LWB - zaden inny sektor NIGDY nie przeszedl bramki, bo tylko ten notuje sie
+  trwale ponizej wartosci ksiegowej. Filtr B/M nie dywersyfikuje, wybiera jedna branze. Ten sam
+  problem co w v4 (Value trafial w PKN/OPL/ENA), tylko w skrajnej formie.
+
+  **WNIOSEK 2: im WYZSZY F-Score, tym GORSZY zwrot** - na 107 transakcjach wariantu mierzalnego
+  mediana zwrotu 12M: F=7 **-1.4%**, F=8 **-0.4%**, F=9 **-17.6%**. Kierunek odwrotny do Piotroskiego.
+  Mechanizm ten sam co w v6: **piec z dziewieciu sygnalow to ZMIANY r/r**, a najwieksza poprawe r/r
+  pokazuje spolka wychodzaca z dolka cyklu - czyli tuz przed koncem poprawy. F-Score 9 to nie
+  "najlepsza firma", to "firma, ktorej wszystko poprawilo sie naraz", a to jest definicja szczytu
+  cyklu. Probka F=9 jest mala (12 transakcji), ale uporzadkowanie 7 > 8 > 9 jest spojne.
+
+- **POPRAWKA `parse_period_end` dla raportow ROCZNYCH**: zakladal 31 grudnia, a realnie **LPP konczy
+  rok obrotowy w STYCZNIU** ("2024 (sty 25)" to okres do 2025-01-31), **SNT we WRZESNIU**, sa tez
+  konce w marcu, czerwcu, kwietniu i pazdzierniku (2103 okresy grudniowe, ale 213 innych). Teraz
+  koniec okresu czytany jest z etykiety. Przy regule "+6 miesiecy" blad przesuwal moment wejscia o
+  1-3 miesiace. **Sciezka kwartalna sie nie zmienila, wiec wyniki v1-v6 sa nietkniete.** Nowa metoda
+  `FundamentalPanel.history()` - potrzebna tam, gdzie trzeba znac KONIEC OKRESU, a nie tylko wartosc.
+
+- **LEAVE-ONE-OUT v6: 2/41, rozrzut 11.76pp.** Bije benchmark tylko bez CPS (+1.99pp) i bez OPL
+  (+2.48pp). Najgorszy przypadek: **bez CDR v6 schodzi na -0.63%** vs benchmark 7.81% (-8.44pp) -
+  jedna spolka trzymana 40 z 82 kwartalow odpowiada za caly dodatni wynik, dokladnie jak CDR w v4.
+  Jedyne dwie nazwy, ktorych usuniecie POMAGA, to CPS i OPL - te same, ktore ciagnely w dol v4.
+  Telekomy o stabilnych wskaznikach sa lubione i przez Value, i przez jakosc, a przez rynek nie.
+
 ## 2026-08-20 (3)
 
 - **KONCEPCJA v6 "czysta jakosc" (`quality_scoring.py`, `quality_backtest.py`, `run_quality.py`) -

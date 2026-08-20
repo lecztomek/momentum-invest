@@ -1,6 +1,6 @@
 # value_engine - strategie "value" na GPW
 
-Osobny silnik, poza `engine_v2`. Szesc przetestowanych koncepcji, wszystkie oparte na tych samych,
+Osobny silnik, poza `engine_v2`. Siedem przetestowanych koncepcji, wszystkie oparte na tych samych,
 wspolnych fundamentach technicznych (parser BiznesRadaru + panel point-in-time + ceny PL +
 uniwersum point-in-time).
 
@@ -11,7 +11,8 @@ uniwersum point-in-time).
 | v3: bez podmiany, 36m, opcjonalny trailing stop | ten sam silnik, `allow_score_replacement=False` | `run_v3_comparison.py` | 5.74% vs 9.64% (ze stopem) | **3.55% vs 7.99%** |
 | v4: Value + Quality + Momentum, top4/top8 | `factor_backtest.py` | `run_factor.py` | 14.42% vs 9.64% (**+4.78pp**, LOO 21/22) | **6.63% vs 7.99% (-1.36pp, LOO 12/41)** |
 | v5: Quality Defensive (Quality + LowVol), top 5 | ten sam silnik, `scorer=` | `run_defensive.py` | 9.61% vs 9.61% (remis, LOO 6/21) | **7.08% vs 7.95% (-0.87pp, LOO 2/40)** |
-| v6: czysta jakosc, top 20-25%, rebalans kwartalny | `quality_backtest.py` | `run_quality.py` | – (nie testowana) | **0.39%-8.38% vs 8.54%** |
+| v6: czysta jakosc, top 20-25%, rebalans kwartalny | `quality_backtest.py` | `run_quality.py` | – (nie testowana) | **0.39%-8.38% vs 8.54% (LOO 2/41)** |
+| v7: Piotroski F-Score 8-9 na top 20% B/M, holding 12M | `fscore_backtest.py` | `run_fscore.py` | – (nie testowana) | **-3.66% vs 10.33%, w rynku 18%** |
 
 **NAJWAZNIEJSZY WNIOSEK CALEJ SERII: zaden z pieciu pomyslow nie bije uczciwego benchmarku PIT na
 szerszym uniwersum.** Wynik kazdej wersji zalezy DRASTYCZNIE od tego, na czym jest liczony - i to
@@ -80,6 +81,8 @@ porownywalne 1:1 z reszta repo.
 | `defensive_scoring.py` | scoring v5: 50% Quality (ROE/ROIC/Debt-MC) + 50% LowVol (6M/12M) |
 | `quality_scoring.py` | scoring v6: 4 percentyle (ROE/ROIC/CFO-Assets/Debt-Assets) + 2 kryteria binarne |
 | `quality_backtest.py` | silnik koncepcji v6 - **zmienna liczba pozycji, histereza percentylowa, equal weight** |
+| `fscore.py` | Piotroski F-Score 0-9 na panelu ROCZNYM + Book-to-Market + regula "+6 miesiecy" |
+| `fscore_backtest.py` | silnik koncepcji v7 - roczny cykl, bramka dwustopniowa, gotowka gdy brak kandydatow |
 
 ### Gdzie leza dane
 
@@ -103,6 +106,7 @@ katalog mial 82 pliki, z czego 41 bylo bajt w bajt duplikatami (usuniete).
 .venv/bin/python3 -m value_engine.run_defensive --leave-one-out
 .venv/bin/python3 -m value_engine.run_quality
 .venv/bin/python3 -m value_engine.run_quality --leave-one-out
+.venv/bin/python3 -m value_engine.run_fscore
 .venv/bin/pytest value_engine/tests/ -v
 ```
 
@@ -178,6 +182,138 @@ danych z przyszlosci.
 **Czego to NIE naprawia:** BiznesRadar pokazuje liczby po ewentualnych korektach (restatements) -
 wyrownanie po dacie publikacji naprawia **timing**, nie **tresc**. Prawdziwa historia
 point-in-time powstanie z czasem, bo `snapshots` trzyma `fetched_at`.
+
+---
+
+# Koncepcja v7: Piotroski F-Score na wysokim B/M (odtworzenie polskiego badania)
+
+Spec (user): uniwersum niefinansowe; **raz w roku top 20% po Book-to-Market**; dla nich klasyczny
+**F-Score 0-9**; kupujemy tylko **F-Score 8-9**; equal weight; holding **12 miesiecy**; dane z roku
+`t` uzywane od **1.07.t+1**; benchmark WIG / buy&hold PIT.
+
+## Odpowiedz na "na ile to mozliwe": regula jest wierna, ale NIEMIERZALNA na 41 spolkach
+
+Wszystkie osiem regul da sie odtworzyc dokladnie i F-Score liczy sie **w pelni (9/9 sygnalow) dla
+279 z 286 spolko-lat**. Problem jest arytmetyczny: dwa waskie filtry mnoza sie na malym uniwersum.
+
+| B/M top | F>=9 | **F>=8 (spec)** | F>=7 | F>=6 |
+|---|---|---|---|---|
+| **20% (spec)** | 0.05 / 1 | **0.32 / 4** | 0.73 / 12 | 1.32 / 18 |
+| 40% | 0.09 / 2 | 0.82 / 9 | 1.59 / 15 | 2.82 / 18 |
+| 60% | 0.27 / 4 | 1.41 / 13 | 2.73 / 19 | 4.36 / 19 |
+| 100% (bez filtra B/M) | 0.55 / 5 | 2.41 / 16 | 4.86 / 20 | 7.68 / 20 |
+
+*(srednio spolek na rok / lat z co najmniej jedna spolka, z 22 lat)*
+
+Top 20% z uniwersum liczacego 3-23 nazwy to **1-5 kandydatow**. Zeby ktorys z nich mial jeszcze
+F-Score 8-9, trzeba trafic - i trafia sie w **4 z 22 lat**. Polski paper mial cala GPW, gdzie 20% to
+60-80 kandydatow, a wsrod nich kilkanascie z F-Score 8-9. **To nie jest wada implementacji, to jest
+brak danych** - i jedyna rzecz, ktora tu naprawde pomoze, to szersze uniwersum.
+
+## Wynik: wariant ze spec i warianty zluzowane
+
+| wariant | CAGR | MaxDD | Sharpe | n | w rynku | spolek/rok |
+|---|---|---|---|---|---|---|
+| **v7 SPEC: top 20% B/M + F 8-9** | **-3.66%** | -71.33% | -0.140 | 7 | **18%** | 0.32 |
+| v7 - prog F >= 7 | -3.87% | -77.29% | -0.051 | 16 | 55% | 0.73 |
+| v7 - prog F >= 6 | -2.35% | -85.30% | 0.070 | 29 | 82% | 1.32 |
+| v7 - szerszy B/M: top 60% + F 8-9 | -3.12% | -85.03% | -0.023 | 31 | 59% | 1.41 |
+| v7 - BEZ filtra B/M + F 8-9 | -4.22% | -86.68% | -0.055 | 53 | 73% | 2.41 |
+| **v7 - BEZ filtra B/M + F >= 7** (mierzalny) | **-0.02%** | -62.47% | 0.117 | 107 | **91%** | 4.86 |
+| **benchmark: buy&hold uniwersum PIT** | **10.33%** | -58.50% | 0.547 | - | - | - |
+| *buy&hold STALE 40 spolek (survivorship!)* | *13.93%* | *-73.17%* | *0.630* | - | - | - |
+
+**Kazdy wariant przegrywa, i to nie o wlos** - od -10pp do -14pp wzgledem benchmarku. Wariant
+"bez filtra B/M + F >= 7" jest w pelni mierzalny (4.86 spolki/rok, 91% czasu w rynku, 107
+transakcji) i wciaz daje **0.00% CAGR** przy benchmarku 10.33%. Rozklada sie to rownomiernie w
+czasie, wiec nie jest to artefakt jednego okresu:
+
+| od | SPEC | bez B/M + F>=7 | benchmark |
+|---|---|---|---|
+| 2005-07 | -3.66% | -0.02% | 10.33% |
+| 2011-07 | -5.04% | +0.43% | 9.18% |
+| 2015-07 | -5.68% | +3.32% | 12.41% |
+
+## Co strategia realnie kupila: siedem transakcji, wszystkie w energetyce panstwowej
+
+| spolka | wejscie -> wyjscie | zwrot | F | B/M |
+|---|---|---|---|---|
+| ENA | 2011-07 -> 2012-07 | -12.0% | 8 | 1.45 |
+| TPE | 2017-07 -> 2018-07 | **-37.5%** | 8 | 2.72 |
+| PGE | 2021-07 -> 2022-07 | +17.0% | 8 | 2.04 |
+| LWB | 2022-07 -> 2023-07 | -22.5% | **9** | 2.38 |
+| ENA | 2022-07 -> 2023-07 | **-35.8%** | 8 | 3.18 |
+| TPE | 2022-07 -> 2023-07 | -17.2% | 8 | 2.83 |
+| PGE | 2022-07 -> 2023-07 | -32.0% | 8 | 1.95 |
+
+Szesc strat na siedem transakcji. **Zaden inny sektor nigdy nie przeszedl bramki** - lista
+kandydatow B/M rok po roku to ENA, TPE, PGE, ATT, JSW, LWB, czyli energetyka, chemia i gornictwo
+kontrolowane przez skarb panstwa. W uniwersum 40 duzych spolek GPW "20% z najwyzszym B/M" NIE
+znaczy "najtansze spolki" - znaczy **"polski sektor energetyczny"**, bo tylko on notuje sie trwale
+ponizej wartosci ksiegowej. Filtr B/M nie dywersyfikuje, on wybiera jedna branze.
+
+## Mechanizm: im WYZSZY F-Score, tym GORSZY zwrot
+
+Na wariancie mierzalnym (107 transakcji, cale uniwersum, F >= 7):
+
+| F-Score | transakcji | sredni zwrot 12M | **mediana** |
+|---|---|---|---|
+| 7 | 54 | +8.4% | -1.4% |
+| 8 | 41 | +1.8% | -0.4% |
+| **9** | 12 | +0.9% | **-17.6%** |
+
+Kierunek jest **odwrotny do tego, co znalazl Piotroski**. Mechanizm jest ten sam co w v6: **piec z
+dziewieciu sygnalow to ZMIANY rok do roku** (dROA, dmarza, drotacja, dplynnosc, ddzwignia), a
+najwieksza poprawe r/r pokazuje spolka wychodzaca z dolka cyklu - czyli tuz przed tym, jak poprawa
+sie skonczy. F-Score 9 to nie "najlepsza firma", to "firma, ktorej wszystko poprawilo sie naraz", a
+to jest definicja szczytu cyklu. Probka F=9 jest mala (12 transakcji), ale uporzadkowanie
+7 > 8 > 9 na 107 obserwacjach jest spojne.
+
+Kontrola poprawnosci samego F-Score: rozklad na realnych danych to 2:1, 3:9, 4:40, 5:59, 6:62,
+7:55, 8:41, 9:12 - skupiony w okolicy 5-6, dokladnie jak w literaturze. Najczesciej niespelnione
+sygnaly: dROA (55%), drotacja (53%), dmarza (52%), dplynnosc (51%). Czyli sygnaly "poprawy" oblewa
+polowa spolek - to tez zgodne z oczekiwaniem i potwierdza, ze kierunki porownan sa poprawne.
+
+## Czego NIE dalo sie odtworzyc
+
+| regula ze spec | status |
+|---|---|
+| 1. uniwersum niefinansowe | ✅ 40 z 41 spolek (odpada tylko KRU) |
+| 2. top 20% po B/M raz w roku | ✅ ale to 1-5 spolek, nie 60-80 jak w paperze |
+| 3. klasyczny F-Score 0-9 | ✅ wszystkie 9 sygnalow, 9/9 policzalne dla 279/286 spolko-lat |
+| 4. tylko F-Score 8-9 | ✅ ale przepuszcza 0.32 spolki/rok |
+| 5. equal weight | ✅ |
+| 6. holding 12 miesiecy | ✅ pozycja zyje dokladnie rok, portfel skladany od zera |
+| 7. dane z roku t od 1.07.t+1 | ✅ **i dodatkowo** wymagamy faktycznej publikacji (patrz nizej) |
+| 8. benchmark WIG / buy&hold PIT | ⚠️ mamy **WIG20**, nie WIG - benchmarkiem jest buy&hold PIT |
+
+**Regula "+6 miesiecy" jest zaimplementowana MOCNIEJ niz w paperze**: wymagamy JEDNOCZESNIE (a) ze
+raport byl faktycznie opublikowany do dnia decyzyjnego (panel point-in-time) i (b) ze rok obrotowy
+zamknal sie co najmniej 6 miesiecy wczesniej. Samo (b) nie wystarcza, bo spolka moze publikowac
+pozniej niz 6 miesiecy po koncu roku; samo (a) nie odtwarza paperu, bo spolka z rokiem obrotowym
+konczacym sie w kwietniu byla by uzywana 2 miesiace po jego koncu.
+
+Przy okazji trzeba bylo naprawic `parse_period_end`: dla raportow ROCZNYCH zakladal 31 grudnia, a
+realnie **LPP konczy rok obrotowy w styczniu** ("2024 (sty 25)" to okres do 2025-01-31), **SNT we
+wrzesniu**, sa tez konce w marcu, czerwcu, kwietniu i pazdzierniku. Teraz koniec okresu czytany
+jest z etykiety. Sciezka kwartalna sie nie zmienila, wiec wyniki v1-v6 sa nietkniete.
+
+## Wniosek
+
+v7 dokladnie tak, jak w spec, **nie jest testowalne na tych danych** - 7 transakcji w 22 latach i
+82% czasu w gotowce to nie backtest strategii, to backtest gotowki. Ale to, co widac, jest
+jednoznaczne w dwoch punktach i oba sa niezalezne od progow:
+
+1. **"Wysokie B/M" na 40 duzych spolkach GPW = polska energetyka panstwowa.** Filtr nie wybiera
+   taniosci, wybiera branze. To ten sam problem, ktory zabil v4 (Value trafial w PKN/OPL/ENA), tylko
+   w skrajnej formie.
+2. **F-Score dziala tu ODWROTNIE**: mediana zwrotu 12M spada z -1.4% (F=7) do -17.6% (F=9). Piec z
+   dziewieciu sygnalow mierzy POPRAWE r/r, a poprawa r/r na tym rynku jest sygnalem szczytu cyklu, a
+   nie jakosci.
+
+Zeby v7 dalo sie ocenic uczciwie, potrzebne jest uniwersum rzedu 150-300 spolek (male i srednie, nie
+tylko duze i plynne). To ta sama rekomendacja, ktora wychodzi z v4, v5 i v6 - i po trzech
+koncepcjach z rzedu jest to jedyna rzecz warta zrobienia przed nastepnym pomyslem.
 
 ---
 
@@ -262,6 +398,20 @@ kilkanascie procent calego portfela.
 Dla rownowagi: v6 znajdowal tez prawdziwe perly - **CDR +367.6%** (2016-2022, 2370 dni),
 **SNT +182.7%**, **BDX +179.3%**, **DNP +157.5%**. Problem nie w tym, ze nie trafia, ale ze przy
 kilku pozycjach jeden szczyt cyklu zjada kilka trafien.
+
+## Test kruchosci leave-one-out: 2/41, i to potwierdza porazke
+
+| | wynik |
+|---|---|
+| bije wlasny benchmark na CAGR | **2/41** (bez CPS +1.99pp, bez OPL +2.48pp) |
+| rozrzut CAGR | **11.76pp** (-0.63% do 11.14%) |
+| najgorszy przypadek | bez CDR: **-0.63%** vs benchmark 7.81% (**-8.44pp**) |
+
+Dwie rzeczy warte uwagi. Pierwsza: **bez CDR v6 schodzi PONIZEJ ZERA** - jedna spolka (trzymana 40
+z 82 kwartalow) odpowiada za caly dodatni wynik, dokladnie tak jak CDR odpowiadal za przewage v4.
+Druga: jedyne dwa przypadki, w ktorych v6 wygrywa, to usuniecie **CPS i OPL** - tych samych nazw,
+ktore ciagnely w dol v4. Telekomy o stabilnych wskaznikach sa lubione i przez czynnik Value, i przez
+czynnik jakosci, a przez rynek nie.
 
 ## Rebalans do equal weight: DZIALA i pomaga (odwrotnie niz przy zwyciezcach v4)
 
