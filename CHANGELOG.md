@@ -2,6 +2,63 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-20 (3)
+
+- **KONCEPCJA v6 "czysta jakosc" (`quality_scoring.py`, `quality_backtest.py`, `run_quality.py`) -
+  ZAIMPLEMENTOWANA I ZMIERZONA: nie bije benchmarku, a rozrzut wewnatrz zakresow ze spec to 8pp.**
+  Spec usera: bez Value i bez Momentum; score = ROE/ROIC, CFO/Assets, CFO > Net Income, niski lub
+  nierosnacy dlug; top 20-25% uniwersum; equal weight; rebalans kwartalny; histereza "trzymaj,
+  dopoki >= 40-50 percentyla"; bez stopow, kanarka i profit targetow. 34 nowe testy, lacznie **197**.
+
+  **WYMAGALO NOWEGO SILNIKA** (inaczej niz v5, ktore weszlo przez `scorer=`). Trzy rzeczy zmieniaja
+  sie w mechanice portfela: liczba pozycji jest ZMIENNA (top 20-25% uniwersum, nie staly
+  `max_positions`), histereza stoi na PERCENTYLU rankingu, a equal weight oznacza REALNY rebalans.
+  Dodatkowo `signals.quarter_start_decision_dates` - liczone z kalendarza, nie jako "co trzecia data
+  miesieczna", bo inaczej faza siatki zalezalaby od poczatku historii cen i leave-one-out
+  porownywalby jablka z gruszkami.
+
+  | wariant | CAGR | MaxDD | Sharpe | n |
+  |---|---|---|---|---|
+  | v6: top 25%, >= 40 percentyla | 8.38% | -83.52% | 0.407 | 20 |
+  | v6: top 25%, >= 45 percentyla | 4.77% | -83.52% | 0.308 | 27 |
+  | v6: top 20%, >= 45 percentyla | **0.39%** | -83.52% | 0.182 | 24 |
+  | **benchmark PIT** | **8.54%** | **-54.79%** | **0.478** | - |
+
+  **NIE MA "WYNIKU v6"** - jest przedzial 0.39%-8.38% w calosci mieszczacy sie w granicach, ktore
+  spec sam dopuszcza. Powod jest dyskretny: percentyle licza sie na 3-23 spolkach, wiec krok
+  percentyla to 4-33 punkty; progi 40 i 45 czesto rozdzielaja te sama spolke. **Progi percentylowe
+  nie sa stabilnym parametrem przy tak malym uniwersum.**
+
+  Porazka nie jest artefaktem waskiego wczesnego okresu - od 2011 v6 traci -7.34pp, od 2014
+  **-7.59pp**, czyli NAJGORZEJ w latach, gdy portfel ma realne 3-6 pozycji.
+
+  **MaxDD -83.5% JEST STRUKTURALNY**: identyczny we wszystkich wariantach, bo pochodzi z 24.10.2008
+  przy portfelu JEDNOSKLADNIKOWYM - "top 25%" z 3-5 rankowanych spolek to 1 pozycja, i tak bylo do
+  2010 roku. To nie blad silnika, a wazna informacja o regule: "top X% uniwersum" NIE MA dolnego
+  ograniczenia dywersyfikacji.
+
+  **MECHANIZM PORAZKI: jakosc z danych KROCZACYCH szczytuje na SZCZYCIE CYKLU.** Trzy realne
+  przypadki, wszystkie z 1. miejsca rankingu: **JSW 2017-07** (score 90.0: ROE 19.6%, ROIC 23.4%,
+  CFO/aktywa 13.1%, dlug/aktywa **0.6%**, oba kryteria binarne spelnione) -> **-83.5% w 1003 dni**;
+  **LWB 2013-10** -> -61.9%; **TXT i TEN 2021-04** (ROE **99.2%** i 63.7%, zero dlugu) -> -33.5% i
+  **-81.0%**. JSW to szczyt cen wegla koksowego, TXT/TEN to szczyt boomu na gry po lockdownach -
+  wskazniki byly rekordowe WLASNIE dlatego, ze cykl byl na gorce, a 4 ostatnie kwartaly nie umieja
+  tego odroznic od trwalej jakosci. Dla rownowagi v6 znajdowal tez perly (CDR +367.6% przez 2370
+  dni, SNT +182.7%, BDX +179.3%, DNP +157.5%) - problem w tym, ze przy 3-6 pozycjach jeden szczyt
+  cyklu zjada kilka trafien.
+
+  **SYMETRIA v4 i v6 - najciekawszy wynik calej serii.** v4 (40% Value) kupuje spolki trwale tanie i
+  laduje w value trapach (PKN/OPL/ENA trzymane latami przy zwrotach kilku procent). v6 (100% jakosc)
+  kupuje spolki o rekordowych wskaznikach i laduje na szczytach cyklu. Oba czynniki, liczone z 4
+  ostatnich kwartalow, systematycznie wskazuja to, co wlasnie przestaje dzialac.
+
+  **REBALANS DO EQUAL WEIGHT DZIALA I POMAGA**: z rebalansem 4.77% (zainwestowane 98.6%, rozjazd wag
+  0.013), bez rebalansu **1.99%** (rozjazd wag 0.319, max **0.890** - jedna pozycja dochodzi do 89%
+  portfela). Wbrew intuicji "nie przycinaj zwyciezcow": portfel dryfuje w strone tego, co wlasnie
+  uroslo, a w v6 to zwykle spolka na szczycie cyklu. Rebalans jest tu mechanizmem OBRONNYM. Same
+  koszty transakcyjne zabieraja 0.44pp (4.77% vs 5.21% przy 0 bps) przy obrocie ~1.8x kapitalu
+  rocznie.
+
 ## 2026-08-20 (2)
 
 - **LEAVE-ONE-OUT NA 41 SPOLKACH: v4 spada z 21/22 na 12/41, v5 z 6/21 na 2/40.** Domkniecie

@@ -42,3 +42,14 @@ def month_start_decision_dates(daily_prices: pd.DataFrame) -> List[pd.Timestamp]
     frame = pd.DataFrame(index=index)
     frame["month"] = index.to_period("M")
     return [group.index[0] for _, group in frame.groupby("month", sort=True)]
+
+
+def quarter_start_decision_dates(daily_prices: pd.DataFrame) -> List[pd.Timestamp]:
+    """Pierwszy dzien handlowy kazdego kwartalu (styczen, kwiecien, lipiec, pazdziernik) - dla
+    koncepcji v6, ktora rebalansuje KWARTALNIE.
+
+    Liczone z kalendarza, a nie jako "co trzecia data miesieczna" - inaczej faza siatki zalezalaby
+    od tego, w ktorym miesiacu zaczyna sie historia cen, i dwa uruchomienia na roznych podzbiorach
+    tickerow rebalansowalyby w innych miesiacach. To wprost psuloby test leave-one-out."""
+    monthly = month_start_decision_dates(daily_prices)
+    return [date for date in monthly if date.month in (1, 4, 7, 10)]

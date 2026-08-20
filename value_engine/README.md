@@ -1,6 +1,6 @@
 # value_engine - strategie "value" na GPW
 
-Osobny silnik, poza `engine_v2`. Piec przetestowanych koncepcji, wszystkie oparte na tych samych,
+Osobny silnik, poza `engine_v2`. Szesc przetestowanych koncepcji, wszystkie oparte na tych samych,
 wspolnych fundamentach technicznych (parser BiznesRadaru + panel point-in-time + ceny PL +
 uniwersum point-in-time).
 
@@ -11,6 +11,7 @@ uniwersum point-in-time).
 | v3: bez podmiany, 36m, opcjonalny trailing stop | ten sam silnik, `allow_score_replacement=False` | `run_v3_comparison.py` | 5.74% vs 9.64% (ze stopem) | **3.55% vs 7.99%** |
 | v4: Value + Quality + Momentum, top4/top8 | `factor_backtest.py` | `run_factor.py` | 14.42% vs 9.64% (**+4.78pp**, LOO 21/22) | **6.63% vs 7.99% (-1.36pp, LOO 12/41)** |
 | v5: Quality Defensive (Quality + LowVol), top 5 | ten sam silnik, `scorer=` | `run_defensive.py` | 9.61% vs 9.61% (remis, LOO 6/21) | **7.08% vs 7.95% (-0.87pp, LOO 2/40)** |
+| v6: czysta jakosc, top 20-25%, rebalans kwartalny | `quality_backtest.py` | `run_quality.py` | – (nie testowana) | **0.39%-8.38% vs 8.54%** |
 
 **NAJWAZNIEJSZY WNIOSEK CALEJ SERII: zaden z pieciu pomyslow nie bije uczciwego benchmarku PIT na
 szerszym uniwersum.** Wynik kazdej wersji zalezy DRASTYCZNIE od tego, na czym jest liczony - i to
@@ -22,9 +23,19 @@ zaleznosc silniejsza niz jakakolwiek zmiana regul strategii:
    dolozeniu 19 spolek** - te same reguly daja teraz -1.36pp, a leave-one-out spadl do 12/41 przy
    rozrzucie 11.82pp. Szczegoly i mechanizm nizej.
 
+3. **progi percentylowe przy malym uniwersum**: v6 daje od 0.39% do 8.38% CAGR w granicach, ktore
+   spec sam dopuszcza ("top 20-25%", "ponizej 40-50 percentyla") - bo percentyl liczony na 3-23
+   spolkach ma krok 4-33 punktow.
+
 Praktyczny wniosek: kazdy pozytywny wynik w tym folderze nalezy traktowac jako hipoteze do
 falsyfikacji przez poszerzenie danych, nie jako przewage. Dwa razy z rzedu poszerzenie danych
 falsyfikowalo wniosek.
+
+**Symetria v4 i v6 jest najciekawszym wynikiem calej serii**: v4 (40% Value) kupuje spolki trwale
+tanie i laduje w value trapach (PKN, OPL, ENA trzymane latami przy zwrotach kilku procent). v6
+(100% jakosc) kupuje spolki o rekordowych wskaznikach i laduje na SZCZYTACH CYKLU (JSW 2017 -83.5%,
+TEN 2021 -81.0%). Oba czynniki, liczone z 4 ostatnich kwartalow, systematycznie wskazuja to, co
+wlasnie przestaje dzialac.
 
 ## Dlaczego osobny folder, a nie `engine_v2`
 
@@ -67,6 +78,8 @@ porownywalne 1:1 z reszta repo.
 | `factor_scoring.py` | scoring v4: Value (rentownosci) + Quality (5 kryteriow) + Momentum 12-1 |
 | `factor_backtest.py` | silnik koncepcji v4 i v5 - **scoring wstrzykiwany przez `scorer=`** |
 | `defensive_scoring.py` | scoring v5: 50% Quality (ROE/ROIC/Debt-MC) + 50% LowVol (6M/12M) |
+| `quality_scoring.py` | scoring v6: 4 percentyle (ROE/ROIC/CFO-Assets/Debt-Assets) + 2 kryteria binarne |
+| `quality_backtest.py` | silnik koncepcji v6 - **zmienna liczba pozycji, histereza percentylowa, equal weight** |
 
 ### Gdzie leza dane
 
@@ -88,6 +101,8 @@ katalog mial 82 pliki, z czego 41 bylo bajt w bajt duplikatami (usuniete).
 .venv/bin/python3 -m value_engine.run_factor
 .venv/bin/python3 -m value_engine.run_defensive
 .venv/bin/python3 -m value_engine.run_defensive --leave-one-out
+.venv/bin/python3 -m value_engine.run_quality
+.venv/bin/python3 -m value_engine.run_quality --leave-one-out
 .venv/bin/pytest value_engine/tests/ -v
 ```
 
@@ -163,6 +178,104 @@ danych z przyszlosci.
 **Czego to NIE naprawia:** BiznesRadar pokazuje liczby po ewentualnych korektach (restatements) -
 wyrownanie po dacie publikacji naprawia **timing**, nie **tresc**. Prawdziwa historia
 point-in-time powstanie z czasem, bo `snapshots` trzyma `fetched_at`.
+
+---
+
+# Koncepcja v6: czysta jakosc (bez Value, bez Momentum)
+
+Spec (user): "Idea: kupujemy najlepsze jakosciowo firmy, nie najtansze." Uniwersum plynne PIT; score
+wylacznie jakosciowy (ROE/ROIC, CFO/Assets, CFO > Net Income, niski lub nierosnacy dlug); ranking
+**top 20-25%**; **equal weight**; rebalans **kwartalny**; histereza - trzymamy, dopoki pozycja nie
+spadnie ponizej **40-50 percentyla**; exit na pogorszeniu jakosci albo wypadnieciu ponizej progu;
+BEZ stopow, kanarka i profit targetow.
+
+**Wymagalo nowego silnika** (`quality_backtest.py`), inaczej niz v5, ktore weszlo przez `scorer=`.
+Trzy rzeczy zmieniaja sie w samej mechanice portfela: liczba pozycji jest **zmienna** (top 20-25%
+uniwersum, a nie staly `max_positions`), histereza stoi na **percentylu**, nie na pozycji w rankingu,
+i equal weight oznacza **realny rebalans** (dociazanie i odchudzanie), ktorego v4/v5 nie robily.
+
+## Wynik (okno 2006-04 -> 2026-08, 82 kwartalne daty decyzyjne)
+
+| wariant | CAGR | MaxDD | Sharpe | Calmar | n |
+|---|---|---|---|---|---|
+| v6: top 25%, trzymaj >= 40 percentyla | 8.38% | -83.52% | 0.407 | 0.100 | 20 |
+| v6: top 25%, trzymaj >= 45 percentyla | 4.77% | -83.52% | 0.308 | 0.057 | 27 |
+| v6: top 25%, trzymaj >= 50 percentyla | 4.75% | -83.52% | 0.307 | 0.057 | 28 |
+| v6: top 20%, trzymaj >= 40 percentyla | 6.20% | -83.52% | 0.349 | 0.074 | 17 |
+| **v6: top 20%, trzymaj >= 45 percentyla** | **0.39%** | -83.52% | 0.182 | 0.005 | 24 |
+| v6: top 20%, trzymaj >= 50 percentyla | 0.39% | -83.52% | 0.182 | 0.005 | 24 |
+| **benchmark: buy&hold uniwersum PIT** | **8.54%** | **-54.79%** | **0.478** | **0.156** | - |
+| *buy&hold STALE 41 spolek (survivorship!)* | *14.22%* | *-71.65%* | *0.631* | *0.198* | - |
+
+**Zaden wariant nie bije benchmarku, a rozrzut WEWNATRZ zakresow podanych w spec wynosi 8pp**
+(0.39% - 8.38%). To pierwsza rzecz do zapamietania: nie ma "wyniku v6", jest przedzial od zera do
+prawie-benchmarku, w calosci mieszczacy sie w tym, co spec dopuszcza. Powod jest dyskretny:
+percentyle licza sie na 3-23 spolkach, wiec krok percentyla to 4-33 punkty. Prog "45" i prog "40"
+czesto rozdzielaja te sama spolke, a przy 4 rankowanych nazwach roznica miedzy nimi nie istnieje.
+**Progi percentylowe nie sa stabilnym parametrem przy tak malym uniwersum.**
+
+Kontrola w podokresach (wariant top 25% / >= 45 percentyla):
+
+| od | v6 CAGR | benchmark | roznica |
+|---|---|---|---|
+| 2006-04 | 4.77% | 8.54% | -3.77pp |
+| 2011-01 | 1.57% | 8.91% | **-7.34pp** |
+| 2014-01 | 4.11% | 11.70% | **-7.59pp** |
+
+Porazka NIE jest artefaktem waskiego wczesnego okresu - w latach, gdy portfel ma realne 3-6 pozycji,
+v6 wypada NAJGORZEJ.
+
+## MaxDD -83.5% jest strukturalny: "top 25%" z 3 spolek to 1 pozycja
+
+Wszystkie warianty maja **identyczny** MaxDD, bo pochodzi on z tego samego miejsca: 24.10.2008,
+przy portfelu **jednoskladnikowym**. Liczba pozycji w v6 wynika z rozmiaru uniwersum, a to mialo
+3-5 spolek do 2010 roku:
+
+| lata | rankowanych | pozycji |
+|---|---|---|
+| 2006-2010 | 3.0 - 5.0 | **1.00** |
+| 2011-2013 | 9.0 - 10.2 | 1.5 - 2.5 |
+| 2014-2019 | 12.0 - 15.2 | 3.0 - 4.0 |
+| 2020-2026 | 16.8 - 22.7 | 4.25 - 6.00 |
+
+To nie blad silnika, to konsekwencja spec - i wazna informacja o samej regule: **"top X% uniwersum"
+nie ma dolnego ograniczenia dywersyfikacji**. Przy realnym wdrozeniu trzeba by dodac minimum liczby
+pozycji albo minimalny rozmiar uniwersum.
+
+## Mechanizm porazki: jakosc z danych KROCZACYCH szczytuje na SZCZYCIE CYKLU
+
+To dokladne odbicie problemu v4 (Value kupuje value trapy), tylko w druga strone. Trzy realne
+przypadki z rankingu v6, wszystkie z pierwszego miejsca:
+
+| data | #1 w rankingu | jak wygladal | co bylo dalej |
+|---|---|---|---|
+| 2017-07 | **JSW** (score 90.0) | ROE 19.6%, ROIC 23.4%, CFO/aktywa 13.1%, dlug/aktywa **0.6%**, oba kryteria binarne spelnione | **-83.5% w 1003 dni** |
+| 2013-10 | **LWB** (score 80.3) | ROE 11.5%, ROIC 10.0%, CFO/aktywa 17.2% | **-61.9%** |
+| 2021-04 | **TXT** (98.2), **TEN** (94.7) | ROE **99.2%** i 63.7%, zero dlugu | TXT **-33.5%**, TEN **-81.0%** |
+
+JSW w polowie 2017 to szczyt cen wegla koksowego; TXT i TEN w kwietniu 2021 to szczyt boomu na gry
+po lockdownach. W obu przypadkach ROE, ROIC i CFO/aktywa byly rekordowe **wlasnie dlatego**, ze
+zysk byl rekordowy - a zysk byl rekordowy, bo cykl byl na gorce. Wskaznik liczony z 4 ostatnich
+kwartalow nie umie tego odroznic od trwalej jakosci. Przy 3-6 pozycjach jedna taka nazwa kosztuje
+kilkanascie procent calego portfela.
+
+Dla rownowagi: v6 znajdowal tez prawdziwe perly - **CDR +367.6%** (2016-2022, 2370 dni),
+**SNT +182.7%**, **BDX +179.3%**, **DNP +157.5%**. Problem nie w tym, ze nie trafia, ale ze przy
+kilku pozycjach jeden szczyt cyklu zjada kilka trafien.
+
+## Rebalans do equal weight: DZIALA i pomaga (odwrotnie niz przy zwyciezcach v4)
+
+| wariant (top 25%, >= 45 percentyla) | CAGR | zainwestowane | rozjazd wag (sredni / max) | obrot |
+|---|---|---|---|---|
+| **z rebalansem** | **4.77%** | 98.6% | **0.013 / 0.092** | 36.7x kapitalu |
+| bez rebalansu | 1.99% | 94.8% | 0.319 / **0.890** | 18.5x kapitalu |
+| z rebalansem, koszty 0 bps | 5.21% | - | - | - |
+
+Bez rebalansu jedna pozycja dochodzi do **89% portfela**. Wbrew intuicji ("nie przycinaj
+zwyciezcow") to SZKODZI: portfel dryfuje w strone tego, co wlasnie uroslo - a w v6 to, co wlasnie
+uroslo, jest zwykle spolka na szczycie cyklu, ktora zaraz spadnie. Rebalans jest tu wiec
+mechanizmem obronnym, nie kosztem. Same koszty transakcyjne zabieraja 0.44pp (4.77% vs 5.21%) przy
+obrocie ~1.8x kapitalu rocznie.
 
 ---
 
