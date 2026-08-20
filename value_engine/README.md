@@ -269,6 +269,34 @@ Prog 0.5 mln (64 transakcje):
 | 11B, BDX, BFT | 3.09% | 4.69% | -1.61pp |
 | 11B, BDX, BFT, RBW, CDR | 4.15% | 3.33% | +0.81pp |
 
+### Pelne leave-one-out po 381 spolkach: 379/381 - i to liczba MYLACA
+
+| | prog 2.0 mln |
+|---|---|
+| bije wlasny benchmark | **379/381** |
+| przewaga: mediana / min / max | +1.47pp / **-4.46pp** / **+4.90pp** |
+| rozrzut CAGR | **10.49pp** (-2.58% do 7.91%) |
+| spolek kiedykolwiek w uniwersum PIT | 87 z 381 (23%) |
+| **spolek kiedykolwiek TRZYMANYCH przez v6** | **22 z 381 (6%)** |
+
+**379/381 nie znaczy "odporne".** v6 trzyma w calej 20-letniej historii **22 spolki**, wiec usuniecie
+ktorejkolwiek z pozostalych **359** jest NO-OPEM: przebieg jest identyczny z pelnym, wiec
+"bije benchmark" trywialnie. Miara odpornosci to rozrzut, a ten wynosi **10.49pp z usuniecia JEDNEJ
+nazwy**:
+
+| usunieta spolka | v6 CAGR | benchmark | przewaga |
+|---|---|---|---|
+| **bez KGH** | **-2.58%** | 1.88% | **-4.46pp** |
+| bez EUR | 1.66% | 3.05% | -1.39pp |
+| *pelny przebieg* | *4.41%* | *2.93%* | *+1.47pp* |
+| bez PGE | 7.36% | 3.13% | +4.23pp |
+| bez JSW | 7.91% | 3.03% | +4.88pp |
+| bez ACP | 7.21% | 2.31% | **+4.90pp** |
+
+Czyli: **usuniecie KGH odwraca wynik na minus, a usuniecie ACP, JSW albo PGE potraja przewage.**
+Najdluzej trzymane nazwy to KGH (39 kwartalow z 134), CDR (31), DNP (26), OPL (24), JSW (24),
+11B (24) - te same spolki, ktore przewijaly sie przez v4, v6, v7 i v8.
+
 **Na obu progach usuniecie DWOCH spolek z 381 zeruje albo odwraca przewage.** Przy 29-64
 transakcjach w 20 latach to nie jest zaskoczenie - to informacja o tym, ze probka jest za mala, zeby
 mowic o przewadze. Najwieksi kontrybutorzy: przy 2 mln CDR (+285.7% w 2 transakcjach), DNP (+105.5%

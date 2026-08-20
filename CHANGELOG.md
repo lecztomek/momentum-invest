@@ -46,6 +46,15 @@ Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co 
   transakcji i BDX +424% (0.5 mln). Przy 29-64 transakcjach w 20 latach to informacja o tym, ze
   probka jest za mala na wniosek o przewadze.
 
+  **PELNE LEAVE-ONE-OUT: 379/381 - i to liczba MYLACA.** v6 trzyma w calej 20-letniej historii tylko
+  **22 z 381 spolek** (a w uniwersum PIT bywa 87), wiec usuniecie ktorejkolwiek z pozostalych 359
+  jest NO-OPEM i "bije benchmark" trywialnie. Miara odpornosci to rozrzut, a ten wynosi **10.49pp z
+  usuniecia JEDNEJ nazwy**: bez KGH v6 daje **-2.58%** i przegrywa o 4.46pp, a bez ACP / JSW / PGE
+  daje 7.2-7.9% i wygrywa o ~4.9pp. Runner raportuje teraz liczbe no-opow razem z licznikiem
+  wygranych, zeby ta liczba nie byla czytana jako odpornosc. Najdluzej trzymane: KGH 39 kwartalow z
+  134, CDR 31, DNP 26, OPL 24, JSW 24, 11B 24 - te same nazwy, ktore przewijaly sie przez v4, v6, v7
+  i v8.
+
 ## 2026-08-20 (6)
 
 - **DUZE UNIWERSUM: 381 spolek niefinansowych (bylo 41). Wszystkie koncepcje v2-v8 przeliczone na

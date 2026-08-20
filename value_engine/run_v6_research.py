@@ -160,7 +160,18 @@ def test_leave_out(research: V6Research, top_winners: int = 5) -> None:
     beats = sum(1 for r in rows if r[3] > 0)
     edges = pd.Series([r[3] for r in rows])
     cagrs = pd.Series([r[1] for r in rows])
-    print(f"  bije wlasny benchmark: {beats}/{len(rows)}")
+
+    # BEZ TEJ LICZBY "379/381" ZNACZY COS INNEGO, NIZ SIE WYDAJE. Przy 381 spolkach w zbiorze
+    # zrodlowym strategia trzyma w calej historii tylko kilkadziesiat z nich - usuniecie
+    # pozostalych to NO-OP, ktory z definicji "bije benchmark tak samo jak pelny przebieg".
+    # Miara odpornosci jest wiec ROZRZUT po tych spolkach, ktore cokolwiek zmieniaja, a nie
+    # licznik wygranych.
+    held_ever = {trade.ticker for trade in base_trades}
+    no_ops = sum(1 for r in rows if abs(r[1] - base_metrics["cagr"]) < 1e-12)
+    print(f"  spolek KIEDYKOLWIEK trzymanych przez v6: {len(held_ever)}/{len(research.tickers)}")
+    print(f"  przebiegow bez ZADNEJ zmiany wyniku (no-op): {no_ops}/{len(rows)}")
+    print(f"  bije wlasny benchmark: {beats}/{len(rows)} <- w wiekszosci dlatego, ze usuniecie"
+          f" nietrzymanej spolki nie zmienia nic")
     print(f"  przewaga: mediana {edges.median()*100:+.2f}pp, min {edges.min()*100:+.2f}pp, max {edges.max()*100:+.2f}pp")
     print(f"  rozrzut CAGR: {(cagrs.max()-cagrs.min())*100:.2f}pp ({cagrs.min()*100:.2f}% - {cagrs.max()*100:.2f}%)")
     print("  5 najgorszych (usuniecie tej spolki najbardziej szkodzi):")
