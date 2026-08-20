@@ -2,6 +2,35 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-20 (2)
+
+- **LEAVE-ONE-OUT NA 41 SPOLKACH: v4 spada z 21/22 na 12/41, v5 z 6/21 na 2/40.** Domkniecie
+  przeliczenia z wpisu ponizej. Dwie liczby, dwa ROZNE rodzaje porazki:
+
+  | | v4 (22) | v4 (41) | v5 (22) | v5 (41) |
+  |---|---|---|---|---|
+  | bije benchmark na CAGR | **21/22** | **12/41** | 6/21 | **2/40** |
+  | bije benchmark na Sharpe | 21/22 | 10/41 | 14/21 | 7/40 |
+  | rozrzut CAGR | 8.22pp | **11.82pp** | 3.94pp | 4.24pp |
+
+  **v4 jest KRUCHY**: rozrzut 11.82pp (5.22%-17.04%) przy pelnym wyniku 6.63%. Usuniecie JEDNEJ
+  spolki odwraca wniosek - bez CPS v4 daje 17.04% i **+8.80pp** nad benchmarkiem, bez ENA +5.57pp,
+  bez JSW +3.78pp; w druga strone bez TEN -2.97pp, bez ALE -2.89pp. Strategia, ktorej wniosek
+  odwraca sie na jednej nazwie z 41, nie ma zmierzonej przewagi.
+
+  **v5 jest STABILNIE ZA SLABY**: rozrzut tylko 4.24pp, ale 38 z 40 przebiegow przegrywa, prawie
+  wszystkie w pasmie -0.2pp do -1.3pp. Wynik systematyczny, nie przypadkowy - i akurat dlatego
+  bardziej wiarygodny. Zniknela tez jedyna zaleta v5 z uniwersum 22 spolek: przewaga na Sharpe
+  (0.555 vs 0.521) zamienila sie w strate (0.431 vs 0.453). Zostal nieco lepszy MaxDD
+  (-57.05% vs -59.43%).
+
+  **GDZIE v4 PARKUJE KAPITAL**: 5 najczestszych nazw to 595 z 973 miesiaco-pozycji (**61%**).
+  PKN 167 miesiecy (68% czasu, sredni zwrot +4.5%), ACP 151 (61%, +48.4%), KGH 107 (43%, +161.1%),
+  **OPL 105 (43%, +5.6%** - w tym +14.8% przez 5.3 roku), ENA 65 (26%, **-5.6%**), CPS 61 (25%,
+  +10.5%). Telekom i energetyka trzymane latami przy zwrotach kilkunastu procent to nie strata, a
+  KOSZT ALTERNATYWNY - i to on tlumaczy, dlaczego usuniecie CPS albo ENA podnosi CAGR o 5-9pp.
+  Czynnik Value wskazuje te spolki niezmiennie, bo sa trwale tanie i trwale tanie zostaja.
+
 ## 2026-08-20
 
 - **KONCEPCJA v5 "Quality Defensive" (`value_engine/defensive_scoring.py`, `run_defensive.py`) -

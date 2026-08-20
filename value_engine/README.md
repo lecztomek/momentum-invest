@@ -9,8 +9,8 @@ uniwersum point-in-time).
 | v1: przeceniona + zdrowa, profit target | `backtest.py` | `run_test.py` | odrzucona (niszczy wartosc) | – |
 | v2: quality value, sloty + podmiana | `quality_value_backtest.py` | `run_quality_value.py` | 8.25% vs 9.64% bench | **-1.34% vs 7.99%** |
 | v3: bez podmiany, 36m, opcjonalny trailing stop | ten sam silnik, `allow_score_replacement=False` | `run_v3_comparison.py` | 5.74% vs 9.64% (ze stopem) | **3.55% vs 7.99%** |
-| v4: Value + Quality + Momentum, top4/top8 | `factor_backtest.py` | `run_factor.py` | 14.42% vs 9.64% (**+4.78pp**, 21/22 LOO) | **6.63% vs 7.99% (-1.36pp)** |
-| v5: Quality Defensive (Quality + LowVol), top 5 | ten sam silnik, `scorer=` | `run_defensive.py` | 9.61% vs 9.61% (remis, 6/21 LOO) | **7.08% vs 7.95% (-0.87pp)** |
+| v4: Value + Quality + Momentum, top4/top8 | `factor_backtest.py` | `run_factor.py` | 14.42% vs 9.64% (**+4.78pp**, LOO 21/22) | **6.63% vs 7.99% (-1.36pp, LOO 12/41)** |
+| v5: Quality Defensive (Quality + LowVol), top 5 | ten sam silnik, `scorer=` | `run_defensive.py` | 9.61% vs 9.61% (remis, LOO 6/21) | **7.08% vs 7.95% (-0.87pp, LOO 2/40)** |
 
 **NAJWAZNIEJSZY WNIOSEK CALEJ SERII: zaden z pieciu pomyslow nie bije uczciwego benchmarku PIT na
 szerszym uniwersum.** Wynik kazdej wersji zalezy DRASTYCZNIE od tego, na czym jest liczony - i to
@@ -19,7 +19,8 @@ zaleznosc silniejsza niz jakakolwiek zmiana regul strategii:
 1. **survivorship w benchmarku**: v3 + trailing stop daje 23.34% CAGR na stalej liscie dzisiejszych
    ocalalych i 5.74% na uniwersum point-in-time. Ta sama strategia, ta sama historia cen.
 2. **liczba kandydatow**: przewaga v4 (+4.78pp, potwierdzona leave-one-out 21/22) **znikla po
-   dolozeniu 19 spolek** - te same reguly daja teraz -1.36pp. Szczegoly i mechanizm nizej.
+   dolozeniu 19 spolek** - te same reguly daja teraz -1.36pp, a leave-one-out spadl do 12/41 przy
+   rozrzucie 11.82pp. Szczegoly i mechanizm nizej.
 
 Praktyczny wniosek: kazdy pozytywny wynik w tym folderze nalezy traktowac jako hipoteze do
 falsyfikacji przez poszerzenie danych, nie jako przewage. Dwa razy z rzedu poszerzenie danych
@@ -226,6 +227,55 @@ spolkach systematycznie sprzedaje to, co rosnie.** README ostrzegal o tym wczesn
 `keep_rank=8` jest dostrojony do uniwersum znacznie wiekszego niz to, ktore realnie mamy") - tylko ze
 skutek okazal sie odwrotny do oczekiwanego: przy wiekszym uniwersum regula nie zaczyna dzialac
 lepiej, ona zaczyna szkodzic.
+
+## Leave-one-out na 41 spolkach: v4 21/22 -> **12/41**, v5 6/21 -> **2/40**
+
+| | v4 (22) | **v4 (41)** | v5 (22) | **v5 (41)** |
+|---|---|---|---|---|
+| bije swoj benchmark na CAGR | **21/22** | **12/41** | 6/21 | **2/40** |
+| bije swoj benchmark na Sharpe | 21/22 | 10/41 | 14/21 | 7/40 |
+| rozrzut CAGR | 8.22pp | **11.82pp** | 3.94pp | 4.24pp |
+
+Te dwie liczby mowia o DWOCH ROZNYCH rodzajach porazki i warto ich nie mieszac:
+
+**v4 jest KRUCHY.** Rozrzut 11.82pp (5.22% - 17.04%) przy sredniej 6.63% znaczy, ze wynik zalezy od
+kilku konkretnych nazw, nie od reguly:
+
+| bez spolki | CAGR v4 | vs benchmark |
+|---|---|---|
+| **bez CPS** | **17.04%** | **+8.80pp** |
+| bez ENA | 13.92% | +5.57pp |
+| bez JSW | 12.35% | +3.78pp |
+| *pelne 41* | *6.63%* | *-1.36pp* |
+| bez ALE | 5.22% | -2.89pp |
+| bez TEN | 5.30% | -2.97pp |
+
+Usuniecie JEDNEJ spolki (CPS) zamienia -1.36pp na +8.80pp. Strategia, ktorej wniosek odwraca sie na
+jednej nazwie z 41, nie ma zmierzonej przewagi - ma szum.
+
+**v5 jest STABILNIE ZA SLABY.** Rozrzut tylko 4.24pp, ale 38 z 40 przebiegow przegrywa, prawie
+wszystkie w waskim pasmie -0.2pp do -1.3pp. To wynik systematyczny, nie przypadkowy, i akurat
+dlatego bardziej wiarygodny: v5 po prostu nie ma przewagi. Zniknela tez jego jedyna zaleta z
+uniwersum 22 spolek - **przewaga na Sharpe** (0.555 vs 0.521) zamienila sie w strate (0.431 vs
+0.453). Zostal tylko nieco lepszy MaxDD (-57.05% vs -59.43%).
+
+## Gdzie v4 parkuje kapital: 61% czasu w 5 nazwach
+
+Miesiace w portfelu (z 246), pelny przebieg na 41 spolkach:
+
+| spolka | miesiecy | udzial | transakcji | sredni zwrot |
+|---|---|---|---|---|
+| PKN | 167 | **68%** | 8 | +4.5% |
+| ACP | 151 | **61%** | 4 | +48.4% |
+| KGH | 107 | 43% | 2 | +161.1% |
+| **OPL** | 105 | **43%** | 5 | **+5.6%** (w tym +14.8% przez 5.3 ROKU) |
+| ENA | 65 | 26% | 5 | **-5.6%** |
+| CPS | 61 | 25% | 3 | +10.5% |
+
+Piec najczestszych nazw to **595 z 973 miesiaco-pozycji (61%)**. Telekom i energetyka trzymane
+latami przy zwrotach kilkunastu procent - to nie jest strata, to KOSZT ALTERNATYWNY, i wlasnie on
+tlumaczy, dlaczego usuniecie CPS albo ENA podnosi CAGR o 5-9pp. Czynnik Value (40% wagi) wskazuje te
+spolki niezmiennie, bo one sa trwale tanie - i trwale tanie zostaja.
 
 ## Co to znaczy
 
