@@ -348,8 +348,12 @@ def test_real_data_runs_and_holds_between_min_and_max_positions():
     decisions = [d for d in result["decisions"] if d["date"] >= metrics["start"]]
     assert len(decisions) > 60, "kwartalnie od 2006 to powinno byc ~80 decyzji"
     assert all(d["n_positions"] >= 1 for d in decisions)
-    # top 25% przy uniwersum 3-23 spolek: od 1 do ~6 pozycji
-    assert max(d["n_positions"] for d in decisions) <= 8
+    # Liczba pozycji MUSI wynikac z rozmiaru rankingu, a nie z zaszytego limitu - wczesniej bylo tu
+    # `<= 8` (dobre przy 41 spolkach, lamiace sie przy 381). Sprawdzamy WLASNOSC: pozycji nigdy
+    # wiecej niz `n_target`, a `n_target` to zaokraglone 25% rankowanego uniwersum.
+    for decision in decisions:
+        assert decision["n_positions"] <= max(decision["n_target"], 1)
+        assert decision["n_target"] == max(1, round(0.25 * decision["ranked"]))
 
     # HISTEREZA NA PRAWDZIWYCH DANYCH: po zakonczeniu decyzji zadna trzymana spolka nie moze byc
     # ponizej progu percentyla. Wyjatek to pozycje BEZ percentyla (poza uniwersum PIT), ktorych

@@ -2,6 +2,62 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-20 (6)
+
+- **DUZE UNIWERSUM: 381 spolek niefinansowych (bylo 41). Wszystkie koncepcje v2-v8 przeliczone na
+  trzech progach plynnosci.** User dorzucil ~380 spolek: 412 plikow cen, 403 spolki w bazie
+  fundamentow, 381 po odsianiu 31 finansowych.
+
+  **DWA BLEDY, KTORE UJAWNILY SIE DOPIERO NA DUZYM ZBIORZE:**
+
+  1. **Uniwersum PIT bylo PUSTE do 2016 roku.** `point_in_time_universe` wymagalo
+     `min_periods = 126` (cale okno obrotu gesto wypelnione). Przy 41 spolkach indeks dat byl
+     praktycznie kompletny, wiec dzialalo. Przy 381 spolkach indeks jest UNIA sesji wszystkich
+     spolek, wiec kazdy szereg ma rozproszone dziury - **wystarczyly DWIE dziury w oknie 126 sesji**,
+     zeby mediana obrotu wyszla NaN. Cala historia 1994-2015 wypadala z backtestu PO CICHU, bez
+     bledu. Naprawione progiem 60% okna (`turnover_min_periods_share`).
+  2. **Rebalans do equal weight zostawial gotowke bezczynnie (silnik v6).** `rebalance()` robil
+     JEDEN przebieg po pozycjach, wiec pozycja do dociazenia przetworzona PRZED pozycja finansujaca
+     widziala `cash = 0`, a gotowka z pozniejszej sprzedazy lezala do nastepnego kwartalu. Zlapane
+     realnie: 2009-01-02 wagi 0.395 / 0.500 i **10.5% w gotowce** po "wyrownaniu do 1/N". Naprawione
+     dwoma przebiegami: zainwestowane 100.0%, rozjazd wag 0.016 zamiast 0.105.
+  3. **Strony bez tabeli raportu wywalaly caly load.** BiznesRadar zwraca 200 i "Brak danych" dla
+     spolek bez sprawozdan (VGOA). `load_snapshots` pomija je i raportuje ile, z bezpiecznikiem:
+     **przy >30% brakujacych stron rzuca blad** (to znaczy zmiane struktury serwisu, nie pusta
+     spolke). Zmierzone: 6 z 2424 stron. Plus pominiecie plikow cen zerowej dlugosci (`rex1.txt`,
+     `rob2.txt`) i cache sparsowanych snapshotow (parsowanie 2418 spakowanych stron to ~80 s).
+
+  **WYNIKI (CAGR i roznica wobec buy&hold PIT na tej samej siatce i w tym samym oknie):**
+
+  | koncepcja | prog 2.0 mln | prog 0.5 mln | prog 0.2 mln |
+  |---|---|---|---|
+  | v4: Value+Quality+Momentum | 4.30% (+0.29pp) | **16.41% (+10.62pp)** | **18.83% (+13.14pp)** |
+  | v5: Quality + LowVol | 4.52% (+0.52pp) | 8.58% (+2.79pp) | 7.74% (+2.05pp) |
+  | v6: czysta jakosc top 25%/40p | 5.08% (+2.15pp) | 7.04% (+1.59pp) | 8.46% (+2.93pp) |
+  | v7 SPEC | -1.72% (-4.58pp) | -4.27% (-12.64pp) | -0.12% (-8.78pp) |
+  | v8 SPEC | -7.08% (-9.94pp) | -2.71% (-11.08pp) | 0.11% (-8.56pp) |
+  | v2 | **-14.40%** (-18.40pp) | -14.75% (-20.54pp) | -15.63% (-21.32pp) |
+  | *benchmark buy&hold PIT* | *4.00%* | *5.79%* | *5.69%* |
+
+  **NAJWAZNIEJSZA LICZBA: benchmark spadl z 10.33% (40 spolek) na 4.00% (381 spolek, prog 2 mln).**
+  Rownowazony portfel szerokiego GPW zarabial przez 20 lat znacznie mniej niz rownowazony portfel 40
+  duzych nazw - bo tamte 40 to byli dzisiejsi ocaleni. To korekta BENCHMARKU, nie efekt strategii.
+
+  **PRZEWAGA v4 ROSNIE, GDY OBNIZAMY PROG PLYNNOSCI - I TO JEST OSTRZEZENIE.** +0.29pp -> +10.62pp
+  -> +13.14pp. Sprawdzone, skad sie bierze: przy progu 0.5 mln mediana obrotu KUPOWANYCH spolek to
+  1.33 mln, a 79 z 137 transakcji jest ponizej 2 mln; najlepsza transakcja to **ASB +944% przy
+  obrocie 0.59 mln PLN/dzien**. Test kruchosci: bez ASB przewaga spada z +10.62pp na +3.24pp, bez
+  czterech nazw (ASB, LTX, RBW, BRS) na **+0.36pp**. **Cztery spolki z 381 odpowiadaja za 97%
+  przewagi.** Portfel 4 pozycji po 25% nie kupilby ich bez ruszenia kursu, a to wlasnie segment, w
+  ktorym brak spolek wycofanych z obrotu boli najbardziej.
+
+  **WNIOSKI**: (a) przy progu 2 mln nie ma przewagi u nikogo, ale nie ma tez juz wyraznej straty u
+  v4-v6 - to zmiana wobec 41 spolek, gdzie wszystko przegrywalo; (b) przewagi przy nizszych progach
+  nie sa inwestowalne; (c) **v2 jest definitywnie martwe** (-14% do -16% CAGR, MaxDD -97% na kazdym
+  progu - bramka "25% ponizej 52W high" na szerokim rynku kupuje spadajace noze); (d) **F-Score
+  anty-prognozuje trzeci i czwarty raz** - mediana zwrotu 12M przy progu 2 mln: F5 +20.4%, F6 -3.5%,
+  F7 -4.8%, F8 -8.4%, F9 **-26.4%**.
+
 ## 2026-08-20 (5)
 
 - **KONCEPCJA v8: `50% percentyl(B/M) + 50% percentyl(F-Score)`, top 4 (`fscore.combined_scores`,

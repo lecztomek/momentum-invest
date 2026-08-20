@@ -34,8 +34,16 @@ BENCHMARK_TICKER = "wig20"
 
 
 def discover_tickers() -> List[str]:
-    """Uniwersum = wszystkie pliki cen w `data/pl` poza plikiem benchmarku."""
-    return sorted(p.stem for p in PL_DATA_DIR.glob("*.txt") if p.stem != BENCHMARK_TICKER)
+    """Uniwersum = wszystkie pliki cen w `data/pl` poza plikiem benchmarku.
+
+    PUSTE PLIKI SA POMIJANE. Przy duzym uniwersum scraper realnie zapisuje pliki zerowej dlugosci
+    (zlapane: `rex1.txt`, `rob2.txt`) - spolka bez ani jednej sesji nie jest inwestowalna, a
+    `pd.read_csv` wywala sie na niej bledem "No columns to parse from file"."""
+    return sorted(
+        path.stem
+        for path in PL_DATA_DIR.glob("*.txt")
+        if path.stem != BENCHMARK_TICKER and path.stat().st_size > 0
+    )
 
 
 def load_prices(tickers: List[str]) -> pd.DataFrame:

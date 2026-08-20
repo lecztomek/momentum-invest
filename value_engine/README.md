@@ -1,6 +1,6 @@
 # value_engine - strategie "value" na GPW
 
-Osobny silnik, poza `engine_v2`. Osiem przetestowanych koncepcji, wszystkie oparte na tych samych,
+Osobny silnik, poza `engine_v2`. Osiem koncepcji, przeliczonych na 22, 41 i **381** spolkach, wszystkie oparte na tych samych,
 wspolnych fundamentach technicznych (parser BiznesRadaru + panel point-in-time + ceny PL +
 uniwersum point-in-time).
 
@@ -184,6 +184,98 @@ danych z przyszlosci.
 **Czego to NIE naprawia:** BiznesRadar pokazuje liczby po ewentualnych korektach (restatements) -
 wyrownanie po dacie publikacji naprawia **timing**, nie **tresc**. Prawdziwa historia
 point-in-time powstanie z czasem, bo `snapshots` trzyma `fetched_at`.
+
+---
+
+# DUZE UNIWERSUM: 381 spolek niefinansowych (stan 2026-08-20)
+
+User dorzucil ~380 nowych spolek: **412 plikow cen, 403 spolki w bazie fundamentow, 381 po odsianiu
+finansowych** (31 bankow/ubezpieczycieli/rynku kapitalowego). To ta zmiana, ktora byla rekomendowana
+po v4-v8 - i zmienia ona wnioski, ale nie tak, jak mozna bylo liczyc.
+
+## Dwa bledy, ktore ujawnily sie DOPIERO na duzym zbiorze
+
+**1. Uniwersum PIT bylo PUSTE do 2016 roku.** `point_in_time_universe` mialo
+`min_periods = turnover_lookback_days`, czyli wymagalo, zeby wszystkie 126 sesji okna mialy obrot.
+Przy 41 spolkach indeks dat byl praktycznie kompletny dla kazdej duzej nazwy, wiec dzialalo. Przy 381
+spolkach indeks jest UNIA sesji wszystkich spolek, wiec kazdy szereg ma rozproszone dziury (dzien, w
+ktorym ta spolka nie miala transakcji, a inna miala) - **wystarczyly DWIE dziury w oknie**, zeby
+mediana wyszla NaN. Efekt: cala historia 1994-2015 wypadala z backtestu **po cichu, bez zadnego
+bledu**. Naprawione progiem 60% okna (76 z 126 sesji). Uniwersum PIT przy progu 2 mln: 7 spolek w
+2002-2006, 12-20 w 2007-2020, 24-27 dzis.
+
+**2. Rebalans do equal weight zostawial gotowke bezczynnie (silnik v6).** `rebalance()` robil JEDEN
+przebieg po pozycjach, wiec pozycja do dociazenia przetworzona PRZED pozycja, ktora ma ja
+sfinansowac, widziala `cash = 0` i nic nie kupowala - a gotowka z pozniejszej sprzedazy lezala do
+nastepnego kwartalu. Zlapane na realnych danych: 2009-01-02 wagi 0.395 / 0.500 i **10.5% w gotowce**
+po "wyrownaniu do 1/N". Naprawione dwoma przebiegami (najpierw wszystkie sprzedaze, potem
+dokupienia): teraz zainwestowane 100.0%, maksymalny rozjazd wag 0.016 zamiast 0.105.
+
+**3. Strony bez tabeli raportu wywalaly caly load.** BiznesRadar zwraca status 200 i "Brak danych"
+dla spolek bez sprawozdan (realnie: VGOA/VIGO Photonics). `load_snapshots` pomija je teraz i
+raportuje ile - **z bezpiecznikiem: gdy brakuje >30% stron, rzuca blad**, bo to znaczy zmiane
+struktury serwisu, a nie pojedyncza pusta spolke. Zmierzone: 6 stron z 2424 (0.2%), jedna spolka bez
+zadnego raportu. Plus pominiecie plikow cen zerowej dlugosci (`rex1.txt`, `rob2.txt`) i cache
+sparsowanych snapshotow w pamieci procesu (parsowanie 2418 spakowanych stron to ~80 s, a
+leave-one-out buduje setki harnessow).
+
+## Wyniki: wszystko zalezy od progu plynnosci
+
+Ten sam kod, te same reguly, trzy progi medianowego obrotu dziennego. Benchmark to za kazdym razem
+buy&hold uniwersum PIT na tej samej siatce dat i w tym samym oknie.
+
+| koncepcja | 2.0 mln (13-27 spolek) | 0.5 mln (27-78) | 0.2 mln (44-114) |
+|---|---|---|---|
+| **v4: Value+Quality+Momentum** | 4.30% (**+0.29pp**) | **16.41% (+10.62pp)** | **18.83% (+13.14pp)** |
+| v4 + kanarek WIG20 | 1.79% (-2.21pp) | 13.37% (+7.59pp) | 13.95% (+8.26pp) |
+| v5: Quality + LowVol, top 5 | 4.52% (+0.52pp) | 8.58% (+2.79pp) | 7.74% (+2.05pp) |
+| v6: czysta jakosc, top 25%/40p | 5.08% (+2.15pp) | 7.04% (+1.59pp) | 8.46% (+2.93pp) |
+| v6: top 20%/45p | 3.57% (+0.64pp) | 9.59% (+4.14pp) | 6.03% (+0.50pp) |
+| v7 SPEC: top 20% B/M + F 8-9 | -1.72% (-4.58pp) | -4.27% (-12.64pp) | -0.12% (-8.78pp) |
+| v8 SPEC: 50% B/M + 50% F-Score | -7.08% (-9.94pp) | -2.71% (-11.08pp) | 0.11% (-8.56pp) |
+| v2: podmiana po score, 24m | **-14.40%** (-18.40pp) | -14.75% (-20.54pp) | -15.63% (-21.32pp) |
+| v3 + trailing stop 20% | -6.47% (-10.47pp) | -5.99% (-11.78pp) | -3.22% (-8.91pp) |
+| *benchmark buy&hold PIT (miesieczny)* | *4.00%* | *5.79%* | *5.69%* |
+
+**Najwazniejsza pojedyncza liczba: benchmark spadl z 10.33% (40 spolek) na 4.00% (381 spolek, prog
+2 mln).** Rownowazony portfel szerokiego GPW zarabial przez te 20 lat znacznie mniej niz rownowazony
+portfel 40 duzych nazw - bo tamte 40 nazw to byli dzisiejsi ocaleni. To nie jest efekt strategii, to
+jest korekta benchmarku, ktora dopiero teraz stala sie widoczna.
+
+## Przewaga v4 rosnie, gdy obnizamy prog plynnosci - i to jest OSTRZEZENIE, nie sukces
+
++0.29pp -> +10.62pp -> +13.14pp przy kolejno luzniejszym progu. Sprawdzone, skad to sie bierze:
+
+| prog | mediana obrotu KUPOWANYCH spolek | transakcji ponizej 2 mln obrotu | najlepsza transakcja |
+|---|---|---|---|
+| 2.0 mln | 5.07 mln | 0 z 85 | ASB +193% (obrot 3.42 mln) |
+| 0.5 mln | 1.33 mln | **79 z 137** | **ASB +944% (obrot 0.59 mln)** |
+| 0.2 mln | 0.52 mln | **119 z 164** | ASB +819% (obrot 0.40 mln) |
+
+Test kruchosci - usuniecie samych zwyciezcow:
+
+| prog | pelne | bez ASB | bez ASB+LTX+RBW+BRS |
+|---|---|---|---|
+| 0.5 mln | +10.62pp | **+3.24pp** | **+0.36pp** |
+| 0.2 mln | +13.14pp | +9.15pp | **+2.05pp** |
+
+**Cztery spolki odpowiadaja za 97% przewagi przy progu 0.5 mln.** ASB samo w sobie za 70%. Te zwroty
+sa osiagane na nazwach handlujacych 0.4-0.6 mln PLN dziennie, czyli portfel 4 pozycji po 25% nie
+kupilby ich bez ruszenia kursu. Dodatkowo to wlasnie segment, w ktorym brak spolek wycofanych z
+obrotu boli najbardziej - bankrutuja male, nie duze.
+
+## Co z tego wynika
+
+1. **Przy progu 2 mln (uczciwie plynne nazwy) nie ma przewagi u nikogo**: v4 +0.29pp, v5 +0.52pp,
+   v6 +2.15pp to szum, a v2/v3/v7/v8 traca od 4 do 18pp. Ale nie ma tez juz wyraznej straty u v4-v6 -
+   to zmiana wobec 41 spolek, gdzie wszystko przegrywalo.
+2. **Przewagi przy nizszych progach nie sa inwestowalne** - siedza w kilku mikrospolkach i nie
+   przezywaja usuniecia 4 nazw z 381.
+3. **v2 jest definitywnie martwe**: -14% do -16% CAGR i MaxDD -97% na kazdym progu. Bramka "25%
+   ponizej 52W high" na szerokim rynku kupuje spadajace noze, a nie okazje.
+4. **F-Score anty-prognozuje trzeci i czwarty raz.** Mediana zwrotu 12M wg F-Score kupionej spolki na
+   duzym uniwersum: prog 2 mln - F5 +20.4%, F6 -3.5%, F7 -4.8%, F8 -8.4%, F9 **-26.4%**; prog 0.5 mln
+   - F6 -3.5%, F7 -3.2%, F8 -8.2%, F9 -10.9%. Cztery niezalezne przebiegi, ten sam kierunek.
 
 ---
 

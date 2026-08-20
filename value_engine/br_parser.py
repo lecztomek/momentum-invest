@@ -188,8 +188,21 @@ def decode_body(body: Any, compression: Optional[str] = None) -> str:
     return raw.decode("utf-8", errors="replace")
 
 
-def load_snapshots(db_path: Path) -> List[ParsedReport]:
-    """Parsuje NAJNOWSZY snapshot kazdej kombinacji (ticker, report_type, periodicity) z bazy."""
+MAX_MISSING_TABLE_SHARE = 0.30
+
+
+def load_snapshots_with_report(
+    db_path: Path, max_missing_share: float = MAX_MISSING_TABLE_SHARE
+) -> tuple:
+    """Jak `load_snapshots`, ale zwraca `(raporty, diagnostyka)`.
+
+    POWOD ISTNIENIA: przy duzym uniwersum czesc stron BiznesRadaru NIE MA tabeli raportu - strona
+    wraca ze statusem 200 i napisem "Brak danych" (zlapane realnie: VGOA/VIGO Photonics). To jest
+    normalny stan danych, nie blad parsera, wiec takie strony POMIJAMY - ale nigdy po cichu.
+
+    ZABEZPIECZENIE: gdy brakujacych tabel jest wiecej niz `max_missing_share` wszystkich stron,
+    rzucamy blad. Pojedyncze puste spolki sa normalne; masowy brak tabeli oznacza zmiane struktury
+    strony i wtedy backtest MUSI sie wywalic, a nie dostac pusty panel."""
     connection = sqlite3.connect(str(db_path))
     try:
         rows = connection.execute(
@@ -208,7 +221,53 @@ def load_snapshots(db_path: Path) -> List[ParsedReport]:
     finally:
         connection.close()
 
-    return [
-        parse_report_html(decode_body(body), ticker, report_type, periodicity)
-        for ticker, report_type, periodicity, body in rows
-    ]
+    reports: List[ParsedReport] = []
+    missing_table: List[str] = []
+    for ticker, report_type, periodicity, body in rows:
+        html = decode_body(body)
+        if _REPORT_TABLE_RE.search(html) is None:
+            missing_table.append(f"{ticker}/{report_type}/{periodicity}")
+            continue
+        reports.append(parse_report_html(html, ticker, report_type, periodicity))
+
+    if rows and len(missing_table) / len(rows) > max_missing_share:
+        raise ValueError(
+            f"br_parser: {len(missing_table)} z {len(rows)} stron bez <table class=\"report-table\"> "
+            f"({len(missing_table)/len(rows):.0%}) - to wyglada na zmiane struktury BiznesRadaru, "
+            "a nie na pojedyncze spolki bez danych."
+        )
+
+    return reports, {
+        "pages": len(rows),
+        "parsed": len(reports),
+        "missing_table": missing_table,
+        "tickers_without_any_report": sorted(
+            {name.split("/")[0] for name in missing_table}
+            - {report.ticker for report in reports}
+        ),
+    }
+
+
+_SNAPSHOT_CACHE: Dict[tuple, List[ParsedReport]] = {}
+
+
+def load_snapshots(db_path: Path, use_cache: bool = True) -> List[ParsedReport]:
+    """Parsuje NAJNOWSZY snapshot kazdej kombinacji (ticker, report_type, periodicity) z bazy.
+
+    Strony bez tabeli raportu sa pomijane - patrz `load_snapshots_with_report`, ktore dodatkowo
+    zwraca diagnostyke (ile stron pominieto i dla ktorych spolek).
+
+    CACHE W PAMIECI PROCESU: przy 400 spolkach parsowanie 2400 spakowanych stron zajmuje ~80 s, a
+    testy leave-one-out buduja setki harnessow w jednym procesie - bez cache bylo by to kilka godzin
+    samego parsowania tych samych danych. Klucz zawiera `mtime` pliku, wiec podmiana bazy w trakcie
+    dziala poprawnie. `use_cache=False` wymusza swiezy odczyt."""
+    path = Path(db_path).resolve()
+    key = (str(path), path.stat().st_mtime_ns if path.exists() else None)
+    if use_cache and key in _SNAPSHOT_CACHE:
+        return _SNAPSHOT_CACHE[key]
+    reports = load_snapshots_with_report(db_path)[0]
+    if use_cache:
+        _SNAPSHOT_CACHE[key] = reports
+    return reports
+
+

@@ -458,14 +458,28 @@ def test_real_data_volatility_is_in_plausible_ranges():
 
 
 def test_real_data_financials_are_excluded():
-    """KRU (Wierzytelnosci) to jedyna spolka finansowa w danych - dla niej Debt/MarketCap mierzy
-    skale biznesu, nie ryzyko, wiec spec mowi "na poczatek non-financials"."""
+    """Dla banku/windykatora `Debt/MarketCap` mierzy skale biznesu, nie ryzyko, wiec spec mowi "na
+    poczatek non-financials".
+
+    Test sprawdza WLASNOSC, nie konkretna liste: kazda odsiana spolka musi miec branze z
+    `FINANCIAL_INDUSTRIES`, a zadna pozostawiona nie moze. Wczesniej byla tu zaszyta lista `{"KRU"}`
+    (jedyna finansowa przy 41 spolkach) - przy 403 spolkach jest ich 31 i taki test lamalby sie przy
+    kazdym poszerzeniu danych, nic przy tym nie sprawdzajac."""
     if not DB_PATH.exists():
         pytest.skip("Brak bazy")
+    from value_engine.universe import FINANCIAL_INDUSTRIES, _normalize
+
     industries = load_industries(DB_PATH)
     all_tickers = sorted(industries)
+    blocked = {_normalize(name) for name in FINANCIAL_INDUSTRIES}
 
     kept = non_financial_tickers(all_tickers, industries)
+    dropped = set(all_tickers) - set(kept)
 
-    assert "KRU" not in kept
-    assert set(all_tickers) - set(kept) == {"KRU"}
+    assert dropped, "przy tym zbiorze musi byc co najmniej jedna spolka finansowa"
+    for ticker in dropped:
+        assert _normalize(industries[ticker]) in blocked, f"{ticker}: {industries[ticker]}"
+    for ticker in kept:
+        assert _normalize(industries.get(ticker, "")) not in blocked, ticker
+    # banki musza byc wsrod odsianych - kontrola, ze lista branz w ogole cos lapie
+    assert any(_normalize(industries[t]) == "banki" for t in dropped)

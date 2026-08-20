@@ -177,27 +177,41 @@ def run_quality_backtest(
             return 0.0
         target = equity_at(row) / len(positions)
         traded = 0.0
+
+        # DWA PRZEBIEGI: najpierw WSZYSTKIE sprzedaze, potem WSZYSTKIE dokupienia. Jeden przebieg
+        # zostawial gotowke bezczynnie: pozycja do dociazenia przetworzona PRZED pozycja, ktora ma
+        # ja sfinansowac, widziala `cash = 0` i nic nie kupowala, a gotowka ze pozniejszej sprzedazy
+        # lezala do nastepnego kwartalu. Zlapane na realnych danych - 2009-01-02: wagi 0.395 / 0.500
+        # i 10.5% w gotowce po "wyrownaniu do 1/N".
+        plans = []
         for position in list(positions.values()):
             price = row.get(position.ticker)
             if pd.isna(price) or float(price) <= 0:
                 continue
             price = float(price)
-            current = position.shares * price
-            delta = target - current
+            delta = target - position.shares * price
             if abs(delta) < config.rebalance_tolerance * target:
                 continue
-            if delta > 0:
-                spend = min(delta, cash)
-                if spend <= 0:
-                    continue
-                position.shares += (spend * (1.0 - cost_rate)) / price
-                cash -= spend
-                traded += spend
-            else:
-                shares_to_sell = min(position.shares, -delta / price)
-                position.shares -= shares_to_sell
-                cash += shares_to_sell * price * (1.0 - cost_rate)
-                traded += shares_to_sell * price
+            plans.append((position, price, delta))
+
+        for position, price, delta in plans:
+            if delta >= 0:
+                continue
+            shares_to_sell = min(position.shares, -delta / price)
+            position.shares -= shares_to_sell
+            cash += shares_to_sell * price * (1.0 - cost_rate)
+            traded += shares_to_sell * price
+
+        for position, price, delta in plans:
+            if delta <= 0:
+                continue
+            spend = min(delta, cash)
+            if spend <= 0:
+                continue
+            position.shares += (spend * (1.0 - cost_rate)) / price
+            cash -= spend
+            traded += spend
+
         return traded
 
     for date in prices.index:

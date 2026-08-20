@@ -158,6 +158,7 @@ def point_in_time_universe(
     min_median_turnover: float = 2_000_000.0,
     turnover_lookback_days: int = 126,
     top_n: Optional[int] = None,
+    turnover_min_periods_share: float = 0.60,
 ) -> Dict[pd.Timestamp, List[str]]:
     """Dla kazdej daty decyzyjnej zwraca liste spolek REALNIE inwestowalnych w tym momencie.
 
@@ -168,9 +169,20 @@ def point_in_time_universe(
         wieksza niz docelowe uniwersum).
 
     Mediana, nie srednia - obrot ma grube ogony (jeden dzien z ogromnym wolumenem nie powinien
-    kwalifikowac spolki na kolejne pol roku)."""
+    kwalifikowac spolki na kolejne pol roku).
+
+    `turnover_min_periods_share` - JAKA CZESC okna musi miec realny obrot. **To nie jest kosmetyka.**
+    Pierwotnie bylo `min_periods = turnover_lookback_days` (cale okno gesto wypelnione) i przy 41
+    spolkach dzialalo, bo indeks dat byl praktycznie kompletny dla kazdej duzej spolki. Przy 381
+    spolkach indeks jest UNIA sesji wszystkich spolek, wiec kazdy szereg ma rozproszone dziury (dzien,
+    w ktorym dana spolka nie miala transakcji, a inna miala). Wystarczyly DWIE dziury w oknie 126
+    sesji, zeby mediana wyszla NaN - efekt: uniwersum PIT bylo **puste az do 2016 roku** i cala
+    historia 1994-2015 wypadala z backtestu po cichu, bez zadnego bledu. Prog 60% okna (76 z 126
+    sesji) nadal znaczy "spolka realnie handluje od pol roku", ale nie wywala sie na brakujacych
+    printach."""
     turnover = turnover.reindex(columns=prices.columns).reindex(prices.index)
-    rolling_turnover = turnover.rolling(window=turnover_lookback_days, min_periods=turnover_lookback_days).median()
+    min_periods = max(1, int(round(turnover_lookback_days * turnover_min_periods_share)))
+    rolling_turnover = turnover.rolling(window=turnover_lookback_days, min_periods=min_periods).median()
     price_history = prices.notna().cumsum()
 
     out: Dict[pd.Timestamp, List[str]] = {}
