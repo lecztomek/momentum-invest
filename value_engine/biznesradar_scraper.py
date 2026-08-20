@@ -2,7 +2,7 @@
 """
 BiznesRadar raw HTML downloader -> SQLite.
 
-Warstwa 1: TYLKO pobieranie i archiwizacja surowych stron.
+Warstwa 1: TYLKO pobieranie i archiwizacja surowych stron (gzip w SQLite).
 Nie parsuje tabel. Parser można później zmieniać dowolnie bez ponownego
 odpytywania BiznesRadaru. Kwartalne URL-e są budowane z kanonicznego URL-a
 po redirect (np. CDR -> CD-PROJEKT, KGH -> KGHM, PKN -> ORLEN).
@@ -12,7 +12,7 @@ Domyślnie dla każdego tickera pobiera:
 - Bilans: roczne + kwartalne
 - Cash Flow: roczne + kwartalne
 
-Bez proxy. Przy 403/429 skrypt natychmiast przerywa pracę.
+Bez proxy. Przy 403/429 skrypt natychmiast przerywa pracę.\n404 i inne zwykłe błędy HTTP są logowane i pomijane.
 
 Instalacja:
     pip install requests
@@ -22,6 +22,7 @@ Przykłady:
     python biznesradar_scraper.py --tickers-file tickers.txt
     python biznesradar_scraper.py --tickers DNP --dry-run
     python biznesradar_scraper.py --tickers DNP --refresh
+    python biznesradar_scraper.py --tickers DNP CDR --ticker-files-root C:\\dane\\gpw
 
 tickers.txt:
     DNP
@@ -33,9 +34,11 @@ tickers.txt:
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 import random
+import shutil
 import sqlite3
 import sys
 import time
@@ -91,10 +94,24 @@ def init_db(conn: sqlite3.Connection) -> None:
             sha256 TEXT NOT NULL,
             response_headers_json TEXT,
             body BLOB NOT NULL,
+            compression TEXT,
+            raw_size INTEGER,
+            compressed_size INTEGER,
             UNIQUE(url, sha256)
         )
         """
     )
+
+    existing_cols = {
+        row[1] for row in conn.execute("PRAGMA table_info(snapshots)").fetchall()
+    }
+
+    if "compression" not in existing_cols:
+        conn.execute("ALTER TABLE snapshots ADD COLUMN compression TEXT")
+    if "raw_size" not in existing_cols:
+        conn.execute("ALTER TABLE snapshots ADD COLUMN raw_size INTEGER")
+    if "compressed_size" not in existing_cols:
+        conn.execute("ALTER TABLE snapshots ADD COLUMN compressed_size INTEGER")
 
     conn.execute(
         """
@@ -130,6 +147,53 @@ def init_db(conn: sqlite3.Connection) -> None:
     )
 
     conn.commit()
+
+
+def migrate_existing_snapshots_to_gzip(conn: sqlite3.Connection) -> tuple[int, int, int]:
+    """
+    Migruje istniejące rekordy raw HTML -> gzip bez ponownego pobierania.
+    Zwraca: (liczba_zmigrowanych, raw_bytes, compressed_bytes).
+    """
+    rows = conn.execute(
+        """
+        SELECT id, body, compression, raw_size, compressed_size
+        FROM snapshots
+        WHERE compression IS NULL OR compression = '' OR compression = 'none'
+        """
+    ).fetchall()
+
+    migrated = 0
+    raw_total = 0
+    compressed_total = 0
+
+    for row_id, body, compression, raw_size, compressed_size in rows:
+        if body is None:
+            continue
+
+        raw = bytes(body)
+        compressed = gzip.compress(raw, compresslevel=9)
+
+        conn.execute(
+            """
+            UPDATE snapshots
+            SET body = ?, compression = 'gzip',
+                raw_size = ?, compressed_size = ?
+            WHERE id = ?
+            """,
+            (
+                sqlite3.Binary(compressed),
+                len(raw),
+                len(compressed),
+                row_id,
+            ),
+        )
+
+        migrated += 1
+        raw_total += len(raw)
+        compressed_total += len(compressed)
+
+    conn.commit()
+    return migrated, raw_total, compressed_total
 
 
 def already_cached(conn: sqlite3.Connection, url: str) -> bool:
@@ -254,17 +318,19 @@ def save_snapshot(
     response: requests.Response,
     elapsed_ms: int,
 ) -> tuple[str, bool]:
-    body = response.content
-    digest = hashlib.sha256(body).hexdigest()
+    raw_body = response.content
+    digest = hashlib.sha256(raw_body).hexdigest()
+    compressed_body = gzip.compress(raw_body, compresslevel=9)
 
     cursor = conn.execute(
         """
         INSERT OR IGNORE INTO snapshots (
             ticker, report_type, periodicity, url, fetched_at,
             status_code, content_type, encoding, sha256,
-            response_headers_json, body
+            response_headers_json, body,
+            compression, raw_size, compressed_size
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             target.ticker,
@@ -277,7 +343,10 @@ def save_snapshot(
             response.encoding,
             digest,
             json.dumps(dict(response.headers), ensure_ascii=False),
-            sqlite3.Binary(body),
+            sqlite3.Binary(compressed_body),
+            "gzip",
+            len(raw_body),
+            len(compressed_body),
         ),
     )
     conn.commit()
@@ -289,7 +358,7 @@ def save_snapshot(
         target,
         status_code=response.status_code,
         elapsed_ms=elapsed_ms,
-        bytes_received=len(body),
+        bytes_received=len(raw_body),
         sha256=digest,
         result="stored" if inserted else "unchanged",
     )
@@ -384,6 +453,24 @@ def fetch_one(
             time.sleep(wait)
             continue
 
+        if response.status_code == 404:
+            log_fetch(
+                conn,
+                target,
+                status_code=response.status_code,
+                elapsed_ms=elapsed_ms,
+                bytes_received=len(response.content),
+                sha256=None,
+                result="not_found",
+                error="HTTP 404",
+            )
+            print(
+                f"[404] {target.ticker:6s} "
+                f"{target.report_type:8s} {target.periodicity:9s} "
+                f"{target.url}"
+            )
+            return response.url
+
         if response.status_code != 200:
             log_fetch(
                 conn,
@@ -395,7 +482,13 @@ def fetch_one(
                 result="http_error",
                 error=f"HTTP {response.status_code}",
             )
-            response.raise_for_status()
+            print(
+                f"[SKIP HTTP {response.status_code}] {target.ticker:6s} "
+                f"{target.report_type:8s} {target.periodicity:9s} "
+                f"{target.url}",
+                file=sys.stderr,
+            )
+            return response.url
 
         digest, inserted = save_snapshot(conn, target, response, elapsed_ms)
 
@@ -406,6 +499,80 @@ def fetch_one(
             f"{len(response.content):8d} B  sha256={digest[:12]}"
         )
         return response.url
+
+
+
+def find_ticker_files(root: Path, ticker: str) -> list[Path]:
+    """
+    Rekursywnie szuka plików, których:
+    - pełna nazwa == ticker, albo
+    - stem (nazwa bez rozszerzenia) == ticker,
+    case-insensitive.
+
+    Przykłady pasujące dla CDR:
+        CDR
+        cdr.txt
+        Cdr.csv
+    """
+    if not root.exists() or not root.is_dir():
+        return []
+
+    ticker_cf = ticker.casefold()
+    matches: list[Path] = []
+
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+
+        if path.name.casefold() == ticker_cf or path.stem.casefold() == ticker_cf:
+            matches.append(path)
+
+    return sorted(matches)
+
+
+def unique_destination(dest_dir: Path, source: Path) -> Path:
+    """
+    Zwraca wolną nazwę docelową, żeby nie nadpisywać istniejących plików.
+    """
+    candidate = dest_dir / source.name
+    if not candidate.exists():
+        return candidate
+
+    stem = source.stem
+    suffix = source.suffix
+    i = 2
+
+    while True:
+        candidate = dest_dir / f"{stem}_{i}{suffix}"
+        if not candidate.exists():
+            return candidate
+        i += 1
+
+
+def copy_ticker_files(
+    root: Path,
+    dest_dir: Path,
+    ticker: str,
+) -> int:
+    """
+    Szuka plików tickera w root i jego podfolderach i kopiuje je do dest_dir.
+    """
+    matches = find_ticker_files(root, ticker)
+
+    if not matches:
+        print(f"[FILE MISS] {ticker:6s} brak pliku w {root}")
+        return 0
+
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    copied = 0
+
+    for source in matches:
+        destination = unique_destination(dest_dir, source)
+        shutil.copy2(source, destination)
+        copied += 1
+        print(f"[FILE COPY] {ticker:6s} {source} -> {destination}")
+
+    return copied
 
 
 def parse_args() -> argparse.Namespace:
@@ -485,6 +652,22 @@ def parse_args() -> argparse.Namespace:
         help="Własny User-Agent; warto podać kontakt",
     )
 
+
+    parser.add_argument(
+        "--ticker-files-root",
+        help=(
+            "Katalog, w którym rekursywnie szukać plików nazwanych tickerem "
+            "(case-insensitive), np. DNP.txt / dnp.csv / DNP"
+        ),
+    )
+    parser.add_argument(
+        "--ticker-files-dest",
+        help=(
+            "Opcjonalny katalog docelowy dla znalezionych plików. "
+            "Domyślnie: <folder_bazy>/ticker_files"
+        ),
+    )
+
     return parser.parse_args()
 
 
@@ -518,8 +701,40 @@ def main() -> int:
     db_path = Path(args.db)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
+    ticker_files_root = (
+        Path(args.ticker_files_root).expanduser().resolve()
+        if args.ticker_files_root
+        else None
+    )
+    ticker_files_dest = (
+        Path(args.ticker_files_dest).expanduser().resolve()
+        if args.ticker_files_dest
+        else (db_path.parent / "ticker_files").resolve()
+    )
+
+    if ticker_files_root is not None and not ticker_files_root.is_dir():
+        print(
+            f"Nie istnieje katalog --ticker-files-root: {ticker_files_root}",
+            file=sys.stderr,
+        )
+        return 2
+
     conn = sqlite3.connect(db_path)
     init_db(conn)
+
+    migrated, raw_total, compressed_total = migrate_existing_snapshots_to_gzip(conn)
+    if migrated:
+        saved = raw_total - compressed_total
+        ratio = (compressed_total / raw_total) if raw_total else 0.0
+        print(
+            f"[MIGRATE] gzip: {migrated} rekordów, "
+            f"{raw_total / 1024 / 1024:.2f} MB -> "
+            f"{compressed_total / 1024 / 1024:.2f} MB "
+            f"(oszczędność {saved / 1024 / 1024:.2f} MB, ratio {ratio:.2%})"
+        )
+        print("[VACUUM] zwalniam miejsce w pliku SQLite...")
+        conn.execute("VACUUM")
+        conn.commit()
 
     session = make_session(args.user_agent)
 
@@ -528,6 +743,18 @@ def main() -> int:
 
     try:
         canonical_annual_urls: dict[tuple[str, str], str] = {}
+
+        if ticker_files_root is not None:
+            copied_tickers: set[str] = set()
+            for ticker in tickers:
+                if ticker in copied_tickers:
+                    continue
+                copy_ticker_files(
+                    ticker_files_root,
+                    ticker_files_dest,
+                    ticker,
+                )
+                copied_tickers.add(ticker)
 
         for original_target in targets:
             target = original_target
