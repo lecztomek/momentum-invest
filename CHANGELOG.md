@@ -2,6 +2,65 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-08-21 (3)
+
+- **KONCEPCJA v10 "krotkoterminowy reversal 1-4 tygodnie" (`run_short_reversal.py`) - PIERWSZY
+  sygnal w tym folderze z realna przewaga BRUTTO, ktora ginie na kosztach.** User: "spadek tygodniowy
+  `<= -10%` albo najgorszy decyl tygodniowych zwrotow, zostawiamy Twoj distress gate, kupno nastepna
+  sesja, holding 5 / 10 / 20 sesji, max 4 pozycje, bez rankingu fundamentalnego. Jesli to tez nie
+  dziala, zamknalbym caly temat »kupuj po panice« na GPW."
+
+  **ZERO NOWEGO SILNIKA - v9 sparametryzowany KROKAMI SIATKI.** `reversal_backtest.py` mial pola w
+  miesiacach; teraz sa w krokach `decision_dates`: `trigger_lookback_steps`, `holding_steps`,
+  `entry_delay_steps`. v9 = siatka miesieczna z `lookback=1`, v10 = siatka DZIENNA (8294 daty) z
+  `lookback=5`. Te same przeplywy pieniezne, ta sama bramka, to samo ksiegowanie kosztow - rozne sa
+  tylko daty i dlugosci okien. `monthly_returns` zostal jako alias na `trailing_returns`, wiec wyniki
+  v9 sa bit-identyczne (18 testow v9 przechodzi bez zmian).
+
+  **WYNIK (prog 2 mln, uniwersum PIT srednio 13.5, okno 1996-05 -> 2026-08).** Netto przegrywa
+  wszedzie: staly prog -10% daje -1.42% / -2.11% / -2.08% CAGR na holdingu 5 / 10 / 20 sesji przy
+  ekspozycji 9-23%, a bierne trzymanie tej samej ekspozycji daje 0.62% / 1.00% / 1.49%. Wariant
+  "najgorszy decyl" jest katastrofalny (-13.03% przy holdingu 5 sesji, MaxDD -98.8%, 2167
+  transakcji), bo odpala CODZIENNIE - 10% uniwersum zawsze ma najgorszy zwrot.
+
+  **ALE SWEEP KOSZTOW POKAZUJE, ZE SYGNAL ISTNIEJE** (najlepszy wariant, oba progi plynnosci): przy
+  2 mln (ekspoz. 9%, bierne 0.62%) 0 bps **+2.28%**, 10 bps +1.35%, 20 bps +0.42%, 40 bps -1.42%;
+  przy 0.5 mln (ekspoz. 14%, bierne 1.49%) 0 bps **+4.93%**, 10 bps +3.44%, 20 bps +1.98%, 40 bps
+  -0.89%. Punkt zwrotny to **15-30 bps na transakcje** zaleznie od progu, a realny koszt detalu na
+  GPW to 19-39 bps prowizji plus spread - i przewaga brutto jest WIEKSZA dokladnie tam, gdzie spread
+  jest szerszy (spolki 0.5-2 mln obrotu), wiec uklad nie daje sie wykorzystac. Arytmetyka: przy
+  holdingu 5 sesji kapital obraca sie ~50x rocznie, sredni zwrot BRUTTO na transakcji to +0.69%, a
+  round-trip przy 40 bps kosztuje 0.80% - **koszt jest wiekszy niz caly sredni zysk z trade'u**. To
+  jakosciowo inna porazka niz v1-v9: tam sygnalu nie bylo, tu jest za maly.
+
+  **BRAMKA DISTRESSU OBRONILA SIE DRUGI RAZ**: -1.42% z bramka vs -2.05% bez (v9: +0.53pp, v10:
+  +0.63pp). Przepuszcza 37% zdarzen -10%/5 sesji (w v9 32% zdarzen -20%/miesiac) - filtr jest
+  stabilny miedzy horyzontami i jest jedynym fundamentalnym filtrem w calym folderze, ktory pomogl
+  dwa razy z rzedu.
+
+  **ROZKLAD**: 558 transakcji, 49% zyskownych, srednia +0.69%, **mediana dokladnie 0.00%** - przewaga
+  siedzi w ogonie. Glebokosc spadku NIE porzadkuje zwrotow, a najglebsze spadki sa najgorsze (ponizej
+  -30%: srednia -11.3% na 5 transakcjach). Po latach widac przeslanke wygasania, ale **zaleznie od
+  progu**: mediana dodatnia w 9 z 12 lat 2007-2018 na oba progi, a po 2019 tylko 1 z 8 lat przy 2 mln
+  i 4 z 8 przy 0.5 mln. Kierunek (wygasa najpierw w najplynniejszych) jest spojny z mechanizmem, ale
+  dwa progi nie mowia tego samego, wiec to slabsza przeslanka niz wniosek o kosztach.
+
+  **WNIOSEK: temat "kupuj po panice" na GPW zamkniety**, zgodnie z warunkiem postawionym przez usera.
+  Ale wynik jest mocniejszy niz "nie dziala": efekt odwrocenia na GPW **istnieje na 1-4 tygodniach**
+  (sredni zwrot brutto dodatni) i **nie istnieje na 1-3 miesiacach** (v9: mediana ujemna) - dokladnie
+  tam, gdzie literatura go umieszcza.
+
+  **DECYZJE IMPLEMENTACYJNE.** (1) Prog decylowy jest **przycinany do zera**: w hossie 10 percentyl
+  zwrotow tygodniowych jest DODATNI, a "najgorszy decyl" znaczylby wtedy "spolki, ktore urosly
+  najmniej" - to odwrotny momentum, nie kupowanie po panice. Test z kontrola pozytywna pilnuje obu
+  kierunkow. (2) **Benchmark zostaje na siatce MIESIECZNEJ** takze dla v10: rownowazony portfel
+  rebalansowany codziennie bez kosztow zbiera premie za rebalansowanie, ktorej realnie nie da sie
+  wyjac - byl by to punkt odniesienia zawyzony sztucznie i nieporownywalny z v9. (3) Bramka ma
+  **cache per (ticker, data)**, bo na siatce dziennej ten sam ticker odpala trigger w kilku kolejnych
+  sesjach. (4) Nowe testy (24 w pliku, +6): okno triggera dokladnie 5 sesji, holding dokladnie 5
+  sesji, wejscie na NASTEPNEJ sesji, prog decylowy przekrojowy i odporny na spolki poza uniwersum,
+  przyciecie do zera z kontrola pozytywna.
+
 ## 2026-08-20 (7)
 
 - **V6 POD LUPA (`run_v6_research.py`): trzy testy odpornosci na 381 spolkach. Wniosek: przewaga

@@ -1,6 +1,6 @@
 # value_engine - strategie "value" na GPW
 
-Osobny silnik, poza `engine_v2`. Dziewiec koncepcji, przeliczonych na 22, 41 i **381** spolkach, wszystkie oparte na tych samych,
+Osobny silnik, poza `engine_v2`. Dziesiec koncepcji, przeliczonych na 22, 41 i **381** spolkach, wszystkie oparte na tych samych,
 wspolnych fundamentach technicznych (parser BiznesRadaru + panel point-in-time + ceny PL +
 uniwersum point-in-time).
 
@@ -15,9 +15,11 @@ uniwersum point-in-time).
 | v7: Piotroski F-Score 8-9 na top 20% B/M, holding 12M | `fscore_backtest.py` | `run_fscore.py` | – (nie testowana) | **-3.66% vs 10.33%, w rynku 18%** |
 | v8: 50% percentyl(B/M) + 50% percentyl(F-Score), top 4 | ten sam silnik, `combined_ranking=True` | `run_combined.py` | – (nie testowana) | **-4.46% vs 10.33% (-14.79pp)** |
 | v9: reversal po spadku -20% + bramka distressu | `reversal_backtest.py` | `run_reversal.py` | – (nie testowana) | **0.76% vs 0.64% biernie, ale MaxDD -52% vs -11%** |
+| v10: reversal po spadku -10% w 5 sesji, holding 5-20 sesji | ten sam silnik, siatka DZIENNA | `run_short_reversal.py` | – (nie testowana) | **-1.42% netto vs 0.62% biernie, ale +2.28% BRUTTO** |
 
-**NAJWAZNIEJSZY WNIOSEK CALEJ SERII: zaden z pieciu pomyslow nie bije uczciwego benchmarku PIT na
-szerszym uniwersum.** Wynik kazdej wersji zalezy DRASTYCZNIE od tego, na czym jest liczony - i to
+**NAJWAZNIEJSZY WNIOSEK CALEJ SERII: zaden z dziesieciu pomyslow nie bije uczciwego benchmarku PIT na
+szerszym uniwersum** - a jedyny, ktory ma przewage PRZED kosztami (v10, +1.66pp brutto), traci ja
+miedzy 10 a 20 bps na transakcje, wiec jest nieosiagalny dla detalu. Wynik kazdej wersji zalezy DRASTYCZNIE od tego, na czym jest liczony - i to
 zaleznosc silniejsza niz jakakolwiek zmiana regul strategii:
 
 1. **survivorship w benchmarku**: v3 + trailing stop daje 23.34% CAGR na stalej liscie dzisiejszych
@@ -191,6 +193,127 @@ danych z przyszlosci.
 **Czego to NIE naprawia:** BiznesRadar pokazuje liczby po ewentualnych korektach (restatements) -
 wyrownanie po dacie publikacji naprawia **timing**, nie **tresc**. Prawdziwa historia
 point-in-time powstanie z czasem, bo `snapshots` trzyma `fetched_at`.
+
+---
+
+# Koncepcja v10: krotkoterminowy reversal 1-4 tygodnie - JEDYNY sygnal z realna przewaga BRUTTO
+
+Spec (user): "spadek tygodniowy `<= -10%` albo najgorszy decyl tygodniowych zwrotow, zostawiamy Twoj
+distress gate, kupno nastepna sesja, holding 5 / 10 / 20 sesji, max 4 pozycje, bez rankingu
+fundamentalnego i bez miesiecznego holdingu. Jesli to tez nie dziala, zamknalbym caly temat »kupuj
+po panice« na GPW."
+
+To **ten sam silnik co v9**, tylko na siatce DZIENNEJ: `trigger_lookback_steps=5` (tydzien = 5 sesji)
+i `holding_steps` liczone w sesjach. Zamiast kopiowac trzecia wersje ksiegowania slotow, v9 zostal
+sparametryzowany krokami siatki - oba warianty licza dokladnie te same przeplywy, bramke i koszty,
+rozne sa TYLKO daty decyzyjne i dlugosci okien (`reversal_backtest.py`, `run_short_reversal.py`).
+
+## Wynik NETTO: przegrywa. Wynik BRUTTO: pierwsza realna przewaga w calym folderze
+
+Prog obrotu 2 mln (uniwersum PIT srednio 13.5 spolki), **8294 dzienne daty decyzyjne**, okno
+1996-05 -> 2026-08:
+
+| wariant | CAGR | MaxDD | Sharpe | n | ekspozycja |
+|---|---|---|---|---|---|
+| staly prog -10%, holding 5 sesji | **-1.42%** | -65.98% | -0.046 | 558 | 9% |
+| staly prog -10%, holding 10 sesji | -2.11% | -60.96% | -0.073 | 464 | 15% |
+| staly prog -10%, holding 20 sesji | -2.08% | -65.19% | -0.044 | 366 | 23% |
+| najgorszy decyl, holding 5 sesji | **-13.03%** | -98.80% | -0.764 | 2167 | 35% |
+| najgorszy decyl, holding 10 sesji | -7.20% | -91.93% | -0.315 | 1470 | 47% |
+| najgorszy decyl, holding 20 sesji | -4.29% | -87.84% | -0.121 | 861 | 54% |
+| *benchmark 100% zainwestowany* | *3.90%* | *-75.19%* | *0.276* | - | - |
+| **benchmark skalowany do 9%, ZERO timingu** | **0.62%** | -10.23% | 0.276 | - | - |
+| benchmark skalowany do 23%, ZERO timingu | 1.49% | -24.42% | 0.276 | - | - |
+| benchmark skalowany do 54%, ZERO timingu | 2.95% | -48.78% | 0.276 | - | - |
+
+Prog 0.5 mln (uniwersum srednio 27 spolek) daje ten sam obraz: najlepszy wariant -0.89% przy
+ekspozycji 14%, przy biernym trzymaniu 14% rynku 1.49%.
+
+**Ale to jedyna koncepcja w tym folderze, w ktorej sygnal ma przewage PRZED kosztami.** Sweep kosztow
+na najlepszym wariancie (staly prog -10%, holding 5 sesji) na obu progach plynnosci:
+
+| koszt na transakcje | 2 mln (ekspoz. 9%) | vs bierne 0.62% | 0.5 mln (ekspoz. 14%) | vs bierne 1.49% |
+|---|---|---|---|---|
+| 0 bps | **+2.28%** | **+1.66pp** | **+4.93%** | **+3.44pp** |
+| 10 bps | +1.35% | +0.73pp | +3.44% | +1.95pp |
+| 20 bps | +0.42% | -0.20pp | +1.98% | +0.49pp |
+| **40 bps (realistycznie)** | **-1.42%** | **-2.04pp** | **-0.89%** | **-2.38pp** |
+
+Punkt zwrotny lezy **miedzy 10 a 20 bps przy progu 2 mln i okolo 30 bps przy progu 0.5 mln**. Realny
+koszt na GPW dla detalu to 19-39 bps prowizji **plus spread** - a spread jest wlasnie tam, gdzie
+przewaga brutto jest wieksza (spolki 0.5-2 mln obrotu), wiec ten uklad nie daje sie wykorzystac:
+przewaga rosnie dokladnie w tempie, w jakim rosnie koszt jej wyjecia. To nie jest ta sama porazka co
+v1-v9: tam sygnalu nie bylo, tu sygnal jest, tylko za maly.
+
+Arytmetyka jest bezlitosna i wynika wprost z holdingu: przy 5 sesjach kapital obraca sie ~50 razy w
+roku, wiec 40 bps na transakcje to **~40 pp kosztow rocznie na kapitale zainwestowanym**. Sredni
+zwrot brutto na transakcji to +0.69%, a round-trip przy 40 bps kosztuje 0.80% - **koszt jest wiekszy
+niz caly sredni zysk z trade'u**. Wariant decylowy jest gorszy z tego samego powodu podniesionego do
+kwadratu: odpala CODZIENNIE (10% uniwersum ma zawsze najgorszy zwrot), wiec przy ekspozycji 35% i
+2167 transakcjach drag kosztowy zjada kilkanascie punktow procentowych rocznie.
+
+## Bramka distressu obronila sie DRUGI raz
+
+| wariant (staly prog -10%, holding 5 sesji) | CAGR | n |
+|---|---|---|
+| z bramka | **-1.42%** | 558 |
+| bez bramki (sam trigger cenowy) | -2.05% | 675 |
+
+Przeplyw sygnalu: **2043 z 7704 sesji (27%) mialy jakikolwiek trigger, 4041 zdarzen -10% w 5 sesji,
+bramka przepuscila 1491 (37%)**, kupionych 558, pominietych z braku slotu 155. Ten sam rzad
+wielkosci co przy triggerze -20% miesiecznym w v9 (32%) - filtr jest stabilny miedzy horyzontami.
+
+## Rozklad transakcji: przewaga jest, ale symetryczna i cienka
+
+| miara | wartosc |
+|---|---|
+| transakcji | 558 |
+| zyskownych | 274 (49%) |
+| sredni zwrot | **+0.69%** |
+| mediana zwrotu | **+0.00%** |
+| sredni spadek przy wejsciu | -13.1% |
+
+Mediana dokladnie zero przy srednim +0.69% znaczy, ze przewaga siedzi w ogonie, nie w typowej
+transakcji. Glebokosc spadku - inaczej niz w v9 - **nie ma tu w ogole monotonicznosci, a najglebsze
+spadki sa najgorsze**:
+
+| glebokosc spadku przy wejsciu | n | sredni zwrot | mediana |
+|---|---|---|---|
+| ponizej -30% | 5 | **-11.3%** | -15.3% |
+| -30% do -20% | 25 | +6.8% | -1.0% |
+| -20% do -15% | 65 | +2.1% | +1.0% |
+| -15% do -10% | 463 | +0.3% | 0.0% |
+
+Rozklad po latach sugeruje **wygasanie efektu**, ale - jak wszystko w tym folderze - **zaleznie od
+progu plynnosci**, wiec nalezy to czytac jako slabą przeslanke, nie wynik:
+
+| okres | mediana dodatnia (prog 2 mln) | mediana dodatnia (prog 0.5 mln) |
+|---|---|---|
+| 2007-2018 | 9 z 12 lat | 9 z 12 lat |
+| **2019-2026** | **1 z 8 lat** | 4 z 8 lat |
+
+Przy progu 2 mln obraz jest jednoznaczny (2020 -1.3%, 2021 -0.8%, 2023 -0.8%, 2026 -2.0%), przy 0.5
+mln to remis. Jesli efekt faktycznie wygasa, to wygasa najpierw w spolkach najplynniejszych - czyli
+tam, gdzie koszt jego wyjecia jest najnizszy. Ten kierunek jest spojny z mechanizmem, ale dwa progi
+nie mowia tego samego, wiec sam wniosek o wygasaniu jest slabszy niz wniosek o kosztach.
+
+## Wniosek: temat "kupuj po panice" na GPW zamkniety
+
+User postawil warunek wprost: "jesli to tez nie dziala, zamknalbym caly temat". Nie dziala, i teraz
+wiadomo **dlaczego**, co jest mocniejszym wynikiem niz samo "nie dziala":
+
+1. **Efekt istnieje, ale jest mniejszy niz koszt.** +1.66pp (prog 2 mln) i +3.44pp (prog 0.5 mln)
+   przewagi brutto nad biernym trzymaniem tej samej ekspozycji, punkt zwrotny przy 15-30 bps na
+   transakcje. Zeby to zarabiac, trzeba placic mniej niz to przy ~50 obrotach kapitalu rocznie - i to
+   w spolkach o obrocie 0.5-2 mln PLN, gdzie sam spread zjada wiecej. Dla detalu warunek jest
+   nieosiagalny.
+2. **Horyzont ma znaczenie i potwierdza literature.** Na 5 sesjach sredni zwrot brutto jest DODATNI
+   (+0.69%), na miesiac-3 miesiace (v9) mediana jest UJEMNA. Odwrocenie na GPW dziala tam, gdzie
+   powinno - na 1-4 tygodniach - i wygasa dokladnie tam, gdzie zaczyna sie kontynuacja.
+3. **Prawdopodobnie wygasa w czasie**, ale tylko przy wyzszym progu plynnosci (1 z 8 lat po 2019 przy
+   2 mln, 4 z 8 przy 0.5 mln) - przeslanka, nie wynik.
+4. **Bramka distressu to jedyny fundamentalny filtr w calym folderze, ktory pomogl dwa razy z
+   rzedu** (v9: +0.53pp, v10: +0.63pp). Warto ja pamietac jako filtr ryzyka, nie jako zrodlo alfy.
 
 ---
 

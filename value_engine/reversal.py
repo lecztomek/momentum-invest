@@ -178,18 +178,26 @@ def evaluate_gate(
     return GateResult(passed=passed, values=values)
 
 
-def monthly_returns(
-    prices: pd.DataFrame, decision_dates: Sequence[pd.Timestamp]
+def trailing_returns(
+    prices: pd.DataFrame, decision_dates: Sequence[pd.Timestamp], lookback_steps: int = 1
 ) -> Dict[pd.Timestamp, Dict[str, float]]:
-    """Zwrot miedzy POPRZEDNIA i BIEZACA data decyzyjna, per spolka.
+    """Zwrot za ostatnie `lookback_steps` KROKOW SIATKI decyzyjnej, per spolka.
 
-    Liczony na siatce dat decyzyjnych (pierwsza sesja miesiaca), a nie jako "ostatnie 21 sesji" -
-    dzieki temu "spadek miesieczny" jest dokladnie tym, co strategia widzi w momencie decyzji, bez
-    nakladania sie okien. Spolka bez ceny na ktorymkolwiek koncu nie ma zwrotu (a nie zwrot 0)."""
+    Krok siatki jest definiowany przez `decision_dates`, wiec ta sama funkcja obsluguje oba
+    horyzonty bez zadnej gimnastyki:
+      - v9: siatka MIESIECZNA, `lookback_steps=1` -> "spadek w ostatnim miesiacu",
+      - v10: siatka DZIENNA, `lookback_steps=5` -> "spadek w ostatnich 5 sesjach".
+
+    Liczone na samej siatce, a nie przez `pct_change(21)` na cenach - dzieki temu "spadek" jest
+    dokladnie tym, co strategia widzi w momencie decyzji. Spolka bez ceny na ktorymkolwiek koncu
+    okna nie ma zwrotu (a nie zwrot 0)."""
+    if lookback_steps < 1:
+        raise ValueError(f"lookback_steps musi byc >= 1, dostalem {lookback_steps}.")
     priced = prices.ffill()
     dates = [d for d in decision_dates if d in priced.index]
     out: Dict[pd.Timestamp, Dict[str, float]] = {}
-    for previous, current in zip(dates, dates[1:]):
+    for index in range(lookback_steps, len(dates)):
+        previous, current = dates[index - lookback_steps], dates[index]
         before, after = priced.loc[previous], priced.loc[current]
         row: Dict[str, float] = {}
         for ticker in priced.columns:
@@ -200,6 +208,28 @@ def monthly_returns(
     return out
 
 
+def monthly_returns(
+    prices: pd.DataFrame, decision_dates: Sequence[pd.Timestamp]
+) -> Dict[pd.Timestamp, Dict[str, float]]:
+    """Zachowana nazwa z v9 - zwrot miedzy poprzednia i biezaca data siatki."""
+    return trailing_returns(prices, decision_dates, lookback_steps=1)
+
+
+def worst_decile_threshold(
+    returns: Dict[str, float], investable: Sequence[str], quantile: float = 0.10
+) -> Optional[float]:
+    """Prog PRZEKROJOWY: `quantile` najgorszych zwrotow w danym dniu wsrod inwestowalnych spolek.
+
+    Alternatywa dla stalego progu (-10%) podana przez usera. Rozni sie tym, ze **automatycznie
+    dostosowuje sie do zmiennosci rynku**: w spokojnym miesiacu najgorszy decyl to moze byc -4%, a w
+    marcu 2020 -25%. Staly prog w spokojnym okresie nie odpala sie wcale, a w panice odpala dla
+    polowy rynku."""
+    values = [returns[t] for t in investable if returns.get(t) is not None]
+    if len(values) < 10:  # przy mniej niz 10 spolkach "decyl" nie ma sensu
+        return None
+    return float(pd.Series(values).quantile(quantile))
+
+
 def find_candidates(
     returns: Dict[str, float],
     investable: Sequence[str],
@@ -207,6 +237,7 @@ def find_candidates(
     as_of: pd.Timestamp,
     trigger: float = -0.20,
     ticker_to_fundamental_key: Optional[Dict[str, str]] = None,
+    gate_cache: Optional[Dict[tuple, GateResult]] = None,
     **gate_kwargs,
 ) -> Tuple[List[Tuple[str, float]], Dict[str, GateResult], List[str]]:
     """Zwraca `(kandydaci posortowani od NAJWIEKSZEGO spadku, wyniki bramki, tickery z triggerem)`.
@@ -218,9 +249,19 @@ def find_candidates(
     triggered = [
         ticker for ticker in investable if returns.get(ticker) is not None and returns[ticker] <= trigger
     ]
-    gates = {
-        ticker: evaluate_gate(panel, key_of[ticker], as_of, **gate_kwargs) for ticker in triggered
-    }
+    # Cache bramki: przy siatce DZIENNEJ (v10) ten sam ticker odpala trigger w kilku kolejnych
+    # sesjach, a bramka na te sesje jest niemal zawsze identyczna. Bez cache liczylibysmy ja od zera
+    # kilkadziesiat tysiecy razy.
+    gates = {}
+    for ticker in triggered:
+        key = (key_of[ticker], as_of)
+        if gate_cache is not None and key in gate_cache:
+            gates[ticker] = gate_cache[key]
+            continue
+        gate = evaluate_gate(panel, key_of[ticker], as_of, **gate_kwargs)
+        gates[ticker] = gate
+        if gate_cache is not None:
+            gate_cache[key] = gate
     candidates = [(ticker, returns[ticker]) for ticker in triggered if gates[ticker].ok]
     # Przy >4 kandydatach wybieramy NAJWIEKSZE spadki - sortujemy rosnaco po zwrocie.
     candidates.sort(key=lambda pair: pair[1])

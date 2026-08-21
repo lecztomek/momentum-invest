@@ -14,11 +14,11 @@ przekrojowy. Wpiecie tego flagami znaczyloby trzy rozgalezienia w kazdej z tych 
 
 DOPRECYZOWANIA SPEC:
 
-1. **"Kupno na poczatku kolejnego miesiaca po sygnale"** = pierwsza sesja miesiaca NASTEPUJACEGO po
-   miesiacu, w ktorym byl spadek. Sygnal "spadek w miesiacu M" jest znany dopiero po zamknieciu M,
-   czyli na pierwszej sesji M+1 - i wtedy kupujemy, po cenie z tej sesji. **Zero opoznienia wiecej**:
-   dodatkowy miesiac czekania byl by inna strategia (i tak da sie ja sprawdzic parametrem
-   `entry_delay_months`).
+1. **KUPNO NA NASTEPNYM KROKU SIATKI po sygnale.** Sygnal jest policzony z ceny zamkniecia kroku, w
+   ktorym nastapil spadek, wiec najwczesniejszy moment zakupu to KROK NASTEPNY - i po cenie z tego
+   kroku. Dla v9 (siatka miesieczna) to pierwsza sesja kolejnego miesiaca, dla v10 (siatka dzienna)
+   nastepna sesja. Kupno "po cenie z dnia sygnalu" byloby look-ahead. Dalsze opoznienie da sie
+   sprawdzic przez `entry_delay_steps`.
 2. **Bramka jest sprawdzana W DNIU ZAKUPU**, na danych opublikowanych do tego dnia - a nie w dniu,
    w ktorym spadek sie zaczal.
 3. **Brak podmian.** Spec mowi "max 4 spolki" i nie przewiduje zastepowania, wiec przy pelnym
@@ -38,17 +38,27 @@ from typing import Any, Dict, List, Optional, Sequence
 import pandas as pd
 
 from value_engine.fundamentals import FundamentalPanel
-from value_engine.reversal import GateResult, evaluate_gate, find_candidates, monthly_returns
+from value_engine.reversal import (
+    GateResult,
+    evaluate_gate,
+    find_candidates,
+    trailing_returns,
+    worst_decile_threshold,
+)
 
 
 @dataclass
 class ReversalConfig:
     tickers: List[str]
-    trigger: float = -0.20  # spec: zwrot miesieczny <= -20%
-    holding_months: int = 6  # spec: testujemy 3 / 6 / 12
+    # WSZYSTKIE HORYZONTY SA W KROKACH SIATKI `decision_dates`, nie w miesiacach. Przy siatce
+    # miesiecznej krok = miesiac (v9), przy dziennej krok = sesja (v10) - jeden silnik obsluguje oba.
+    trigger: float = -0.20  # v9: zwrot miesieczny <= -20%; v10: zwrot 5-sesyjny <= -10%
+    trigger_lookback_steps: int = 1  # v9: 1 miesiac; v10: 5 sesji
+    trigger_quantile: Optional[float] = None  # zamiast stalego progu: najgorszy decyl przekrojowo
+    holding_steps: int = 6  # v9: 3 / 6 / 12 miesiecy; v10: 5 / 10 / 20 sesji
     max_positions: int = 4
     cost_bps: float = 40.0
-    entry_delay_months: int = 0  # 0 = kupno na pierwszej sesji miesiaca po spadku
+    entry_delay_steps: int = 0  # 0 = kupno na NASTEPNYM kroku siatki po sygnale
     check_fundamental_fail: bool = True
     max_debt_ratio: float = 0.60
     max_debt_ratio_jump: float = 0.10
@@ -99,8 +109,10 @@ def run_reversal_backtest(
 ) -> Dict[str, Any]:
     if config.trigger >= 0:
         raise ValueError(f"trigger musi byc ujemny (spadek), dostalem {config.trigger}.")
-    if config.holding_months < 1:
-        raise ValueError(f"holding_months musi byc >= 1, dostalem {config.holding_months}.")
+    if config.holding_steps < 1:
+        raise ValueError(f"holding_steps musi byc >= 1, dostalem {config.holding_steps}.")
+    if config.trigger_quantile is not None and not 0.0 < config.trigger_quantile < 1.0:
+        raise ValueError(f"trigger_quantile musi byc w (0, 1), dostalem {config.trigger_quantile}.")
     if config.max_positions < 1:
         raise ValueError(f"max_positions musi byc >= 1, dostalem {config.max_positions}.")
 
@@ -108,7 +120,8 @@ def run_reversal_backtest(
     prices = daily_prices[config.tickers].sort_index()
     priced = prices.ffill()
     cost_rate = config.cost_bps / 10000.0
-    returns_by_date = monthly_returns(prices, decision_dates)
+    returns_by_date = trailing_returns(prices, decision_dates, config.trigger_lookback_steps)
+    gate_cache: Dict[tuple, GateResult] = {}
 
     cash = 1.0
     positions: Dict[str, Position] = {}
@@ -172,9 +185,20 @@ def run_reversal_backtest(
                 else list(eligible_universe.get(date, []))
             )
             returns = returns_by_date.get(date, {})
+            trigger = config.trigger
+            if config.trigger_quantile is not None:
+                # Prog przekrojowy: najgorszy decyl DZISIEJSZYCH zwrotow. Gdy uniwersum jest za
+                # male na decyl, wracamy do progu stalego.
+                dynamic = worst_decile_threshold(returns, investable, config.trigger_quantile)
+                # PRZYCIECIE DO ZERA. W silnej hossie 10 percentyl zwrotow tygodniowych moze byc
+                # DODATNI - wtedy "najgorszy decyl" znaczylby "spolki, ktore urosly najmniej", a to
+                # nie jest kupowanie po panice, tylko odwrotny momentum na rosnacym rynku. Wymagamy
+                # wiec, zeby zwrot byl co najmniej niedodatni; sortowanie po najglebszym spadku i
+                # limit 4 pozycji dalej wybieraja najmocniej przecenione nazwy.
+                trigger = min(dynamic, 0.0) if dynamic is not None else config.trigger
             candidates, gates, triggered = find_candidates(
-                returns, investable, panel, date, trigger=config.trigger,
-                ticker_to_fundamental_key=key_of, **config.gate_kwargs(),
+                returns, investable, panel, date, trigger=trigger,
+                ticker_to_fundamental_key=key_of, gate_cache=gate_cache, **config.gate_kwargs(),
             )
             for gate in gates.values():
                 for failure in gate.failures():
@@ -189,7 +213,7 @@ def run_reversal_backtest(
                 first_decision_date = date
 
             # --- 3) KOLEJKA (opcjonalne opoznienie wejscia) ---
-            target_index = index + config.entry_delay_months
+            target_index = index + 1 + config.entry_delay_steps
             if target_index < len(ordered_dates):
                 pending.setdefault(ordered_dates[target_index], []).extend(candidates)
 
@@ -199,7 +223,7 @@ def run_reversal_backtest(
             bought: List[str] = []
             skipped_no_slot = 0
             if ready:
-                deadline_index = min(index + config.holding_months, len(ordered_dates) - 1)
+                deadline_index = min(index + config.holding_steps, len(ordered_dates) - 1)
                 deadline = ordered_dates[deadline_index]
                 target_size = equity_at(row_price) / config.max_positions
                 for ticker, drop in ready:

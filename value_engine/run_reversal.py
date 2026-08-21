@@ -38,14 +38,34 @@ from value_engine.universe import (
 
 
 class ReversalHarness:
-    def __init__(self, min_turnover: float = MIN_TURNOVER):
+    """Wspolny stelaz dla v9 (siatka MIESIECZNA) i v10 (siatka DZIENNA).
+
+    `grid="daily"` zmienia TYLKO siatke decyzyjna strategii. Benchmark zostaje na siatce
+    MIESIECZNEJ w obu wariantach - i to jest celowe: rownowazony portfel rebalansowany CODZIENNIE
+    bez kosztow zbiera premie za rebalansowanie (harvesting zmiennosci), ktorej realnie nie da sie
+    wyjac, wiec byl by to punkt odniesienia zawyzony sztucznie i nieporownywalny z v9."""
+
+    def __init__(self, min_turnover: float = MIN_TURNOVER, grid: str = "monthly"):
+        if grid not in ("monthly", "daily"):
+            raise ValueError(f"grid musi byc 'monthly' albo 'daily', dostalem {grid!r}.")
         self.panel = FundamentalPanel.from_reports(load_snapshots(DB_PATH))
         self.tickers = non_financial_tickers(discover_tickers(), load_industries(DB_PATH))
         self.prices = load_prices(self.tickers)
         self.turnover = load_turnover(self.tickers, PL_DATA_DIR)
-        self.dates = month_start_decision_dates(self.prices)
+        self.monthly_dates = month_start_decision_dates(self.prices)
+        self.dates = self.monthly_dates if grid == "monthly" else list(self.prices.index)
         self.universe = point_in_time_universe(
             self.prices[self.tickers], self.turnover, self.dates, min_median_turnover=min_turnover
+        )
+        self.benchmark_universe = (
+            self.universe
+            if grid == "monthly"
+            else point_in_time_universe(
+                self.prices[self.tickers],
+                self.turnover,
+                self.monthly_dates,
+                min_median_turnover=min_turnover,
+            )
         )
 
     def run(self, **overrides) -> Tuple[dict, Optional[Dict[str, float]]]:
@@ -70,7 +90,7 @@ class ReversalHarness:
         return result, metrics
 
     def benchmark(self, start: pd.Timestamp, exposure: float = 1.0) -> Dict[str, float]:
-        """Rownowazony buy&hold uniwersum PIT na tej samej siatce miesiecznej.
+        """Rownowazony buy&hold uniwersum PIT na siatce MIESIECZNEJ (patrz docstring klasy).
 
         `exposure` < 1 skaluje DZIENNE ZWROTY benchmarku, dajac "bierne trzymanie X% rynku, resztа w
         gotowce, ZERO timingu". To jedyny uczciwy punkt odniesienia dla strategii, ktora - jak v9 -
@@ -78,7 +98,7 @@ class ReversalHarness:
         ekspozycji, nie o jakosci sygnalu."""
         daily = self.prices[self.tickers].ffill()
         daily = daily[daily.index >= start]
-        rebalance = {d for d in self.universe if d >= start}
+        rebalance = {d for d in self.benchmark_universe if d >= start}
         equity, held = 1.0, {}
         records = []
         for date in daily.index:
@@ -87,7 +107,11 @@ class ReversalHarness:
                 value = equity if not held else sum(
                     count * float(row[t]) for t, count in held.items() if pd.notna(row[t])
                 )
-                names = [t for t in self.universe[date] if pd.notna(row.get(t)) and float(row.get(t)) > 0]
+                names = [
+                    t
+                    for t in self.benchmark_universe[date]
+                    if pd.notna(row.get(t)) and float(row.get(t)) > 0
+                ]
                 held = {t: (value / len(names)) / float(row[t]) for t in names} if names else {}
                 equity = value
             if held:
@@ -129,7 +153,7 @@ def main() -> None:
     print("-" * 94)
     results = {}
     for holding in (3, 6, 12):
-        result, metrics = harness.run(holding_months=holding, trigger=args.trigger)
+        result, metrics = harness.run(holding_steps=holding, trigger=args.trigger)
         results[holding] = (result, metrics)
         print(_row(f"v9: trigger {args.trigger*100:.0f}%, holding {holding}M", metrics))
 
@@ -156,14 +180,14 @@ def main() -> None:
     best = max((h for h in results if results[h][1]), key=lambda h: results[h][1]["cagr"])
     print(f"\nDIAGNOSTYKA (na najlepszym holdingu = {best}M):")
     no_gate, no_gate_metrics = harness.run(
-        holding_months=best, trigger=args.trigger,
+        holding_steps=best, trigger=args.trigger,
         max_debt_ratio=10.0, max_debt_ratio_jump=10.0, max_revenue_drop=10.0,
         max_ebit_drop=10.0, max_share_issuance=10.0, check_fundamental_fail=False,
     )
     print(_row("  ^ BEZ bramki jakosci (sam trigger cenowy)", no_gate_metrics))
-    _, no_fail = harness.run(holding_months=best, trigger=args.trigger, check_fundamental_fail=False)
+    _, no_fail = harness.run(holding_steps=best, trigger=args.trigger, check_fundamental_fail=False)
     print(_row("  ^ z bramka, ale BEZ exitu na fundamental fail", no_fail))
-    _, free = harness.run(holding_months=best, trigger=args.trigger, cost_bps=0.0)
+    _, free = harness.run(holding_steps=best, trigger=args.trigger, cost_bps=0.0)
     print(_row("  ^ przy ZEROWYCH kosztach", free))
 
     result, metrics = results[best]

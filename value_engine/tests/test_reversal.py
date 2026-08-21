@@ -1,5 +1,5 @@
 """
-Testy REVERSAL (koncepcja v9). Cztery grupy:
+Testy REVERSAL (koncepcje v9 i v10 - ten sam silnik na dwoch siatkach). Piec grup:
 
   1. **kazdy z osmiu warunkow bramki psuty OSOBNO** - bramka to jedyna obrona przed kupowaniem
      spolki w realnym distressie, wiec pomylony kierunek w ktorymkolwiek warunku jest niewidoczny
@@ -8,7 +8,9 @@ Testy REVERSAL (koncepcja v9). Cztery grupy:
      przechodzic filtru distressu na samym braku informacji,
   3. **timing wejscia** - sygnal "spadek w miesiacu M" jest znany dopiero na pierwszej sesji M+1 i
      wtedy kupujemy; kupno wewnatrz M byloby look-ahead,
-  4. **wybor kandydatow po NAJWIEKSZYM spadku** i brak podmian przy pelnym portfelu.
+  4. **wybor kandydatow po NAJWIEKSZYM spadku** i brak podmian przy pelnym portfelu,
+  5. **przeliczenie krokow siatki** (v10) - okno triggera i holding sa liczone w SESJACH, wiec
+     pomylka o jeden krok jest tu duzo mniej widoczna niz przy siatce miesiecznej.
 
 Uruchomienie: .venv/bin/pytest value_engine/tests/test_reversal.py -v
 """
@@ -20,7 +22,7 @@ import pytest
 
 from value_engine.br_parser import ParsedReport
 from value_engine.fundamentals import FundamentalPanel
-from value_engine.reversal import GATE_CONDITIONS, evaluate_gate, find_candidates, monthly_returns
+from value_engine.reversal import GATE_CONDITIONS, evaluate_gate, find_candidates, monthly_returns, trailing_returns, worst_decile_threshold
 from value_engine.reversal_backtest import ReversalConfig, run_reversal_backtest
 from value_engine.signals import month_start_decision_dates
 
@@ -257,7 +259,7 @@ def test_entry_happens_on_the_first_session_after_the_drop_month():
     panel = _multi_panel("A")
 
     result = run_reversal_backtest(
-        prices, panel, dates, ReversalConfig(tickers=["a"], holding_months=3)
+        prices, panel, dates, ReversalConfig(tickers=["a"], holding_steps=3)
     )
 
     assert result["trades"], "spadek -30% zdrowej spolki musi dac transakcje"
@@ -275,7 +277,7 @@ def test_position_is_sold_after_the_holding_period():
 
     for holding in (3, 6, 12):
         result = run_reversal_backtest(
-            prices, panel, dates, ReversalConfig(tickers=["a"], holding_months=holding)
+            prices, panel, dates, ReversalConfig(tickers=["a"], holding_steps=holding)
         )
         trade = result["trades"][0]
         entry_index = dates.index(trade.entry_date)
@@ -297,7 +299,7 @@ def test_fundamental_fail_exits_before_the_holding_period():
     panel = _multi_panel("A", IncomeNetProfit=[50.0] * 8 + [-200.0] * 4)
 
     result = run_reversal_backtest(
-        prices, panel, dates, ReversalConfig(tickers=["a"], holding_months=12)
+        prices, panel, dates, ReversalConfig(tickers=["a"], holding_steps=12)
     )
 
     reasons = {t.exit_reason for t in result["trades"]}
@@ -315,7 +317,7 @@ def test_portfolio_is_capped_and_there_is_no_replacement():
     panel = _multi_panel(*names)
 
     result = run_reversal_backtest(
-        prices, panel, dates, ReversalConfig(tickers=names, holding_months=6, max_positions=4)
+        prices, panel, dates, ReversalConfig(tickers=names, holding_steps=6, max_positions=4)
     )
 
     entry_dates = {t.entry_date for t in result["trades"]}
@@ -334,7 +336,7 @@ def test_equal_weight_at_entry():
     panel = _multi_panel("A", "B")
 
     result = run_reversal_backtest(
-        prices, panel, dates, ReversalConfig(tickers=names, holding_months=6, cost_bps=0.0)
+        prices, panel, dates, ReversalConfig(tickers=names, holding_steps=6, cost_bps=0.0)
     )
 
     first = min(t.entry_date for t in result["trades"])
@@ -358,10 +360,10 @@ def test_entry_delay_shifts_the_purchase():
     panel = _multi_panel("A")
 
     immediate = run_reversal_backtest(
-        prices, panel, dates, ReversalConfig(tickers=["a"], holding_months=3, entry_delay_months=0)
+        prices, panel, dates, ReversalConfig(tickers=["a"], holding_steps=3, entry_delay_steps=0)
     )
     delayed = run_reversal_backtest(
-        prices, panel, dates, ReversalConfig(tickers=["a"], holding_months=3, entry_delay_months=1)
+        prices, panel, dates, ReversalConfig(tickers=["a"], holding_steps=3, entry_delay_steps=1)
     )
 
     assert dates.index(delayed["trades"][0].entry_date) == dates.index(immediate["trades"][0].entry_date) + 1
@@ -386,8 +388,111 @@ def test_invalid_config_raises():
 
     with pytest.raises(ValueError, match="trigger"):
         run_reversal_backtest(prices, panel, dates, ReversalConfig(tickers=["a"], trigger=0.20))
-    with pytest.raises(ValueError, match="holding_months"):
-        run_reversal_backtest(prices, panel, dates, ReversalConfig(tickers=["a"], holding_months=0))
+    with pytest.raises(ValueError, match="holding_steps"):
+        run_reversal_backtest(prices, panel, dates, ReversalConfig(tickers=["a"], holding_steps=0))
+
+
+# --- SIATKA DZIENNA (koncepcja v10, "krotkoterminowy reversal") ---
+#
+# v10 to ten sam silnik, tylko `decision_dates` = wszystkie sesje, `trigger_lookback_steps=5`
+# (tydzien) i `holding_steps` liczone w sesjach. Te testy pilnuja, zeby przeliczenie krokow siatki
+# bylo dokladne: pomylka o jeden krok przy holdingu 5 sesji to 20% bledu w dlugosci trzymania
+# (przy holdingu 3-miesiecznym w v9 ta sama pomylka to 33%, ale tam bylo ja widac w datach).
+
+
+def test_trailing_return_spans_exactly_five_sessions_on_a_daily_grid():
+    # 10 sesji po 100, potem jedna sesja -12%, potem plasko
+    values = [100.0] * 10 + [88.0] * 10
+    prices = _prices(a=values)
+    dates = list(prices.index)
+
+    returns = trailing_returns(prices, dates, lookback_steps=5)
+
+    # sesja o indeksie 10 to pierwsza z cena 88; okno 5 sesji wstecz konczy sie na 100
+    assert returns[dates[10]]["a"] == pytest.approx(-0.12)
+    # 5 sesji po spadku okno jest CALE po spadku, wiec zwrot wraca do zera
+    assert returns[dates[15]]["a"] == pytest.approx(0.0)
+    assert dates[4] not in returns, "przed 5 sesja nie ma jeszcze pelnego okna"
+    assert dates[5] in returns
+
+
+def test_trailing_return_rejects_nonpositive_lookback():
+    prices = _prices(a=[100.0] * 10)
+    with pytest.raises(ValueError, match="lookback_steps"):
+        trailing_returns(prices, list(prices.index), lookback_steps=0)
+
+
+def test_worst_decile_threshold_is_cross_sectional():
+    returns = {f"t{i}": -0.01 * i for i in range(20)}  # od 0.00 do -0.19
+    investable = list(returns)
+
+    threshold = worst_decile_threshold(returns, investable, quantile=0.10)
+
+    assert threshold == pytest.approx(pd.Series(list(returns.values())).quantile(0.10))
+    # dwie najgorsze spolki z 20 przechodza prog decyla
+    assert sum(1 for v in returns.values() if v <= threshold) == 2
+
+
+def test_worst_decile_threshold_ignores_non_investable_and_small_universes():
+    returns = {f"t{i}": -0.01 * i for i in range(20)}  # od 0.00 do -0.19
+
+    full = worst_decile_threshold(returns, list(returns))
+    without_worst_five = worst_decile_threshold(returns, [f"t{i}" for i in range(15)])
+
+    assert full < without_worst_five, "spolki poza uniwersum nie moga przesuwac progu"
+    assert worst_decile_threshold(returns, ["t0", "t1", "t2"]) is None, "3 spolki to nie decyl"
+
+
+# Bramka potrzebuje piatej obserwacji kwartalnej (porownanie r/r robi `shift=4`), a ostatni raport
+# w `_DATES` jest publikowany 2021-02-01, wiec spadek musi wypasc PO tej dacie. Od 2019-01-01 to
+# okolo 550 sesji roboczych - stad dlugie serie w testach ponizej.
+_DROP_SESSION = 600
+
+
+def test_daily_grid_holds_for_exactly_five_sessions():
+    values = [100.0] * _DROP_SESSION + [85.0] + [90.0] * 30
+    prices = _long_prices(a=values)
+    dates = list(prices.index)
+    panel = _multi_panel("A")
+
+    result = run_reversal_backtest(
+        prices,
+        panel,
+        dates,
+        ReversalConfig(tickers=["a"], trigger=-0.10, trigger_lookback_steps=5, holding_steps=5),
+    )
+
+    trade = result["trades"][0]
+    assert dates.index(trade.entry_date) == _DROP_SESSION + 1, "kupno na NASTEPNEJ sesji po spadku"
+    assert dates.index(trade.exit_date) - dates.index(trade.entry_date) == 5
+
+
+def test_quantile_trigger_never_buys_a_stock_that_rose():
+    """Przyciecie progu decylowego do zera. Gdy CALE uniwersum rosnie, 10 percentyl zwrotow jest
+    dodatni - bez przyciecia strategia kupowalaby "spolki, ktore urosly najmniej", co nie ma nic
+    wspolnego z kupowaniem po panice.
+
+    Test ma KONTROLE POZYTYWNA w tej samej konfiguracji (jedna spolka realnie spada i ZOSTAJE
+    kupiona), bo inaczej "brak transakcji" moglby wynikac z odrzucenia przez bramke, a nie z progu."""
+    length = _DROP_SESSION + 30
+    rising = {f"t{i}": [100.0 + j * (1 + i * 0.1) for j in range(length)] for i in range(12)}
+    config = dict(
+        tickers=list(rising), trigger=-0.10, trigger_lookback_steps=5,
+        holding_steps=5, trigger_quantile=0.10,
+    )
+    panel = _multi_panel(*[t.upper() for t in rising])
+
+    prices = _long_prices(**rising)
+    all_rising = run_reversal_backtest(prices, panel, list(prices.index), ReversalConfig(**config))
+
+    with_faller = dict(rising)
+    with_faller["t0"] = [100.0] * _DROP_SESSION + [80.0] * 30
+    prices = _long_prices(**with_faller)
+    one_falling = run_reversal_backtest(prices, panel, list(prices.index), ReversalConfig(**config))
+
+    assert not all_rising["trades"], "prog decylowy nie moze wpuszczac spolek ze zwrotem dodatnim"
+    assert one_falling["trades"], "kontrola: realny spadek MUSI zostac kupiony"
+    assert {t.ticker for t in one_falling["trades"]} == {"t0"}, "kupiona tylko spolka, ktora spadla"
 
 
 # --- na prawdziwych danych ---
@@ -402,7 +507,7 @@ def test_real_data_gate_rejects_most_crash_events():
     from value_engine.run_reversal import ReversalHarness
 
     harness = ReversalHarness()
-    result, metrics = harness.run(holding_months=3)
+    result, metrics = harness.run(holding_steps=3)
 
     assert metrics is not None
     decisions = [d for d in result["decisions"] if d["date"] >= metrics["start"]]
