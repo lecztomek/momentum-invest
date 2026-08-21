@@ -55,6 +55,61 @@ Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co 
   134, CDR 31, DNP 26, OPL 24, JSW 24, 11B 24 - te same nazwy, ktore przewijaly sie przez v4, v6, v7
   i v8.
 
+## 2026-08-21
+
+- **ATTRIBUTION (`value_engine/attribution.py`, `run_attribution.py`) - odwrocenie kierunku badania i
+  NAJBARDZIEJ INFORMATYWNY WYNIK W CALYM FOLDERZE.** User: "zawsze podawalem reguly i testowalismy
+  strategie a moze trzeba zrobic research co maja wspolnego fundamentalnie spolki ktore rosly w danym
+  okresie". Zamiast testowac regule - bierzemy WYNIK i pytamy, czym te spolki rozniły sie od reszty.
+  14 nowych testow, lacznie **263**.
+
+  Modul liczy DWIE osobne rzeczy: **(A)** cechy EX-ANTE (z raportow znanych przed wzrostem, jedyna
+  czesc handlowalna), mierzone przekrojowym IC = korelacja rangowa cecha-zwrot forward liczona osobno
+  w kazdym przekroju; **(B)** co sie stalo W TRAKCIE - obciazone wiedza o przyszlosci, niehandlowalne.
+  Spearman policzony jako Pearson na rangach, bo repo nie ma scipy.
+
+  **(A) HORYZONT 12M: NIE DZIALA NIC.** Na 26 przekrojach zadna z 19 cech nie ma |t| > 2. Najlepsze:
+  S/P +0.094 (t=1.66), ROIC +0.069 (t=1.76), momentum +0.069 (t=1.23). **Wszystkie nasze osiem
+  koncepcji rebalansowalo miesiecznie/kwartalnie/rocznie - czyli zbieraly sygnal, ktorego na tym
+  horyzoncie nie ma.** To pierwsze bezposrednie wyjasnienie serii porazek v2-v8.
+
+  **(A) HORYZONT 36M, OKNA NIENAKLADAJACE SIE (9 niezaleznych przekrojow): dzialaja WYCENY, nie
+  jakosc.**
+
+  | cecha | sredni IC | dodatnich | t-stat |
+  |---|---|---|---|
+  | **FCF yield** | **+0.217** | **100% (9/9)** | **+3.87** |
+  | S/P | +0.254 | 83% | +3.20 |
+  | E/P | +0.186 | 83% | +2.75 |
+  | B/P | +0.207 | 83% | +2.33 |
+  | ROA / ROE / ROIC | +0.06-0.07 | 67% | +0.7-0.9 |
+  | momentum 12M | +0.017 | 56% | +0.27 |
+  | **wzrost EBIT r/r** | -0.067 | **17%** | -0.98 |
+  | **wzrost przychodow r/r** | **-0.123** | **17%** | -1.76 |
+
+  Trzy wnioski, kazdy sprzeczny z tym, co robilismy: (1) sygnal istnieje, ale na **3 latach** - FCF
+  yield dodatni w 9 z 9 niezaleznych okresow, jedyna cecha, ktora nie zmienila znaku ani raz;
+  (2) dzialaja WYCENY, a nie JAKOSC - ROE/ROIC/ROA spadaja do t < 1, gdy okna przestana sie nakladac,
+  a to na nich stalo v5 i v6; (3) **wzrost fundamentow r/r ANTY-PROGNOZUJE** (17% okresow dodatnich),
+  co niezaleznie potwierdza to, co widzielismy przez F-Score w v7/v8.
+
+  **(B) CENA CHODZI ZA FUNDAMENTAMI, ale ROWNOLEGLE.** Mediany po kwintylach zwrotu 36M: wzrost EPS
+  rosnie monotonicznie przez wszystkie piec kwintyli (-34.6%, -14.4%, +4.4%, +20.8%, **+88.9%**).
+  Dekompozycja zwyciezcow: **+141.9% = wzrost EPS +88.9% x zmiana mnoznika +15.6%**, i tylko u 39%
+  re-rating byl wiekszy niz wzrost EPS - czyli wzrost jest w wiekszosci FUNDAMENTALNY, nie
+  spekulacyjny. **Sedno problemu: fundamenty tlumacza zwroty rownolegle, ale to, co bylo w raportach
+  PRZED okresem, prawie nic nie mowi o tym, kto ten wzrost dowiezie - poza wycena.** Rynek nie
+  ignoruje fundamentow; on ich nie zapowiada.
+
+  **(C) DLACZEGO BENCHMARK BYL NIE DO POBICIA PO 2020**: mediana zwrotu spolki inwestowalnej w
+  2020-2026 to **+168%**, a czolowka +2000% do +13000% (GNS +13554%, DIG +6788%, ASB +6524%). Portfel
+  4-5 nazw wybranych po jakosci nie mial jak z tym konkurowac - i to dokladnie okres, w ktorym v6
+  przegrywalo o 8-15pp.
+
+  **ZASTRZEZENIE**: sygnal wycenowy jest dokladnie tym, ktory najbardziej zawyza brak spolek
+  wycofanych z obrotu (tania spolka, ktora zbankrutowala, nie jest w danych). 9 przekrojow to mala
+  probka. Traktowac jako HIPOTEZE, nie wynik.
+
 ## 2026-08-20 (6)
 
 - **DUZE UNIWERSUM: 381 spolek niefinansowych (bylo 41). Wszystkie koncepcje v2-v8 przeliczone na

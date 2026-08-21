@@ -84,6 +84,7 @@ porownywalne 1:1 z reszta repo.
 | `quality_backtest.py` | silnik koncepcji v6 - **zmienna liczba pozycji, histereza percentylowa, equal weight** |
 | `fscore.py` | Piotroski F-Score 0-9 na panelu ROCZNYM + Book-to-Market + regula "+6 miesiecy" |
 | `fscore_backtest.py` | silnik koncepcji v7 i v8 - roczny cykl; bramka dwustopniowa ALBO ranking 50/50 |
+| `attribution.py` | **badanie przekrojowe** - IC cech ex-ante + dekompozycja zwrotu (nie strategia) |
 
 ### Gdzie leza dane
 
@@ -109,6 +110,8 @@ katalog mial 82 pliki, z czego 41 bylo bajt w bajt duplikatami (usuniete).
 .venv/bin/python3 -m value_engine.run_quality --leave-one-out
 .venv/bin/python3 -m value_engine.run_fscore
 .venv/bin/python3 -m value_engine.run_combined
+.venv/bin/python3 -m value_engine.run_v6_research
+.venv/bin/python3 -m value_engine.run_attribution --min-turnover 500000 --horizon 36 --rebalance-months 36
 .venv/bin/pytest value_engine/tests/ -v
 ```
 
@@ -184,6 +187,122 @@ danych z przyszlosci.
 **Czego to NIE naprawia:** BiznesRadar pokazuje liczby po ewentualnych korektach (restatements) -
 wyrownanie po dacie publikacji naprawia **timing**, nie **tresc**. Prawdziwa historia
 point-in-time powstanie z czasem, bo `snapshots` trzyma `fetched_at`.
+
+---
+
+# ATTRIBUTION: co lacza spolki, ktore rosly? (`attribution.py`, `run_attribution.py`)
+
+User: "zawsze podawalem reguly i testowalismy strategie a moze trzeba zrobic research co maja
+wspolnego fundamentalnie spolki ktore rosly w danym okresie". Odwrocenie kierunku: bierzemy WYNIK i
+pytamy, czym te spolki rozniły sie od reszty. **To najbardziej informatywna rzecz w calym folderze i
+wyjasnia, dlaczego osiem koncepcji z rzedu nie dzialalo.**
+
+Modul liczy dwie osobne rzeczy i mieszanie ich to najprostszy sposob oszukania samego siebie:
+**(A) cechy EX-ANTE** (z raportow znanych PRZED wzrostem - to jedyna czesc handlowalna), mierzone
+przekrojowym **IC** (korelacja rangowa cecha-zwrot forward, liczona osobno w kazdym przekroju), oraz
+**(B) co sie stalo W TRAKCIE** - obciazone wiedza o przyszlosci, niehandlowalne, ale odpowiadajace na
+pytanie, czy cena na GPW w ogole chodzi za fundamentami.
+
+Uniwersum: 381 spolek niefinansowych, prog obrotu 0.5 mln, uniwersum PIT srednio 28.8 spolek.
+
+## (A) HORYZONT 12 MIESIECY: nie dziala NIC
+
+| cecha | sredni IC | okresow dodatnich | t-stat |
+|---|---|---|---|
+| S/P (przychody/kapitalizacja) | +0.094 | 60% | +1.66 |
+| ROIC | +0.069 | 70% | +1.76 |
+| momentum 12M | +0.069 | 54% | +1.23 |
+| CFO/aktywa | +0.061 | 60% | +1.24 |
+| FCF yield | +0.060 | 60% | +1.20 |
+| F-Score | +0.058 | 61% | +0.92 |
+| ... | ... | ... | ... |
+| **wzrost przychodow r/r** | **-0.030** | 42% | -0.68 |
+| **wzrost EBIT r/r** | **-0.035** | 58% | -0.74 |
+
+**Zadna cecha nie ma |t| > 2 na 26 przekrojach.** Wszystkie osiem naszych koncepcji rebalansowalo
+miesiecznie, kwartalnie albo rocznie - czyli zbieraly sygnal, ktorego na tym horyzoncie po prostu nie
+ma. To pierwsze bezposrednie wyjasnienie serii porazek v2-v8.
+
+## (A) HORYZONT 36 MIESIECY, OKNA NIENAKLADAJACE SIE: dzialaja WYCENY, nie jakosc
+
+9 niezaleznych przekrojow (co 36 miesiecy, zeby okna sie nie nakladaly - przy oknach zachodzacych
+t-staty sa zawyzone o ~sqrt(3)):
+
+| cecha | sredni IC | okresow dodatnich | t-stat |
+|---|---|---|---|
+| **FCF yield** | **+0.217** | **100% (9/9)** | **+3.87** |
+| **S/P** | **+0.254** | 83% | **+3.20** |
+| **E/P** | +0.186 | 83% | +2.75 |
+| **B/P** | +0.207 | 83% | +2.33 |
+| CFO/aktywa | +0.164 | 67% | +1.37 |
+| F-Score | +0.083 | 67% | +1.27 |
+| ROA / ROE / ROIC | +0.06-0.07 | 67% | +0.7-0.9 |
+| momentum 12M | +0.017 | 56% | +0.27 |
+| **wzrost EBIT r/r** | **-0.067** | **17%** | -0.98 |
+| **wzrost przychodow r/r** | **-0.123** | **17%** | **-1.76** |
+
+Trzy wnioski, kazdy sprzeczny z tym, co robilismy:
+
+1. **Sygnal jest, ale na 3 latach, nie na 12 miesiacach.** FCF yield dodatni w **9 z 9** niezaleznych
+   okresow. To jedyna cecha, ktora nie zmienila znaku ani raz.
+2. **Dzialaja WYCENY (FCF, S/P, E/P, B/P), a nie JAKOSC.** ROE/ROIC/ROA spadaja do IC 0.06-0.07 i
+   t < 1, gdy okna przestana sie nakladac. Czyli v5 i v6 (czysta jakosc) byly zbudowane na tym
+   skladniku, ktory nie przezywa uczciwego testu.
+3. **Wzrost fundamentow r/r ANTY-PROGNOZUJE** - przychody -0.123 przy 17% okresow dodatnich, EBIT
+   -0.067 przy 17%. To niezalezne potwierdzenie tego, co widzielismy w v7 i v8 przez F-Score
+   (mediana 12M spadala monotonicznie z F=6 do F=9): kupowanie tego, co WLASNIE sie poprawilo, szkodzi.
+
+## (B) CO SIE STALO W TRAKCIE - cena CHODZI za fundamentami, tylko rownolegle
+
+Mediany po kwintylach zwrotu 36M (272 spolko-okresy):
+
+| kwintyl zwrotu | zwrot ceny | wzrost przychodow | wzrost EPS | zmiana mnoznika |
+|---|---|---|---|---|
+| 1 (najgorsze 20%) | -66.07% | +9.20% | **-34.64%** | -30.52% |
+| 2 | -28.13% | +16.03% | -14.44% | -10.90% |
+| 3 | -1.26% | +26.32% | +4.43% | -15.55% |
+| 4 | +52.45% | +35.84% | +20.77% | +14.23% |
+| **5 (najlepsze 20%)** | **+142.07%** | +24.25% | **+88.90%** | +15.62% |
+
+Zaleznosc EPS-zwrot jest **monotoniczna przez wszystkie pięć kwintyli** (-34.6% -> +88.9%), czyli na
+GPW cena ewidentnie chodzi za zyskiem. Dekompozycja zwyciezcow: **+141.9% = wzrost EPS +88.9% x zmiana
+mnoznika +15.6%**, i tylko u **39%** z nich re-rating byl wiekszy niz wzrost EPS. Czyli wzrost jest
+w wiekszosci FUNDAMENTALNY, nie spekulacyjny.
+
+**I to jest sedno problemu.** Fundamenty tlumacza zwroty *rownolegle* (wzrost EPS w tym samym okresie
+co wzrost ceny), ale to, co bylo widac w raportach *przed* okresem, prawie nic nie mowi o tym, kto
+ten wzrost dowiezie - poza wycena (IC 0.19-0.25). Rynek nie ignoruje fundamentow; on ich nie
+zapowiada.
+
+## (C) Kto realnie rosl - i dlaczego benchmark byl nie do pobicia po 2020
+
+| okres | mediana zwrotu inwestowalnych | 5 najlepszych |
+|---|---|---|
+| 2006-2009 | +6.11% | PEP +228%, EKP +209%, LPP +206%, STP +145%, FON +130% |
+| 2010-2014 | +22.73% | EEX +1500%, CDR +1185%, MON +968%, AMC +621%, LPP +410% |
+| 2015-2019 | 0.00% | CDR +1606%, 11B +476%, EAT +333%, ECH +183%, PKN +105% |
+| **2020-2026** | **+168.40%** | **GNS +13554%, DIG +6788%, ASB +6524%, SNT +2856%, ELT +1915%** |
+
+W latach 2020-2026 **mediana** spolki inwestowalnej zrobila +168%, a czolowka +2000% do +13000%.
+Portfel 4-5 nazw wybranych po jakosci nie mial jak z tym konkurowac - i to dokladnie ten okres, w
+ktorym v6 przegrywalo o 8-15pp.
+
+## NAJWAZNIEJSZE ZASTRZEZENIE
+
+Sygnal wycenowy (FCF yield, S/P, E/P, B/P) jest **dokladnie tym, ktory najbardziej zawyza brak
+spolek wycofanych z obrotu**. Tania spolka, ktora zbankrutowala, nie jest w danych - a to ona jest
+typowym kontrprzykladem dla "kupuj tanie". 9 przekrojow to tez mala probka. Wniosek "wyceny dzialaja
+na 3 latach" traktowac jako HIPOTEZE do sprawdzenia na danych z delistingami, nie jako wynik.
+
+## Co z tego wynika dla strategii
+
+Gdyby cokolwiek budowac dalej, to nie kolejny wariant tych samych regul, a coś, co pasuje do
+zmierzonego sygnalu:
+- **horyzont 3 lata**, nie kwartal (na 12M sygnalu nie ma),
+- **sygnal wycenowy** (FCF yield na pierwszym miejscu), nie jakosciowy,
+- **duzo pozycji** - IC 0.2 przy 4 nazwach jest niewykorzystywalne; przy IC 0.2 potrzeba
+  kilkudziesieciu pozycji, zeby oczekiwana przewaga przebila szum,
+- **bez sygnalow wzrostowych** - te maja ujemny IC w 5 z 6 pomiarow.
 
 ---
 
