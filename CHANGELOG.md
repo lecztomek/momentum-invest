@@ -55,6 +55,47 @@ Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co 
   134, CDR 31, DNP 26, OPL 24, JSW 24, 11B 24 - te same nazwy, ktore przewijaly sie przez v4, v6, v7
   i v8.
 
+## 2026-08-21 (2)
+
+- **KONCEPCJA v9 "Large-Cap Overreaction Reversal" (`reversal.py`, `reversal_backtest.py`,
+  `run_reversal.py`) - PIERWSZY sygnal CENOWY w tym folderze; bramka distressu dziala, sam trigger
+  nie.** Spec usera: trigger zwrot miesieczny <= -20%, osiem warunkow jakosci/distressu, kupno na
+  poczatku kolejnego miesiaca, max 4 spolki equal weight, holding 3/6/12 miesiecy osobno, exit po
+  holdingu albo przy fundamental fail. 18 nowych testow, lacznie **281**.
+
+  **CZEGO NIE DALO SIE ZROBIC**: filtr informacji (profit warning, emisja ratunkowa, problemy z
+  plynnoscia) jest zrealizowany WYLACZNIE przez osiem proxy fundamentalnych, bo w repo nie ma ESPI
+  ani newsow. Skutek strukturalny: **raport ma opoznienie 35-115 dni**, wiec profit warning z
+  miesiaca, ktory wywolal spadek, nie jest widoczny w liczbach w momencie zakupu.
+
+  **KLUCZOWA LICZBA: ekspozycja 9-27%** - strategia siedzi wiekszosc czasu w gotowce, wiec
+  porownanie z portfelem 100% zainwestowanym mowiloby o ekspozycji, nie o sygnale. Dodany benchmark
+  skalowany do tej samej sredniej ekspozycji, z zerowym timingiem (`benchmark(exposure=...)`).
+
+  | wariant (prog 2 mln) | CAGR | MaxDD | Sharpe | ekspozycja |
+  |---|---|---|---|---|
+  | v9 holding 3M | 0.76% | **-51.98%** | 0.122 | 9% |
+  | v9 holding 6M | -0.79% | -56.74% | 0.018 | 13% |
+  | v9 holding 12M | -0.64% | -51.72% | 0.035 | 17% |
+  | **benchmark skalowany do 9%, ZERO timingu** | **0.64%** | **-10.58%** | **0.276** | - |
+
+  **Za praktycznie ten sam zwrot v9 bierze pieciokrotnie glebsze obsuniecie** (-52.0% vs -10.6%) i ma
+  polowe Sharpe. Holdingi 6M i 12M przegrywaja ze swoim biernym odpowiednikiem na kazdej metryce.
+  Przy progu 0.5 mln jest jednoznacznie zle: -0.50% / -3.79% / -3.24% vs 1.56% / 2.11% / 2.84%.
+
+  **BRAMKA DISTRESSU SIE OBRONILA - pierwszy filtr fundamentalny w calym folderze, o ktorym da sie
+  to powiedziec.** Ze 185 zdarzen -20% przepuscila 59 (32%), a kazdy z osmiu warunkow realnie
+  odrzuca (pilnowane testem): EBIT nie spadl >40% odrzucil 52% zdarzen, zysk netto > 0 - 39%,
+  CFO > 0 - 38%, brak emisji >10% - 35%, przychody - 28%, skok dlugu - 26%, kapital wlasny i
+  dlug/aktywa - po 18%. Efekt w wyniku: **bez bramki 0.23%, z bramka 0.76%** (holding 3M).
+
+  **DLACZEGO NIE DZIALA: na GPW spadek -20% NIE odwraca sie.** 50 transakcji, 48% zyskownych, sredni
+  zwrot +4.09%, ale **mediana -1.96%** - rozklad bez przewagi, sredni zwrot ciagna nieliczne duze
+  odbicia. **Glebokosc spadku nie prognozuje odbicia**, mimo ze spec kaze wybierac najglebsze:
+  ponizej -40% mediana +22.5%, -40..-30% **-10.8%**, -30..-25% +7.2%, -25..-20% -5.5% - zaden
+  porzadek. Zgodne z klasycznym wynikiem, ze na 3-12 miesiacach dominuje kontynuacja, a odwrocenie
+  dziala na 1 tydzien - 1 miesiac albo na 3-5 lat.
+
 ## 2026-08-21
 
 - **ATTRIBUTION (`value_engine/attribution.py`, `run_attribution.py`) - odwrocenie kierunku badania i

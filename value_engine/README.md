@@ -1,6 +1,6 @@
 # value_engine - strategie "value" na GPW
 
-Osobny silnik, poza `engine_v2`. Osiem koncepcji, przeliczonych na 22, 41 i **381** spolkach, wszystkie oparte na tych samych,
+Osobny silnik, poza `engine_v2`. Dziewiec koncepcji, przeliczonych na 22, 41 i **381** spolkach, wszystkie oparte na tych samych,
 wspolnych fundamentach technicznych (parser BiznesRadaru + panel point-in-time + ceny PL +
 uniwersum point-in-time).
 
@@ -14,6 +14,7 @@ uniwersum point-in-time).
 | v6: czysta jakosc, top 20-25%, rebalans kwartalny | `quality_backtest.py` | `run_quality.py` | – (nie testowana) | **0.39%-8.38% vs 8.54% (LOO 2/41)** |
 | v7: Piotroski F-Score 8-9 na top 20% B/M, holding 12M | `fscore_backtest.py` | `run_fscore.py` | – (nie testowana) | **-3.66% vs 10.33%, w rynku 18%** |
 | v8: 50% percentyl(B/M) + 50% percentyl(F-Score), top 4 | ten sam silnik, `combined_ranking=True` | `run_combined.py` | – (nie testowana) | **-4.46% vs 10.33% (-14.79pp)** |
+| v9: reversal po spadku -20% + bramka distressu | `reversal_backtest.py` | `run_reversal.py` | – (nie testowana) | **0.76% vs 0.64% biernie, ale MaxDD -52% vs -11%** |
 
 **NAJWAZNIEJSZY WNIOSEK CALEJ SERII: zaden z pieciu pomyslow nie bije uczciwego benchmarku PIT na
 szerszym uniwersum.** Wynik kazdej wersji zalezy DRASTYCZNIE od tego, na czym jest liczony - i to
@@ -85,6 +86,8 @@ porownywalne 1:1 z reszta repo.
 | `fscore.py` | Piotroski F-Score 0-9 na panelu ROCZNYM + Book-to-Market + regula "+6 miesiecy" |
 | `fscore_backtest.py` | silnik koncepcji v7 i v8 - roczny cykl; bramka dwustopniowa ALBO ranking 50/50 |
 | `attribution.py` | **badanie przekrojowe** - IC cech ex-ante + dekompozycja zwrotu (nie strategia) |
+| `reversal.py` | trigger v9 (spadek miesieczny) + osmiowarunkowa bramka distressu |
+| `reversal_backtest.py` | silnik koncepcji v9 - holding 3/6/12 miesiecy, brak podmian, exit na fundamental fail |
 
 ### Gdzie leza dane
 
@@ -112,6 +115,7 @@ katalog mial 82 pliki, z czego 41 bylo bajt w bajt duplikatami (usuniete).
 .venv/bin/python3 -m value_engine.run_combined
 .venv/bin/python3 -m value_engine.run_v6_research
 .venv/bin/python3 -m value_engine.run_attribution --min-turnover 500000 --horizon 36 --rebalance-months 36
+.venv/bin/python3 -m value_engine.run_reversal
 .venv/bin/pytest value_engine/tests/ -v
 ```
 
@@ -187,6 +191,114 @@ danych z przyszlosci.
 **Czego to NIE naprawia:** BiznesRadar pokazuje liczby po ewentualnych korektach (restatements) -
 wyrownanie po dacie publikacji naprawia **timing**, nie **tresc**. Prawdziwa historia
 point-in-time powstanie z czasem, bo `snapshots` trzyma `fetched_at`.
+
+---
+
+# Koncepcja v9: Large-Cap Overreaction Reversal - PIERWSZY sygnal CENOWY
+
+Spec (user): trigger = zwrot miesieczny <= -20%; filtr jakosci i distressu; kupno na poczatku
+kolejnego miesiaca; max 4 spolki equal weight; holding 3 / 6 / 12 miesiecy testowany osobno; exit po
+holdingu albo przy fundamental fail; bez trailing stopu, momentum, kanarka i rankingu poza
+"najwiekszy spadek".
+
+**To pierwsza koncepcja w tym folderze, ktora nie jest rankingiem fundamentalnym.** Badanie
+atrybucji pokazalo brak sygnalu w cechach fundamentalnych na 12M, ale nie testowalo
+krotkoterminowego odwrocenia - to nowa os.
+
+## Czego NIE dalo sie zrobic: filtr informacji
+
+Spec chcial odrzucac spadki po **profit warningu, emisji ratunkowej, problemach z plynnoscia i
+trwalym zalamaniu wynikow**. W repo nie ma ESPI ani newsow, tylko sprawozdania - wiec filtr jest
+zrealizowany **wylacznie** przez osiem proxy fundamentalnych podanych przez usera. Skutek jest
+strukturalny, nie techniczny: **raport przychodzi z opoznieniem 35-115 dni**, wiec profit warning
+ogloszony w miesiacu, ktory wywolal spadek, NIE JEST widoczny w liczbach w momencie zakupu. Bramka
+odrzuca spolki, ktorych JUZ OPUBLIKOWANE wyniki sa zle - a nie te, o ktorych zla wiadomosc wlasnie
+wyszla.
+
+## Wynik: przegrywa z BIERNYM trzymaniem tej samej ekspozycji
+
+Kluczowa liczba to **ekspozycja 9-27%** - strategia siedzi wiekszosc czasu w gotowce, wiec
+porownanie z portfelem 100% zainwestowanym mowiloby glownie o ekspozycji. Uczciwy punkt odniesienia
+to benchmark PIT przeskalowany do tej samej sredniej ekspozycji, z ZEROWYM timingiem.
+
+Prog obrotu 2 mln (uniwersum PIT srednio 13 spolek), okno 1996-06 -> 2026-08:
+
+| wariant | CAGR | MaxDD | Sharpe | n | ekspozycja |
+|---|---|---|---|---|---|
+| v9 holding 3M | **0.76%** | **-51.98%** | 0.122 | 50 | 9% |
+| v9 holding 6M | -0.79% | -56.74% | 0.018 | 39 | 13% |
+| v9 holding 12M | -0.64% | -51.72% | 0.035 | 33 | 17% |
+| *benchmark 100% zainwestowany* | *3.91%* | *-75.19%* | *0.276* | - | - |
+| **benchmark skalowany do 9%, ZERO timingu** | **0.64%** | **-10.58%** | **0.276** | - | - |
+| benchmark skalowany do 13%, ZERO timingu | 0.88% | -14.45% | 0.276 | - | - |
+| benchmark skalowany do 17%, ZERO timingu | 1.15% | -18.86% | 0.276 | - | - |
+
+**Najlepszy wariant (3M) daje 0.76% przy 9% ekspozycji, a bierne trzymanie 9% rynku daje 0.64% -
+przy MaxDD -10.6% zamiast -52.0% i Sharpe 0.276 zamiast 0.122.** Czyli za praktycznie ten sam zwrot
+strategia bierze **pieciokrotnie glebsze obsuniecie**. Holdingi 6M i 12M przegrywaja ze swoim
+biernym odpowiednikiem na KAZDEJ metryce.
+
+Prog obrotu 0.5 mln (uniwersum srednio 27 spolek) jest jednoznacznie zly:
+
+| wariant | CAGR | benchmark skalowany | roznica |
+|---|---|---|---|
+| v9 holding 3M (ekspoz. 15%) | **-0.50%** | 1.56% | -2.06pp |
+| v9 holding 6M (ekspoz. 20%) | **-3.79%** | 2.11% | -5.90pp |
+| v9 holding 12M (ekspoz. 27%) | **-3.24%** | 2.84% | -6.08pp |
+
+## Bramka DZIALA - to jedyna czesc koncepcji, ktora sie obronila
+
+Przy progu 2 mln: **185 zdarzen -20%, bramka przepuscila 59 (32%)**. Kazdy z osmiu warunkow realnie
+odrzuca (to bylo sprawdzane testem - warunek, ktory nigdy nie odrzuca, jest ozdoba):
+
+| warunek | odrzucil | % zdarzen -20% |
+|---|---|---|
+| **EBIT nie spadl >40% r/r** | 96 | **52%** |
+| zysk netto TTM > 0 | 73 | 39% |
+| CFO TTM > 0 | 71 | 38% |
+| brak emisji >10% r/r | 64 | 35% |
+| przychody nie spadly >20% r/r | 51 | 28% |
+| dlug/aktywa nie wzrosl >10 pp | 49 | 26% |
+| kapital wlasny > 0 | 34 | 18% |
+| dlug/aktywa < 60% | 34 | 18% |
+
+I widac to w wyniku: **bez bramki 0.23%, z bramka 0.76%** (holding 3M). Filtr distressu dodaje ~0.5pp
+- czyli robi to, co mial robic. Problem jest w sygnale, nie w filtrze.
+
+## Dlaczego nie dziala: na GPW spadek -20% NIE odwraca sie
+
+| miara | wartosc |
+|---|---|
+| transakcji | 50 |
+| zyskownych | 24 (48%) |
+| sredni zwrot | +4.09% |
+| **mediana zwrotu** | **-1.96%** |
+
+Mediana ujemna przy 48% wygranych to rozklad bez przewagi - sredni zwrot ciagna nieliczne duze
+odbicia. **Glebokosc spadku nie prognozuje odbicia**, mimo ze spec kaze wybierac najglebsze:
+
+| glebokosc spadku przy wejsciu | n | sredni zwrot | mediana |
+|---|---|---|---|
+| ponizej -40% | 4 | +23.7% | +22.5% |
+| -40% do -30% | 9 | **-10.1%** | -10.8% |
+| -30% do -25% | 15 | +15.5% | +7.2% |
+| -25% do -20% | 22 | -1.5% | -5.5% |
+
+Zaden porzadek - regula "wybieramy najwieksze spadki" nie ma w tych danych podstawy. Rozklad po
+latach jest rownie niestabilny: 2020 mediana +19.5%, 2021 **-20.3%**, 2022 +9.9%, 2008 -20.1%.
+
+## Wniosek
+
+v9 jest zaimplementowana dokladnie wg spec i **przegrywa z biernym trzymaniem tej samej ekspozycji**
+przy piec razy glebszym obsunieciu. Dwie rzeczy warte zapamietania:
+
+1. **Bramka distressu obroniła sie** - odrzuca 68% spadkow -20% i dodaje ~0.5pp do wyniku. To
+   pierwszy filtr fundamentalny w calym folderze, o ktorym da sie powiedziec, ze pomaga. Warto go
+   ponownie uzyc, ale jako filtr do czegos innego, nie do tego triggera.
+2. **Sam trigger jest slaby**: -20% w miesiac na GPW nie jest przereagowaniem, po ktorym nastepuje
+   odbicie. Mediana zwrotu po zakupie jest UJEMNA na kazdym holdingu, a glebokosc spadku nic nie
+   mowi. To jest zgodne z klasycznym wynikiem, ze na horyzoncie 3-12 miesiecy dominuje kontynuacja,
+   a nie odwrocenie - odwrocenie dziala na 1 tydzien - 1 miesiac albo na 3-5 lat.
 
 ---
 
