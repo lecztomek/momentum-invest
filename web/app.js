@@ -5,12 +5,12 @@
 let SIG,PERF,PRC,PORT;
 try{
   [SIG,PERF,PRC,PORT]=await Promise.all(["signals","performance","prices","portfolio"]
-    .map(f=>fetch(`data/${f}.json`).then(r=>{if(!r.ok)throw new Error(f+".json: HTTP "+r.status);return r.json()})));
+    .map(f=>fetch(`web/data/${f}.json`).then(r=>{if(!r.ok)throw new Error(f+".json: HTTP "+r.status);return r.json()})));
 }catch(err){
   document.body.innerHTML='<div class="fatal"><b>Nie udalo sie wczytac danych.</b>'
     +'<p>'+String(err.message||err)+'</p><p>Strona czyta pliki przez fetch, wiec musi byc '
     +'serwowana przez HTTP. Otworz ja przez GitHub Pages albo lokalnie: '
-    +'<code>python3 -m http.server</code> w katalogu <code>docs/</code>.</p></div>';
+    +'<code>python3 -m http.server</code> w katalogu glownym repo.</p></div>';
   throw err;
 }
 const SIGNALS=SIG.signals, HIST=SIG.history, RANK=SIG.ranking, CAN_VT=SIG.canary.vt, CAN_XLK=SIG.canary.xlk,

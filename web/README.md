@@ -1,6 +1,6 @@
 # Panel strategii BEST17 + GPM UK
 
-Statyczna strona pod GitHub Pages. **Nic tu nie liczy strategii** — sygnały wylicza
+Statyczna strona pod GitHub Pages, serwowana z katalogu glownego repozytorium. **Nic tu nie liczy strategii** — sygnały wylicza
 silnik w Pythonie (`strategies_v2/`) uruchamiany przez GitHub Actions, a strona
 wyłącznie czyta gotowe pliki JSON z `docs/data/`.
 
@@ -9,13 +9,13 @@ wyłącznie czyta gotowe pliki JSON z `docs/data/`.
 Strona czyta dane przez `fetch`, więc musi być serwowana po HTTP — otwarcie
 `index.html` z dysku nie zadziała.
 
-    cd docs && python3 -m http.server 8000
+    python3 -m http.server 8000   # z katalogu glownego repo
 
 ## Pliki
 
 | Plik | Co zawiera | Kto zapisuje |
 |---|---|---|
-| `index.html` | szkielet widoków | ręcznie |
+| `../index.html` | szkielet widoków (w katalogu glownym, bo Pages serwuje z `/`) | ręcznie |
 | `app.css` | style, motyw ciemny jednowariantowy | ręcznie |
 | `app.js` | render i wykresy (moduł ES, bez bibliotek) | ręcznie |
 | `data/signals.json` | sygnał obu transz, historia, ranking, kanarek | pipeline |
@@ -31,7 +31,7 @@ i idą do bazy (per użytkownik), a nie do repozytorium.
 
 ## Publikacja
 
-Settings → Pages → Source: **Deploy from a branch** → galaz `main`, folder **`/docs`**.
+Settings → Pages → Source: **Deploy from a branch** → galaz `main`, folder **`/ (root)`**.
 Adres: `https://<uzytkownik>.github.io/momentum-invest/`.
 
 GitHub przebudowuje strone sam po kazdym pushu na `main`, wiec osobny workflow
