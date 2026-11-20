@@ -1,0 +1,19 @@
+name: Sonda zrodla cen
+
+# Faza 0: sprawdza, czy dostawca oddaje komplet 17 instrumentow i czy jego ceny
+# zgadzaja sie z plikami w data/. Uruchamiana recznie oraz raz w tygodniu, zeby
+# wychwycic moment, w ktorym zrodlo przestaje byc wiarygodne.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '37 6 * * 1'
+
+jobs:
+  sonda:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python3 tools/probe_feed.py --years 2
