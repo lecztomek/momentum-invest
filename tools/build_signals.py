@@ -49,11 +49,13 @@ def wagi(wiersz) -> dict[str, float]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--okresow", type=int, default=12)
+    ap.add_argument("--specs", help="katalog z kopiami strategii (np. z sync_prices.py)")
     a = ap.parse_args()
 
     przebiegi = {}
     for noga, katalog in NOGI.items():
-        spec = StrategySpec.load(ROOT / "strategies_v2" / katalog / "strategy_spec.json")
+        baza = Path(a.specs) if a.specs else ROOT / "strategies_v2"
+        spec = StrategySpec.load(baza / katalog / "strategy_spec.json")
         pf = run_strategy_pipeline(spec)
         przebiegi[noga] = pf
         print(f"{noga:8} {len(pf)} okresow, ostatni {pf.iloc[-1]['date'].date()}")

@@ -1,0 +1,58 @@
+name: Sygnal
+
+# Liczy sygnal i publikuje go do web/data/signals.json.
+#
+# Ceny wpisane recznie zyja w Firestore, dane dostawcy w repo. Pipeline laczy
+# jedno z drugim w KOPII, nigdy nie ruszajac plikow w data/ - to sa dane zrodlowe
+# i maja zostac takie, jakie przyszly.
+on:
+  schedule:
+    - cron: '23 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sygnal
+  cancel-in-progress: false
+
+jobs:
+  licz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -r requirements.txt firebase-admin
+
+      - name: Ceny z bazy do przestrzeni roboczej
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+        run: python3 tools/sync_prices.py --out "$RUNNER_TEMP/ws"
+
+      - name: Policz sygnal
+        run: python3 tools/build_signals.py --specs "$RUNNER_TEMP/ws/strategies_v2"
+
+      - name: Opublikuj, jesli cokolwiek sie zmienilo
+        run: |
+          if git diff --quiet -- web/data/signals.json; then
+            echo "sygnal bez zmian - nic do opublikowania"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/data/signals.json
+          git commit -m "Sygnal: $(python3 -c "import json;d=json.load(open('web/data/signals.json'));print(d['signals'][0]['date'])")"
+          git push
+
+      - name: Pilnuj, zeby dane zrodlowe zostaly nietkniete
+        run: |
+          if ! git diff --quiet -- data/; then
+            echo "::error::Pipeline zmienil pliki w data/. To sa dane dostawcy i maja zostac bez zmian."
+            git diff --stat -- data/
+            exit 1
+          fi
+          echo "data/ nietkniete"
