@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Panel BEST17 + GPM</title>
+<meta name="description" content="Panel strategii BEST17 + GPM UK: sygnal, sklad, portfel, wyniki i ceny zrodlowe.">
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<aside id="rail">
+  <div class="lg"><i>B+G</i><div>BEST17 + GPM<span>panel strategii</span></div></div>
+  <nav id="nav">
+    <a href="#pulpit"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="8.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="5" rx="2"/><rect x="3" y="14.5" width="7.5" height="6.5" rx="2"/><rect x="13.5" y="11" width="7.5" height="10" rx="2"/></svg>Pulpit</a>
+    <a href="#sygnal"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Sygnał</a>
+    <a href="#portfel"><svg viewBox="0 0 24 24"><path d="M3 7h15a3 3 0 0 1 3 3v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7V6a2 2 0 0 1 2-2h11"/><circle cx="17" cy="13.5" r="1.3"/></svg>Portfel</a>
+    <a href="#wyniki"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Wyniki</a>
+    <a href="#transakcje"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Wpisy</a>
+    <a href="#ceny"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>Ceny</a>
+    <a href="#dlaczego"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4.9c0 1.9-2.7 2.3-2.7 4"/><path d="M12 17.2v.1"/></svg>Analiza</a>
+  </nav>
+</aside>
+
+<div class="demo"><div class="wrap">Prototyp — dane przykładowe</div></div>
+
+<div class="shell"><main class="wrap">
+
+<!-- ========== PULPIT ========== -->
+<section id="v-pulpit">
+  <div class="vh"><h1>Pulpit</h1><span class="stamp">10 grudnia 2026</span></div>
+
+  <div class="tiles" id="kpi"></div>
+
+  <div class="dash">
+    <div class="card">
+      <div class="lbl">Co trzymam</div>
+      <div class="chart" id="c-donut"></div>
+      <div class="dlg" id="donutLeg"></div>
+    </div>
+    <div class="card">
+      <div class="lbl" style="margin-bottom:12px">Na którym koncie</div>
+      <div id="accStrips"></div>
+    </div>
+  </div>
+
+  <h2 class="sec">Kapitał</h2>
+  <div class="card">
+    <div class="chart" id="c-equity2"></div>
+    <div class="legend" id="l-equity2"></div>
+  </div>
+
+  <h2 class="sec">Ostatnie 12 miesięcy</h2>
+  <div class="card"><div class="chart" id="c-month"></div></div>
+</section>
+
+<!-- ========== SYGNAL ========== -->
+<section id="v-sygnal" hidden>
+  <div class="vh"><h1>Sygnał</h1><span class="stamp">ceny 2026-12-10</span></div>
+
+  <div class="card">
+    <div class="lbl">Skład docelowy</div>
+    <div class="alloc" id="allocBar"></div>
+    <div class="top3" id="top3"></div>
+  </div>
+
+  <div class="grid2" style="margin-top:13px">
+    <div class="card">
+      <div class="lbl">Najbliższy rebalans</div>
+      <div class="big sans">25 grudnia</div>
+      <div class="cd"><span class="pill p-warn">za 15 dni</span></div>
+    </div>
+    <div class="card">
+      <div class="lbl" style="margin-bottom:11px">Tryb nóg</div>
+      <div class="leg"><b>BEST17</b><span class="pill p-risk">RISK</span><span class="as">XLK 80 · DBC 20</span></div>
+      <div class="leg"><b>GPM</b><span class="pill p-risk">RISK</span><span class="as">3 ryzykowne + IBTA</span></div>
+    </div>
+  </div>
+
+  <h2 class="sec">Do zrobienia</h2>
+  <div id="actions"></div>
+
+  <h2 class="sec">Gdzie co ma być</h2>
+  <div class="seg" id="segS">
+    <button data-s="sum" aria-pressed="true">Sumarycznie</button>
+    <button data-s="acc" aria-pressed="false">Wg kont</button>
+    <button data-s="dat" aria-pressed="false">Wg dat</button>
+  </div>
+  <div id="skladBody"></div>
+
+  <h2 class="sec">Ostatnie sygnały</h2>
+  <div class="card tw"><table>
+    <thead><tr><th>Data</th><th>BEST17</th><th>GPM</th><th>Zmiana</th></tr></thead>
+    <tbody id="hist"></tbody>
+  </table></div>
+</section>
+
+<!-- ========== TRANSAKCJE ========== -->
+<section id="v-transakcje" hidden>
+  <div class="vh"><h1>Transakcje</h1><span class="stamp" id="txCount"></span></div>
+  <div class="card">
+    <div class="lbl" style="margin-bottom:12px">Dopisz rekord</div>
+    <form class="form" id="txForm">
+      <div class="fld"><label for="txDate">Data</label><input type="date" id="txDate" required></div>
+      <div class="fld"><label for="txAcc">Konto</label><select id="txAcc"></select></div>
+      <div class="fld"><label for="txType">Typ</label><select id="txType">
+        <option value="wplata">Wpłata</option><option value="wyplata">Wypłata</option>
+        <option value="kupno">Kupno</option><option value="sprzedaz">Sprzedaż</option>
+      </select></div>
+      <div class="fld" id="txTickWrap" hidden><label for="txTick">Walor</label><select id="txTick"></select></div>
+      <div class="fld"><label for="txAmt">Kwota w zł</label><input type="number" id="txAmt" step="0.01" min="0" placeholder="0,00" required></div>
+      <div class="fld w2" style="justify-content:flex-end"><button class="btn" type="submit">Dopisz</button></div>
+    </form>
+  </div>
+
+  <h2 class="sec">Wpłacone na konta</h2>
+  <div class="card tw"><table>
+    <thead><tr><th>Konto</th><th>Wpłaty</th><th>Wypłaty</th><th>Netto</th></tr></thead>
+    <tbody id="depRows"></tbody>
+  </table></div>
+
+  <h2 class="sec">Historia</h2>
+  <div class="card tw"><table>
+    <thead><tr><th>Data</th><th>Konto</th><th>Operacja</th><th>Kwota</th><th></th></tr></thead>
+    <tbody id="txRows"></tbody>
+  </table></div>
+</section>
+
+<!-- ========== PORTFEL ========== -->
+<section id="v-portfel" hidden>
+  <div class="vh"><h1>Portfel</h1><span class="stamp">USD/PLN 4,0600</span></div>
+  <div class="tiles">
+    <div class="tile"><div class="lbl">Wartość</div><div class="v">197 640</div><div class="d">złotych</div></div>
+    <div class="tile"><div class="lbl">Wpłacone</div><div class="v" style="color:var(--muted)">190 000</div><div class="d">złotych</div></div>
+    <div class="tile"><div class="lbl">TWR w PLN</div><div class="v" style="color:var(--pos)">+3,21%</div><div class="d">z kursem</div></div>
+    <div class="tile"><div class="lbl">TWR w USD</div><div class="v" style="color:var(--neg)">−1,84%</div><div class="d">same decyzje</div></div>
+  </div>
+  <p class="note">Rozjazd PLN wobec USD to kurs, nie wynik strategii.</p>
+
+  <h2 class="sec">Wartość a wpłacony kapitał</h2>
+  <div class="card">
+    <div class="chart" id="c-equity"></div>
+    <div class="legend" id="l-equity"></div>
+  </div>
+
+  <h2 class="sec">Konta</h2>
+  <div class="seg setupSel"></div>
+  <div class="card tw"><table>
+    <thead><tr><th>Konto</th><th>Wartość</th><th>Cel</th><th>PLN</th><th>USD</th></tr></thead>
+    <tbody id="accRows"></tbody>
+  </table></div>
+  <p class="note" id="accNote"></p>
+
+  <h2 class="sec">Odchylenie od celu</h2>
+  <div class="card"><div class="chart" id="c-drift"></div></div>
+</section>
+
+<!-- ========== WYNIKI ========== -->
+<section id="v-wyniki" hidden>
+  <div class="vh"><h1>Wyniki</h1><span class="stamp">cze 2018 – gru 2026</span></div>
+  <div class="tiles" id="tiles"></div>
+
+  <h2 class="sec">Miesiąc po miesiącu</h2>
+  <div class="card tw"><table class="mg" id="mgrid"></table></div>
+
+  <h2 class="sec">Obsunięcie od szczytu</h2>
+  <div class="card"><div class="chart" id="c-dd"></div></div>
+
+  <h2 class="sec">Rok po roku</h2>
+  <div class="card"><div class="chart" id="c-yr"></div></div>
+
+  <h2 class="sec">Jak strategia się przestawiała</h2>
+  <div class="card">
+    <div class="chart" id="c-mix"></div>
+    <div class="legend" id="l-mix"></div>
+  </div>
+</section>
+
+<!-- ========== CENY ========== -->
+<section id="v-ceny" hidden>
+  <div class="vh"><h1>Ceny</h1><span class="stamp" id="feedStamp"></span></div>
+
+  <div class="card">
+    <div class="lbl" style="margin-bottom:6px">Kontrola danych</div>
+    <div id="checks"></div>
+  </div>
+
+  <h2 class="sec">Ceny użyte w sygnale</h2>
+  <div class="seg" id="segP">
+    <button data-p="10" aria-pressed="true">Transza 10-tego</button>
+    <button data-p="25" aria-pressed="false">Transza 25-tego</button>
+  </div>
+  <div class="seg" id="segR">
+    <button data-r="0" aria-pressed="true">Podgląd</button>
+    <button data-r="1" aria-pressed="false">Admin</button>
+  </div>
+  <div class="card tw"><table>
+    <thead><tr><th>Walor</th><th>Cena</th><th>Data</th><th>Zmiana</th><th>Stan</th><th id="thAct" hidden></th></tr></thead>
+    <tbody id="priceRows"></tbody>
+  </table></div>
+  <p class="note">To dokładnie te liczby, z których policzony został sygnał — nie świeże pobranie. Korekta nie nadpisuje ceny z feedu, tylko dokłada wpis z powodem i autorem.</p>
+
+  <h2 class="sec">Historia cen</h2>
+  <div class="card tw"><table class="mg" id="priceHist"></table></div>
+</section>
+
+<!-- ========== DLACZEGO ========== -->
+<section id="v-dlaczego" hidden>
+  <div class="vh"><h1>Dlaczego taki skład</h1></div>
+
+  <h2 class="sec">Kanarek</h2>
+  <div class="card">
+    <div class="chart" id="c-canary"></div>
+    <div class="legend" id="l-canary"></div>
+    <p class="why">Oba powyżej progu −2%, więc <b>RISK</b>. Dopiero gdy <b>oba</b> spadną poniżej linii, BEST17 wychodzi do gotówki.</p>
+  </div>
+
+  <h2 class="sec">Ranking BEST17</h2>
+  <div class="card">
+    <div class="chart" id="c-rank"></div>
+    <p class="why">IAU miało wyższy wynik niż VT, ale nie przeszło bramki momentum <b>+1%</b>.</p>
+  </div>
+
+  <h2 class="sec">Jak blisko jest zmiana</h2>
+  <div class="card">
+    <div class="gate"><span class="dot ok"></span>XLK traci pozycję 1 przy spadku<span class="m">−2,6%</span></div>
+    <div class="gate"><span class="dot ok"></span>DBC wypada z podium przy spadku<span class="m">−5,8%</span></div>
+    <div class="gate"><span class="dot no"></span>IAU wraca do gry przy mom3 o<span class="m">+1,9 pp</span></div>
+    <div class="gate"><span class="dot nr"></span>Kanarek w CASH przy spadku VT i XLK o<span class="m">−3,4%</span></div>
+  </div>
+
+  <h2 class="sec">GPM</h2>
+  <div class="card">
+    <dl class="kv">
+      <dt>Ryzykowne w top 3</dt><dd>CNDX · CMOD · IUES</dd>
+      <dt>Przeszło filtr trendu</dt><dd>3 z 10</dd>
+      <dt>Mianownik</dt><dd>5</dd>
+      <dt>Udział ochronny</dt><dd>40% · IBTA</dd>
+    </dl>
+    <p class="why">Przeszły <b>3 z 10</b>, mianownik 5, więc 40% idzie w obligacje. Im słabszy rynek, tym więcej samo przechodzi w ochronę.</p>
+  </div>
+</section>
+
+</main></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

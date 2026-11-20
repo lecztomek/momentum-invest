@@ -1,0 +1,95 @@
+{
+ "feed": {
+  "source": "stooq",
+  "fetched": "2026-12-10 22:04"
+ },
+ "instruments": [
+  [
+   "XLK",
+   "US"
+  ],
+  [
+   "IVV",
+   "US"
+  ],
+  [
+   "VT",
+   "US"
+  ],
+  [
+   "IAU",
+   "US"
+  ],
+  [
+   "DBC",
+   "US"
+  ],
+  [
+   "CSPX",
+   "UK"
+  ],
+  [
+   "CNDX",
+   "UK"
+  ],
+  [
+   "EIMI",
+   "UK"
+  ],
+  [
+   "XRES",
+   "UK"
+  ],
+  [
+   "CMOD",
+   "UK"
+  ],
+  [
+   "IGLN",
+   "UK"
+  ],
+  [
+   "IHYA",
+   "UK"
+  ],
+  [
+   "LQDA",
+   "UK"
+  ],
+  [
+   "DTLA",
+   "UK"
+  ],
+  [
+   "IUES",
+   "UK"
+  ],
+  [
+   "CBU0",
+   "UK"
+  ],
+  [
+   "IBTA",
+   "UK"
+  ]
+ ],
+ "base": {
+  "XLK": 285.4,
+  "IVV": 641.2,
+  "VT": 135.8,
+  "IAU": 68.15,
+  "DBC": 29.62,
+  "CSPX": 640.3,
+  "CNDX": 1181.5,
+  "EIMI": 38.52,
+  "XRES": 42.1,
+  "CMOD": 31.68,
+  "IGLN": 68.04,
+  "IHYA": 5.21,
+  "LQDA": 5.02,
+  "DTLA": 4.61,
+  "IUES": 8.93,
+  "CBU0": 138.4,
+  "IBTA": 5.52
+ }
+}
