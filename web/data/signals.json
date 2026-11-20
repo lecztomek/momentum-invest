@@ -1,6 +1,7 @@
 {
- "generated": "2026-12-10T22:04:11Z",
- "config_hash": "a3f91c",
+ "generated": "2026-11-20T20:51:56Z",
+ "source": "engine_v2 / strategies_v2/gpm_uk_best17_a",
+ "config_hash": "e3385276",
  "universe": [
   "IUIT",
   "VWRA",
@@ -35,34 +36,8 @@
  },
  "signals": [
   {
-   "date": "2026-12-10",
-   "tranche": 10,
-   "config": "a3f91c",
-   "best17": {
-    "mode": "RISK",
-    "picks": [
-     "XLK",
-     "DBC"
-    ],
-    "weights": {
-     "IUIT": 0.8,
-     "CMOD": 0.2
-    }
-   },
-   "gpm": {
-    "mode": "RISK",
-    "weights": {
-     "CNDX": 0.2,
-     "CMOD": 0.2,
-     "IUES": 0.2,
-     "IBTA": 0.4
-    }
-   }
-  },
-  {
-   "date": "2026-11-25",
-   "tranche": 25,
-   "config": "a3f91c",
+   "date": "2026-08-01",
+   "tranche": 1,
    "best17": {
     "mode": "CASH",
     "picks": [],
@@ -71,58 +46,83 @@
    "gpm": {
     "mode": "RISK",
     "weights": {
-     "CNDX": 0.26666666666666666,
-     "CMOD": 0.26666666666666666,
-     "IUES": 0.26666666666666666,
-     "CBU0": 0.2
+     "CBU0": 0.2,
+     "CMOD": 0.2666666667,
+     "CNDX": 0.2666666667,
+     "IUES": 0.2666666667
+    }
+   }
+  },
+  {
+   "date": "2026-07-01",
+   "tranche": 1,
+   "best17": {
+    "mode": "RISK",
+    "picks": [
+     "IUIT",
+     "CSPX"
+    ],
+    "weights": {
+     "CSPX": 0.2,
+     "IUIT": 0.8
+    }
+   },
+   "gpm": {
+    "mode": "RISK",
+    "weights": {
+     "CBU0": 0.2,
+     "CMOD": 0.2666666667,
+     "CNDX": 0.2666666667,
+     "IUES": 0.2666666667
     }
    }
   }
  ],
  "history": [
   [
-   "2026-12-10",
-   "RISK",
-   "XLK / DBC",
-   "RISK",
-   "wejście w ryzyko"
-  ],
-  [
-   "2026-11-25",
+   "2026-08-01",
    "CASH",
-   "—",
+   "",
    "RISK",
-   "IBTA → CBU0"
+   "− CSPX, IUIT"
   ],
   [
-   "2026-11-10",
-   "CASH",
-   "—",
+   "2026-07-01",
    "RISK",
-   "wyjście do gotówki"
+   "IUIT / CSPX",
+   "RISK",
+   "+ CBU0, CSPX · − IBTA"
   ],
   [
-   "2026-10-26",
+   "2026-06-01",
    "RISK",
-   "XLK / IVV",
+   "IUIT / CMOD",
    "RISK",
-   "bez zmian"
+   "zmiana wag"
   ],
   [
-   "2026-10-12",
+   "2026-05-01",
    "RISK",
-   "XLK / DBC",
+   "CMOD / IUIT",
    "RISK",
-   "IVV → DBC"
+   "+ CNDX · − IGLN"
   ],
   [
-   "2026-09-25",
+   "2026-04-01",
    "RISK",
-   "XLK / IVV",
+   "IGLN / IUIT",
    "RISK",
-   "bez zmian"
+   "+ CMOD, IBTA · − XRES"
+  ],
+  [
+   "2026-03-01",
+   "RISK",
+   "IGLN / IUIT",
+   "RISK",
+   "+ XRES · − CMOD"
   ]
  ],
+ "diagnostics_source": "przykladowe",
  "ranking": [
   [
    "XLK",
@@ -207,165 +207,163 @@
  },
  "composition": [
   {
-   "date": "2026-06-25",
-   "tranche": 25,
+   "date": "2025-09-01",
+   "tranche": 1,
    "best17": {
-    "IUIT": 0.8,
-    "CSPX": 0.2
+    "IGLN": 0.8,
+    "IUIT": 0.2
    },
    "gpm": {
-    "CNDX": 0.2,
+    "CNDX": 0.2666666667,
+    "EIMI": 0.2666666667,
+    "IBTA": 0.2,
+    "IGLN": 0.2666666667
+   }
+  },
+  {
+   "date": "2025-10-01",
+   "tranche": 1,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CNDX": 0.3333333333,
+    "EIMI": 0.3333333333,
+    "IGLN": 0.3333333333
+   }
+  },
+  {
+   "date": "2025-11-01",
+   "tranche": 1,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CNDX": 0.2666666667,
+    "EIMI": 0.2666666667,
+    "IBTA": 0.2,
+    "IGLN": 0.2666666667
+   }
+  },
+  {
+   "date": "2025-12-01",
+   "tranche": 1,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CMOD": 0.3333333333,
+    "CNDX": 0.3333333333,
+    "IGLN": 0.3333333333
+   }
+  },
+  {
+   "date": "2026-01-01",
+   "tranche": 1,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CNDX": 0.3333333333,
+    "EIMI": 0.3333333333,
+    "IGLN": 0.3333333333
+   }
+  },
+  {
+   "date": "2026-02-01",
+   "tranche": 1,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CMOD": 0.3333333333,
+    "IGLN": 0.3333333333,
+    "IUES": 0.3333333333
+   }
+  },
+  {
+   "date": "2026-03-01",
+   "tranche": 1,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "IGLN": 0.3333333333,
+    "IUES": 0.3333333333,
+    "XRES": 0.3333333333
+   }
+  },
+  {
+   "date": "2026-04-01",
+   "tranche": 1,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CMOD": 0.1333333333,
+    "IBTA": 0.6,
+    "IGLN": 0.1333333333,
+    "IUES": 0.1333333333
+   }
+  },
+  {
+   "date": "2026-05-01",
+   "tranche": 1,
+   "best17": {
+    "CMOD": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CMOD": 0.2666666667,
+    "CNDX": 0.2666666667,
+    "IBTA": 0.2,
+    "IUES": 0.2666666667
+   }
+  },
+  {
+   "date": "2026-06-01",
+   "tranche": 1,
+   "best17": {
     "CMOD": 0.2,
-    "EIMI": 0.2,
-    "IBTA": 0.4
-   }
-  },
-  {
-   "date": "2026-07-10",
-   "tranche": 10,
-   "best17": {
-    "IUIT": 0.8,
-    "CSPX": 0.2
+    "IUIT": 0.8
    },
    "gpm": {
-    "CNDX": 0.2,
-    "CMOD": 0.2,
-    "IUES": 0.2,
-    "IBTA": 0.4
+    "CMOD": 0.2666666667,
+    "CNDX": 0.2666666667,
+    "IBTA": 0.2,
+    "IUES": 0.2666666667
    }
   },
   {
-   "date": "2026-07-27",
-   "tranche": 25,
+   "date": "2026-07-01",
+   "tranche": 1,
    "best17": {
-    "IUIT": 0.8,
-    "IGLN": 0.2
+    "CSPX": 0.2,
+    "IUIT": 0.8
    },
    "gpm": {
-    "CNDX": 0.2,
-    "IGLN": 0.2,
-    "IUES": 0.2,
-    "IBTA": 0.4
+    "CBU0": 0.2,
+    "CMOD": 0.2666666667,
+    "CNDX": 0.2666666667,
+    "IUES": 0.2666666667
    }
   },
   {
-   "date": "2026-08-10",
-   "tranche": 10,
-   "best17": {
-    "IUIT": 0.8,
-    "IGLN": 0.2
-   },
-   "gpm": {
-    "CNDX": 0.2,
-    "IGLN": 0.2,
-    "XRES": 0.2,
-    "IBTA": 0.4
-   }
-  },
-  {
-   "date": "2026-08-25",
-   "tranche": 25,
-   "best17": {
-    "IUIT": 0.8,
-    "CSPX": 0.2
-   },
-   "gpm": {
-    "CNDX": 0.2,
-    "XRES": 0.2,
-    "IUES": 0.2,
-    "IBTA": 0.4
-   }
-  },
-  {
-   "date": "2026-09-10",
-   "tranche": 10,
-   "best17": {
-    "IUIT": 0.8,
-    "CSPX": 0.2
-   },
-   "gpm": {
-    "CNDX": 0.2,
-    "CMOD": 0.2,
-    "IUES": 0.2,
-    "IBTA": 0.4
-   }
-  },
-  {
-   "date": "2026-09-25",
-   "tranche": 25,
-   "best17": {
-    "IUIT": 0.8,
-    "CSPX": 0.2
-   },
-   "gpm": {
-    "CNDX": 0.2,
-    "CMOD": 0.2,
-    "IUES": 0.2,
-    "IBTA": 0.4
-   }
-  },
-  {
-   "date": "2026-10-12",
-   "tranche": 10,
-   "best17": {
-    "IUIT": 0.8,
-    "CMOD": 0.2
-   },
-   "gpm": {
-    "CNDX": 0.26666666666666666,
-    "CMOD": 0.26666666666666666,
-    "IUES": 0.26666666666666666,
-    "CBU0": 0.2
-   }
-  },
-  {
-   "date": "2026-10-26",
-   "tranche": 25,
-   "best17": {
-    "IUIT": 0.8,
-    "CSPX": 0.2
-   },
-   "gpm": {
-    "CNDX": 0.26666666666666666,
-    "CMOD": 0.26666666666666666,
-    "IUES": 0.26666666666666666,
-    "CBU0": 0.2
-   }
-  },
-  {
-   "date": "2026-11-10",
-   "tranche": 10,
+   "date": "2026-08-01",
+   "tranche": 1,
    "best17": {},
    "gpm": {
-    "CNDX": 0.2,
-    "CMOD": 0.2,
-    "IUES": 0.2,
-    "IBTA": 0.4
-   }
-  },
-  {
-   "date": "2026-11-25",
-   "tranche": 25,
-   "best17": {},
-   "gpm": {
-    "CNDX": 0.26666666666666666,
-    "CMOD": 0.26666666666666666,
-    "IUES": 0.26666666666666666,
-    "CBU0": 0.2
-   }
-  },
-  {
-   "date": "2026-12-10",
-   "tranche": 10,
-   "best17": {
-    "IUIT": 0.8,
-    "CMOD": 0.2
-   },
-   "gpm": {
-    "CNDX": 0.2,
-    "CMOD": 0.2,
-    "IUES": 0.2,
-    "IBTA": 0.4
+    "CBU0": 0.2,
+    "CMOD": 0.2666666667,
+    "CNDX": 0.2666666667,
+    "IUES": 0.2666666667
    }
   }
  ]

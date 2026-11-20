@@ -335,6 +335,19 @@ const tbl=(h,b,f)=>`<div class="card tw"><table><thead><tr>${h}</tr></thead><tbo
 /* ---- pulpit ---- */
 let CURV="usd", RNG=6;
 const FXN=PORT.fx.rate;
+/* Nastepny rebalans liczony z danych, nie wpisany. Silnik trzyma rytm miesieczny,
+   wiec kolejny okres to ten sam dzien miesiaca w nastepnym miesiacu. */
+const MIES=["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca",
+  "sierpnia","września","października","listopada","grudnia"];
+function nastepnyRebalans(){
+  const ost=SIGNALS[0].date,d=new Date(ost+"T00:00:00Z");
+  d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+1);
+  const dzien=Math.min(+ost.slice(8,10),new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate());
+  d.setUTCDate(dzien);
+  const dni=Math.round((d-new Date(new Date().toISOString().slice(0,10)+"T00:00:00Z"))/864e5);
+  return {iso:d.toISOString().slice(0,10),dni,
+    opis:`${d.getUTCDate()} ${MIES[d.getUTCMonth()]}`,
+    kiedy:dni>1?`za ${dni} dni`:dni===1?"jutro":dni===0?"dzisiaj":`${-dni} dni temu`}}
 const cur=()=>CURV==="usd"
   ? {v:VUSD,p:PUSD,u:"USD",alt:{v:VALUE,u:"zł"},r:RETC.usd,twr:PORT.twr.usd,k:x=>x}
   : {v:VALUE,p:PAID,u:"zł", alt:{v:VUSD, u:"USD"},r:RETC.pln,twr:PORT.twr.pln,k:x=>x/FXN};
@@ -378,8 +391,10 @@ function renderPulpit(){
     ["TWR",sg2(C.twr)+"%",C.twr>=0?"--pos":"--neg"]
   ].map(([l,v,c])=>`<div><span>${l}</span><b style="color:var(${c})">${v}</b></div>`).join("");
 
+  const R=nastepnyRebalans();
   document.getElementById("nextBox").innerHTML=
-    `<div class="ico">25</div><div><b>Najbliższy rebalans</b><span>25 grudnia · transza 25-tego</span></div><div class="r">za 15 dni</div>`;
+    `<div class="ico">${R.iso.slice(8,10)}</div><div><b>Najbliższy rebalans</b><span>${R.opis} · ostatni sygnał ${SIGNALS[0].date}</span></div>
+     <div class="r"${R.dni<0?' style="color:var(--neg)"':""}>${R.kiedy}</div>`;
 
   renderAccounts();
 
@@ -409,6 +424,9 @@ function renderActions(){
      <span class="sub">cel ${zl(r.want)} zł</span></div></div>`).join("")
     :'<div class="act hold"><i class="w"></i><div><div class="t">Bez zmian</div></div></div>'}
 function renderHist(){
+  const R=nastepnyRebalans();
+  document.getElementById("sigVal").innerHTML=`${R.kiedy}<span>do rebalansu</span>`;
+  document.getElementById("sigAlt").textContent=`${R.opis} · ostatni sygnał z ${SIGNALS[0].date}`;
   document.getElementById("modeCards").innerHTML=[["BEST17",SIGNALS[0].best17,SIGNALS[0].best17.picks.join(" · ")||"gotówka"],
     ["GPM",SIGNALS[0].gpm,Object.keys(SIGNALS[0].gpm.weights).join(" · ")]].map(([n,L,txt])=>
     `<div class="legc"><div class="t">${n} <em>sygnał z ${SIGNALS[0].date}</em></div>
