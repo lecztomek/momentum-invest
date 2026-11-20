@@ -16,4 +16,4 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python3 tools/probe_feed.py --years 2
+      - run: python3 tools/probe_feed.py --years 2 --sources stooq,yahoo
