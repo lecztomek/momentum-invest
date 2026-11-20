@@ -1,0 +1,15 @@
+{
+  "name": "gpm_uk_best18_v0",
+  "hypothesis": "User: 'odpal best18 na mojej konfiguracji uk'. To `gpm_uk_best17_a` (realnie wdrozona konfiguracja: gpm_uk natywnie na ETF-ach UK + best17_a liczony na danych US i wykonywany na UK) z jedyna zmiana: `best17_a` zastapiony przez `best18`, czyli te sama strategie z dolozonym `xle.us` (ofensywa, wlasny gate mom3 > +1%) i `shy.us` (defensywa, eligibilny tylko gdy wlasne momentum 12M > 0). Motywacja z audytu calej strategii (2026-11-20): noga Best17 ma uniwersum CZTERECH aktywow, z czego dwa to akcje US, i nie ma WEWNETRZNEGO aktywa defensywnego - jest albo w ryzyku, albo w gotowce. GPM ma 10 aktywow i ciagle skalowanie ochrony. Asymetria widoczna na zywo w listopadzie 2026: noga LYNX/Best17 -15.04%, noga XTB/GPM -4.29%. Dodatkowo `redistribute_if_short` powoduje, ze zablokowanie kandydata przez gate NIE podnosi gotowki, tylko KONCENTRUJE kapital na pozostalych - czyli filtr odpalajacy sie w zlych czasach zwieksza koncentracje (zaobserwowane 2026-11: gate wyrzucil DBC, waga poszla na XLK/IVV). Odniesienie z wariantu US (`gpm_mid_10_best17_a` -> `gpm_mid_10_best18`): CAGR 9.02% -> 8.57%, MaxDD bez zmian -16.15%, najgorszy rok -8.01% -> -1.93%, czas pod woda 20 -> 17 miesiecy, replika 2022 -7.98% -> -1.83%, replika GFC -4.56% -> -3.10%, kosztem hossy po GFC 7.80% -> 5.58%. Ten spec sprawdza, czy ta sama wymiana dziala na konfiguracji UK.",
+  "strategy_spec_paths": [
+    "../gpm_uk/strategy_spec.json",
+    "../best18/strategy_spec.json"
+  ],
+  "combiner": "fixed_capital_weights",
+  "combiner_params": {
+    "capital_weights": {"gpm_uk_v0": 0.5, "best18_v0": 0.5}
+  },
+  "reporting": "monthly_csv_export",
+  "reporting_params": {"output_path": "results/monthly/gpm_uk_best18.csv", "annual_tax_rate": 0.19},
+  "created_at": "2026-11-20"
+}

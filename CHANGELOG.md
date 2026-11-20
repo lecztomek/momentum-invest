@@ -2,6 +2,52 @@
 
 Zapis istotnych zmian w projekcie, najnowsze na górze. Każdy wpis krótko: co się zmieniło i po co.
 
+## 2026-11-20
+
+- **NOWA STRATEGIA `strategies_v2/gpm_uk_best18/` - `best18` zamiast `best17_a` na WDROZONEJ konfiguracji
+  UK. Wynik: SLABSZY niz ta sama wymiana na konfiguracji US, nie jest to jednoznaczna wygrana.**
+  User: "odpal best18 na mojej konfiguracji uk". Motywacja z audytu calej strategii (ta sama sesja):
+  noga Best17 ma uniwersum CZTERECH aktywow, z czego dwa to akcje US, i nie ma WEWNETRZNEGO aktywa
+  defensywnego - jest albo w ryzyku, albo w gotowce; GPM ma 10 aktywow i ciagle skalowanie ochrony.
+  Asymetria zaobserwowana na zywo w listopadzie 2026: noga LYNX/Best17 **-15.04%**, noga XTB/GPM
+  **-4.29%** (od szczytu 2026-10-29).
+
+  **Wynik (okno od 2018-06, po podatku 19%):**
+
+  | metryka | `gpm_uk_best17_a` | `gpm_uk_best18` |
+  |---|---|---|
+  | CAGR | 9.94% | 9.92% |
+  | MaxDD (dzienny) | -19.21% | **-18.15%** |
+  | Calmar | 0.517 | **0.546** |
+  | Sharpe | 0.791 | 0.780 |
+  | najgorszy rok | -5.58% | **-5.58% (BEZ ZMIAN)** |
+  | turnover/rok | 2.50 | 2.66 |
+
+  **KLUCZOWA ROZNICA WOBEC WARIANTU US.** Na `gpm_mid_10_best17_a` -> `gpm_mid_10_best18` najgorszy
+  rok poprawial sie z -8.01% na -1.93%. **Na konfiguracji UK nie zmienia sie wcale.** Powod: `gpm_uk`
+  ma juz wlasna noge obligacyjna (IBTA/CBU0), ktora robi to, co `shy.us` dokłada do Best17 - ta
+  ochrona jest juz w portfelu, tylko w drugiej polowie. Dolozenie jej po raz drugi nie kumuluje sie.
+
+  **CALA ROZNICA TO TRZY EPIZODY, nie systematyczna poprawa** (2018-2021 i 2024-2025 identyczne co do
+  grosza): 2022 **+4.10pp** (-4.92% -> -0.81%, XLE zlapal rajd energii - dokladnie to, po co zostal
+  dolozony), 2023 -0.86pp, **2026 -4.57pp** (4.99% -> 0.41%). Rok 2026 psuja DWA miesiace, w ktorych
+  momentum wypchnelo XLE na szczyt rankingu: 2026-04 (XLE 10%, -2.06pp) i 2026-05 (**XLE 40% jako
+  top1**, -2.35pp). To tez powod, dla ktorego MaxDD liczony MIESIECZNIE w oknie 2018+ pogarsza sie
+  (-10.35% -> -14.25%), mimo ze liczony DZIENNIE na pelnej historii poprawia sie (-19.21% -> -18.15%)
+  - biezace obsuniecie jest dla best18 glebsze.
+
+  **Stress test** (replika krachu doklejona do dzisiejszych cen): bessa inflacyjna 2022 dolek
+  -9.9% -> **-6.8%**, wynik -9.6% -> **-6.5%** (rynek -22.4%); COVID bez zmian (-17.5% / +4.4%).
+
+  **`shy.us` dziala dokladnie jak zaprojektowano**: wybrany w 15 miesiacach z 218, WSZYSTKIE w latach
+  2008-2009. `xle.us` w 25 miesiacach - przy takiej probce jeden pechowy epizod (2026-04/05) dominuje
+  obraz, wiec dowod jest cienki w obie strony.
+
+  **Rekomendacja: brak przewagi na tyle wyraznej, zeby przebudowywac zweryfikowany arkusz.** Argument
+  jest po stronie best18 (plytszy MaxDD dzienny, lepszy Calmar, wyraznie lepsza bessa inflacyjna), ale
+  kupiony za wieksza zmiennosc wyniku rok do roku. Spec zapisany jako udokumentowana alternatywa -
+  **konfiguracja produkcyjna `gpm_uk_best17_a` BEZ ZMIAN.**
+
 ## 2026-08-21 (3)
 
 - **KONCEPCJA v10 "krotkoterminowy reversal 1-4 tygodnie" (`run_short_reversal.py`) - PIERWSZY
