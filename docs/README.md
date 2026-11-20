@@ -24,13 +24,19 @@ Strona czyta dane przez `fetch`, więc musi być serwowana po HTTP — otwarcie
 | `data/portfolio.json` | kapitał, stan posiadania, krzywa wartości | docelowo baza |
 | `.nojekyll` | wylacza Jekylla na Pages (serwuje pliki bez przetwarzania) | — |
 
+Zadnego pliku w `docs/` nie generuje sie w trakcie wdrozenia - co w repo, to na stronie.
+
 `data/portfolio.json` jest tu tylko dla prototypu — docelowo te dane są prywatne
 i idą do bazy (per użytkownik), a nie do repozytorium.
 
 ## Publikacja
 
-Settings → Pages → Source: **Deploy from a branch**, galaz z ta zawartoscia, folder **`/docs`**.
+Settings → Pages → Source: **Deploy from a branch** → galaz `main`, folder **`/docs`**.
 Adres: `https://<uzytkownik>.github.io/momentum-invest/`.
+
+GitHub przebudowuje strone sam po kazdym pushu na `main`, wiec osobny workflow
+wdrazajacy nie jest potrzebny. Pipeline cenowy bedzie commitowal pliki do
+`docs/data/` i to wystarczy, zeby strona pokazala nowe dane.
 
 ## Stan
 
