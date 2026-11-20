@@ -125,7 +125,7 @@ function mount(c){
   const tip=el.querySelector(".tip"),svg=el.querySelector("svg");
   if(svg&&svg.dataset.hover)wire(el,svg,tip,JSON.parse(svg.dataset.hover))}
 const renderAll=()=>charts.forEach(mount);
-let rt;addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(renderAll,120)});
+let rt;addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(()=>{renderAll();if(!MXN)renderMatrix()},120)});
 function wire(box,svg,tip,H){
   const move=e=>{
     const r=svg.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*H.W,y=(e.clientY-r.top)/r.height*H.H;
@@ -283,20 +283,28 @@ function legCol(c,leg){
   const o={...c[leg]},s=Object.values(o).reduce((a,b)=>a+b,0);
   if(s<.999)o.GOTOWKA=1-s;
   return round100(o)}
+let MXN=null;  /* ile ostatnich dat pokazac; null = dobierz do szerokosci */
 function renderMatrix(){
+  const wide=innerWidth>=560, n=MXN||(wide?12:6);
+  const COLS=COMPO.slice(-n);
+  document.querySelectorAll("#segMx button").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.mx===n)));
   const head=`<thead><tr><th class="st">Walor</th>`
-    +COMPO.map(c=>`<th>${c.date.slice(8)}.${c.date.slice(5,7)}</th>`).join("")+`</tr></thead>`;
+    +COLS.map(c=>`<th>${c.date.slice(8)}.${c.date.slice(5,7)}</th>`).join("")+`</tr></thead>`;
   let body="";
   for(const[leg,name]of [["best17","BEST17"],["gpm","GPM"]]){
-    const cols=COMPO.map(c=>legCol(c,leg));
+    const cols=COLS.map(c=>legCol(c,leg));
     const rows=[...ORDER,"GOTOWKA"].filter(t=>cols.some(c=>c[t]));
-    body+=`<tr class="grp"><td class="st">${name}</td><td colspan="${COMPO.length}"></td></tr>`;
+    body+=`<tr class="grp"><td class="st">${name}</td><td colspan="${COLS.length}"></td></tr>`;
     for(const t of rows)
       body+=`<tr><td class="st"><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>`
         +cols.map(c=>{const v=c[t]||0;
           return v?`<td style="background:rgba(${hexRGB(CSS(KOL[t]||"--s6"))},${(.16+.006*v).toFixed(2)})">${v}</td>`
                   :'<td class="z">·</td>'}).join("")+`</tr>`}
-  document.getElementById("mxComp").innerHTML=head+"<tbody>"+body+"</tbody>"}
+  document.getElementById("mxComp").innerHTML=head+"<tbody>"+body+"</tbody>";
+  const w=document.getElementById("mxWrap");
+  w.classList.toggle("more",document.getElementById("mxComp").scrollWidth>w.clientWidth+2)}
+document.getElementById("segMx").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;MXN=+b.dataset.mx;renderMatrix()});
 
 /* ---- ostatnie 12 miesiecy ---- */
 chart("c-month",W=>{
