@@ -69,7 +69,7 @@
 
 <!-- ========== SYGNAL ========== -->
 <section id="v-sygnal" hidden>
-  <div class="vh"><h1>Sygnał</h1><span class="stamp">ceny 2026-12-10</span></div>
+  <div class="phead"><h1>Sygnał</h1><span class="stamp">ceny 2026-12-10</span></div>
 
   <div class="card">
     <div class="lbl">Skład docelowy</div>
@@ -90,10 +90,10 @@
     </div>
   </div>
 
-  <h2 class="sec">Do zrobienia</h2>
+  <h2 class="psec">Do zrobienia</h2>
   <div id="actions"></div>
 
-  <h2 class="sec">Gdzie co ma być</h2>
+  <h2 class="psec">Gdzie co ma być</h2>
   <div class="seg" id="segS">
     <button data-s="sum" aria-pressed="true">Sumarycznie</button>
     <button data-s="acc" aria-pressed="false">Wg kont</button>
@@ -101,7 +101,7 @@
   </div>
   <div id="skladBody"></div>
 
-  <h2 class="sec">Ostatnie sygnały</h2>
+  <h2 class="psec">Ostatnie sygnały</h2>
   <div class="card tw"><table>
     <thead><tr><th>Data</th><th>BEST17</th><th>GPM</th><th>Zmiana</th></tr></thead>
     <tbody id="hist"></tbody>
@@ -110,7 +110,7 @@
 
 <!-- ========== TRANSAKCJE ========== -->
 <section id="v-transakcje" hidden>
-  <div class="vh"><h1>Transakcje</h1><span class="stamp" id="txCount"></span></div>
+  <div class="phead"><h1>Transakcje</h1><span class="stamp" id="txCount"></span></div>
   <div class="card">
     <div class="lbl" style="margin-bottom:12px">Dopisz rekord</div>
     <form class="form" id="txForm">
@@ -126,22 +126,16 @@
     </form>
   </div>
 
-  <h2 class="sec">Wpłacone na konta</h2>
-  <div class="card tw"><table>
-    <thead><tr><th>Konto</th><th>Wpłaty</th><th>Wypłaty</th><th>Netto</th></tr></thead>
-    <tbody id="depRows"></tbody>
-  </table></div>
+  <h2 class="psec">Wpłacone na konta</h2>
+  <div class="stats" id="depStats"></div>
 
-  <h2 class="sec">Historia</h2>
-  <div class="card tw"><table>
-    <thead><tr><th>Data</th><th>Konto</th><th>Operacja</th><th>Kwota</th><th></th></tr></thead>
-    <tbody id="txRows"></tbody>
-  </table></div>
+  <h2 class="psec">Historia</h2>
+  <div class="list" id="txList"></div>
 </section>
 
 <!-- ========== PORTFEL ========== -->
 <section id="v-portfel" hidden>
-  <div class="vh"><h1>Portfel</h1><span class="stamp">USD/PLN 4,0600</span></div>
+  <div class="phead"><h1>Portfel</h1><span class="stamp">USD/PLN 4,0600</span></div>
   <div class="tiles">
     <div class="tile"><div class="lbl">Wartość</div><div class="v">197 640</div><div class="d">złotych</div></div>
     <div class="tile"><div class="lbl">Wpłacone</div><div class="v" style="color:var(--muted)">190 000</div><div class="d">złotych</div></div>
@@ -150,13 +144,13 @@
   </div>
   <p class="note">Rozjazd PLN wobec USD to kurs, nie wynik strategii.</p>
 
-  <h2 class="sec">Wartość a wpłacony kapitał</h2>
+  <h2 class="psec">Wartość a wpłacony kapitał</h2>
   <div class="card">
     <div class="chart" id="c-equity"></div>
     <div class="legend" id="l-equity"></div>
   </div>
 
-  <h2 class="sec">Konta</h2>
+  <h2 class="psec">Konta</h2>
   <div class="seg setupSel"></div>
   <div class="card tw"><table>
     <thead><tr><th>Konto</th><th>Wartość</th><th>Cel</th><th>PLN</th><th>USD</th></tr></thead>
@@ -164,25 +158,25 @@
   </table></div>
   <p class="note" id="accNote"></p>
 
-  <h2 class="sec">Odchylenie od celu</h2>
+  <h2 class="psec">Odchylenie od celu</h2>
   <div class="card"><div class="chart" id="c-drift"></div></div>
 </section>
 
 <!-- ========== WYNIKI ========== -->
 <section id="v-wyniki" hidden>
-  <div class="vh"><h1>Wyniki</h1><span class="stamp">cze 2018 – gru 2026</span></div>
+  <div class="phead"><h1>Wyniki</h1><span class="stamp">cze 2018 – gru 2026</span></div>
   <div class="tiles" id="tiles"></div>
 
-  <h2 class="sec">Miesiąc po miesiącu</h2>
+  <h2 class="psec">Miesiąc po miesiącu</h2>
   <div class="card tw"><table class="mg" id="mgrid"></table></div>
 
-  <h2 class="sec">Obsunięcie od szczytu</h2>
+  <h2 class="psec">Obsunięcie od szczytu</h2>
   <div class="card"><div class="chart" id="c-dd"></div></div>
 
-  <h2 class="sec">Rok po roku</h2>
+  <h2 class="psec">Rok po roku</h2>
   <div class="card"><div class="chart" id="c-yr"></div></div>
 
-  <h2 class="sec">Co było trzymane</h2>
+  <h2 class="psec">Co było trzymane</h2>
   <div class="seg" id="segMx">
     <button data-mx="6" aria-pressed="true">3 miesiące</button>
     <button data-mx="12" aria-pressed="false">pół roku</button>
@@ -190,7 +184,7 @@
   <div class="card tw" id="mxWrap"><table class="mx" id="mxComp"></table></div>
   <p class="note">Waga pozycji w obrębie swojej nogi. Im mocniejszy kolor, tym większy udział. Puste pole znaczy, że walor nie był trzymany.</p>
 
-  <h2 class="sec">Jak strategia się przestawiała</h2>
+  <h2 class="psec">Jak strategia się przestawiała</h2>
   <div class="card">
     <div class="chart" id="c-mix"></div>
     <div class="legend" id="l-mix"></div>
@@ -199,14 +193,14 @@
 
 <!-- ========== CENY ========== -->
 <section id="v-ceny" hidden>
-  <div class="vh"><h1>Ceny</h1><span class="stamp" id="feedStamp"></span></div>
+  <div class="phead"><h1>Ceny</h1><span class="stamp" id="feedStamp"></span></div>
 
   <div class="card">
     <div class="lbl" style="margin-bottom:6px">Kontrola danych</div>
     <div id="checks"></div>
   </div>
 
-  <h2 class="sec">Ceny użyte w sygnale</h2>
+  <h2 class="psec">Ceny użyte w sygnale</h2>
   <div class="seg" id="segP">
     <button data-p="10" aria-pressed="true">Transza 10-tego</button>
     <button data-p="25" aria-pressed="false">Transza 25-tego</button>
@@ -215,34 +209,31 @@
     <button data-r="0" aria-pressed="true">Podgląd</button>
     <button data-r="1" aria-pressed="false">Admin</button>
   </div>
-  <div class="card tw"><table>
-    <thead><tr><th>Walor</th><th>Cena</th><th>Data</th><th>Zmiana</th><th>Stan</th><th id="thAct" hidden></th></tr></thead>
-    <tbody id="priceRows"></tbody>
-  </table></div>
+  <div class="list" id="priceList"></div>
   <p class="note">To dokładnie te liczby, z których policzony został sygnał — nie świeże pobranie. Korekta nie nadpisuje ceny z feedu, tylko dokłada wpis z powodem i autorem.</p>
 
-  <h2 class="sec">Historia cen</h2>
+  <h2 class="psec">Historia cen</h2>
   <div class="card tw"><table class="mg" id="priceHist"></table></div>
 </section>
 
 <!-- ========== DLACZEGO ========== -->
 <section id="v-dlaczego" hidden>
-  <div class="vh"><h1>Dlaczego taki skład</h1></div>
+  <div class="phead"><h1>Dlaczego taki skład</h1></div>
 
-  <h2 class="sec">Kanarek</h2>
+  <h2 class="psec">Kanarek</h2>
   <div class="card">
     <div class="chart" id="c-canary"></div>
     <div class="legend" id="l-canary"></div>
     <p class="why">Oba powyżej progu −2%, więc <b>RISK</b>. Dopiero gdy <b>oba</b> spadną poniżej linii, BEST17 wychodzi do gotówki.</p>
   </div>
 
-  <h2 class="sec">Ranking BEST17</h2>
+  <h2 class="psec">Ranking BEST17</h2>
   <div class="card">
     <div class="chart" id="c-rank"></div>
     <p class="why">IAU miało wyższy wynik niż VT, ale nie przeszło bramki momentum <b>+1%</b>.</p>
   </div>
 
-  <h2 class="sec">Jak blisko jest zmiana</h2>
+  <h2 class="psec">Jak blisko jest zmiana</h2>
   <div class="card">
     <div class="gate"><span class="dot ok"></span>XLK traci pozycję 1 przy spadku<span class="m">−2,6%</span></div>
     <div class="gate"><span class="dot ok"></span>DBC wypada z podium przy spadku<span class="m">−5,8%</span></div>
@@ -250,7 +241,7 @@
     <div class="gate"><span class="dot nr"></span>Kanarek w CASH przy spadku VT i XLK o<span class="m">−3,4%</span></div>
   </div>
 
-  <h2 class="sec">GPM</h2>
+  <h2 class="psec">GPM</h2>
   <div class="card">
     <dl class="kv">
       <dt>Ryzykowne w top 3</dt><dd>CNDX · CMOD · IUES</dd>

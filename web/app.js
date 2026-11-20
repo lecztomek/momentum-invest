@@ -420,13 +420,13 @@ function viewAcc(){
   const s=SETUPS[SETUP];let h=`<div class="seg setupSel"></div>`;
   for(const a of s.accounts){
     const o=accComp(a),cap=accTarget(a);
-    h+=`<h2 class="sec">${esc(a.name)} <span class="sub" style="font-weight:400">· ${accLegs(a)} · ${zl(cap)} zł</span></h2>`
+    h+=`<h2 class="psec">${esc(a.name)} <span class="sub" style="font-weight:400">· ${accLegs(a)} · ${zl(cap)} zł</span></h2>`
       +tbl("<th>ETF</th><th>Kwota</th><th>Udział konta</th>",Object.entries(o).map(([t,v])=>
         `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
          <td class="num">${zl(v)}</td><td class="num">${pc(v/cap)}</td></tr>`).join(""))}
   return h}
 const viewDat=()=>[[T10,SIGNALS[0]],[T25,SIGNALS[1]]].map(([T,s])=>
-  `<h2 class="sec">Transza ${s.tranche}-tego <span class="sub" style="font-weight:400">· ${s.date}</span></h2>
+  `<h2 class="psec">Transza ${s.tranche}-tego <span class="sub" style="font-weight:400">· ${s.date}</span></h2>
    <div style="margin-bottom:11px">
      <div class="leg"><b>BEST17</b><span class="pill ${s.best17.mode==="RISK"?"p-risk":"p-cash"}">${s.best17.mode}</span><span class="as">${s.best17.picks.join(" · ")||"gotówka"}</span></div>
      <div class="leg"><b>GPM</b><span class="pill ${s.gpm.mode==="RISK"?"p-risk":"p-cash"}">${s.gpm.mode}</span><span class="as">${Object.keys(s.gpm.weights).join(" · ")}</span></div></div>`
@@ -476,7 +476,6 @@ const eff=(t,i)=>{const P=PRICES[PTAB],o=OVR[okey(t,P.dates[i])];return o?o.v:P.
 function renderCeny(){
   const P=PRICES[PTAB],last=P.dates.length-1;
   document.getElementById("feedStamp").textContent=FEED.source+" · "+FEED.fetched;
-  document.getElementById("thAct").hidden=!ADMIN;
   const chk=[];
   const brak=INSTR.filter(([t])=>eff(t,last)==null);
   chk.push([brak.length?"warn":"ok","Komplet instrumentów",(INSTR.length-brak.length)+"/"+INSTR.length]);
@@ -490,23 +489,20 @@ function renderCeny(){
   document.getElementById("checks").innerHTML=chk.map(([s,t,m])=>
     `<div class="chk"><span class="ic ${s}">${s==="ok"?"✓":"!"}</span>${esc(t)}<span class="m">${esc(m)}</span></div>`).join("");
 
-  document.getElementById("priceRows").innerHTML=INSTR.map(([t,mk])=>{
+  document.getElementById("priceList").innerHTML=INSTR.map(([t,mk])=>{
     const d=P.dates[last],o=OVR[okey(t,d)],raw=P.px[t][last],v=eff(t,last),ch=(v/eff(t,last-1)-1)*100;
-    if(EDIT===t)return `<tr><td>${t}</td><td colspan="${ADMIN?5:4}" style="text-align:left;padding:10px 0">
-      <form class="form" id="ovrForm" style="grid-template-columns:1fr 2fr auto auto;align-items:end">
-        <div class="fld"><label for="ovrV">Cena</label><input type="number" id="ovrV" step="0.0001" value="${v}" required></div>
-        <div class="fld"><label for="ovrR">Powód korekty</label><input type="text" id="ovrR" placeholder="np. zły kurs z feedu" required></div>
-        <button class="btn" type="submit">Zapisz</button>
-        <button class="btn" type="button" data-cancel style="background:var(--surface2);color:var(--muted)">Anuluj</button>
-      </form></td></tr>`;
-    return `<tr><td>${t}<span class="tick">${mk==="US"?"sygnał":"wykonanie"}</span></td>
-      <td class="num">${px(v)}${o?`<span class="tick" style="text-decoration:line-through">${px(raw)}</span>`:""}</td>
-      <td class="num sub">${d}</td>
-      <td class="num" style="color:${ch>=0?"var(--pos)":"var(--neg)"}">${sg(ch)}%</td>
-      <td>${o?`<span class="pill p-cash" title="${esc(o.r)} · ${esc(o.who)} · ${esc(o.when)}">skorygowane</span>`
-        :v===eff(t,last-1)?'<span class="pill p-warn">zastój</span>':'<span class="pill p-neu">ok</span>'}</td>
-      ${ADMIN?`<td style="width:1%"><button class="del" data-edit="${t}" aria-label="Koryguj ${t}" style="font-size:.85rem">zmień</button>
-        ${o?`<button class="del" data-undo="${t}" aria-label="Cofnij korektę ${t}">×</button>`:""}</td>`:""}</tr>`}).join("");
+    if(EDIT===t)return `<div class="row" style="grid-template-columns:1fr"><form class="form" id="ovrForm" style="grid-template-columns:1fr 2fr;align-items:end">
+      <div class="fld"><label for="ovrV">Cena ${t}</label><input type="number" id="ovrV" step="0.0001" value="${v}" required></div>
+      <div class="fld"><label for="ovrR">Powód korekty</label><input type="text" id="ovrR" placeholder="np. zły kurs z feedu" required></div>
+      <div class="fld"><button class="btn" type="submit">Zapisz</button></div>
+      <div class="fld"><button class="btn" type="button" data-cancel style="background:var(--surface2);color:var(--muted)">Anuluj</button></div>
+    </form></div>`;
+    return `<div class="row"><div class="ic" style="background:${CSS(KOL[t]||"--s6")}">${t.slice(0,2)}</div>
+      <div class="nm">${t}<em>${mk==="US"?"sygnał":"wykonanie"} · ${d}${o?` · <span style="color:var(--cash)">skorygowane</span>`:""}</em></div>
+      <div class="vl" style="display:flex;align-items:center;gap:12px"><div><b>${px(v)}</b>
+        <span style="color:${ch>=0?"var(--pos)":"var(--neg)"}">${sg(ch)}%</span></div>
+        ${ADMIN?`<button class="del" data-edit="${t}" style="font-size:.8rem">zmień</button>`:""}
+        ${ADMIN&&o?`<button class="del" data-undo="${t}">×</button>`:""}</div></div>`}).join("");
 
   let h=`<thead><tr><th>Data</th>${INSTR.map(([t])=>`<th>${t}</th>`).join("")}</tr></thead><tbody>`;
   for(let i=P.dates.length-1;i>=0;i--)
@@ -522,12 +518,12 @@ document.getElementById("segR").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   document.querySelectorAll("#segR button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
   ADMIN=b.dataset.r==="1";EDIT=null;renderCeny()});
-document.getElementById("priceRows").addEventListener("click",e=>{
+document.getElementById("priceList").addEventListener("click",e=>{
   const ed=e.target.closest("[data-edit]"),un=e.target.closest("[data-undo]"),ca=e.target.closest("[data-cancel]");
   if(ed){EDIT=ed.dataset.edit;renderCeny();document.getElementById("ovrV")?.focus()}
   else if(un){delete OVR[okey(un.dataset.undo,PRICES[PTAB].dates.at(-1))];saveOVR();renderCeny()}
   else if(ca){EDIT=null;renderCeny()}});
-document.getElementById("priceRows").addEventListener("submit",e=>{
+document.getElementById("priceList").addEventListener("submit",e=>{
   e.preventDefault();
   OVR[okey(EDIT,PRICES[PTAB].dates.at(-1))]={v:parseFloat(document.getElementById("ovrV").value),
     r:document.getElementById("ovrR").value,who:"admin",when:new Date().toISOString().slice(0,16).replace("T"," ")};
@@ -544,23 +540,25 @@ function fillAccSelect(){
   const s=document.getElementById("txAcc"),cur=s.value;
   s.innerHTML=SETUPS[SETUP].accounts.map(a=>`<option>${esc(a.name)}</option>`).join("");
   if([...s.options].some(o=>o.value===cur))s.value=cur}
+const TXI={wplata:["↓","--pos"],wyplata:["↑","--cash"],kupno:["+","--s1"],sprzedaz:["−","--s2"]};
 function renderTX(){
   TX.sort((a,b)=>b.d.localeCompare(a.d));
   document.getElementById("txCount").textContent=TX.length+" "+(TX.length===1?"rekord":TX.length<5?"rekordy":"rekordów");
-  document.getElementById("txRows").innerHTML=TX.length?TX.map((r,i)=>
-    `<tr><td class="num" style="font-weight:400">${r.d}</td><td>${esc(r.a)}</td>
-      <td style="text-align:right"><span class="pill ${r.t==="wplata"?"p-risk":r.t==="wyplata"?"p-cash":"p-neu"}">${TYP[r.t]}</span>${r.w?` <b>${esc(r.w)}</b>`:""}</td>
-      <td class="num">${zl(r.k)} zł</td>
-      <td style="width:1%"><button class="del" data-del="${i}" aria-label="Usuń rekord z ${r.d}">×</button></td></tr>`).join("")
-    :'<tr><td colspan="5"><div class="empty">Brak rekordów</div></td></tr>';
+  document.getElementById("txList").innerHTML=TX.length?TX.map((r,i)=>{
+    const[sym,c]=TXI[r.t];
+    return `<div class="row"><div class="ic" style="background:${CSS(c)}">${sym}</div>
+      <div class="nm">${TYP[r.t]}${r.w?" "+esc(r.w):""}<em>${r.d} · ${esc(r.a)}</em></div>
+      <div class="vl" style="display:flex;align-items:center;gap:10px"><b>${zl(r.k)} zł</b>
+        <button class="del" data-del="${i}" aria-label="Usuń rekord z ${r.d}">×</button></div></div>`}).join("")
+    :'<div class="empty">Brak rekordów. Dopisz pierwszy powyżej.</div>';
   const acc={};
   for(const r of TX){acc[r.a]=acc[r.a]||{in:0,out:0};
     if(r.t==="wplata")acc[r.a].in+=r.k;if(r.t==="wyplata")acc[r.a].out+=r.k}
   const ks=Object.keys(acc);
-  document.getElementById("depRows").innerHTML=ks.length?ks.map(k=>
-    `<tr><td>${esc(k)}</td><td class="num">${zl(acc[k].in)}</td><td class="num sub">${acc[k].out?zl(acc[k].out):"—"}</td>
-     <td class="num" style="font-weight:700">${zl(acc[k].in-acc[k].out)} zł</td></tr>`).join("")
-    :'<tr><td colspan="4"><div class="empty">Brak wpłat</div></td></tr>'}
+  document.getElementById("depStats").innerHTML=ks.length
+    ? ks.map(k=>`<div><span>${esc(k)}</span><b>${zl(acc[k].in-acc[k].out)} zł</b></div>`).join("")
+      +`<div><span>Razem</span><b style="color:var(--accent)">${zl(ks.reduce((s,k)=>s+acc[k].in-acc[k].out,0))} zł</b></div>`
+    :'<div><span>Brak wpłat</span><b>—</b></div>'}
 document.getElementById("txType").addEventListener("change",e=>{
   document.getElementById("txTickWrap").hidden=!(e.target.value==="kupno"||e.target.value==="sprzedaz")});
 document.getElementById("txForm").addEventListener("submit",e=>{
@@ -572,7 +570,7 @@ document.getElementById("txForm").addEventListener("submit",e=>{
   saveTX();renderTX();e.target.reset();
   document.getElementById("txDate").value=new Date().toISOString().slice(0,10);
   document.getElementById("txTickWrap").hidden=true});
-document.getElementById("txRows").addEventListener("click",e=>{
+document.getElementById("txList").addEventListener("click",e=>{
   const b=e.target.closest("[data-del]");if(!b)return;
   TX.splice(+b.dataset.del,1);saveTX();renderTX()});
 
