@@ -71,41 +71,26 @@
 <section id="v-sygnal" hidden>
   <div class="phead"><h1>Sygnał</h1><span class="stamp">ceny 2026-12-10</span></div>
 
-  <div class="card">
-    <div class="lbl">Skład docelowy</div>
-    <div class="alloc" id="allocBar"></div>
-    <div class="top3" id="top3"></div>
+  <div class="hero">
+    <div class="hval">za 15 dni<span>do rebalansu</span></div>
+    <div class="halt">25 grudnia · transza 25-tego</div>
   </div>
 
-  <div class="grid2" style="margin-top:13px">
-    <div class="card">
-      <div class="lbl">Najbliższy rebalans</div>
-      <div class="big sans">25 grudnia</div>
-      <div class="cd"><span class="pill p-warn">za 15 dni</span></div>
-    </div>
-    <div class="card">
-      <div class="lbl" style="margin-bottom:11px">Tryb nóg</div>
-      <div class="leg"><b>BEST17</b><span class="pill p-risk">RISK</span><span class="as">XLK 80 · DBC 20</span></div>
-      <div class="leg"><b>GPM</b><span class="pill p-risk">RISK</span><span class="as">3 ryzykowne + IBTA</span></div>
-    </div>
-  </div>
+  <div class="legs" id="modeCards" style="margin-top:18px"></div>
 
   <h2 class="psec">Do zrobienia</h2>
   <div id="actions"></div>
 
   <h2 class="psec">Gdzie co ma być</h2>
   <div class="seg" id="segS">
-    <button data-s="sum" aria-pressed="true">Sumarycznie</button>
+    <button data-s="sum" aria-pressed="true">Razem</button>
     <button data-s="acc" aria-pressed="false">Wg kont</button>
     <button data-s="dat" aria-pressed="false">Wg dat</button>
   </div>
   <div id="skladBody"></div>
 
   <h2 class="psec">Ostatnie sygnały</h2>
-  <div class="card tw"><table>
-    <thead><tr><th>Data</th><th>BEST17</th><th>GPM</th><th>Zmiana</th></tr></thead>
-    <tbody id="hist"></tbody>
-  </table></div>
+  <div class="list" id="histList"></div>
 </section>
 
 <!-- ========== TRANSAKCJE ========== -->
@@ -135,31 +120,14 @@
 
 <!-- ========== PORTFEL ========== -->
 <section id="v-portfel" hidden>
-  <div class="phead"><h1>Portfel</h1><span class="stamp">USD/PLN 4,0600</span></div>
-  <div class="tiles">
-    <div class="tile"><div class="lbl">Wartość</div><div class="v">197 640</div><div class="d">złotych</div></div>
-    <div class="tile"><div class="lbl">Wpłacone</div><div class="v" style="color:var(--muted)">190 000</div><div class="d">złotych</div></div>
-    <div class="tile"><div class="lbl">TWR w PLN</div><div class="v" style="color:var(--pos)">+3,21%</div><div class="d">z kursem</div></div>
-    <div class="tile"><div class="lbl">TWR w USD</div><div class="v" style="color:var(--neg)">−1,84%</div><div class="d">same decyzje</div></div>
-  </div>
-  <p class="note">Rozjazd PLN wobec USD to kurs, nie wynik strategii.</p>
-
-  <h2 class="psec">Wartość a wpłacony kapitał</h2>
-  <div class="card">
-    <div class="chart" id="c-equity"></div>
-    <div class="legend" id="l-equity"></div>
-  </div>
-
-  <h2 class="psec">Konta</h2>
+  <div class="phead"><h1>Portfel</h1><span class="stamp" id="fxStamp"></span></div>
   <div class="seg setupSel"></div>
-  <div class="card tw"><table>
-    <thead><tr><th>Konto</th><th>Wartość</th><th>Cel</th><th>PLN</th><th>USD</th></tr></thead>
-    <tbody id="accRows"></tbody>
-  </table></div>
+  <div class="legs" id="accCards"></div>
   <p class="note" id="accNote"></p>
 
   <h2 class="psec">Odchylenie od celu</h2>
-  <div class="card"><div class="chart" id="c-drift"></div></div>
+  <div class="panel"><div class="chart" id="c-drift"></div></div>
+  <div class="list" id="driftList" style="margin-top:12px"></div>
 </section>
 
 <!-- ========== WYNIKI ========== -->

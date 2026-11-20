@@ -82,12 +82,12 @@ for(const T of[T10,T25]){
   LEG.best17.GOTOWKA=(LEG.best17.GOTOWKA||0)+T.cashB;LEG.gpm.GOTOWKA=(LEG.gpm.GOTOWKA||0)+T.cashG}
 
 const SETUPS={
-  rozdzielnie:{label:"2 konta, noga na konto",accounts:[
+  rozdzielnie:{label:"2 konta",accounts:[
     {name:"LYNX",alloc:{best17:1,gpm:0},value:99180,pln:4.15,usd:-.91},
     {name:"XTB",alloc:{best17:0,gpm:1},value:98460,pln:2.28,usd:-2.77}]},
-  jedno:{label:"jedno konto",accounts:[
+  jedno:{label:"1 konto",accounts:[
     {name:"Konto główne",alloc:{best17:1,gpm:1},value:197640,pln:3.21,usd:-1.84}]},
-  porowno:{label:"2 konta po równo",accounts:[
+  porowno:{label:"Po równo",accounts:[
     {name:"Broker A",alloc:{best17:.5,gpm:.5},value:99400,pln:3.30,usd:-1.75},
     {name:"Broker B",alloc:{best17:.5,gpm:.5},value:98240,pln:3.12,usd:-1.93}]}};
 let SETUP="rozdzielnie";
@@ -390,14 +390,6 @@ document.getElementById("ranges").addEventListener("click",e=>{
   document.querySelectorAll("#ranges button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
   RNG=+b.dataset.r;renderPulpit();mount(charts.find(c=>c.id==="c-hero"))});
 
-function renderHero(){
-  const e=Object.entries(COMBINED).sort((a,b)=>b[1]-a[1]);
-  document.getElementById("allocBar").innerHTML=e.map(([t,v])=>{
-    const w=v/TOTAL*100;
-    return `<span style="flex:${w};background:${CSS(KOL[t]||"--s6")}" title="${t} ${pc(v/TOTAL)}">${w>9?(t==="GOTOWKA"?"GOT.":t):""}</span>`}).join("");
-  document.getElementById("top3").innerHTML=e.slice(0,4).map(([t,v])=>
-    `<div><div class="t"><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")};margin:0"></span>${t==="GOTOWKA"?"Gotówka":t}</div>
-     <div class="v">${pc(v/TOTAL)}</div><div class="s">${zl(v)} zł</div></div>`).join("")}
 function renderActions(){
   const rows=[...new Set([...Object.keys(T25.out),...Object.keys(HOLDINGS)])].filter(t=>t!=="GOTOWKA")
     .map(t=>({t,want:T25.out[t]||0,d:(T25.out[t]||0)-(HOLDINGS[t]||0)*(1-CAPITAL.split10)}))
@@ -407,9 +399,16 @@ function renderActions(){
      <div class="sub">${ROLE[r.t]||""}</div></div><div class="q"><b>${zl(Math.abs(r.d))} zł</b>
      <span class="sub">cel ${zl(r.want)} zł</span></div></div>`).join("")
     :'<div class="act hold"><i class="w"></i><div><div class="t">Bez zmian</div></div></div>'}
-const renderHist=()=>document.getElementById("hist").innerHTML=HIST.map(h=>
-  `<tr><td>${h[0]}</td><td><span class="pill ${h[1]==="RISK"?"p-risk":"p-cash"}">${h[1]}</span><span class="tick">${esc(h[2])}</span></td>
-   <td><span class="pill ${h[3]==="RISK"?"p-risk":"p-cash"}">${h[3]}</span></td><td class="sub">${esc(h[4])}</td></tr>`).join("");
+function renderHist(){
+  document.getElementById("modeCards").innerHTML=[["BEST17",SIGNALS[0].best17,SIGNALS[0].best17.picks.join(" · ")||"gotówka"],
+    ["GPM",SIGNALS[0].gpm,Object.keys(SIGNALS[0].gpm.weights).join(" · ")]].map(([n,L,txt])=>
+    `<div class="legc"><div class="t">${n} <em>sygnał z ${SIGNALS[0].date}</em></div>
+      <div class="n" style="font-size:1.6rem;color:var(${L.mode==="RISK"?"--pos":"--cash"})">${L.mode}</div>
+      <div class="d">${esc(txt)}</div></div>`).join("");
+  document.getElementById("histList").innerHTML=HIST.map(h=>
+    `<div class="row"><div class="ic" style="background:${CSS(h[1]==="RISK"?"--pos":"--cash")}">${h[1]==="RISK"?"R":"C"}</div>
+      <div class="nm">${h[0]}<em>${esc(h[4])}</em></div>
+      <div class="vl"><b>${esc(h[2])}</b><span>GPM ${h[3]}</span></div></div>`).join("")}
 const viewSum=()=>tbl("<th>ETF</th><th>Kwota</th><th>Udział</th><th>z 10-tego</th><th>z 25-tego</th>",
   Object.entries(COMBINED).sort((a,b)=>b[1]-a[1]).map(([t,v])=>
     `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
@@ -436,15 +435,26 @@ const viewDat=()=>[[T10,SIGNALS[0]],[T25,SIGNALS[1]]].map(([T,s])=>
 function renderSklad(m){document.getElementById("skladBody").innerHTML=m==="acc"?viewAcc():m==="dat"?viewDat():viewSum();fillSel()}
 function renderAccounts(){
   const s=SETUPS[SETUP];
-  document.getElementById("accRows").innerHTML=s.accounts.map(a=>{
-    const cel=accTarget(a),d=a.value-cel;
-    return `<tr><td>${esc(a.name)}<span class="tick">${accLegs(a)}</span></td><td class="num">${zl(a.value)}</td>
-      <td class="num sub">${zl(cel)}<span class="tick" style="color:${Math.abs(d)<cel*.02?"var(--faint)":"var(--warn)"}">${d>=0?"+":"−"}${zl(Math.abs(d))}</span></td>
-      <td class="num" style="color:${a.pln>=0?"var(--pos)":"var(--neg)"}">${sg(a.pln)}%</td>
-      <td class="num" style="color:${a.usd>=0?"var(--pos)":"var(--neg)"}">${sg(a.usd)}%</td></tr>`}).join("");
+  document.getElementById("fxStamp").textContent="USD/PLN "+String(FXN).replace(".",",");
+  document.getElementById("accCards").innerHTML=s.accounts.map(a=>{
+    const o=accComp(a),cap=accTarget(a),d=a.value-cap,capo=Object.values(o).reduce((x,y)=>x+y,0);
+    return `<div class="legc"><div class="t">${esc(a.name)} <em>${accLegs(a)}</em></div>
+      <div class="n">${zl(a.value)}<span>zł</span></div>
+      <div class="d">cel ${zl(cap)} zł · <span style="color:var(${Math.abs(d)<cap*.02?"--faint":"--warn"})">${d>=0?"+":"−"}${zl(d)} zł</span></div>
+      <div class="d">TWR <span style="color:var(${a.pln>=0?"--pos":"--neg"})">${sg(a.pln)}% PLN</span> · <span style="color:var(${a.usd>=0?"--pos":"--neg"})">${sg(a.usd)}% USD</span></div>
+      <div class="bar">${Object.entries(o).map(([t,v])=>{const pr=v/capo*100;
+        return `<span style="flex:${pr};background:${CSS(KOL[t]||"--s6")}" title="${t} ${pc(v/capo)}">${pr>13?(t==="GOTOWKA"?"GOT.":t):""}</span>`}).join("")}</div></div>`}).join("");
   document.getElementById("accNote").textContent=s.accounts.length===1
     ?"Jedno konto: obie nogi w jednej liście, pozycje wspólne w jednym zleceniu."
     :"Różnicę wobec celu wyrównujesz przy wpłacie, nie przelewem między brokerami.";
+  const tot=Object.values(HOLDINGS).reduce((x,y)=>x+y,0);
+  document.getElementById("driftList").innerHTML=[...new Set([...Object.keys(COMBINED),...Object.keys(HOLDINGS)])]
+    .map(t=>{const hh=HOLDINGS[t]||0,w=COMBINED[t]||0;return {t,h:hh,w,d:hh-w,pp:(hh/tot-w/TOTAL)*100}})
+    .sort((a,b)=>Math.abs(b.pp)-Math.abs(a.pp)).map(r=>{
+      const nm=r.t==="GOTOWKA"?"Gotówka":r.t,c=Math.abs(r.pp)<1?"--faint":r.pp>0?"--warn":"--cash";
+      return `<div class="row"><div class="ic" style="background:${CSS(KOL[r.t]||"--s6")}">${nm.slice(0,2).toUpperCase()}</div>
+        <div class="nm">${nm}<em>mam ${zl(r.h)} · cel ${zl(r.w)} zł</em></div>
+        <div class="vl"><b style="color:var(${c})">${r.d>=0?"+":"−"}${zl(r.d)} zł</b><span>${sg(r.pp)} pp</span></div></div>`}).join("");
   fillSel()}
 
 function renderWyniki(){
@@ -589,7 +599,7 @@ document.getElementById("segS").addEventListener("click",e=>{
 
 document.getElementById("txTick").innerHTML=ORDER.map(t=>`<option>${t}</option>`).join("");
 document.getElementById("txDate").value=new Date().toISOString().slice(0,10);
-fillAccSelect();renderTX();renderPulpit();renderMatrix();renderHero();renderActions();renderHist();renderSklad("sum");renderAccounts();renderWyniki();renderCeny();
+fillAccSelect();renderTX();renderPulpit();renderMatrix();renderActions();renderHist();renderSklad("sum");renderAccounts();renderWyniki();renderCeny();
 
 legend("l-mix",KLASY.map(k=>[k[0],CSS(k[1])]));
 legend("l-canary",[["VT",CSS("--s1")],["XLK",CSS("--s2")]]);
