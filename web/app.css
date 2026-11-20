@@ -127,7 +127,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--line-strong);border-bottom:n
 .sub{color:var(--faint);font-size:.88rem}
 .sw-in{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px}
 
-.mx{font-size:.84rem;border-collapse:separate;border-spacing:2px}
+.mx{font-size:.84rem;border-collapse:separate;border-spacing:2px;width:auto}
 .mx th{border:0;padding:0 0 6px;text-align:center;font-size:.72rem;white-space:nowrap}
 .mx th.st,.mx td.st{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1;padding-right:12px;white-space:nowrap}
 .mx td{border:0;padding:7px 4px;text-align:center;border-radius:4px;font-family:var(--f-mono);
@@ -137,7 +137,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--line-strong);border-bottom:n
 .mx tr.grp td{background:transparent;padding-top:12px;padding-bottom:2px}
 .mx tr.grp td.st{font-size:.72rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
 /* cien przy prawej krawedzi, gdy tabela jest szersza niz karta - inaczej nie widac, ze da sie przewinac */
-#mxWrap{position:relative}
+#mxWrap{position:relative;width:max-content;max-width:100%}
 #mxWrap.more::after{content:"";position:absolute;top:0;bottom:0;right:0;width:26px;pointer-events:none;
   background:linear-gradient(90deg,transparent,var(--surface))}
 @media(max-width:559px){

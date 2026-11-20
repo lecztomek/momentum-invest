@@ -285,7 +285,7 @@ function legCol(c,leg){
   return round100(o)}
 let MXN=null;  /* ile ostatnich dat pokazac; null = dobierz do szerokosci */
 function renderMatrix(){
-  const wide=innerWidth>=560, n=MXN||(wide?12:6);
+  const n=MXN||6;   /* pulpit pokazuje biezaca sytuacje; pelna historia jest w Wynikach */
   const COLS=COMPO.slice(-n);
   document.querySelectorAll("#segMx button").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.mx===n)));
   const head=`<thead><tr><th class="st">Walor</th>`
