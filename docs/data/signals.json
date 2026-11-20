@@ -1,0 +1,208 @@
+{
+ "generated": "2026-12-10T22:04:11Z",
+ "config_hash": "a3f91c",
+ "universe": [
+  "IUIT",
+  "VWRA",
+  "CSPX",
+  "IGLN",
+  "CMOD",
+  "CNDX",
+  "EIMI",
+  "XRES",
+  "IHYA",
+  "LQDA",
+  "DTLA",
+  "IUES",
+  "CBU0",
+  "IBTA"
+ ],
+ "roles": {
+  "IUIT": "BEST17 · XLK",
+  "VWRA": "BEST17 · VT",
+  "CSPX": "BEST17 · IVV + GPM",
+  "IGLN": "BEST17 · IAU + GPM",
+  "CMOD": "BEST17 · DBC + GPM",
+  "CNDX": "GPM",
+  "EIMI": "GPM",
+  "XRES": "GPM",
+  "IHYA": "GPM",
+  "LQDA": "GPM",
+  "DTLA": "GPM",
+  "IUES": "GPM",
+  "CBU0": "GPM · ochronny",
+  "IBTA": "GPM · ochronny"
+ },
+ "signals": [
+  {
+   "date": "2026-12-10",
+   "tranche": 10,
+   "config": "a3f91c",
+   "best17": {
+    "mode": "RISK",
+    "picks": [
+     "XLK",
+     "DBC"
+    ],
+    "weights": {
+     "IUIT": 0.8,
+     "CMOD": 0.2
+    }
+   },
+   "gpm": {
+    "mode": "RISK",
+    "weights": {
+     "CNDX": 0.2,
+     "CMOD": 0.2,
+     "IUES": 0.2,
+     "IBTA": 0.4
+    }
+   }
+  },
+  {
+   "date": "2026-11-25",
+   "tranche": 25,
+   "config": "a3f91c",
+   "best17": {
+    "mode": "CASH",
+    "picks": [],
+    "weights": {}
+   },
+   "gpm": {
+    "mode": "RISK",
+    "weights": {
+     "CNDX": 0.2667,
+     "CMOD": 0.2667,
+     "IUES": 0.2667,
+     "CBU0": 0.2
+    }
+   }
+  }
+ ],
+ "history": [
+  [
+   "2026-12-10",
+   "RISK",
+   "XLK / DBC",
+   "RISK",
+   "wejście w ryzyko"
+  ],
+  [
+   "2026-11-25",
+   "CASH",
+   "—",
+   "RISK",
+   "IBTA → CBU0"
+  ],
+  [
+   "2026-11-10",
+   "CASH",
+   "—",
+   "RISK",
+   "wyjście do gotówki"
+  ],
+  [
+   "2026-10-26",
+   "RISK",
+   "XLK / IVV",
+   "RISK",
+   "bez zmian"
+  ],
+  [
+   "2026-10-12",
+   "RISK",
+   "XLK / DBC",
+   "RISK",
+   "IVV → DBC"
+  ],
+  [
+   "2026-09-25",
+   "RISK",
+   "XLK / IVV",
+   "RISK",
+   "bez zmian"
+  ]
+ ],
+ "ranking": [
+  [
+   "XLK",
+   4.82,
+   null
+  ],
+  [
+   "DBC",
+   2.11,
+   "ok"
+  ],
+  [
+   "IVV",
+   1.96,
+   null
+  ],
+  [
+   "IAU",
+   1.74,
+   "no"
+  ],
+  [
+   "VT",
+   0.88,
+   null
+  ]
+ ],
+ "canary": {
+  "threshold": -2,
+  "vt": [
+   2.1,
+   2.8,
+   1.9,
+   0.7,
+   1.6,
+   2.4,
+   1.1,
+   0.4,
+   -0.9,
+   -2.6,
+   -3.4,
+   -4.1,
+   -1.2,
+   1.4,
+   2.2,
+   2.8,
+   2.1,
+   2.6,
+   1.7,
+   1.2,
+   0.3,
+   -1.8,
+   -3.1,
+   1.38
+  ],
+  "xlk": [
+   3.2,
+   3.6,
+   2.4,
+   0.9,
+   2.2,
+   3.1,
+   1.4,
+   0.2,
+   -1.6,
+   -3.2,
+   -4.1,
+   -4.8,
+   -0.6,
+   2.1,
+   2.9,
+   3.4,
+   2.6,
+   3.1,
+   1.9,
+   0.8,
+   -0.4,
+   -2.4,
+   -3.6,
+   0.42
+  ]
+ }
+}
