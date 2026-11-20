@@ -17,7 +17,6 @@
   <nav id="nav">
     <a href="#pulpit"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="8.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="5" rx="2"/><rect x="3" y="14.5" width="7.5" height="6.5" rx="2"/><rect x="13.5" y="11" width="7.5" height="10" rx="2"/></svg>Pulpit</a>
     <a href="#sygnal"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Sygnał</a>
-    <a href="#portfel"><svg viewBox="0 0 24 24"><path d="M3 7h15a3 3 0 0 1 3 3v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7V6a2 2 0 0 1 2-2h11"/><circle cx="17" cy="13.5" r="1.3"/></svg>Portfel</a>
     <a href="#wyniki"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Wyniki</a>
     <a href="#transakcje"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Wpisy</a>
     <a href="#ceny"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>Ceny</a>
@@ -57,8 +56,10 @@
 
   <div class="nxt" id="nextBox"></div>
 
-  <h2 class="psec">Odnogi</h2>
-  <div class="legs" id="legCards"></div>
+  <h2 class="psec">Konta</h2>
+  <div class="seg setupSel"></div>
+  <div class="legs" id="accCards"></div>
+  <p class="note" id="accNote"></p>
 
   <h2 class="psec">Co trzymam</h2>
   <div class="list" id="holdList"></div>
@@ -80,6 +81,10 @@
 
   <h2 class="psec">Do zrobienia</h2>
   <div id="actions"></div>
+
+  <h2 class="psec">Odchylenie od celu</h2>
+  <div class="panel"><div class="chart" id="c-drift"></div></div>
+  <div class="list" id="driftList" style="margin-top:12px"></div>
 
   <h2 class="psec">Gdzie co ma być</h2>
   <div class="seg" id="segS">
@@ -119,17 +124,6 @@
 </section>
 
 <!-- ========== PORTFEL ========== -->
-<section id="v-portfel" hidden>
-  <div class="phead"><h1>Portfel</h1><span class="stamp" id="fxStamp"></span></div>
-  <div class="seg setupSel"></div>
-  <div class="legs" id="accCards"></div>
-  <p class="note" id="accNote"></p>
-
-  <h2 class="psec">Odchylenie od celu</h2>
-  <div class="panel"><div class="chart" id="c-drift"></div></div>
-  <div class="list" id="driftList" style="margin-top:12px"></div>
-</section>
-
 <!-- ========== WYNIKI ========== -->
 <section id="v-wyniki" hidden>
   <div class="phead"><h1>Wyniki</h1><span class="stamp">cze 2018 – gru 2026</span></div>
@@ -163,10 +157,13 @@
 <section id="v-ceny" hidden>
   <div class="phead"><h1>Ceny</h1><span class="stamp" id="feedStamp"></span></div>
 
-  <div class="card">
-    <div class="lbl" style="margin-bottom:6px">Kontrola danych</div>
-    <div id="checks"></div>
+  <div class="hero">
+    <div class="hval" id="feedCount"></div>
+    <div class="halt" id="feedDate"></div>
   </div>
+
+  <h2 class="psec">Kontrola danych</h2>
+  <div class="list" id="checks"></div>
 
   <h2 class="psec">Ceny użyte w sygnale</h2>
   <div class="seg" id="segP">

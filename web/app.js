@@ -364,15 +364,7 @@ function renderPulpit(){
   document.getElementById("nextBox").innerHTML=
     `<div class="ico">25</div><div><b>Najbliższy rebalans</b><span>25 grudnia · transza 25-tego</span></div><div class="r">za 15 dni</div>`;
 
-  document.getElementById("legCards").innerHTML=[["best17","BEST17","konto LYNX"],["gpm","GPM","konto XTB"]]
-    .map(([k,name,acct])=>{
-      const L=LEGS[k],w=L.value_usd-L.paid_usd,o=accComp({alloc:{[k]:1}});
-      const capo=Object.values(o).reduce((a,b)=>a+b,0);
-      return `<div class="legc"><div class="t">${name} <em>${acct}</em></div>
-        <div class="n">${zl(C.k(L.value_usd))}<span>${C.u}</span></div>
-        <div class="d">wpłacone ${zl(C.k(L.paid_usd))} · wynik <span style="color:var(${w>=0?"--pos":"--neg"})">${w>=0?"+":"−"}${zl(C.k(w))}</span></div>
-        <div class="bar">${Object.entries(o).map(([t,v])=>{const pr=v/capo*100;
-          return `<span style="flex:${pr};background:${CSS(KOL[t]||"--s6")}" title="${t} ${pc(v/capo)}">${pr>13?(t==="GOTOWKA"?"GOT.":t):""}</span>`}).join("")}</div></div>`}).join("");
+  renderAccounts();
 
   const HT=Object.values(HOLDINGS).reduce((a,b)=>a+b,0);
   document.getElementById("holdList").innerHTML=Object.entries(HOLDINGS).sort((a,b)=>b[1]-a[1]).map(([t,v])=>{
@@ -435,12 +427,11 @@ const viewDat=()=>[[T10,SIGNALS[0]],[T25,SIGNALS[1]]].map(([T,s])=>
 function renderSklad(m){document.getElementById("skladBody").innerHTML=m==="acc"?viewAcc():m==="dat"?viewDat():viewSum();fillSel()}
 function renderAccounts(){
   const s=SETUPS[SETUP];
-  document.getElementById("fxStamp").textContent="USD/PLN "+String(FXN).replace(".",",");
   document.getElementById("accCards").innerHTML=s.accounts.map(a=>{
     const o=accComp(a),cap=accTarget(a),d=a.value-cap,capo=Object.values(o).reduce((x,y)=>x+y,0);
     return `<div class="legc"><div class="t">${esc(a.name)} <em>${accLegs(a)}</em></div>
-      <div class="n">${zl(a.value)}<span>zł</span></div>
-      <div class="d">cel ${zl(cap)} zł · <span style="color:var(${Math.abs(d)<cap*.02?"--faint":"--warn"})">${d>=0?"+":"−"}${zl(d)} zł</span></div>
+      <div class="n">${zl(CURV==="usd"?a.value/FXN:a.value)}<span>${CURV==="usd"?"USD":"zł"}</span></div>
+      <div class="d">cel ${zl(CURV==="usd"?cap/FXN:cap)} · <span style="color:var(${Math.abs(d)<cap*.02?"--faint":"--warn"})">${d>=0?"+":"−"}${zl(CURV==="usd"?d/FXN:d)}</span></div>
       <div class="d">TWR <span style="color:var(${a.pln>=0?"--pos":"--neg"})">${sg(a.pln)}% PLN</span> · <span style="color:var(${a.usd>=0?"--pos":"--neg"})">${sg(a.usd)}% USD</span></div>
       <div class="bar">${Object.entries(o).map(([t,v])=>{const pr=v/capo*100;
         return `<span style="flex:${pr};background:${CSS(KOL[t]||"--s6")}" title="${t} ${pc(v/capo)}">${pr>13?(t==="GOTOWKA"?"GOT.":t):""}</span>`}).join("")}</div></div>`}).join("");
@@ -496,8 +487,14 @@ function renderCeny(){
   chk.push([jump.length?"warn":"ok",jump.length?"Skok powyżej 25%: "+jump.join(", "):"Brak skoków powyżej 25%",jump.length?"sprawdź":"OK"]);
   const nov=Object.keys(OVR).length;
   chk.push([nov?"warn":"ok",nov?"Korekty ręczne w historii":"Brak korekt ręcznych",nov?nov+"":"0"]);
+  const zle=chk.filter(c=>c[0]!=="ok").length;
+  document.getElementById("feedCount").innerHTML=`${INSTR.length-brak.length} / ${INSTR.length}<span>instrumentów</span>`;
+  document.getElementById("feedDate").innerHTML=zle
+    ? `<span style="color:var(--warn)">${zle} ${zle===1?"ostrzeżenie":"ostrzeżenia"}</span> · ceny z ${P.dates[last]}`
+    : `<span style="color:var(--pos)">bez zastrzeżeń</span> · ceny z ${P.dates[last]}`;
   document.getElementById("checks").innerHTML=chk.map(([s,t,m])=>
-    `<div class="chk"><span class="ic ${s}">${s==="ok"?"✓":"!"}</span>${esc(t)}<span class="m">${esc(m)}</span></div>`).join("");
+    `<div class="row"><div class="ic" style="background:${CSS(s==="ok"?"--pos":"--warn")}">${s==="ok"?"✓":"!"}</div>
+      <div class="nm">${esc(t)}</div><div class="vl"><b>${esc(m)}</b></div></div>`).join("");
 
   document.getElementById("priceList").innerHTML=INSTR.map(([t,mk])=>{
     const d=P.dates[last],o=OVR[okey(t,d)],raw=P.px[t][last],v=eff(t,last),ch=(v/eff(t,last-1)-1)*100;
@@ -585,7 +582,7 @@ document.getElementById("txList").addEventListener("click",e=>{
   TX.splice(+b.dataset.del,1);saveTX();renderTX()});
 
 /* ============ nawigacja ============ */
-const VIEWS=["pulpit","sygnal","portfel","wyniki","transakcje","ceny","dlaczego"];
+const VIEWS=["pulpit","sygnal","wyniki","transakcje","ceny","dlaczego"];
 function show(v){
   if(!VIEWS.includes(v))v="pulpit";
   VIEWS.forEach(x=>document.getElementById("v-"+x).hidden=(x!==v));
