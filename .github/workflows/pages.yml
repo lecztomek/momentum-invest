@@ -8,7 +8,7 @@ name: Pages
 # integration), wiec enablement:true tu nie pomaga i zostalo usuniete.
 on:
   push:
-    branches: [claude/engine-v2-assessment-0e2p3w]
+    branches: [main]
     paths:
       - 'docs/**'
       - '.github/workflows/pages.yml'
