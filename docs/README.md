@@ -22,9 +22,15 @@ Strona czyta dane przez `fetch`, więc musi być serwowana po HTTP — otwarcie
 | `data/performance.json` | miesięczne stopy zwrotu strategii | pipeline |
 | `data/prices.json` | instrumenty źródłowe i stan feedu | pipeline |
 | `data/portfolio.json` | kapitał, stan posiadania, krzywa wartości | docelowo baza |
+| `.nojekyll` | wylacza Jekylla na Pages (serwuje pliki bez przetwarzania) | — |
 
 `data/portfolio.json` jest tu tylko dla prototypu — docelowo te dane są prywatne
 i idą do bazy (per użytkownik), a nie do repozytorium.
+
+## Publikacja
+
+Settings → Pages → Source: **Deploy from a branch**, galaz z ta zawartoscia, folder **`/docs`**.
+Adres: `https://<uzytkownik>.github.io/momentum-invest/`.
 
 ## Stan
 
