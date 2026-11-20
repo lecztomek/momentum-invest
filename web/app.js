@@ -252,41 +252,55 @@ chart("c-drift",W=>{
     +`<text x="${C-8}" y="${rows.length*bh+24}" text-anchor="end" fill="${CSS("--faint")}" font-size="${f}">← niedowaga</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Odchylenie od składu docelowego" data-hover='${HV({W,H,max:1e9,hit})}'>${out}</svg>`});
 
+/* Kanarek: skala i prog ida z danych (signals.json), nie z kodu - inaczej zmiana
+   progu w strategii zostawilaby na wykresie stara, nieprawdziwa linie. */
 chart("c-canary",W=>{
-  const nr=W<460,H=nr?200:235,L=nr?38:46,R=10,T=12,B=28,n=MONTHS.length,lo=-6,hi=5,f=FS(W);
+  const CM=SIG.canary.months,TH=SIG.canary.threshold;
+  const nr=W<460,H=nr?200:235,L=nr?38:46,R=10,T=12,B=28,n=CM.length,f=FS(W);
+  const vs=[...CAN_VT,...CAN_XLK,TH],lo=Math.floor(Math.min(...vs)-1),hi=Math.ceil(Math.max(...vs)+1);
+  const st=Math.max(1,Math.round((hi-lo)/5));
   const X=i=>L+(W-L-R)*i/(n-1),Y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo));
   const p=a=>a.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)).join(" ");
-  let g="";for(let v=-6;v<=4;v+=2)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${CSS("--line")}"/><text x="${L-7}" y="${Y(v)+4}" text-anchor="end" fill="${CSS("--faint")}" font-size="${f}">${v}%</text>`;
-  let xl="";for(let i=0;i<n;i+=nr?6:4)xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${mLbl(MONTHS[i])}</text>`;
-  const hit=MONTHS.map((m,i)=>({cx:X(i),html:`<div class="th">${mLbl(m)}</div>
-    <div class="tr"><span class="sw" style="background:${CSS("--s1")}"></span>VT<span class="tv">${sg(CAN_VT[i])}%</span></div>
-    <div class="tr"><span class="sw" style="background:${CSS("--s2")}"></span>XLK<span class="tv">${sg(CAN_XLK[i])}%</span></div>
-    <div class="tr" style="color:${(CAN_VT[i]<-2&&CAN_XLK[i]<-2)?CSS("--cash"):CSS("--pos")}"><span class="sw" style="background:transparent"></span>Tryb<span class="tv">${(CAN_VT[i]<-2&&CAN_XLK[i]<-2)?"CASH":"RISK"}</span></div>`}));
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Kanarek wobec progu minus 2 procent" data-hover='${HV({W,H,max:(W-L-R)/n,hit})}'>
-    ${g}<rect x="${L}" y="${Y(-2)}" width="${W-L-R}" height="${H-B-Y(-2)}" fill="${CSS("--cash")}" opacity=".1"/>
-    <line x1="${L}" x2="${W-R}" y1="${Y(-2)}" y2="${Y(-2)}" stroke="${CSS("--neg")}" stroke-width="2" stroke-dasharray="5 4"/>
-    <text x="${W-R}" y="${Y(-2)-7}" text-anchor="end" fill="${CSS("--neg")}" font-size="${f}" font-weight="700">próg −2%</text>
+  const zly=i=>CAN_VT[i]<=TH||CAN_XLK[i]<=TH;   /* max_bad_count = 0: wystarczy jeden */
+  let g="";for(let v=Math.ceil(lo/st)*st;v<=hi;v+=st)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${CSS("--line")}"/><text x="${L-7}" y="${Y(v)+4}" text-anchor="end" fill="${CSS("--faint")}" font-size="${f}">${v}%</text>`;
+  let xl="";for(let i=0;i<n;i+=nr?6:4)xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${mLbl(CM[i])}</text>`;
+  const hit=CM.map((m,i)=>({cx:X(i),html:`<div class="th">${mLbl(m)}</div>
+    <div class="tr"><span class="sw" style="background:${CSS("--s1")}"></span>VT<span class="tv">${sg2(CAN_VT[i])}%</span></div>
+    <div class="tr"><span class="sw" style="background:${CSS("--s2")}"></span>XLK<span class="tv">${sg2(CAN_XLK[i])}%</span></div>
+    <div class="tr" style="color:${zly(i)?CSS("--cash"):CSS("--pos")}"><span class="sw" style="background:transparent"></span>Tryb<span class="tv">${zly(i)?"CASH":"RISK"}</span></div>`}));
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Kanarek wobec progu ${TH} procent" data-hover='${HV({W,H,max:(W-L-R)/n,hit})}'>
+    ${g}<rect x="${L}" y="${Y(TH)}" width="${W-L-R}" height="${Math.max(0,H-B-Y(TH))}" fill="${CSS("--cash")}" opacity=".1"/>
+    <line x1="${L}" x2="${W-R}" y1="${Y(TH)}" y2="${Y(TH)}" stroke="${CSS("--neg")}" stroke-width="2" stroke-dasharray="5 4"/>
+    <text x="${W-R}" y="${Y(TH)-7}" text-anchor="end" fill="${CSS("--neg")}" font-size="${f}" font-weight="700">próg ${sg2(TH)}%</text>
     <line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>
     <path d="${p(CAN_VT)}" fill="none" stroke="${CSS("--s1")}" stroke-width="2.5" stroke-linejoin="round"/>
     <path d="${p(CAN_XLK)}" fill="none" stroke="${CSS("--s2")}" stroke-width="2.5" stroke-linejoin="round"/>
     <circle cx="${X(n-1)}" cy="${Y(CAN_VT[n-1])}" r="5" fill="${CSS("--s1")}" stroke="${CSS("--surface")}" stroke-width="2.5"/>
     <circle cx="${X(n-1)}" cy="${Y(CAN_XLK[n-1])}" r="5" fill="${CSS("--s2")}" stroke="${CSS("--surface")}" stroke-width="2.5"/>${xl}</svg>`});
 
+/* Ranking: etykieta "kupione" bierze sie z FAKTYCZNEJ wagi w sygnale, nie z miejsca
+   w tabeli - selektor wybiera sposrod zdatnych, wiec top rankingu i top portfela to
+   nie zawsze to samo. */
+const STAN={ok:["",""],no:["ODCIĘTE","--line-strong"],nodata:["CZEKA NA KURS","--warn"],canary:["KANAREK","--s6"]};
 chart("c-rank",W=>{
-  const bh=40,H=RANK.length*bh+34,L=58,R=14,mx=5.4,SX=v=>L+(W-R-L)*v/mx,f=FS(W);
-  let out=`<line x1="${SX(1)}" x2="${SX(1)}" y1="4" y2="${RANK.length*bh+6}" stroke="${CSS("--neg")}" stroke-width="2" stroke-dasharray="5 4"/>`
-    +`<text x="${SX(1)+6}" y="${RANK.length*bh+25}" fill="${CSS("--neg")}" font-size="${f}" font-weight="700">bramka +1%</text>`;
+  const G=SIG.gate_threshold,bh=40,H=RANK.length*bh+34,L=58,R=14,f=FS(W);
+  const vs=RANK.map(r=>r.score).concat([G,0]);
+  const lo=Math.min(...vs,0),hi=Math.max(...vs)*1.18;
+  const SX=v=>L+(W-R-L)*(v-lo)/(hi-lo||1),X0=SX(0);
+  let out=`<line x1="${SX(G)}" x2="${SX(G)}" y1="4" y2="${RANK.length*bh+6}" stroke="${CSS("--neg")}" stroke-width="2" stroke-dasharray="5 4"/>`
+    +`<text x="${SX(G)+6}" y="${RANK.length*bh+25}" fill="${CSS("--neg")}" font-size="${f}" font-weight="700">bramka ${sg2(G)}%</text>`;
   const hit=[];
-  RANK.forEach(([t,v,gate],i)=>{
-    const y=i*bh+9,h=22,top=i<2,col=top?CSS("--accent"):(gate==="no"?CSS("--line-strong"):CSS("--s6"));
-    out+=`<rect x="${L}" y="${y}" width="${Math.max(2,SX(v)-L)}" height="${h}" rx="5" fill="${col}"/>`
-      +`<text x="${L-10}" y="${y+16}" text-anchor="end" fill="${CSS("--fg")}" font-size="${f+1.5}" font-weight="700">${t}</text>`
-      +`<text x="${SX(v)+8}" y="${y+16}" fill="${CSS("--muted")}" font-size="${f}" font-family="var(--f-mono)" font-weight="600">+${v.toFixed(2).replace(".",",")}%</text>`
-      +(top?`<text x="${L+9}" y="${y+16}" fill="#06201D" font-size="${f}" font-weight="700">TOP ${i+1} · ${i?20:80}%</text>`:"")
-      +(gate==="no"?`<text x="${L+9}" y="${y+16}" fill="${CSS("--neg")}" font-size="${f}" font-weight="700">ODCIĘTE</text>`:"");
-    hit.push({x0:0,x1:W,y0:y-5,y1:y+h+5,html:`<div class="th">${t}</div>
-      <div class="tr">Wynik<span class="tv">+${v.toFixed(2).replace(".",",")}%</span></div>
-      <div class="tr">Pozycja<span class="tv">${top?"top "+(i+1):gate==="no"?"odcięte":"poza podium"}</span></div>`})});
+  RANK.forEach((r,i)=>{
+    const v=r.score,kup=r.weight>0,y=i*bh+9,h=22,[lab,lc]=STAN[r.gate]||["",""];
+    const col=kup?CSS("--accent"):CSS(lc||"--s6"),x0=Math.min(X0,SX(v)),w=Math.max(2,Math.abs(SX(v)-X0));
+    out+=`<rect x="${x0}" y="${y}" width="${w}" height="${h}" rx="5" fill="${col}"/>`
+      +`<text x="${L-10}" y="${y+16}" text-anchor="end" fill="${CSS("--fg")}" font-size="${f+1.5}" font-weight="700">${r.t}</text>`
+      +`<text x="${x0+w+8}" y="${y+16}" fill="${CSS("--muted")}" font-size="${f}" font-family="var(--f-mono)" font-weight="600">${sg2(v)}%</text>`
+      +(kup?`<text x="${x0+9}" y="${y+16}" fill="#06201D" font-size="${f}" font-weight="700">KUPIONE · ${Math.round(r.weight*100)}%</text>`
+           :lab?`<text x="${x0+9}" y="${y+16}" fill="${CSS(r.gate==="no"?"--neg":"--fg")}" font-size="${f}" font-weight="700">${lab}</text>`:"");
+    hit.push({x0:0,x1:W,y0:y-5,y1:y+h+5,html:`<div class="th">${r.t}</div>
+      <div class="tr">Wynik<span class="tv">${sg2(v)}%</span></div>
+      <div class="tr">Status<span class="tv">${kup?"kupione, "+Math.round(r.weight*100)+"%":{no:"odcięte bramką",nodata:"czeka na kurs",canary:"tylko kanarek"}[r.gate]||"poza podium"}</span></div>`})});
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Ranking BEST17 z progiem bramki" data-hover='${HV({W,H,max:1e9,hit})}'>${out}</svg>`});
 
 /* ---- macierz skladu: wiersz = walor, kolumna = data rebalansu ---- */
@@ -506,24 +520,36 @@ function renderAccounts(){
   fillSel()}
 
 function renderDiag(){
-  const prz=SIG.diagnostics_source==="przykladowe";
-  document.getElementById("diagWarn").innerHTML=prz
-    ? `<div class="ostrz"><b>Ranking i kanarek na tym ekranie są przykładowe.</b>
-       Silnik nie wystawia tej diagnostyki osobno, więc dopóki jej nie liczy, nie są to liczby z Twojej strategii.
-       Skład w zakładce Sygnał jest prawdziwy.</div>` : "";
-  document.getElementById("progi").innerHTML=[
-    ["ok","XLK traci pozycję 1","przy spadku","−2,6%"],
-    ["ok","DBC wypada z podium","przy spadku","−5,8%"],
-    ["no","IAU wraca do gry","przy mom3 o","+1,9 pp"],
-    ["nr","Kanarek przełącza w CASH","przy spadku VT i XLK o","−3,4%"],
-  ].map(([s,t,o,w])=>
-    `<div class="row"><div class="ic" style="background:${CSS(s==="ok"?"--pos":s==="no"?"--neg":"--s6")}">${s==="ok"?"✓":s==="no"?"!":"~"}</div>
-      <div class="nm">${t}<em>${o}</em></div><div class="vl"><b>${w}</b></div></div>`).join("");
-  document.getElementById("gpmInfo").innerHTML=[
-    ["Ryzykowne w top 3","CNDX · CMOD · IUES"],["Przeszło filtr trendu","3 z 10"],
-    ["Mianownik","5"],["Udział ochronny","40% · IBTA"],
-  ].map(([t,w])=>`<div class="row" style="grid-template-columns:1fr auto">
+  /* Bramka 3m liczy sie z kursu Z DNIA REBALANSU. Dopoki tego kursu nie ma w danych,
+     silnik nie potrafi orzec o tych walorach - i cala noga wychodzi na gotowke. To
+     nie jest decyzja strategii i nie wolno jej tak pokazywac. */
+  const cz=SIG.pending||[];
+  document.getElementById("diagWarn").innerHTML=cz.length
+    ? `<div class="ostrz"><b>Sygnał z ${SIGNALS[0].date} jest wstępny.</b>
+       Bramka 3-miesięczna dla ${cz.join(" i ")} liczy się z kursu z dnia rebalansu, a tego kursu jeszcze nie ma w danych.
+       Dopóki nie wpadnie, silnik traktuje te walory jako niezdatne i noga BEST17 wychodzi na gotówkę.</div>` : "";
+  document.getElementById("progi").innerHTML=SIG.progi.map(p=>
+    `<div class="row"><div class="ic" style="background:${CSS(p.status==="ok"?"--pos":p.status==="no"?"--neg":"--s6")}">${p.status==="ok"?"✓":p.status==="no"?"!":"~"}</div>
+      <div class="nm">${p.title}<em>${p.sub}</em></div><div class="vl"><b>${p.value}</b></div></div>`).join("");
+  document.getElementById("gpmInfo").innerHTML=SIG.gpm_info
+    .map(([t,w])=>`<div class="row" style="grid-template-columns:1fr auto">
       <div class="nm">${t}</div><div class="vl"><b>${w}</b></div></div>`).join("");
+
+  const TH=SIG.canary.threshold,ost=[["VT",CAN_VT.at(-1)],["XLK",CAN_XLK.at(-1)]],zle=ost.filter(([,v])=>v<=TH);
+  document.getElementById("whyCanary").innerHTML=zle.length
+    ? `${zle.map(([t,v])=>`<b>${t} ${sg2(v)}%</b>`).join(" i ")} na progu ${sg2(TH)}% lub niżej, więc <b>CASH</b>.
+       Wystarczy jeden kanarek pod linią, żeby BEST17 wyszedł do gotówki.`
+    : `${ost.map(([t,v])=>`<b>${t} ${sg2(v)}%</b>`).join(" i ")} są nad progiem ${sg2(TH)}%, więc <b>RISK</b>.
+       Wystarczy, że <b>jeden</b> z nich spadnie na próg lub niżej, a BEST17 wychodzi do gotówki.`;
+
+  const kup=RANK.filter(r=>r.weight>0),od=RANK.filter(r=>r.gate==="no"),nd=RANK.filter(r=>r.gate==="nodata");
+  document.getElementById("whyRank").innerHTML=[
+    kup.length?`Kupione: ${kup.map(r=>`<b>${r.t} ${Math.round(r.weight*100)}%</b>`).join(" i ")}.`
+      :nd.length?`Skład nie jest jeszcze rozstrzygnięty — brakuje kursu z dnia rebalansu dla <b>${nd.map(r=>r.t).join(", ")}</b>.`
+      :"Nic nie przeszło przez filtry — cała noga stoi w gotówce.",
+    od.length?`Bramki 3-miesięcznej (${sg2(SIG.gate_threshold)}%) nie przeszło: <b>${od.map(r=>r.t).join(", ")}</b>.`:"",
+    (kup.length&&nd.length)?`Czeka na kurs z dnia rebalansu: <b>${nd.map(r=>r.t).join(", ")}</b>.`:"",
+  ].filter(Boolean).join(" ");
 }
 
 function renderWyniki(){
