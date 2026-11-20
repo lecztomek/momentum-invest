@@ -31,39 +31,40 @@
 
 <!-- ========== PULPIT ========== -->
 <section id="v-pulpit">
-  <div class="vh"><h1>Pulpit</h1><span class="stamp" id="stampFx"></span></div>
-
-  <div class="tiles" id="kpi"></div>
-
-  <h2 class="sec">Kapitał</h2>
-  <div class="grid2">
-    <div class="card">
-      <div class="lbl">W dolarze</div>
-      <div class="chart" id="c-eq-usd"></div>
-      <div class="legend" id="l-eq-usd"></div>
-    </div>
-    <div class="card">
-      <div class="lbl">Po przeliczeniu na złote</div>
-      <div class="chart" id="c-eq-pln"></div>
-      <div class="legend" id="l-eq-pln"></div>
+  <div class="phead">
+    <h1>Pulpit</h1>
+    <div class="tog" id="curTog">
+      <button type="button" data-cur="usd" aria-pressed="true">USD</button>
+      <button type="button" data-cur="pln" aria-pressed="false">PLN</button>
     </div>
   </div>
-  <p class="note" id="fxNote"></p>
 
-  <h2 class="sec">Co trzymam</h2>
-  <div class="card tw"><table>
-    <thead><tr><th>ETF</th><th></th><th>Udział</th><th>Wartość</th><th>W dolarze</th></tr></thead>
-    <tbody id="holdRows"></tbody>
-  </table></div>
-
-  <h2 class="sec">Odnogi</h2>
-  <div class="grid2" id="legCards"></div>
-
-  <h2 class="sec">Ostatnie miesiące</h2>
-  <div class="card">
-    <div class="chart" id="c-month"></div>
-    <div class="legend" id="l-month"></div>
+  <div class="hero">
+    <div class="hval" id="heroVal"></div>
+    <div class="halt" id="heroAlt"></div>
+    <div class="hsub" id="heroSub"></div>
   </div>
+
+  <div class="chart hchart" id="c-hero"></div>
+  <div class="ranges" id="ranges">
+    <button type="button" data-r="3">3M</button>
+    <button type="button" data-r="6" aria-pressed="true">6M</button>
+    <button type="button" data-r="12">1R</button>
+    <button type="button" data-r="0">MAX</button>
+  </div>
+
+  <div class="stats" id="heroStats"></div>
+
+  <div class="nxt" id="nextBox"></div>
+
+  <h2 class="psec">Odnogi</h2>
+  <div class="legs" id="legCards"></div>
+
+  <h2 class="psec">Co trzymam</h2>
+  <div class="list" id="holdList"></div>
+
+  <h2 class="psec">Ostatnie miesiące</h2>
+  <div class="panel"><div class="chart" id="c-month"></div></div>
 </section>
 
 <!-- ========== SYGNAL ========== -->

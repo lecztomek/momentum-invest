@@ -15,7 +15,7 @@ img{max-width:100%}
   --fg:#EAF0F6; --muted:#A3B0BD; --faint:#76838F;
   --line:#242E38; --line-strong:#3A4651;
   --accent:#4FC3B6; --accent-soft:#15332F;
-  --pos:#0CA30C; --neg:#D03B3B; --warn:#FAB219; --cash:#7FA8CE;
+  --pos:#0CA30C; --pos-soft2:#3FBF6A; --neg:#D03B3B; --warn:#FAB219; --cash:#7FA8CE;
   --s1:#3987E5; --s2:#D95926; --s3:#199E70; --s4:#C98500; --s5:#D55181; --s6:#5A6774; --s7:#9085E9;
   --s1b:#8AB9F2; --s2b:#E88A62; --s2c:#F2B79E; --s2d:#C0714F;
   --s3b:#5FC9A3; --s5b:#E88FAE; --s5c:#F0BACE; --s5d:#BE6E8C;
@@ -213,3 +213,69 @@ input[type=number]{font-family:var(--f-mono)}
 .strip .f{display:flex;gap:9px;margin-top:6px;font-size:.84rem;color:var(--faint)}
 .strip .f .d{margin-left:auto;font-family:var(--f-mono)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ============================================================
+   PULPIT - uklad w duchu aplikacji maklerskich: jedna duza liczba,
+   duzo powietrza, miekkie zaokraglenia, bez ramek wokol sekcji.
+   ============================================================ */
+#v-pulpit .phead{display:flex;align-items:center;gap:14px;padding-block:22px 6px}
+#v-pulpit .phead h1{font-size:1.5rem;font-weight:700;letter-spacing:-.03em;margin-right:auto}
+.tog{display:flex;background:var(--surface2);border-radius:999px;padding:3px;gap:2px}
+.tog button{font:inherit;font-size:.86rem;font-weight:700;border:0;background:transparent;color:var(--muted);
+  padding:7px 16px;border-radius:999px;cursor:pointer;letter-spacing:.02em}
+.tog button[aria-pressed="true"]{background:var(--raised);color:var(--fg)}
+.tog button:focus-visible{outline:2px solid var(--accent)}
+
+.hero{padding-block:14px 4px}
+.hval{font-size:3rem;font-weight:700;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.hval span{font-size:1.35rem;font-weight:600;color:var(--muted);letter-spacing:-.01em;margin-left:6px}
+.hsub{font-size:1.08rem;font-weight:600;margin-top:12px;font-variant-numeric:tabular-nums}
+.hsub em{font-style:normal;color:var(--faint);font-weight:500}
+.halt{font-size:1.05rem;color:var(--muted);margin-top:8px;font-weight:500;font-variant-numeric:tabular-nums}
+@media(min-width:620px){.hval{font-size:3.6rem}}
+
+/* trzy liczby pod wykresem zamiast zbitki w jednej linijce */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--surface);border-radius:18px;
+  padding:16px 6px;margin-top:20px;text-align:center}
+.stats div{min-width:0;padding:0 8px}
+.stats div+div{border-left:1px solid var(--line)}
+.stats span{display:block;font-size:.74rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.stats b{display:block;font-size:1.12rem;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.hchart{margin-top:6px}
+.ranges{display:flex;gap:7px;margin-top:4px;flex-wrap:wrap}
+.ranges button{font:inherit;font-size:.84rem;font-weight:600;border:0;background:transparent;color:var(--faint);
+  padding:7px 14px;border-radius:999px;cursor:pointer}
+.ranges button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.ranges button:focus-visible{outline:2px solid var(--accent)}
+
+#v-pulpit h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12px}
+.panel{background:var(--surface);border-radius:20px;padding:18px 16px}
+
+.nxt{display:flex;align-items:center;gap:14px;background:var(--surface);border-radius:18px;padding:15px 18px;margin-top:22px}
+.nxt .ico{width:40px;height:40px;border-radius:12px;background:var(--accent-soft);color:var(--accent);
+  display:grid;place-items:center;flex:0 0 auto;font-size:1.15rem;font-weight:700}
+.nxt b{display:block;font-size:1.02rem}
+.nxt span{font-size:.88rem;color:var(--faint)}
+.nxt .r{margin-left:auto;text-align:right;font-weight:700;font-size:1.02rem;color:var(--warn)}
+
+.legs{display:grid;gap:12px;grid-template-columns:1fr}
+@media(min-width:680px){.legs{grid-template-columns:1fr 1fr}}
+.legc{background:var(--surface);border-radius:20px;padding:18px}
+.legc .t{display:flex;align-items:baseline;gap:8px;font-size:.78rem;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--faint)}
+.legc .t em{font-style:normal;letter-spacing:0;text-transform:none;font-weight:500}
+.legc .n{font-size:1.9rem;font-weight:700;letter-spacing:-.03em;margin-top:9px;font-variant-numeric:tabular-nums}
+.legc .n span{font-size:.95rem;font-weight:600;color:var(--muted);margin-left:5px}
+.legc .d{font-size:.92rem;color:var(--faint);margin-top:4px;font-variant-numeric:tabular-nums}
+.legc .bar{display:flex;height:34px;border-radius:11px;overflow:hidden;gap:2px;margin-top:16px}
+.legc .bar span{display:grid;place-items:center;font-size:.74rem;font-weight:700;color:#0A1014;min-width:0;overflow:hidden;white-space:nowrap}
+
+.list{background:var(--surface);border-radius:20px;padding:6px 16px}
+.row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding:14px 0}
+.row+.row{border-top:1px solid var(--line)}
+.row .ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:.72rem;font-weight:700;color:#0A1014}
+.row .nm{font-size:1rem;font-weight:600;min-width:0}
+.row .nm em{display:block;font-style:normal;font-size:.84rem;color:var(--faint);font-weight:400;margin-top:2px}
+.row .vl{text-align:right;font-variant-numeric:tabular-nums}
+.row .vl b{display:block;font-size:1rem;font-weight:600}
+.row .vl span{font-size:.84rem;color:var(--faint)}

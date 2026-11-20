@@ -148,32 +148,6 @@ function wire(box,svg,tip,H){
 const HV=o=>JSON.stringify(o).replace(/'/g,"&apos;");
 const FS=w=>w<460?11:12.5;
 
-function equity(id,cur,col){
-  const C=CUR[cur],AC=CSS(col);
-  chart(id,W=>{
-    const nr=W<520,H=nr?190:215,L=nr?48:56,R=10,T=12,B=28,n=MONTHS.length,f=FS(W);
-    const all=[...C.v,...C.p],lo=Math.min(...all)*.94,hi=Math.max(...all)*1.04;
-    const X=i=>L+(W-L-R)*i/(n-1),Y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo));
-    const pa=a=>a.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)).join(" ");
-    const tick=v=>v>=1000?Math.round(v/1000)+"k":Math.round(v);
-    let g="";for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4;
-      g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${CSS("--line")}"/>`
-        +`<text x="${L-8}" y="${Y(v)+4}" text-anchor="end" fill="${CSS("--faint")}" font-size="${f}">${tick(v)}</text>`}
-    let xl="";for(let i=0;i<n;i+=nr?8:6)xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${mLbl(MONTHS[i])}</text>`;
-    const hit=MONTHS.map((m,i)=>{const w=C.v[i]-C.p[i];
-      return {cx:X(i),html:`<div class="th">${mLbl(m)}</div>
-      <div class="tr"><span class="sw" style="background:${AC}"></span>Wartość<span class="tv">${zl(C.v[i])} ${C.u}</span></div>
-      <div class="tr"><span class="sw" style="background:${CSS("--muted")}"></span>Wpłacone<span class="tv">${zl(C.p[i])} ${C.u}</span></div>
-      <div class="tr" style="color:${w>=0?CSS("--pos"):CSS("--neg")}"><span class="sw" style="background:transparent"></span>Różnica<span class="tv">${w>=0?"+":"−"}${zl(w)}</span></div>`}});
-    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Wartosc i wplaty w ${C.u}" data-hover='${HV({W,H,max:(W-L-R)/n,hit})}'>
-      <defs><linearGradient id="g-${id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${AC}" stop-opacity=".28"/><stop offset="1" stop-color="${AC}" stop-opacity="0"/></linearGradient></defs>
-      ${g}${xl}<line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>
-      <path d="${pa(C.v)} L${X(n-1)} ${Y(lo)} L${X(0)} ${Y(lo)} Z" fill="url(#g-${id})"/>
-      <path d="${pa(C.p)}" fill="none" stroke="${CSS("--muted")}" stroke-width="2.2" stroke-dasharray="6 5"/>
-      <path d="${pa(C.v)}" fill="none" stroke="${AC}" stroke-width="2.5" stroke-linejoin="round"/>
-      <circle cx="${X(n-1)}" cy="${Y(C.v[n-1])}" r="4.5" fill="${AC}" stroke="${CSS("--surface")}" stroke-width="2.5"/></svg>`})}
-equity("c-eq-usd","usd","--accent");equity("c-eq-pln","pln","--s4");
-
 chart("c-mix",W=>{
   const nr=W<460,H=nr?220:260,L=nr?34:40,R=10,T=12,B=28,n=MONTHS.length,f=FS(W);
   const X=i=>L+(W-L-R)*i/(n-1),Y=p=>T+(H-T-B)*(1-p/100);
@@ -317,27 +291,21 @@ function renderMatrix(){
 document.getElementById("segMx").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;MXN=+b.dataset.mx;renderMatrix()});
 
-/* ---- ostatnie miesiace: slupek PLN i slupek USD obok siebie ---- */
+/* ---- ostatnie miesiace: slupki w wybranej walucie ---- */
 chart("c-month",W=>{
-  const K=6,idx=[...Array(K)].map((_,k)=>MONTHS.length-K+k);
-  const nr=W<520,H=nr?185:210,T=20,B=30,L=12,R=12,f=FS(W);
-  const vals=idx.flatMap(i=>[RETC.pln[i],RETC.usd[i]]).filter(v=>v!=null);
-  const mx=Math.max(...vals.map(Math.abs))*1.4;
-  const step=(W-L-R)/K,bw=Math.min(step*.3,26);
-  const X=(k,s)=>L+step*(k+.5)+(s?bw*.58:-bw*.58),Y=v=>T+(H-T-B)*(1-(v+mx)/(2*mx));
-  let g=`<line x1="${L}" x2="${W-R}" y1="${Y(0)}" y2="${Y(0)}" stroke="${CSS("--line-strong")}"/>`;const hit=[];
-  idx.forEach((i,k)=>{
-    [[RETC.pln[i],"--s1",0],[RETC.usd[i],"--s2",1]].forEach(([v,c,s])=>{
-      if(v==null)return;
-      const top=Math.min(Y(v),Y(0)),h=Math.max(2.5,Math.abs(Y(v)-Y(0)));
-      g+=`<rect x="${X(k,s)-bw/2}" y="${top}" width="${bw}" height="${h}" rx="3" fill="${CSS(c)}"/>`
-});
-    g+=`<text x="${L+step*(k+.5)}" y="${H-9}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${mLbl(MONTHS[i])}</text>`;
-    hit.push({cx:L+step*(k+.5),html:`<div class="th">${mLbl(MONTHS[i])}</div>
-      <div class="tr"><span class="sw" style="background:${CSS("--s1")}"></span>w złotych<span class="tv" style="color:${RETC.pln[i]>=0?CSS("--pos"):CSS("--neg")}">${sg2(RETC.pln[i])}%</span></div>
-      <div class="tr"><span class="sw" style="background:${CSS("--s2")}"></span>w dolarze<span class="tv" style="color:${RETC.usd[i]>=0?CSS("--pos"):CSS("--neg")}">${sg2(RETC.usd[i])}%</span></div>`})});
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Wyniki ostatnich szesciu miesiecy w obu walutach" data-hover='${HV({W,H,max:step/1.6,hit})}'>${g}</svg>`});
-
+  const R=cur().r,K=6,idx=[...Array(K)].map((_,k)=>MONTHS.length-K+k);
+  const nr=W<520,H=nr?150:175,T=20,B=26,L=6,Rp=6,f=FS(W);
+  const mx=Math.max(...idx.map(i=>Math.abs(R[i]||0)))*1.35||1;
+  const step=(W-L-Rp)/K,bw=Math.min(step*.44,40);
+  const X=k=>L+step*(k+.5),Y=v=>T+(H-T-B)*(1-(v+mx)/(2*mx));
+  let g=`<line x1="${L}" x2="${W-Rp}" y1="${Y(0)}" y2="${Y(0)}" stroke="${CSS("--line")}"/>`;const hit=[];
+  idx.forEach((i,k)=>{const v=R[i];if(v==null)return;
+    const top=Math.min(Y(v),Y(0)),h=Math.max(3,Math.abs(Y(v)-Y(0)));
+    g+=`<rect x="${X(k)-bw/2}" y="${top}" width="${bw}" height="${h}" rx="5" fill="${v>=0?CSS("--pos"):CSS("--neg")}"/>`
+      +`<text x="${X(k)}" y="${v>=0?top-6:top+h+14}" text-anchor="middle" fill="${CSS("--muted")}" font-size="${f}" font-weight="600">${sg(v)}</text>`
+      +`<text x="${X(k)}" y="${H-7}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${mLbl(MONTHS[i])}</text>`;
+    hit.push({cx:X(k),html:`<div class="th">${mLbl(MONTHS[i])}</div><div class="tr">Wynik<span class="tv" style="color:${v>=0?CSS("--pos"):CSS("--neg")}">${sg2(v)}%</span></div>`})});
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Wyniki ostatnich szesciu miesiecy" data-hover='${HV({W,H,max:step/1.6,hit})}'>${g}</svg>`});
 
 /* ============ widoki ============ */
 const legend=(id,it)=>document.getElementById(id).innerHTML=it.map(([n,c])=>`<span><i style="background:${c}"></i>${n}</span>`).join("");
@@ -348,50 +316,79 @@ const KOL={IUIT:"--s1",CNDX:"--s1b",CSPX:"--s2",VWRA:"--s2b",EIMI:"--s2c",IUES:"
   IHYA:"--s5d",LQDA:"--s7",GOTOWKA:"--s6"};
 const tbl=(h,b,f)=>`<div class="card tw"><table><thead><tr>${h}</tr></thead><tbody>${b}</tbody>${f?`<tfoot>${f}</tfoot>`:""}</table></div>`;
 /* ---- pulpit ---- */
+let CURV="usd", RNG=6;
 const FXN=PORT.fx.rate;
+const cur=()=>CURV==="usd"
+  ? {v:VUSD,p:PUSD,u:"USD",alt:{v:VALUE,u:"zł"},r:RETC.usd,twr:PORT.twr.usd,k:x=>x}
+  : {v:VALUE,p:PAID,u:"zł", alt:{v:VUSD, u:"USD"},r:RETC.pln,twr:PORT.twr.pln,k:x=>x/FXN};
+
+/* duzy wykres kapitalu: sama krzywa i wypelnienie, bez siatki i osi */
+chart("c-hero",W=>{
+  const C=cur(),n=C.v.length,from=RNG?Math.max(0,n-RNG-1):0,V=C.v.slice(from),P=C.p.slice(from),M=MONTHS.slice(from);
+  const m=V.length,nr=W<520,H=nr?170:210,T=14,B=26,L=4,R=4;
+  const all=[...V,...P],lo=Math.min(...all),hi=Math.max(...all),pad=(hi-lo)*.14||1;
+  const X=i=>L+(W-L-R)*(m>1?i/(m-1):.5),Y=v=>T+(H-T-B)*(1-(v-lo+pad)/(hi-lo+2*pad));
+  const pa=a=>a.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)).join(" ");
+  const up=V.at(-1)>=V[0],col=up?CSS("--pos-soft2"):CSS("--neg");
+  const hit=M.map((mm,i)=>({cx:X(i),html:`<div class="th">${mLbl(mm)}</div>
+    <div class="tr">Wartość<span class="tv">${zl(V[i])} ${C.u}</span></div>
+    <div class="tr">Wpłacone<span class="tv">${zl(P[i])} ${C.u}</span></div>`}));
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Wartosc portfela" data-hover='${HV({W,H,max:(W-L-R)/m,hit})}'>
+    <defs><linearGradient id="hg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="${col}" stop-opacity=".30"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+    <path d="${pa(V)} L${X(m-1)} ${H-B} L${X(0)} ${H-B} Z" fill="url(#hg)"/>
+    <path d="${pa(P)}" fill="none" stroke="${CSS("--line-strong")}" stroke-width="1.8" stroke-dasharray="5 5"/>
+    <path d="${pa(V)}" fill="none" stroke="${col}" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${X(m-1)}" cy="${Y(V.at(-1))}" r="5" fill="${col}" stroke="${CSS("--bg")}" stroke-width="3"/>
+    <line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>
+    <text x="${L}" y="${H-7}" fill="${CSS("--faint")}" font-size="${nr?11:12}">${mLbl(M[0])}</text>
+    <text x="${W-R}" y="${H-7}" text-anchor="end" fill="${CSS("--faint")}" font-size="${nr?11:12}">${mLbl(M.at(-1))}</text>
+  </svg>`});
+
 function renderPulpit(){
-  const W={pln:VALUE.at(-1),usd:VUSD.at(-1)},P={pln:PAID.at(-1),usd:PUSD.at(-1)};
-  const zy={pln:W.pln-P.pln,usd:W.usd-P.usd},T=PORT.twr;
-  const sgn=(v,u)=>(v>=0?"+":"−")+zl(v)+" "+u;
-  document.getElementById("stampFx").textContent="USD/PLN "+String(FXN).replace(".",",");
-  document.getElementById("kpi").innerHTML=[
-    ["Wartość",zl(W.usd)+" USD",zl(W.pln)+" zł","--fg","--fg","wpłacone "+zl(P.usd)+" USD"],
-    ["Wynik",sgn(zy.usd,"USD"),sgn(zy.pln,"zł"),zy.usd>=0?"--pos":"--neg",zy.pln>=0?"--pos":"--neg","mam minus wpłacone"],
-    ["TWR",sg2(T.usd)+"% USD",sg2(T.pln)+"% PLN",T.usd>=0?"--pos":"--neg",T.pln>=0?"--pos":"--neg","same decyzje"],
-    ["Rebalans","za 15 dni","25 grudnia","--warn","--muted","transza 25-tego"]
-  ].map(([l,v,v2,c,c2,d])=>`<div class="tile"><div class="lbl">${l}</div>
-    <div class="v" style="color:var(${c})">${v}</div>
-    <div class="v2" style="color:var(${c2})">${v2}</div><div class="d">${d}</div></div>`).join("");
+  const C=cur(),V=C.v.at(-1),P=C.p.at(-1),zy=V-P;
+  const from=RNG?Math.max(0,C.v.length-RNG-1):0;
+  const okres=C.v.at(-1)-C.v[from]-(C.p.at(-1)-C.p[from]);
+  const pct=C.v[from]?okres/C.v[from]*100:0;
+  document.getElementById("heroVal").innerHTML=`${zl(V)}<span>${C.u}</span>`;
+  document.getElementById("heroSub").innerHTML=
+    `<span style="color:var(${okres>=0?"--pos":"--neg"})">${okres>=0?"+":"−"}${zl(okres)} ${C.u} · ${sg(pct)}%</span>`
+    +` <em>${RNG?"w "+RNG+" mies.":"od początku"}</em>`;
+  document.getElementById("heroAlt").textContent=`≈ ${zl(C.alt.v.at(-1))} ${C.alt.u}`;
+  document.getElementById("heroStats").innerHTML=[
+    ["Wpłacone",zl(P)+" "+C.u,"--muted"],
+    ["Wynik",(zy>=0?"+":"−")+zl(zy)+" "+C.u,zy>=0?"--pos":"--neg"],
+    ["TWR",sg2(C.twr)+"%",C.twr>=0?"--pos":"--neg"]
+  ].map(([l,v,c])=>`<div><span>${l}</span><b style="color:var(${c})">${v}</b></div>`).join("");
 
-  const fx0=FXS[0],d=(FXN/fx0-1)*100;
-  document.getElementById("fxNote").textContent=
-    `Ten sam portfel, dwa obrazy. Kurs poszedł z ${String(fx0).replace(".",",")} na ${String(FXN).replace(".",",")}, `
-    +`czyli ${sg(d)}%, i ta różnica w całości siedzi między tymi wykresami. TWR w złotych jest o `
-    +`${sg2(PORT.twr.pln-PORT.twr.usd)} pp wyższy niż w dolarze wyłącznie z tego powodu.`;
-
-  const HT=Object.values(HOLDINGS).reduce((a,b)=>a+b,0);
-  const mxs=Math.max(...Object.values(HOLDINGS));
-  document.getElementById("holdRows").innerHTML=Object.entries(HOLDINGS).sort((a,b)=>b[1]-a[1]).map(([t,v])=>
-    `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
-     <td class="shrc"><span class="shr"><i style="width:${(v/mxs*100).toFixed(1)}%;background:${CSS(KOL[t]||"--s6")}"></i></span></td>
-     <td class="num">${pc(v/HT)}</td><td class="num">${zl(v)} zł</td>
-     <td class="num sub">${zl(v/FXN)} USD</td></tr>`).join("")
-   +`<tr><td>Razem</td><td></td><td class="num">100,0%</td><td class="num">${zl(HT)} zł</td><td class="num sub">${zl(HT/FXN)} USD</td></tr>`;
+  document.getElementById("nextBox").innerHTML=
+    `<div class="ico">25</div><div><b>Najbliższy rebalans</b><span>25 grudnia · transza 25-tego</span></div><div class="r">za 15 dni</div>`;
 
   document.getElementById("legCards").innerHTML=[["best17","BEST17","konto LYNX"],["gpm","GPM","konto XTB"]]
     .map(([k,name,acct])=>{
-      const L=LEGS[k],w=L.value_usd-L.paid_usd,o=accComp(SETUPS[SETUP].accounts.find(a=>a.alloc[k]>0)||{alloc:{[k]:1}});
-      return `<div class="card"><div class="lbl">${name} <span style="text-transform:none;letter-spacing:0">· ${acct}</span></div>
-        <div class="big">${zl(L.value_usd)}<span style="font-size:1rem;color:var(--muted)"> USD</span></div>
-        <div class="v2" style="color:var(--muted);font-size:1.05rem;font-weight:600">${zl(L.value_usd*FXN)} zł</div>
-        <dl class="kv" style="margin-top:12px">
-          <dt>Wpłacone</dt><dd>${zl(L.paid_usd)} USD</dd>
-          <dt>Wynik</dt><dd style="color:var(${w>=0?"--pos":"--neg"})">${w>=0?"+":"−"}${zl(w)} USD</dd>
-        </dl>
-        <div class="alloc" style="margin-top:14px;height:30px">${Object.entries(o).map(([t,v])=>{
-          const cap=Object.values(o).reduce((a,b)=>a+b,0),pr=v/cap*100;
-          return `<span style="flex:${pr};background:${CSS(KOL[t]||"--s6")}" title="${t} ${pc(v/cap)}">${pr>13?(t==="GOTOWKA"?"GOT.":t):""}</span>`}).join("")}</div>
-      </div>`}).join("")}
+      const L=LEGS[k],w=L.value_usd-L.paid_usd,o=accComp({alloc:{[k]:1}});
+      const capo=Object.values(o).reduce((a,b)=>a+b,0);
+      return `<div class="legc"><div class="t">${name} <em>${acct}</em></div>
+        <div class="n">${zl(C.k(L.value_usd))}<span>${C.u}</span></div>
+        <div class="d">wpłacone ${zl(C.k(L.paid_usd))} · wynik <span style="color:var(${w>=0?"--pos":"--neg"})">${w>=0?"+":"−"}${zl(C.k(w))}</span></div>
+        <div class="bar">${Object.entries(o).map(([t,v])=>{const pr=v/capo*100;
+          return `<span style="flex:${pr};background:${CSS(KOL[t]||"--s6")}" title="${t} ${pc(v/capo)}">${pr>13?(t==="GOTOWKA"?"GOT.":t):""}</span>`}).join("")}</div></div>`}).join("");
+
+  const HT=Object.values(HOLDINGS).reduce((a,b)=>a+b,0);
+  document.getElementById("holdList").innerHTML=Object.entries(HOLDINGS).sort((a,b)=>b[1]-a[1]).map(([t,v])=>{
+    const nm=t==="GOTOWKA"?"Gotówka":t;
+    return `<div class="row"><div class="ic" style="background:${CSS(KOL[t]||"--s6")}">${nm.slice(0,2).toUpperCase()}</div>
+      <div class="nm">${nm}<em>${t==="GOTOWKA"?"nieulokowane":(ROLE[t]||"")}</em></div>
+      <div class="vl"><b>${zl(CURV==="usd"?v/FXN:v)} ${C.u}</b><span>${pc(v/HT)}</span></div></div>`}).join("");
+}
+document.getElementById("curTog").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#curTog button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+  CURV=b.dataset.cur;renderPulpit();mount(charts.find(c=>c.id==="c-hero"));mount(charts.find(c=>c.id==="c-month"))});
+document.getElementById("ranges").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  document.querySelectorAll("#ranges button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+  RNG=+b.dataset.r;renderPulpit();mount(charts.find(c=>c.id==="c-hero"))});
 
 function renderHero(){
   const e=Object.entries(COMBINED).sort((a,b)=>b[1]-a[1]);
@@ -595,9 +592,7 @@ document.getElementById("segS").addEventListener("click",e=>{
 document.getElementById("txTick").innerHTML=ORDER.map(t=>`<option>${t}</option>`).join("");
 document.getElementById("txDate").value=new Date().toISOString().slice(0,10);
 fillAccSelect();renderTX();renderPulpit();renderMatrix();renderHero();renderActions();renderHist();renderSklad("sum");renderAccounts();renderWyniki();renderCeny();
-legend("l-eq-usd",[["Wartość w USD",CSS("--accent")],["Wpłacony kapitał",CSS("--muted")]]);
-legend("l-eq-pln",[["Wartość w PLN",CSS("--s4")],["Wpłacony kapitał",CSS("--muted")]]);
-legend("l-month",[["w złotych",CSS("--s1")],["w dolarze",CSS("--s2")]]);
+
 legend("l-mix",KLASY.map(k=>[k[0],CSS(k[1])]));
 legend("l-canary",[["VT",CSS("--s1")],["XLK",CSS("--s2")]]);
 show(location.hash.slice(1)||"pulpit");
