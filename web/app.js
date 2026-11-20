@@ -75,6 +75,22 @@ try{
     for(const[t]of INSTR)P.px[t].push(d.ceny[t]??null);
   }
 }catch(e){}
+async function wczytajCenyZBazy(){
+  if(!FB||!USER)return;
+  try{
+    for(const w of await FB.wczytajCeny()){
+      const P=PRICES[String(w.tranche)];if(!P||P.dates.includes(w.date))continue;
+      P.dates.push(w.date);
+      for(const[t]of INSTR)P.px[t].push(w.px?.[t]??null);
+      P.man=P.man||{};P.man[w.date]=true;
+      const kol=P.dates.map((d,i)=>[d,i]).sort((a,b)=>a[0].localeCompare(b[0]));
+      P.dates=kol.map(x=>x[0]);
+      for(const[t]of INSTR)P.px[t]=kol.map(x=>P.px[t][x[1]]);
+    }
+    for(const k of await FB.wczytajKorekty())OVR[k.id.replace(/^\d+_/, "").replace(/_/,"@")]={v:k.value,r:k.reason,who:k.author,when:k.created_at||""};
+  }catch(e){console.warn("ceny z bazy:",e.message)}
+  renderCeny();
+}
 const zapiszReczne=()=>{try{
   const r={};
   for(const tab of ["10","25"]){const P=PRICES[tab];
@@ -540,6 +556,7 @@ function renderCeny(){
     return `<button type="button" data-di="${i}" aria-pressed="${i===last}" class="${fix?"fix":""}">
       <b>${d.slice(8)}.${d.slice(5,7)}</b>${d.slice(0,4)}</button>`}).join("");
   document.getElementById("addHint").textContent=`Następny dzień wg reguły: ${nastepnaData()}`;
+  rysujPrawoZapisu();
   document.getElementById("dPrev").disabled=last===0;
   document.getElementById("dNext").disabled=last===P.dates.length-1;
   document.querySelector(`#dStrip [data-di="${last}"]`)?.scrollIntoView({block:"nearest",inline:"center"});
@@ -580,6 +597,14 @@ function rysujFormularz(){
        <button class="btn" id="adCancel" style="background:var(--surface2);color:var(--muted)">Anuluj</button>
        <span class="note" id="adMsg"></span></div>`}
 
+function rysujPrawoZapisu(){
+  const b=document.getElementById("addDay"),h=document.getElementById("addHint");
+  if(!b)return;
+  const moze=!FB||ADMIN_BAZA;
+  b.disabled=!moze;b.style.opacity=moze?"":"0.45";b.style.cursor=moze?"":"default";
+  if(FB&&USER&&!ADMIN_BAZA)h.textContent="Podgląd — wpisywanie cen wymaga uprawnień admina.";
+  else if(FB&&!USER)h.textContent="Zaloguj się, żeby zapisywać ceny w bazie.";
+}
 document.getElementById("addDay").addEventListener("click",()=>{
   const f=document.getElementById("addForm");
   if(!f.hidden){f.hidden=true;return}
@@ -610,6 +635,11 @@ document.getElementById("addForm").addEventListener("click",e=>{
   P.dates.push(data);
   for(const[t]of INSTR)P.px[t].push(ceny[t]);
   P.man=P.man||{};P.man[data]=true;
+  if(FB&&ADMIN_BAZA){
+    FB.zapiszCeny(`${PTAB}_${data}`,{tranche:+PTAB,date:data,px:ceny,source:"reczne",
+      author:USER?.email||USER?.uid||"admin",created_at:new Date().toISOString()})
+      .catch(err=>{msg.innerHTML=`<span style="color:var(--warn)">Zapisane lokalnie, ale nie w bazie: ${esc(err.message)}</span>`});
+  }
   const kol=P.dates.map((d,i)=>[d,i]).sort((a,b)=>a[0].localeCompare(b[0]));
   P.dates=kol.map(x=>x[0]);
   for(const[t]of INSTR)P.px[t]=kol.map(x=>P.px[t][x[1]]);
@@ -632,13 +662,20 @@ document.getElementById("dNext").addEventListener("click",()=>{PIDX=Math.min(PRI
 document.getElementById("priceList").addEventListener("click",e=>{
   const ed=e.target.closest("[data-edit]"),un=e.target.closest("[data-undo]"),ca=e.target.closest("[data-cancel]");
   if(ed){EDIT=ed.dataset.edit;renderCeny();document.getElementById("ovrV")?.focus()}
-  else if(un){delete OVR[okey(un.dataset.undo,pdate())];saveOVR();renderCeny()}
+  else if(un){delete OVR[okey(un.dataset.undo,pdate())];saveOVR();
+    if(FB&&ADMIN_BAZA)FB.usunKorekte(`${PTAB}_${pdate()}_${un.dataset.undo}`).catch(()=>{});
+    renderCeny()}
   else if(ca){EDIT=null;renderCeny()}});
 document.getElementById("priceList").addEventListener("submit",e=>{
   e.preventDefault();
-  OVR[okey(EDIT,pdate())]={v:parseFloat(document.getElementById("ovrV").value),
-    r:document.getElementById("ovrR").value,who:"admin",when:new Date().toISOString().slice(0,16).replace("T"," ")};
-  saveOVR();EDIT=null;renderCeny()});
+  const klucz=okey(EDIT,pdate()),wpis={v:parseFloat(document.getElementById("ovrV").value),
+    r:document.getElementById("ovrR").value,who:USER?.email||"admin",
+    when:new Date().toISOString().slice(0,16).replace("T"," ")};
+  OVR[klucz]=wpis;saveOVR();
+  if(FB&&ADMIN_BAZA)FB.zapiszKorekte(`${PTAB}_${pdate()}_${EDIT}`,
+    {value:wpis.v,reason:wpis.r,author:wpis.who,created_at:wpis.when})
+    .catch(err=>console.warn("korekta nie trafila do bazy:",err.message));
+  EDIT=null;renderCeny()});
 
 /* ---- transakcje ---- */
 let TX=[];
@@ -754,7 +791,7 @@ document.addEventListener("click",async e=>{
 if(FB)FB.naZmianeKonta(async u=>{
   USER=u;
   ADMIN_BAZA=u?await FB.czyAdmin(u.uid):false;
-  rysujKonto();rysujUid();
-  if(u)await wczytajTXzBazy(); else renderTX();
+  rysujKonto();rysujUid();rysujPrawoZapisu();
+  if(u){await wczytajTXzBazy();await wczytajCenyZBazy()} else renderTX();
 });
 rysujKonto();

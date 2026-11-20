@@ -53,3 +53,21 @@ export async function wczytajCeny() {
 export async function zapiszCeny(id, dane) {
   await setDoc(doc(db, "price_entries", id), dane);
 }
+
+export async function usunCeny(id) {
+  await deleteDoc(doc(db, "price_entries", id));
+}
+
+/** Korekty cen. Nigdy nie nadpisuja ceny zrodlowej - leza obok niej. */
+export async function wczytajKorekty() {
+  const snap = await getDocs(collection(db, "overrides"));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function zapiszKorekte(id, dane) {
+  await setDoc(doc(db, "overrides", id), dane);
+}
+
+export async function usunKorekte(id) {
+  await deleteDoc(doc(db, "overrides", id));
+}
