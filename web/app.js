@@ -505,7 +505,30 @@ function renderAccounts(){
         <div class="vl"><b style="color:var(${c})">${r.d>=0?"+":"−"}${zl(r.d)} zł</b><span>${sg(r.pp)} pp</span></div></div>`}).join("");
   fillSel()}
 
+function renderDiag(){
+  const prz=SIG.diagnostics_source==="przykladowe";
+  document.getElementById("diagWarn").innerHTML=prz
+    ? `<div class="ostrz"><b>Ranking i kanarek na tym ekranie są przykładowe.</b>
+       Silnik nie wystawia tej diagnostyki osobno, więc dopóki jej nie liczy, nie są to liczby z Twojej strategii.
+       Skład w zakładce Sygnał jest prawdziwy.</div>` : "";
+  document.getElementById("progi").innerHTML=[
+    ["ok","XLK traci pozycję 1","przy spadku","−2,6%"],
+    ["ok","DBC wypada z podium","przy spadku","−5,8%"],
+    ["no","IAU wraca do gry","przy mom3 o","+1,9 pp"],
+    ["nr","Kanarek przełącza w CASH","przy spadku VT i XLK o","−3,4%"],
+  ].map(([s,t,o,w])=>
+    `<div class="row"><div class="ic" style="background:${CSS(s==="ok"?"--pos":s==="no"?"--neg":"--s6")}">${s==="ok"?"✓":s==="no"?"!":"~"}</div>
+      <div class="nm">${t}<em>${o}</em></div><div class="vl"><b>${w}</b></div></div>`).join("");
+  document.getElementById("gpmInfo").innerHTML=[
+    ["Ryzykowne w top 3","CNDX · CMOD · IUES"],["Przeszło filtr trendu","3 z 10"],
+    ["Mianownik","5"],["Udział ochronny","40% · IBTA"],
+  ].map(([t,w])=>`<div class="row" style="grid-template-columns:1fr auto">
+      <div class="nm">${t}</div><div class="vl"><b>${w}</b></div></div>`).join("");
+}
+
 function renderWyniki(){
+  document.getElementById("wynStamp").textContent=
+    `${mLbl(SER[0].y+"-"+String(SER[0].m+1).padStart(2,"0"))} – ${mLbl(SER.at(-1).y+"-"+String(SER.at(-1).m+1).padStart(2,"0"))}`;
   document.getElementById("tiles").innerHTML=[
     ["CAGR",sg2(STAT.cagr)+"%","rocznie","--pos"],
     ["MaxDD",STAT.mdd.toFixed(1).replace(".",",")+"%","najgłębsze","--neg"],
@@ -759,7 +782,7 @@ document.getElementById("segS").addEventListener("click",e=>{
 
 document.getElementById("txTick").innerHTML=ORDER.map(t=>`<option>${t}</option>`).join("");
 document.getElementById("txDate").value=new Date().toISOString().slice(0,10);
-fillAccSelect();renderTX();renderPulpit();renderMatrix();renderActions();renderHist();renderSklad("sum");renderAccounts();renderWyniki();renderCeny();
+fillAccSelect();renderTX();renderPulpit();renderMatrix();renderActions();renderHist();renderSklad("sum");renderAccounts();renderWyniki();renderDiag();renderCeny();
 
 legend("l-mix",KLASY.map(k=>[k[0],CSS(k[1])]));
 legend("l-canary",[["VT",CSS("--s1")],["XLK",CSS("--s2")]]);

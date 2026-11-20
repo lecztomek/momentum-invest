@@ -127,7 +127,7 @@
 <!-- ========== PORTFEL ========== -->
 <!-- ========== WYNIKI ========== -->
 <section id="v-wyniki" hidden>
-  <div class="phead"><h1>Wyniki</h1><span class="stamp">cze 2018 – gru 2026</span></div>
+  <div class="phead"><h1>Wyniki</h1><span class="stamp" id="wynStamp"></span></div>
   <div class="tiles" id="tiles"></div>
 
   <h2 class="psec">Miesiąc po miesiącu</h2>
@@ -195,6 +195,7 @@
 <!-- ========== DLACZEGO ========== -->
 <section id="v-dlaczego" hidden>
   <div class="phead"><h1>Dlaczego taki skład</h1></div>
+  <div id="diagWarn"></div>
 
   <h2 class="psec">Kanarek</h2>
   <div class="card">
@@ -210,23 +211,11 @@
   </div>
 
   <h2 class="psec">Jak blisko jest zmiana</h2>
-  <div class="card">
-    <div class="gate"><span class="dot ok"></span>XLK traci pozycję 1 przy spadku<span class="m">−2,6%</span></div>
-    <div class="gate"><span class="dot ok"></span>DBC wypada z podium przy spadku<span class="m">−5,8%</span></div>
-    <div class="gate"><span class="dot no"></span>IAU wraca do gry przy mom3 o<span class="m">+1,9 pp</span></div>
-    <div class="gate"><span class="dot nr"></span>Kanarek w CASH przy spadku VT i XLK o<span class="m">−3,4%</span></div>
-  </div>
+  <div class="list" id="progi"></div>
 
   <h2 class="psec">GPM</h2>
-  <div class="card">
-    <dl class="kv">
-      <dt>Ryzykowne w top 3</dt><dd>CNDX · CMOD · IUES</dd>
-      <dt>Przeszło filtr trendu</dt><dd>3 z 10</dd>
-      <dt>Mianownik</dt><dd>5</dd>
-      <dt>Udział ochronny</dt><dd>40% · IBTA</dd>
-    </dl>
-    <p class="why">Przeszły <b>3 z 10</b>, mianownik 5, więc 40% idzie w obligacje. Im słabszy rynek, tym więcej samo przechodzi w ochronę.</p>
-  </div>
+  <div class="list" id="gpmInfo"></div>
+  <p class="note">Im mniej aktywów przechodzi filtr trendu, tym większa część kapitału sama wchodzi w ochronę — mianownik zostaje ten sam.</p>
 </section>
 
 </main></div>
