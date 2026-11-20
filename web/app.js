@@ -148,8 +148,8 @@ function wire(box,svg,tip,H){
 const HV=o=>JSON.stringify(o).replace(/'/g,"&apos;");
 const FS=w=>w<460?11:12.5;
 
-function equity(id,cur){
-  const C=CUR[cur];
+function equity(id,cur,col){
+  const C=CUR[cur],AC=CSS(col);
   chart(id,W=>{
     const nr=W<520,H=nr?190:215,L=nr?48:56,R=10,T=12,B=28,n=MONTHS.length,f=FS(W);
     const all=[...C.v,...C.p],lo=Math.min(...all)*.94,hi=Math.max(...all)*1.04;
@@ -162,17 +162,17 @@ function equity(id,cur){
     let xl="";for(let i=0;i<n;i+=nr?8:6)xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${mLbl(MONTHS[i])}</text>`;
     const hit=MONTHS.map((m,i)=>{const w=C.v[i]-C.p[i];
       return {cx:X(i),html:`<div class="th">${mLbl(m)}</div>
-      <div class="tr"><span class="sw" style="background:${CSS("--accent")}"></span>Wartość<span class="tv">${zl(C.v[i])} ${C.u}</span></div>
+      <div class="tr"><span class="sw" style="background:${AC}"></span>Wartość<span class="tv">${zl(C.v[i])} ${C.u}</span></div>
       <div class="tr"><span class="sw" style="background:${CSS("--muted")}"></span>Wpłacone<span class="tv">${zl(C.p[i])} ${C.u}</span></div>
       <div class="tr" style="color:${w>=0?CSS("--pos"):CSS("--neg")}"><span class="sw" style="background:transparent"></span>Różnica<span class="tv">${w>=0?"+":"−"}${zl(w)}</span></div>`}});
     return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Wartosc i wplaty w ${C.u}" data-hover='${HV({W,H,max:(W-L-R)/n,hit})}'>
-      <defs><linearGradient id="g-${id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${CSS("--accent")}" stop-opacity=".28"/><stop offset="1" stop-color="${CSS("--accent")}" stop-opacity="0"/></linearGradient></defs>
+      <defs><linearGradient id="g-${id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${AC}" stop-opacity=".28"/><stop offset="1" stop-color="${AC}" stop-opacity="0"/></linearGradient></defs>
       ${g}${xl}<line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>
       <path d="${pa(C.v)} L${X(n-1)} ${Y(lo)} L${X(0)} ${Y(lo)} Z" fill="url(#g-${id})"/>
       <path d="${pa(C.p)}" fill="none" stroke="${CSS("--muted")}" stroke-width="2.2" stroke-dasharray="6 5"/>
-      <path d="${pa(C.v)}" fill="none" stroke="${CSS("--accent")}" stroke-width="2.5" stroke-linejoin="round"/>
-      <circle cx="${X(n-1)}" cy="${Y(C.v[n-1])}" r="4.5" fill="${CSS("--accent")}" stroke="${CSS("--surface")}" stroke-width="2.5"/></svg>`})}
-equity("c-eq-usd","usd");equity("c-eq-pln","pln");
+      <path d="${pa(C.v)}" fill="none" stroke="${AC}" stroke-width="2.5" stroke-linejoin="round"/>
+      <circle cx="${X(n-1)}" cy="${Y(C.v[n-1])}" r="4.5" fill="${AC}" stroke="${CSS("--surface")}" stroke-width="2.5"/></svg>`})}
+equity("c-eq-usd","usd","--accent");equity("c-eq-pln","pln","--s4");
 
 chart("c-mix",W=>{
   const nr=W<460,H=nr?220:260,L=nr?34:40,R=10,T=12,B=28,n=MONTHS.length,f=FS(W);
@@ -331,7 +331,7 @@ chart("c-month",W=>{
       if(v==null)return;
       const top=Math.min(Y(v),Y(0)),h=Math.max(2.5,Math.abs(Y(v)-Y(0)));
       g+=`<rect x="${X(k,s)-bw/2}" y="${top}" width="${bw}" height="${h}" rx="3" fill="${CSS(c)}"/>`
-        +`<text x="${X(k,s)}" y="${v>=0?top-5:top+h+12}" text-anchor="middle" fill="${CSS("--muted")}" font-size="${f-.5}" font-family="var(--f-mono)" font-weight="600">${sg(v)}</text>`});
+});
     g+=`<text x="${L+step*(k+.5)}" y="${H-9}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${mLbl(MONTHS[i])}</text>`;
     hit.push({cx:L+step*(k+.5),html:`<div class="th">${mLbl(MONTHS[i])}</div>
       <div class="tr"><span class="sw" style="background:${CSS("--s1")}"></span>w złotych<span class="tv" style="color:${RETC.pln[i]>=0?CSS("--pos"):CSS("--neg")}">${sg2(RETC.pln[i])}%</span></div>
@@ -370,11 +370,13 @@ function renderPulpit(){
     +`${sg2(PORT.twr.pln-PORT.twr.usd)} pp wyższy niż w dolarze wyłącznie z tego powodu.`;
 
   const HT=Object.values(HOLDINGS).reduce((a,b)=>a+b,0);
+  const mxs=Math.max(...Object.values(HOLDINGS));
   document.getElementById("holdRows").innerHTML=Object.entries(HOLDINGS).sort((a,b)=>b[1]-a[1]).map(([t,v])=>
     `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
+     <td class="shrc"><span class="shr"><i style="width:${(v/mxs*100).toFixed(1)}%;background:${CSS(KOL[t]||"--s6")}"></i></span></td>
      <td class="num">${pc(v/HT)}</td><td class="num">${zl(v)} zł</td>
      <td class="num sub">${zl(v/FXN)} USD</td></tr>`).join("")
-   +`<tr><td>Razem</td><td class="num">100,0%</td><td class="num">${zl(HT)} zł</td><td class="num sub">${zl(HT/FXN)} USD</td></tr>`;
+   +`<tr><td>Razem</td><td></td><td class="num">100,0%</td><td class="num">${zl(HT)} zł</td><td class="num sub">${zl(HT/FXN)} USD</td></tr>`;
 
   document.getElementById("legCards").innerHTML=[["best17","BEST17","konto LYNX"],["gpm","GPM","konto XTB"]]
     .map(([k,name,acct])=>{
@@ -593,8 +595,8 @@ document.getElementById("segS").addEventListener("click",e=>{
 document.getElementById("txTick").innerHTML=ORDER.map(t=>`<option>${t}</option>`).join("");
 document.getElementById("txDate").value=new Date().toISOString().slice(0,10);
 fillAccSelect();renderTX();renderPulpit();renderMatrix();renderHero();renderActions();renderHist();renderSklad("sum");renderAccounts();renderWyniki();renderCeny();
-const EQL=[["Wartość",CSS("--accent")],["Wpłacony kapitał",CSS("--muted")]];
-legend("l-eq-usd",EQL);legend("l-eq-pln",EQL);
+legend("l-eq-usd",[["Wartość w USD",CSS("--accent")],["Wpłacony kapitał",CSS("--muted")]]);
+legend("l-eq-pln",[["Wartość w PLN",CSS("--s4")],["Wpłacony kapitał",CSS("--muted")]]);
 legend("l-month",[["w złotych",CSS("--s1")],["w dolarze",CSS("--s2")]]);
 legend("l-mix",KLASY.map(k=>[k[0],CSS(k[1])]));
 legend("l-canary",[["VT",CSS("--s1")],["XLK",CSS("--s2")]]);

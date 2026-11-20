@@ -73,9 +73,9 @@ h2.sec{font-size:1.12rem;font-weight:700;margin:28px 0 11px;letter-spacing:-.02e
 p.note{font-size:.88rem;color:var(--muted);margin:10px 0 0}
 .grid2{display:grid;gap:13px;grid-template-columns:1fr}
 @media(min-width:640px){.grid2{grid-template-columns:1fr 1fr}}
-.big{font-size:2.5rem;font-weight:700;letter-spacing:-.035em;line-height:1.05;font-family:var(--f-mono)}
+.big{font-size:2.5rem;font-weight:700;letter-spacing:-.03em;line-height:1.05;font-family:var(--f-sans);font-variant-numeric:tabular-nums}
 .big.sans{font-family:var(--f-sans);letter-spacing:-.03em}
-.mid{font-size:1.5rem;font-weight:700;letter-spacing:-.025em;font-family:var(--f-mono)}
+.mid{font-size:1.5rem;font-weight:700;letter-spacing:-.025em;font-family:var(--f-sans);font-variant-numeric:tabular-nums}
 .cd{display:flex;align-items:baseline;gap:9px;margin-top:6px;flex-wrap:wrap}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:.82rem;font-weight:700;padding:4px 11px;border-radius:999px}
 .pill.lg{font-size:1.05rem;padding:6px 15px}
@@ -126,6 +126,9 @@ tbody tr:last-child td{border-bottom:none}
 tfoot td{font-weight:700;border-top:1px solid var(--line-strong);border-bottom:none}
 .sub{color:var(--faint);font-size:.88rem}
 .sw-in{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px}
+.shr{display:block;width:100%;min-width:60px;height:8px;border-radius:4px;background:var(--surface2);overflow:hidden}
+.shr i{display:block;height:100%;border-radius:4px}
+td.shrc{width:34%;padding-left:16px}
 
 .mx{font-size:.84rem;border-collapse:separate;border-spacing:2px;width:auto}
 .mx th{border:0;padding:0 0 6px;text-align:center;font-size:.72rem;white-space:nowrap}
