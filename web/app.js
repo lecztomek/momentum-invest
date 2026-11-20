@@ -60,6 +60,21 @@ function mkPrices(day,endY,endM){
   if(day===10)out.CMOD[12]=out.CMOD[11];
   return{dates,px:out}}
 const PRICES={10:mkPrices(10,2026,11),25:mkPrices(25,2026,10)};
+/* dni wpisane recznie doklejaja sie do szeregu z feedu */
+try{
+  const r=JSON.parse(localStorage.getItem("recz")||"{}");
+  for(const tab of ["10","25"])for(const d of (r[tab]||[])){
+    const P=PRICES[tab];if(P.dates.includes(d.data))continue;
+    P.dates.push(d.data);
+    for(const[t]of INSTR)P.px[t].push(d.ceny[t]??null);
+  }
+}catch(e){}
+const zapiszReczne=()=>{try{
+  const r={};
+  for(const tab of ["10","25"]){const P=PRICES[tab];
+    r[tab]=P.dates.map((d,i)=>({data:d,ceny:Object.fromEntries(INSTR.map(([t])=>[t,P.px[t][i]])),man:!!P.man?.[d]}))
+      .filter(x=>x.man)}
+  localStorage.setItem("recz",JSON.stringify(r))}catch(e){}};
 let PTAB="10";
 
 /* ============ skladanie transz ============ */
@@ -500,6 +515,7 @@ function renderCeny(){
     const fix=INSTR.some(([t])=>OVR[okey(t,d)]);
     return `<button type="button" data-di="${i}" aria-pressed="${i===last}" class="${fix?"fix":""}">
       <b>${d.slice(8)}.${d.slice(5,7)}</b>${d.slice(0,4)}</button>`}).join("");
+  document.getElementById("addHint").textContent=`Następny dzień wg reguły: ${nastepnaData()}`;
   document.getElementById("dPrev").disabled=last===0;
   document.getElementById("dNext").disabled=last===P.dates.length-1;
   document.querySelector(`#dStrip [data-di="${last}"]`)?.scrollIntoView({block:"nearest",inline:"center"});
@@ -521,6 +537,61 @@ function renderCeny(){
         <span style="color:${ch==null?"var(--faint)":ch>=0?"var(--pos)":"var(--neg)"}">${ch==null?"—":sg(ch)+"%"}</span></div>
         ${ADMIN?`<button class="del" data-edit="${t}" style="font-size:.8rem">zmień</button>`:""}
         ${ADMIN&&o?`<button class="del" data-undo="${t}">×</button>`:""}</div></div>`}).join("")}
+
+/* nastepna data wedlug reguly: pierwsza sesja N-tego lub pozniej w kolejnym miesiacu */
+function nastepnaData(){
+  const P=PRICES[PTAB],ost=P.dates.at(-1),d=new Date(ost+"T00:00:00Z");
+  d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+1);
+  return ruleDate(d.getUTCFullYear(),d.getUTCMonth(),+PTAB)}
+
+function rysujFormularz(){
+  const P=PRICES[PTAB],ost=P.dates.length-1;
+  document.getElementById("addForm").innerHTML=
+    `<div class="hd"><label for="adData">Data</label><input type="date" id="adData" value="${nastepnaData()}">
+       <span class="note">Podpowiedziana z reguły ${PTAB}-tego. Przy każdym polu poprzednia cena — literówka rzuci się w oczy.</span></div>
+     <div class="pgrid">${INSTR.map(([t,mk])=>
+       `<label class="pf"><b>${t}<em>${mk==="US"?"sygnał":"wykon."}</em></b>
+         <input type="number" step="0.0001" min="0" data-t="${t}" placeholder="${px(eff(t,ost))}"></label>`).join("")}</div>
+     <div class="foot"><button class="btn" id="adSave">Zapisz dzień</button>
+       <button class="btn" id="adCancel" style="background:var(--surface2);color:var(--muted)">Anuluj</button>
+       <span class="note" id="adMsg"></span></div>`}
+
+document.getElementById("addDay").addEventListener("click",()=>{
+  const f=document.getElementById("addForm");
+  if(!f.hidden){f.hidden=true;return}
+  rysujFormularz();f.hidden=false;f.scrollIntoView({block:"nearest"})});
+
+document.getElementById("addForm").addEventListener("click",e=>{
+  if(e.target.id==="adCancel"){document.getElementById("addForm").hidden=true;return}
+  if(e.target.id!=="adSave")return;
+  const data=document.getElementById("adData").value;
+  const pola=[...document.querySelectorAll("#addForm input[data-t]")];
+  const P=PRICES[PTAB],ost=P.dates.length-1;
+  let brak=0;const ceny={};
+  for(const i of pola){
+    const v=parseFloat(i.value);
+    i.classList.toggle("zle",!(v>0));
+    if(!(v>0)){brak++;continue}
+    ceny[i.dataset.t]=v}
+  const msg=document.getElementById("adMsg");
+  if(brak){msg.innerHTML=`<span style="color:var(--warn)">Brakuje ${brak} z ${pola.length} cen. Sygnał liczony z niekompletnych danych byłby błędny.</span>`;return}
+  if(!data){msg.innerHTML='<span style="color:var(--warn)">Podaj datę.</span>';return}
+  if(P.dates.includes(data)){msg.innerHTML='<span style="color:var(--warn)">Ten dzień już jest. Popraw go na liście zamiast dopisywać drugi raz.</span>';return}
+  /* skok powyzej 25% nie blokuje, ale musi byc powiedziany przed zapisem */
+  const dziwne=INSTR.filter(([t])=>Math.abs(ceny[t]/eff(t,ost)-1)>.25).map(a=>a[0]);
+  if(dziwne.length&&!msg.dataset.potw){
+    msg.dataset.potw="1";
+    msg.innerHTML=`<span style="color:var(--warn)">Skok powyżej 25%: ${dziwne.join(", ")}. Kliknij Zapisz ponownie, jeśli tak ma być.</span>`;return}
+  delete msg.dataset.potw;
+  P.dates.push(data);
+  for(const[t]of INSTR)P.px[t].push(ceny[t]);
+  P.man=P.man||{};P.man[data]=true;
+  const kol=P.dates.map((d,i)=>[d,i]).sort((a,b)=>a[0].localeCompare(b[0]));
+  P.dates=kol.map(x=>x[0]);
+  for(const[t]of INSTR)P.px[t]=kol.map(x=>P.px[t][x[1]]);
+  zapiszReczne();
+  PIDX=P.dates.indexOf(data);EDIT=null;
+  document.getElementById("addForm").hidden=true;renderCeny()});
 
 document.getElementById("segP").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;

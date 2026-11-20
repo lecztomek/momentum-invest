@@ -295,3 +295,21 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
 .dstrip button[aria-pressed="true"] b{color:var(--accent)}
 .dstrip button.fix::after{content:"";position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--cash)}
 .dstrip button:focus-visible{outline:2px solid var(--accent)}
+
+/* wpisywanie dnia recznie - sciezka rownorzedna z feedem, nie awaryjna */
+.addbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.addbar .note{margin:0}
+#addForm{background:var(--surface);border-radius:20px;padding:18px 16px;margin-bottom:16px}
+#addForm .hd{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+#addForm .hd label{font-size:.76rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
+#addForm .hd input{width:auto;min-width:170px}
+.pgrid{display:grid;gap:10px;grid-template-columns:1fr}
+@media(min-width:560px){.pgrid{grid-template-columns:1fr 1fr}}
+@media(min-width:900px){.pgrid{grid-template-columns:1fr 1fr 1fr}}
+.pf{display:grid;grid-template-columns:62px 1fr;align-items:center;gap:10px}
+.pf b{font-size:.92rem;font-weight:700}
+.pf b em{display:block;font-style:normal;font-size:.74rem;color:var(--faint);font-weight:500}
+.pf input{padding:10px 12px;font-family:var(--f-mono)}
+.pf input.zle{border-color:var(--warn)}
+#addForm .foot{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap}
+#addForm .foot .note{margin:0;flex:1;min-width:180px}
