@@ -131,11 +131,7 @@ function wire(box,svg,tip,H){
     const r=svg.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*H.W,y=(e.clientY-r.top)/r.height*H.H;
     let best=null,bd=1e9;
     for(const h of H.hit){
-      let d;
-      if(h.pol){const dx=x-h.cx,dy=y-h.cy,rr=Math.hypot(dx,dy);
-        let a=Math.atan2(dy,dx);if(a<-Math.PI/2)a+=2*Math.PI;
-        d=(rr>=h.r&&rr<=h.R&&a>=h.a0&&a<=h.a1)?0:1e9}
-      else d=(h.y0==null)?Math.abs(x-h.cx):((x>=h.x0&&x<=h.x1&&y>=h.y0&&y<=h.y1)?0:1e9);
+      const d=(h.y0==null)?Math.abs(x-h.cx):((x>=h.x0&&x<=h.x1&&y>=h.y0&&y<=h.y1)?0:1e9);
       if(d<bd){bd=d;best=h}}
     if(!best||bd>H.max){tip.dataset.on="0";return}
     tip.innerHTML=best.html;tip.dataset.on="1";
@@ -271,36 +267,6 @@ chart("c-rank",W=>{
       <div class="tr">Pozycja<span class="tv">${top?"top "+(i+1):gate==="no"?"odcięte":"poza podium"}</span></div>`})});
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Ranking BEST17 z progiem bramki" data-hover='${HV({W,H,max:1e9,hit})}'>${out}</svg>`});
 
-/* ---- pierscien skladu ---- */
-const ppt=(cx,cy,R,a)=>[(cx+R*Math.cos(a)).toFixed(2),(cy+R*Math.sin(a)).toFixed(2)];
-function ring(cx,cy,R,r,a0,a1,fill){
-  if(a1-a0>=2*Math.PI-1e-6)
-    return `<circle cx="${cx}" cy="${cy}" r="${(R+r)/2}" fill="none" stroke="${fill}" stroke-width="${R-r}"/>`;
-  const lg=(a1-a0)>Math.PI?1:0,[x0,y0]=ppt(cx,cy,R,a0),[x1,y1]=ppt(cx,cy,R,a1),
-    [x2,y2]=ppt(cx,cy,r,a1),[x3,y3]=ppt(cx,cy,r,a0);
-  return `<path d="M${x0} ${y0} A${R} ${R} 0 ${lg} 1 ${x1} ${y1} L${x2} ${y2} A${r} ${r} 0 ${lg} 0 ${x3} ${y3} Z"
-    fill="${fill}" stroke="${CSS("--surface")}" stroke-width="2.5" stroke-linejoin="round"/>`}
-chart("c-donut",W=>{
-  const H=Math.min(Math.max(W,200),250),R=H/2-4,r=R*.615,cx=W/2,cy=H/2;
-  const HT=Object.values(HOLDINGS).reduce((x,y)=>x+y,0);
-  const e=Object.entries(HOLDINGS).sort((a,b)=>b[1]-a[1]);
-  let a=-Math.PI/2,out="";const hit=[];
-  for(const[t,v]of e){
-    const b=a+v/HT*2*Math.PI;
-    out+=ring(cx,cy,R,r,a,b,CSS(KOL[t]||"--s6"));
-    hit.push({pol:1,cx,cy,R,r,a0:a,a1:b,html:`<div class="th">${t==="GOTOWKA"?"Gotówka":t}</div>
-      <div class="tr">Udział<span class="tv">${pc(v/HT)}</span></div>
-      <div class="tr">Kwota<span class="tv">${zl(v)} zł</span></div>`});
-    a=b}
-  const inw=Object.entries(HOLDINGS).filter(([t])=>t!=="GOTOWKA").reduce((s,[,v])=>s+v,0);
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Skład portfela" data-hover='${HV({W,H,max:1,hit})}'>
-    ${out}
-    <text x="${cx}" y="${cy-4}" text-anchor="middle" fill="${CSS("--fg")}" font-size="${H*.135}" font-weight="700"
-      font-family="var(--f-sans)">${zl(HT)}</text>
-    <text x="${cx}" y="${cy+16}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${H*.058}">złotych</text>
-    <text x="${cx}" y="${cy+32}" text-anchor="middle" fill="${CSS("--accent")}" font-size="${H*.056}" font-weight="600">${pc(inw/HT)} w rynku</text>
-  </svg>`});
-
 /* ---- sklad w czasie, slupki: jeden slupek = jedna data rebalansu ---- */
 const compAt=(c,leg)=>leg==="all"
   ? (()=>{const o={};
@@ -366,19 +332,16 @@ const tbl=(h,b,f)=>`<div class="card tw"><table><thead><tr>${h}</tr></thead><tbo
 /* ---- pulpit ---- */
 const WART=VALUE.at(-1),WPL=PAID.at(-1);
 function renderPulpit(){
-  const zysk=WART-WPL;
+  const zysk=WART-WPL, U=PORT.usd, zyskU=U.value-U.paid, T=PORT.twr;
+  const sgn=(v,u)=>(v>=0?"+":"−")+zl(v)+" "+u;
   document.getElementById("kpi").innerHTML=[
-    ["Wartość",zl(WART),"złotych","--fg"],
-    ["Wynik",(zysk>=0?"+":"−")+zl(Math.abs(zysk)),sg(zysk/WPL*100)+"% wobec wpłat",zysk>=0?"--pos":"--neg"],
-    ["TWR w USD","−1,84%","same decyzje","--neg"],
-    ["Rebalans","za 15 dni","25 grudnia","--warn"]
-  ].map(([l,v,d,c])=>`<div class="tile"><div class="lbl">${l}</div><div class="v" style="color:var(${c})">${v}</div><div class="d">${d}</div></div>`).join("");
-
-  const HT=Object.values(HOLDINGS).reduce((x,y)=>x+y,0);
-  document.getElementById("donutLeg").innerHTML=Object.entries(HOLDINGS).sort((a,b)=>b[1]-a[1])
-    .map(([t,v])=>`<div><i style="background:${CSS(KOL[t]||"--s6")}"></i>
-      <span class="n">${t==="GOTOWKA"?"Gotówka":t}</span>
-      <span class="p">${pc(v/HT)}</span><span class="k">${zl(v)} zł</span></div>`).join("");
+    ["Wartość",zl(WART)+" zł",zl(U.value)+" USD","--fg","--muted","kurs "+String(PORT.fx.rate).replace(".",",")],
+    ["Wynik",sgn(zysk,"zł"),sgn(zyskU,"USD"),zysk>=0?"--pos":"--neg",zyskU>=0?"--pos":"--neg","wobec wpłat"],
+    ["TWR",sg2(T.pln)+"% PLN",sg2(T.usd)+"% USD",T.pln>=0?"--pos":"--neg",T.usd>=0?"--pos":"--neg","same decyzje"],
+    ["Rebalans","za 15 dni","25 grudnia","--warn","--muted","transza 25-tego"]
+  ].map(([l,v,v2,c,c2,d])=>`<div class="tile"><div class="lbl">${l}</div>
+    <div class="v" style="color:var(${c})">${v}</div>
+    <div class="v2" style="color:var(${c2})">${v2}</div><div class="d">${d}</div></div>`).join("");
 
   document.getElementById("accStrips").innerHTML=SETUPS[SETUP].accounts.map(a=>{
     const o=accComp(a),cap=accTarget(a),d=a.value-cap;

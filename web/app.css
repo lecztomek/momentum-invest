@@ -99,7 +99,8 @@ p.note{font-size:.88rem;color:var(--muted);margin:10px 0 0}
 @media(min-width:680px){.tiles{grid-template-columns:repeat(4,1fr)}}
 .tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
 .tile .v{font-family:var(--f-sans);font-variant-numeric:tabular-nums;font-size:1.65rem;font-weight:700;letter-spacing:-.03em;margin-top:5px}
-.tile .d{font-size:.8rem;color:var(--faint);margin-top:3px}
+.tile .v2{font-family:var(--f-sans);font-variant-numeric:tabular-nums;font-size:1.05rem;font-weight:600;margin-top:1px}
+.tile .d{font-size:.8rem;color:var(--faint);margin-top:4px}
 
 .chart{position:relative;width:100%}
 .chart svg{display:block;width:100%;height:auto;touch-action:pan-y}
@@ -179,15 +180,6 @@ input[type=number]{font-family:var(--f-mono)}
 .chk .m{margin-left:auto;font-family:var(--f-mono);font-size:.88rem;color:var(--faint)}
 
 /* ---- pulpit ---- */
-.dash{display:grid;gap:13px;grid-template-columns:1fr;margin-top:13px}
-@media(min-width:760px){.dash{grid-template-columns:1.15fr 1fr}}
-.dlg{display:grid;gap:2px;margin-top:10px}
-.dlg div{display:grid;grid-template-columns:14px 1fr auto auto;align-items:center;gap:11px;padding:7px 2px;border-bottom:1px solid var(--line)}
-.dlg div:last-child{border-bottom:none}
-.dlg i{width:12px;height:12px;border-radius:3px}
-.dlg .n{font-weight:600;font-size:.95rem}
-.dlg .p{font-family:var(--f-mono);font-weight:700;font-size:1rem}
-.dlg .k{font-family:var(--f-mono);color:var(--faint);font-size:.88rem;min-width:66px;text-align:right}
 .strip{margin-bottom:17px}
 .strip:last-child{margin-bottom:0}
 .strip .h{display:flex;align-items:baseline;gap:9px;margin-bottom:7px}
