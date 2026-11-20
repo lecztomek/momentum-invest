@@ -1,7 +1,11 @@
 name: Pages
 
-# Wdraza katalog docs/ na GitHub Pages. configure-pages z enablement:true wlacza
-# Pages samo, wiec nie trzeba tego klikac w ustawieniach repozytorium.
+# Wdraza katalog docs/ na GitHub Pages.
+#
+# WYMAGA JEDNORAZOWEGO WLACZENIA PAGES:
+#   Settings -> Pages -> Source: GitHub Actions
+# Token Actions nie moze zalozyc strony sam (Resource not accessible by
+# integration), wiec enablement:true tu nie pomaga i zostalo usuniete.
 on:
   push:
     branches: [claude/engine-v2-assessment-0e2p3w]
@@ -28,8 +32,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs
