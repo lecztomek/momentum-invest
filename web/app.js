@@ -313,7 +313,9 @@ const legend=(id,it)=>document.getElementById(id).innerHTML=it.map(([n,c])=>`<sp
    zeby dwie pozycje trzymane naraz nigdy nie mialy identycznej probki. */
 const KOL={IUIT:"--s1",CNDX:"--s1b",CSPX:"--s2",VWRA:"--s2b",EIMI:"--s2c",IUES:"--s2d",
   CMOD:"--s3",XRES:"--s3b",IGLN:"--s4",IBTA:"--s5",CBU0:"--s5b",DTLA:"--s5c",
-  IHYA:"--s5d",LQDA:"--s7",GOTOWKA:"--s6"};
+  IHYA:"--s5d",LQDA:"--s7",GOTOWKA:"--s6",
+  /* walory sygnalowe w kolorze swoich odpowiednikow wykonawczych */
+  XLK:"--s1",IVV:"--s2",VT:"--s2b",IAU:"--s4",DBC:"--s3"};
 const tbl=(h,b,f)=>`<div class="card tw"><table><thead><tr>${h}</tr></thead><tbody>${b}</tbody>${f?`<tfoot>${f}</tfoot>`:""}</table></div>`;
 /* ---- pulpit ---- */
 let CURV="usd", RNG=6;
@@ -469,21 +471,23 @@ function renderWyniki(){
   document.getElementById("mgrid").innerHTML=h+"</tbody>"}
 
 /* ---- ceny: cena z feedu jest nietykalna, korekta to osobny wpis ---- */
-let ADMIN=false,EDIT=null;
+let ADMIN=false,EDIT=null,PIDX=null;  /* PIDX: ktora data jest ogladana; null = ostatnia */
 let OVR={};try{OVR=JSON.parse(localStorage.getItem("ovr")||"{}")}catch(e){OVR={}}
 const saveOVR=()=>{try{localStorage.setItem("ovr",JSON.stringify(OVR))}catch(e){}};
 const okey=(t,d)=>t+"@"+d;
 const eff=(t,i)=>{const P=PRICES[PTAB],o=OVR[okey(t,P.dates[i])];return o?o.v:P.px[t][i]};
+const pidx=()=>PIDX==null?PRICES[PTAB].dates.length-1:PIDX;
+const pdate=()=>PRICES[PTAB].dates[pidx()];
 function renderCeny(){
-  const P=PRICES[PTAB],last=P.dates.length-1;
+  const P=PRICES[PTAB],last=pidx();
   document.getElementById("feedStamp").textContent=FEED.source+" · "+FEED.fetched;
   const chk=[];
   const brak=INSTR.filter(([t])=>eff(t,last)==null);
   chk.push([brak.length?"warn":"ok","Komplet instrumentów",(INSTR.length-brak.length)+"/"+INSTR.length]);
   chk.push(["ok","Data zgodna z regułą "+PTAB+"-tego",P.dates[last]]);
-  const stale=INSTR.filter(([t])=>eff(t,last)===eff(t,last-1)).map(a=>a[0]);
+  const stale=last>0?INSTR.filter(([t])=>eff(t,last)===eff(t,last-1)).map(a=>a[0]):[];
   chk.push([stale.length?"warn":"ok",stale.length?"Cena bez zmian: "+stale.join(", "):"Brak zastoju cen",stale.length?"sprawdź":"OK"]);
-  const jump=INSTR.filter(([t])=>Math.abs(eff(t,last)/eff(t,last-1)-1)>.25).map(a=>a[0]);
+  const jump=last>0?INSTR.filter(([t])=>Math.abs(eff(t,last)/eff(t,last-1)-1)>.25).map(a=>a[0]):[];
   chk.push([jump.length?"warn":"ok",jump.length?"Skok powyżej 25%: "+jump.join(", "):"Brak skoków powyżej 25%",jump.length?"sprawdź":"OK"]);
   const nov=Object.keys(OVR).length;
   chk.push([nov?"warn":"ok",nov?"Korekty ręczne w historii":"Brak korekt ręcznych",nov?nov+"":"0"]);
@@ -492,12 +496,19 @@ function renderCeny(){
   document.getElementById("feedDate").innerHTML=zle
     ? `<span style="color:var(--warn)">${zle} ${zle===1?"ostrzeżenie":"ostrzeżenia"}</span> · ceny z ${P.dates[last]}`
     : `<span style="color:var(--pos)">bez zastrzeżeń</span> · ceny z ${P.dates[last]}`;
+  document.getElementById("dStrip").innerHTML=P.dates.map((d,i)=>{
+    const fix=INSTR.some(([t])=>OVR[okey(t,d)]);
+    return `<button type="button" data-di="${i}" aria-pressed="${i===last}" class="${fix?"fix":""}">
+      <b>${d.slice(8)}.${d.slice(5,7)}</b>${d.slice(0,4)}</button>`}).join("");
+  document.getElementById("dPrev").disabled=last===0;
+  document.getElementById("dNext").disabled=last===P.dates.length-1;
+  document.querySelector(`#dStrip [data-di="${last}"]`)?.scrollIntoView({block:"nearest",inline:"center"});
   document.getElementById("checks").innerHTML=chk.map(([s,t,m])=>
     `<div class="row"><div class="ic" style="background:${CSS(s==="ok"?"--pos":"--warn")}">${s==="ok"?"✓":"!"}</div>
       <div class="nm">${esc(t)}</div><div class="vl"><b>${esc(m)}</b></div></div>`).join("");
 
   document.getElementById("priceList").innerHTML=INSTR.map(([t,mk])=>{
-    const d=P.dates[last],o=OVR[okey(t,d)],raw=P.px[t][last],v=eff(t,last),ch=(v/eff(t,last-1)-1)*100;
+    const d=P.dates[last],o=OVR[okey(t,d)],v=eff(t,last),ch=last>0?(v/eff(t,last-1)-1)*100:null;
     if(EDIT===t)return `<div class="row" style="grid-template-columns:1fr"><form class="form" id="ovrForm" style="grid-template-columns:1fr 2fr;align-items:end">
       <div class="fld"><label for="ovrV">Cena ${t}</label><input type="number" id="ovrV" step="0.0001" value="${v}" required></div>
       <div class="fld"><label for="ovrR">Powód korekty</label><input type="text" id="ovrR" placeholder="np. zły kurs z feedu" required></div>
@@ -507,32 +518,30 @@ function renderCeny(){
     return `<div class="row"><div class="ic" style="background:${CSS(KOL[t]||"--s6")}">${t.slice(0,2)}</div>
       <div class="nm">${t}<em>${mk==="US"?"sygnał":"wykonanie"} · ${d}${o?` · <span style="color:var(--cash)">skorygowane</span>`:""}</em></div>
       <div class="vl" style="display:flex;align-items:center;gap:12px"><div><b>${px(v)}</b>
-        <span style="color:${ch>=0?"var(--pos)":"var(--neg)"}">${sg(ch)}%</span></div>
+        <span style="color:${ch==null?"var(--faint)":ch>=0?"var(--pos)":"var(--neg)"}">${ch==null?"—":sg(ch)+"%"}</span></div>
         ${ADMIN?`<button class="del" data-edit="${t}" style="font-size:.8rem">zmień</button>`:""}
-        ${ADMIN&&o?`<button class="del" data-undo="${t}">×</button>`:""}</div></div>`}).join("");
+        ${ADMIN&&o?`<button class="del" data-undo="${t}">×</button>`:""}</div></div>`}).join("")}
 
-  let h=`<thead><tr><th>Data</th>${INSTR.map(([t])=>`<th>${t}</th>`).join("")}</tr></thead><tbody>`;
-  for(let i=P.dates.length-1;i>=0;i--)
-    h+=`<tr><td>${P.dates[i]}</td>`+INSTR.map(([t])=>{
-      const o=OVR[okey(t,P.dates[i])];
-      return `<td${o?' style="background:rgba(127,168,206,.22)" title="skorygowane"':""}>${px(eff(t,i))}</td>`}).join("")+"</tr>";
-  document.getElementById("priceHist").innerHTML=h+"</tbody>"}
 document.getElementById("segP").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   document.querySelectorAll("#segP button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
-  PTAB=b.dataset.p;EDIT=null;renderCeny()});
+  PTAB=b.dataset.p;EDIT=null;PIDX=null;renderCeny()});
 document.getElementById("segR").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   document.querySelectorAll("#segR button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
   ADMIN=b.dataset.r==="1";EDIT=null;renderCeny()});
+document.getElementById("dStrip").addEventListener("click",e=>{
+  const b=e.target.closest("[data-di]");if(!b)return;PIDX=+b.dataset.di;EDIT=null;renderCeny()});
+document.getElementById("dPrev").addEventListener("click",()=>{PIDX=Math.max(0,pidx()-1);EDIT=null;renderCeny()});
+document.getElementById("dNext").addEventListener("click",()=>{PIDX=Math.min(PRICES[PTAB].dates.length-1,pidx()+1);EDIT=null;renderCeny()});
 document.getElementById("priceList").addEventListener("click",e=>{
   const ed=e.target.closest("[data-edit]"),un=e.target.closest("[data-undo]"),ca=e.target.closest("[data-cancel]");
   if(ed){EDIT=ed.dataset.edit;renderCeny();document.getElementById("ovrV")?.focus()}
-  else if(un){delete OVR[okey(un.dataset.undo,PRICES[PTAB].dates.at(-1))];saveOVR();renderCeny()}
+  else if(un){delete OVR[okey(un.dataset.undo,pdate())];saveOVR();renderCeny()}
   else if(ca){EDIT=null;renderCeny()}});
 document.getElementById("priceList").addEventListener("submit",e=>{
   e.preventDefault();
-  OVR[okey(EDIT,PRICES[PTAB].dates.at(-1))]={v:parseFloat(document.getElementById("ovrV").value),
+  OVR[okey(EDIT,pdate())]={v:parseFloat(document.getElementById("ovrV").value),
     r:document.getElementById("ovrR").value,who:"admin",when:new Date().toISOString().slice(0,16).replace("T"," ")};
   saveOVR();EDIT=null;renderCeny()});
 

@@ -279,3 +279,19 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
 .row .vl{text-align:right;font-variant-numeric:tabular-nums}
 .row .vl b{display:block;font-size:1rem;font-weight:600}
 .row .vl span{font-size:.84rem;color:var(--faint)}
+
+/* pasek dat: przesuwasz sie po kolejnych rebalansach zamiast czytac szeroka macierz */
+.dnav{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.dnav>button{flex:0 0 auto;width:38px;height:38px;border:0;border-radius:999px;background:var(--surface2);
+  color:var(--fg);font-size:1.4rem;line-height:1;cursor:pointer}
+.dnav>button:disabled{color:var(--line-strong);cursor:default}
+.dnav>button:focus-visible{outline:2px solid var(--accent)}
+.dstrip{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;flex:1;padding:2px 0}
+.dstrip::-webkit-scrollbar{display:none}
+.dstrip button{flex:0 0 auto;border:0;border-radius:14px;background:var(--surface);color:var(--faint);
+  font:inherit;font-size:.78rem;font-weight:600;padding:8px 13px;cursor:pointer;line-height:1.3;text-align:center;position:relative}
+.dstrip button b{display:block;font-size:1.05rem;font-weight:700;color:var(--fg)}
+.dstrip button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.dstrip button[aria-pressed="true"] b{color:var(--accent)}
+.dstrip button.fix::after{content:"";position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--cash)}
+.dstrip button:focus-visible{outline:2px solid var(--accent)}
