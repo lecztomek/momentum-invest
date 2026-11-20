@@ -2,6 +2,12 @@
 /* Dane przychodza z plikow JSON w docs/data/ - to jest kontrakt miedzy
    pipeline'em (GitHub Actions zapisuje te pliki) a ta strona (tylko je czyta).
    Modul + top-level await: reszta pliku wykonuje sie dopiero po wczytaniu. */
+/* Logowanie i baza sa opcjonalne: dane publiczne ida z plikow JSON w repo,
+   wiec brak Firebase nie moze zatrzymac strony. */
+let FB=null;
+try{ FB=await import("./fb.js") }catch(e){ console.warn("Firebase niedostepny:",e.message) }
+let USER=null, ADMIN_BAZA=false;
+
 let SIG,PERF,PRC,PORT;
 try{
   [SIG,PERF,PRC,PORT]=await Promise.all(["signals","performance","prices","portfolio"]
@@ -640,6 +646,28 @@ try{TX=JSON.parse(localStorage.getItem("tx")||"[]")}catch(e){TX=[]}
 if(!TX.length)TX=[{d:"2026-11-20",a:"LYNX",t:"wplata",k:10000},{d:"2026-11-20",a:"LYNX",t:"kupno",w:"IUIT",k:10000},
   {d:"2026-09-15",a:"XTB",t:"wplata",k:15000},{d:"2026-09-16",a:"XTB",t:"kupno",w:"IBTA",k:15000}];
 const saveTX=()=>{try{localStorage.setItem("tx",JSON.stringify(TX))}catch(e){}};
+/* Zalogowany trzyma transakcje w bazie - przezywaja zmiane urzadzenia.
+   Niezalogowany zostaje przy przegladarce, zeby prototyp dalo sie klikac. */
+async function wczytajTXzBazy(){
+  try{
+    const z=await FB.wczytaj(USER.uid,"transactions");
+    TX=z.map(r=>({id:r.id,d:r.d,a:r.a,t:r.t,w:r.w,k:r.k}));
+  }catch(e){console.warn("nie udalo sie wczytac transakcji:",e.message)}
+  renderTX();
+}
+async function dodajTX(r){
+  r.id=r.id||(r.d+"_"+Date.now().toString(36));
+  TX.push(r);
+  if(USER){try{await FB.zapisz(USER.uid,"transactions",r.id,r)}catch(e){alert("Nie zapisano w bazie: "+e.message)}}
+  else saveTX();
+  renderTX();
+}
+async function usunTX(i){
+  const r=TX[i];TX.splice(i,1);
+  if(USER&&r?.id){try{await FB.usun(USER.uid,"transactions",r.id)}catch(e){console.warn(e.message)}}
+  else saveTX();
+  renderTX();
+}
 const TYP={wplata:"Wpłata",wyplata:"Wypłata",kupno:"Kupno",sprzedaz:"Sprzedaż"};
 function fillAccSelect(){
   const s=document.getElementById("txAcc"),cur=s.value;
@@ -669,15 +697,15 @@ document.getElementById("txType").addEventListener("change",e=>{
 document.getElementById("txForm").addEventListener("submit",e=>{
   e.preventDefault();
   const t=document.getElementById("txType").value,trade=t==="kupno"||t==="sprzedaz";
-  TX.push({d:document.getElementById("txDate").value,a:document.getElementById("txAcc").value,t,
-    w:trade?document.getElementById("txTick").value:undefined,
+  dodajTX({d:document.getElementById("txDate").value,a:document.getElementById("txAcc").value,t,
+    w:trade?document.getElementById("txTick").value:null,
     k:parseFloat(document.getElementById("txAmt").value)||0});
-  saveTX();renderTX();e.target.reset();
+  e.target.reset();
   document.getElementById("txDate").value=new Date().toISOString().slice(0,10);
   document.getElementById("txTickWrap").hidden=true});
 document.getElementById("txList").addEventListener("click",e=>{
   const b=e.target.closest("[data-del]");if(!b)return;
-  TX.splice(+b.dataset.del,1);saveTX();renderTX()});
+  usunTX(+b.dataset.del)});
 
 /* ============ nawigacja ============ */
 const VIEWS=["pulpit","sygnal","wyniki","transakcje","ceny","dlaczego"];
@@ -699,3 +727,34 @@ fillAccSelect();renderTX();renderPulpit();renderMatrix();renderActions();renderH
 legend("l-mix",KLASY.map(k=>[k[0],CSS(k[1])]));
 legend("l-canary",[["VT",CSS("--s1")],["XLK",CSS("--s2")]]);
 show(location.hash.slice(1)||"pulpit");
+
+/* ============ konto ============ */
+function rysujKonto(){
+  const e=document.getElementById("konto");
+  if(!FB){e.innerHTML='<span class="sub">baza niedostępna</span>';return}
+  e.innerHTML=USER
+    ? `<div class="kto"><b>${esc(USER.displayName||USER.email||"zalogowany")}</b>
+        <span>${ADMIN_BAZA?"admin":"podgląd"}</span></div>
+       <button type="button" class="cicho" id="btnWyloguj">Wyloguj</button>`
+    : `<button type="button" id="btnZaloguj">Zaloguj przez Google</button>`;
+}
+function rysujUid(){
+  const stare=document.getElementById("uidBox");if(stare)stare.remove();
+  if(!USER||ADMIN_BAZA)return;
+  const box=document.createElement("div");box.className="uid";box.id="uidBox";
+  box.innerHTML=`Nie masz jeszcze praw zapisu. Wklej swój identyfikator do kolekcji
+    <b>admins</b> w konsoli Firebase — dokument o tym id, zawartość dowolna.<code>${esc(USER.uid)}</code>`;
+  document.querySelector("#v-pulpit .hero").after(box);
+}
+document.addEventListener("click",async e=>{
+  if(e.target.id==="btnZaloguj"){
+    try{await FB.zalogujGoogle()}catch(err){alert("Logowanie nie powiodło się: "+err.message)}}
+  else if(e.target.id==="btnWyloguj"){await FB.wyloguj()}});
+
+if(FB)FB.naZmianeKonta(async u=>{
+  USER=u;
+  ADMIN_BAZA=u?await FB.czyAdmin(u.uid):false;
+  rysujKonto();rysujUid();
+  if(u)await wczytajTXzBazy(); else renderTX();
+});
+rysujKonto();
