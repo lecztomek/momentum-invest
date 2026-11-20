@@ -18,6 +18,9 @@ const SIGNALS=SIG.signals, HIST=SIG.history, RANK=SIG.ranking, CAN_VT=SIG.canary
 const CAPITAL=PORT.capital, HOLDINGS=PORT.holdings, MONTHS=PORT.months, VALUE=PORT.value,
       PAID=PORT.paid, MIX=PORT.mix, KLASY=PORT.classes;
 const RET=PERF.monthly;
+/* Aktywa sa dolarowe: USD jest wartoscia pierwotna, PLN to przeliczenie po kursie z danego miesiaca. */
+const FXS=PORT.fx.series, VUSD=PORT.value_usd, PUSD=PORT.paid_usd, RETC=PORT.returns, LEGS=PORT.legs;
+const CUR={usd:{v:VUSD,p:PUSD,u:"USD",r:RETC.usd},pln:{v:VALUE,p:PAID,u:"zł",r:RETC.pln}};
 const INSTR=PRC.instruments, BASE=PRC.base, FEED=PRC.feed;
 const COMPO=SIG.composition;
 
@@ -145,23 +148,31 @@ function wire(box,svg,tip,H){
 const HV=o=>JSON.stringify(o).replace(/'/g,"&apos;");
 const FS=w=>w<460?11:12.5;
 
-chart("c-equity",W=>{
-  const nr=W<460,H=nr?210:250,L=nr?48:58,R=10,T=12,B=28,n=MONTHS.length,lo=95000,hi=205000,f=FS(W);
-  const X=i=>L+(W-L-R)*i/(n-1),Y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo));
-  const p=a=>a.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)).join(" ");
-  let g="";for(let v=100000;v<=200000;v+=25000)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${CSS("--line")}"/><text x="${L-8}" y="${Y(v)+4}" text-anchor="end" fill="${CSS("--faint")}" font-size="${f}">${v/1000}k</text>`;
-  let xl="";for(let i=0;i<n;i+=nr?6:4)xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${mLbl(MONTHS[i])}</text>`;
-  const hit=MONTHS.map((m,i)=>({cx:X(i),html:`<div class="th">${mLbl(m)}</div>
-    <div class="tr"><span class="sw" style="background:${CSS("--accent")}"></span>Wartość<span class="tv">${zl(VALUE[i])}</span></div>
-    <div class="tr"><span class="sw" style="background:${CSS("--muted")}"></span>Wpłacone<span class="tv">${zl(PAID[i])}</span></div>
-    <div class="tr" style="color:${VALUE[i]>=PAID[i]?CSS("--pos"):CSS("--neg")}"><span class="sw" style="background:transparent"></span>Wynik<span class="tv">${sg((VALUE[i]/PAID[i]-1)*100)}%</span></div>`}));
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Wartość portfela i wpłacony kapitał" data-hover='${HV({W,H,max:(W-L-R)/n,hit})}'>
-    <defs><linearGradient id="eg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${CSS("--accent")}" stop-opacity=".3"/><stop offset="1" stop-color="${CSS("--accent")}" stop-opacity="0"/></linearGradient></defs>
-    ${g}${xl}<line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>
-    <path d="${p(VALUE)} L${X(n-1)} ${Y(lo)} L${X(0)} ${Y(lo)} Z" fill="url(#eg)"/>
-    <path d="${p(PAID)}" fill="none" stroke="${CSS("--muted")}" stroke-width="2.5" stroke-dasharray="6 5"/>
-    <path d="${p(VALUE)}" fill="none" stroke="${CSS("--accent")}" stroke-width="2.5" stroke-linejoin="round"/>
-    <circle cx="${X(n-1)}" cy="${Y(VALUE[n-1])}" r="5" fill="${CSS("--accent")}" stroke="${CSS("--surface")}" stroke-width="2.5"/></svg>`});
+function equity(id,cur){
+  const C=CUR[cur];
+  chart(id,W=>{
+    const nr=W<520,H=nr?190:215,L=nr?48:56,R=10,T=12,B=28,n=MONTHS.length,f=FS(W);
+    const all=[...C.v,...C.p],lo=Math.min(...all)*.94,hi=Math.max(...all)*1.04;
+    const X=i=>L+(W-L-R)*i/(n-1),Y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo));
+    const pa=a=>a.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)).join(" ");
+    const tick=v=>v>=1000?Math.round(v/1000)+"k":Math.round(v);
+    let g="";for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4;
+      g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${CSS("--line")}"/>`
+        +`<text x="${L-8}" y="${Y(v)+4}" text-anchor="end" fill="${CSS("--faint")}" font-size="${f}">${tick(v)}</text>`}
+    let xl="";for(let i=0;i<n;i+=nr?8:6)xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${mLbl(MONTHS[i])}</text>`;
+    const hit=MONTHS.map((m,i)=>{const w=C.v[i]-C.p[i];
+      return {cx:X(i),html:`<div class="th">${mLbl(m)}</div>
+      <div class="tr"><span class="sw" style="background:${CSS("--accent")}"></span>Wartość<span class="tv">${zl(C.v[i])} ${C.u}</span></div>
+      <div class="tr"><span class="sw" style="background:${CSS("--muted")}"></span>Wpłacone<span class="tv">${zl(C.p[i])} ${C.u}</span></div>
+      <div class="tr" style="color:${w>=0?CSS("--pos"):CSS("--neg")}"><span class="sw" style="background:transparent"></span>Różnica<span class="tv">${w>=0?"+":"−"}${zl(w)}</span></div>`}});
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Wartosc i wplaty w ${C.u}" data-hover='${HV({W,H,max:(W-L-R)/n,hit})}'>
+      <defs><linearGradient id="g-${id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${CSS("--accent")}" stop-opacity=".28"/><stop offset="1" stop-color="${CSS("--accent")}" stop-opacity="0"/></linearGradient></defs>
+      ${g}${xl}<line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>
+      <path d="${pa(C.v)} L${X(n-1)} ${Y(lo)} L${X(0)} ${Y(lo)} Z" fill="url(#g-${id})"/>
+      <path d="${pa(C.p)}" fill="none" stroke="${CSS("--muted")}" stroke-width="2.2" stroke-dasharray="6 5"/>
+      <path d="${pa(C.v)}" fill="none" stroke="${CSS("--accent")}" stroke-width="2.5" stroke-linejoin="round"/>
+      <circle cx="${X(n-1)}" cy="${Y(C.v[n-1])}" r="4.5" fill="${CSS("--accent")}" stroke="${CSS("--surface")}" stroke-width="2.5"/></svg>`})}
+equity("c-eq-usd","usd");equity("c-eq-pln","pln");
 
 chart("c-mix",W=>{
   const nr=W<460,H=nr?220:260,L=nr?34:40,R=10,T=12,B=28,n=MONTHS.length,f=FS(W);
@@ -306,23 +317,27 @@ function renderMatrix(){
 document.getElementById("segMx").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;MXN=+b.dataset.mx;renderMatrix()});
 
-/* ---- ostatnie 12 miesiecy ---- */
+/* ---- ostatnie miesiace: slupek PLN i slupek USD obok siebie ---- */
 chart("c-month",W=>{
-  const d=SER.slice(-12),n=d.length,nr=W<460,H=nr?180:205,T=18,B=30,L=10,R=10,f=FS(W);
-  const mx=Math.max(...d.map(p=>Math.abs(p.r)))*1.35;
-  const bw=(W-L-R)/n*.62,X=i=>L+(W-L-R)*(i+.5)/n,Y=v=>T+(H-T-B)*(1-(v+mx)/(2*mx));
+  const K=6,idx=[...Array(K)].map((_,k)=>MONTHS.length-K+k);
+  const nr=W<520,H=nr?185:210,T=20,B=30,L=12,R=12,f=FS(W);
+  const vals=idx.flatMap(i=>[RETC.pln[i],RETC.usd[i]]).filter(v=>v!=null);
+  const mx=Math.max(...vals.map(Math.abs))*1.4;
+  const step=(W-L-R)/K,bw=Math.min(step*.3,26);
+  const X=(k,s)=>L+step*(k+.5)+(s?bw*.58:-bw*.58),Y=v=>T+(H-T-B)*(1-(v+mx)/(2*mx));
   let g=`<line x1="${L}" x2="${W-R}" y1="${Y(0)}" y2="${Y(0)}" stroke="${CSS("--line-strong")}"/>`;const hit=[];
-  d.forEach((p,i)=>{
-    const top=Math.min(Y(p.r),Y(0)),h=Math.max(3,Math.abs(Y(p.r)-Y(0)));
-    g+=`<rect x="${X(i)-bw/2}" y="${top}" width="${bw}" height="${h}" rx="4" fill="${p.r>=0?CSS("--pos"):CSS("--neg")}"/>`
-      +`<text x="${X(i)}" y="${p.r>=0?top-5:top+h+13}" text-anchor="middle" fill="${CSS("--muted")}" font-size="${f}" font-family="var(--f-mono)" font-weight="600">${sg(p.r)}</text>`
-      +`<text x="${X(i)}" y="${H-9}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${MN[p.m]}</text>`;
-    hit.push({cx:X(i),html:`<div class="th">${MN[p.m]} ${p.y}</div>
-      <div class="tr">Wynik<span class="tv" style="color:${p.r>=0?CSS("--pos"):CSS("--neg")}">${sg2(p.r)}%</span></div>`})});
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Wyniki ostatnich dwunastu miesięcy" data-hover='${HV({W,H,max:(W-L-R)/n/1.6,hit})}'>${g}</svg>`});
+  idx.forEach((i,k)=>{
+    [[RETC.pln[i],"--s1",0],[RETC.usd[i],"--s2",1]].forEach(([v,c,s])=>{
+      if(v==null)return;
+      const top=Math.min(Y(v),Y(0)),h=Math.max(2.5,Math.abs(Y(v)-Y(0)));
+      g+=`<rect x="${X(k,s)-bw/2}" y="${top}" width="${bw}" height="${h}" rx="3" fill="${CSS(c)}"/>`
+        +`<text x="${X(k,s)}" y="${v>=0?top-5:top+h+12}" text-anchor="middle" fill="${CSS("--muted")}" font-size="${f-.5}" font-family="var(--f-mono)" font-weight="600">${sg(v)}</text>`});
+    g+=`<text x="${L+step*(k+.5)}" y="${H-9}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${mLbl(MONTHS[i])}</text>`;
+    hit.push({cx:L+step*(k+.5),html:`<div class="th">${mLbl(MONTHS[i])}</div>
+      <div class="tr"><span class="sw" style="background:${CSS("--s1")}"></span>w złotych<span class="tv" style="color:${RETC.pln[i]>=0?CSS("--pos"):CSS("--neg")}">${sg2(RETC.pln[i])}%</span></div>
+      <div class="tr"><span class="sw" style="background:${CSS("--s2")}"></span>w dolarze<span class="tv" style="color:${RETC.usd[i]>=0?CSS("--pos"):CSS("--neg")}">${sg2(RETC.usd[i])}%</span></div>`})});
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Wyniki ostatnich szesciu miesiecy w obu walutach" data-hover='${HV({W,H,max:step/1.6,hit})}'>${g}</svg>`});
 
-/* ten sam wykres kapitalu na pulpicie */
-chart("c-equity2",charts.find(c=>c.id==="c-equity").draw);
 
 /* ============ widoki ============ */
 const legend=(id,it)=>document.getElementById(id).innerHTML=it.map(([n,c])=>`<span><i style="background:${c}"></i>${n}</span>`).join("");
@@ -333,27 +348,48 @@ const KOL={IUIT:"--s1",CNDX:"--s1b",CSPX:"--s2",VWRA:"--s2b",EIMI:"--s2c",IUES:"
   IHYA:"--s5d",LQDA:"--s7",GOTOWKA:"--s6"};
 const tbl=(h,b,f)=>`<div class="card tw"><table><thead><tr>${h}</tr></thead><tbody>${b}</tbody>${f?`<tfoot>${f}</tfoot>`:""}</table></div>`;
 /* ---- pulpit ---- */
-const WART=VALUE.at(-1),WPL=PAID.at(-1);
+const FXN=PORT.fx.rate;
 function renderPulpit(){
-  const zysk=WART-WPL, U=PORT.usd, zyskU=U.value-U.paid, T=PORT.twr;
+  const W={pln:VALUE.at(-1),usd:VUSD.at(-1)},P={pln:PAID.at(-1),usd:PUSD.at(-1)};
+  const zy={pln:W.pln-P.pln,usd:W.usd-P.usd},T=PORT.twr;
   const sgn=(v,u)=>(v>=0?"+":"−")+zl(v)+" "+u;
+  document.getElementById("stampFx").textContent="USD/PLN "+String(FXN).replace(".",",");
   document.getElementById("kpi").innerHTML=[
-    ["Wartość",zl(WART)+" zł",zl(U.value)+" USD","--fg","--muted","kurs "+String(PORT.fx.rate).replace(".",",")],
-    ["Wynik",sgn(zysk,"zł"),sgn(zyskU,"USD"),zysk>=0?"--pos":"--neg",zyskU>=0?"--pos":"--neg","wobec wpłat"],
-    ["TWR",sg2(T.pln)+"% PLN",sg2(T.usd)+"% USD",T.pln>=0?"--pos":"--neg",T.usd>=0?"--pos":"--neg","same decyzje"],
+    ["Wartość",zl(W.usd)+" USD",zl(W.pln)+" zł","--fg","--fg","wpłacone "+zl(P.usd)+" USD"],
+    ["Wynik",sgn(zy.usd,"USD"),sgn(zy.pln,"zł"),zy.usd>=0?"--pos":"--neg",zy.pln>=0?"--pos":"--neg","mam minus wpłacone"],
+    ["TWR",sg2(T.usd)+"% USD",sg2(T.pln)+"% PLN",T.usd>=0?"--pos":"--neg",T.pln>=0?"--pos":"--neg","same decyzje"],
     ["Rebalans","za 15 dni","25 grudnia","--warn","--muted","transza 25-tego"]
   ].map(([l,v,v2,c,c2,d])=>`<div class="tile"><div class="lbl">${l}</div>
     <div class="v" style="color:var(${c})">${v}</div>
     <div class="v2" style="color:var(${c2})">${v2}</div><div class="d">${d}</div></div>`).join("");
 
-  document.getElementById("accStrips").innerHTML=SETUPS[SETUP].accounts.map(a=>{
-    const o=accComp(a),cap=accTarget(a),d=a.value-cap;
-    return `<div class="strip">
-      <div class="h"><b>${esc(a.name)}</b><span class="sub">${accLegs(a)}</span><span class="v">${zl(a.value)} zł</span></div>
-      <div class="bar">${Object.entries(o).map(([t,v])=>{const w=v/cap*100;
-        return `<span style="flex:${w};background:${CSS(KOL[t]||"--s6")}" title="${t} ${pc(v/cap)}">${w>11?(t==="GOTOWKA"?"GOT.":t):""}</span>`}).join("")}</div>
-      <div class="f"><span>skład docelowy · cel ${zl(cap)} zł</span><span class="d" style="color:${Math.abs(d)<cap*.02?"var(--faint)":"var(--warn)"}">${d>=0?"+":"−"}${zl(Math.abs(d))} zł</span></div>
-    </div>`}).join("")}
+  const fx0=FXS[0],d=(FXN/fx0-1)*100;
+  document.getElementById("fxNote").textContent=
+    `Ten sam portfel, dwa obrazy. Kurs poszedł z ${String(fx0).replace(".",",")} na ${String(FXN).replace(".",",")}, `
+    +`czyli ${sg(d)}%, i ta różnica w całości siedzi między tymi wykresami. TWR w złotych jest o `
+    +`${sg2(PORT.twr.pln-PORT.twr.usd)} pp wyższy niż w dolarze wyłącznie z tego powodu.`;
+
+  const HT=Object.values(HOLDINGS).reduce((a,b)=>a+b,0);
+  document.getElementById("holdRows").innerHTML=Object.entries(HOLDINGS).sort((a,b)=>b[1]-a[1]).map(([t,v])=>
+    `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
+     <td class="num">${pc(v/HT)}</td><td class="num">${zl(v)} zł</td>
+     <td class="num sub">${zl(v/FXN)} USD</td></tr>`).join("")
+   +`<tr><td>Razem</td><td class="num">100,0%</td><td class="num">${zl(HT)} zł</td><td class="num sub">${zl(HT/FXN)} USD</td></tr>`;
+
+  document.getElementById("legCards").innerHTML=[["best17","BEST17","konto LYNX"],["gpm","GPM","konto XTB"]]
+    .map(([k,name,acct])=>{
+      const L=LEGS[k],w=L.value_usd-L.paid_usd,o=accComp(SETUPS[SETUP].accounts.find(a=>a.alloc[k]>0)||{alloc:{[k]:1}});
+      return `<div class="card"><div class="lbl">${name} <span style="text-transform:none;letter-spacing:0">· ${acct}</span></div>
+        <div class="big">${zl(L.value_usd)}<span style="font-size:1rem;color:var(--muted)"> USD</span></div>
+        <div class="v2" style="color:var(--muted);font-size:1.05rem;font-weight:600">${zl(L.value_usd*FXN)} zł</div>
+        <dl class="kv" style="margin-top:12px">
+          <dt>Wpłacone</dt><dd>${zl(L.paid_usd)} USD</dd>
+          <dt>Wynik</dt><dd style="color:var(${w>=0?"--pos":"--neg"})">${w>=0?"+":"−"}${zl(w)} USD</dd>
+        </dl>
+        <div class="alloc" style="margin-top:14px;height:30px">${Object.entries(o).map(([t,v])=>{
+          const cap=Object.values(o).reduce((a,b)=>a+b,0),pr=v/cap*100;
+          return `<span style="flex:${pr};background:${CSS(KOL[t]||"--s6")}" title="${t} ${pc(v/cap)}">${pr>13?(t==="GOTOWKA"?"GOT.":t):""}</span>`}).join("")}</div>
+      </div>`}).join("")}
 
 function renderHero(){
   const e=Object.entries(COMBINED).sort((a,b)=>b[1]-a[1]);
@@ -557,8 +593,9 @@ document.getElementById("segS").addEventListener("click",e=>{
 document.getElementById("txTick").innerHTML=ORDER.map(t=>`<option>${t}</option>`).join("");
 document.getElementById("txDate").value=new Date().toISOString().slice(0,10);
 fillAccSelect();renderTX();renderPulpit();renderMatrix();renderHero();renderActions();renderHist();renderSklad("sum");renderAccounts();renderWyniki();renderCeny();
-const EQL=[["Wartość portfela",CSS("--accent")],["Wpłacony kapitał",CSS("--muted")]];
-legend("l-equity",EQL);legend("l-equity2",EQL);
+const EQL=[["Wartość",CSS("--accent")],["Wpłacony kapitał",CSS("--muted")]];
+legend("l-eq-usd",EQL);legend("l-eq-pln",EQL);
+legend("l-month",[["w złotych",CSS("--s1")],["w dolarze",CSS("--s2")]]);
 legend("l-mix",KLASY.map(k=>[k[0],CSS(k[1])]));
 legend("l-canary",[["VT",CSS("--s1")],["XLK",CSS("--s2")]]);
 show(location.hash.slice(1)||"pulpit");
