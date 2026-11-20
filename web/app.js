@@ -267,41 +267,36 @@ chart("c-rank",W=>{
       <div class="tr">Pozycja<span class="tv">${top?"top "+(i+1):gate==="no"?"odcięte":"poza podium"}</span></div>`})});
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Ranking BEST17 z progiem bramki" data-hover='${HV({W,H,max:1e9,hit})}'>${out}</svg>`});
 
-/* ---- sklad w czasie, slupki: jeden slupek = jedna data rebalansu ---- */
-const compAt=(c,leg)=>leg==="all"
-  ? (()=>{const o={};
-      for(const[t,w]of Object.entries(c.best17))o[t]=(o[t]||0)+w*.5;
-      for(const[t,w]of Object.entries(c.gpm))o[t]=(o[t]||0)+w*.5;
-      const s=Object.values(o).reduce((a,b)=>a+b,0);
-      if(s<.999)o.GOTOWKA=1-s; return o})()
-  : (()=>{const o={...c[leg]},s=Object.values(o).reduce((a,b)=>a+b,0);
-      if(s<.999)o.GOTOWKA=1-s; return o})();
-const compKeys=leg=>{const u=new Set();
-  for(const c of COMPO)for(const t of Object.keys(compAt(c,leg)))u.add(t);
-  return [...ORDER,"GOTOWKA"].filter(t=>u.has(t))};
-function compBars(id,leg){
-  chart(id,W=>{
-    const n=COMPO.length,nr=W<520,H=nr?210:240,L=nr?30:36,R=8,T=10,B=30,f=FS(W);
-    const step=(W-L-R)/n,bw=Math.min(step*.72,46);
-    const X=i=>L+step*(i+.5),Y=p=>T+(H-T-B)*(1-p);
-    let out="",hit=[];
-    for(let p=0;p<=1;p+=.25)out+=`<line x1="${L}" x2="${W-R}" y1="${Y(p)}" y2="${Y(p)}" stroke="${CSS("--line")}"/>`
-      +`<text x="${L-6}" y="${Y(p)+4}" text-anchor="end" fill="${CSS("--faint")}" font-size="${f}">${p*100}</text>`;
-    COMPO.forEach((c,i)=>{
-      const o=compAt(c,leg),e=Object.entries(o).sort((a,b)=>
-        [...ORDER,"GOTOWKA"].indexOf(a[0])-[...ORDER,"GOTOWKA"].indexOf(b[0]));
-      let acc=0;
-      for(const[t,w]of e){
-        const y0=Y(acc+w),h=Math.max(1,Y(acc)-Y(acc+w));
-        out+=`<rect x="${X(i)-bw/2}" y="${y0}" width="${bw}" height="${h}" fill="${CSS(KOL[t]||"--s6")}" stroke="${CSS("--surface")}" stroke-width="1.5"/>`;
-        acc+=w}
-      const lbl=c.date.slice(8)+"."+c.date.slice(5,7);
-      if(!nr||i%2===1)out+=`<text x="${X(i)}" y="${H-10}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${lbl}</text>`;
-      hit.push({x0:X(i)-step/2,x1:X(i)+step/2,y0:0,y1:H,
-        html:`<div class="th">${c.date} · ${c.tranche}-ty</div>`+e.map(([t,w])=>
-          `<div class="tr"><span class="sw" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}<span class="tv">${pc(w)}</span></div>`).join("")})});
-    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Sklad portfela na kolejnych datach rebalansu" data-hover='${HV({W,H,max:1e9,hit})}'>${out}</svg>`})}
-compBars("c-comp-all","all");compBars("c-comp-b17","best17");compBars("c-comp-gpm","gpm");
+/* ---- macierz skladu: wiersz = walor, kolumna = data rebalansu ---- */
+const hexRGB=h=>{const n=parseInt(h.replace("#",""),16);return [n>>16&255,n>>8&255,n&255].join(",")};
+/* Zaokraglanie metoda najwiekszych reszt: same round() daje 27+27+27+20 = 101,
+   a kolumna, ktora nie sumuje sie do 100, wyglada na blad danych. */
+function round100(o){
+  const e=Object.entries(o).filter(([,w])=>w>.0005);
+  if(!e.length)return {};
+  const f=e.map(([t,w])=>[t,w*100,Math.floor(w*100)]);
+  let left=100-f.reduce((a,x)=>a+x[2],0);
+  f.sort((a,b)=>(b[1]-b[2])-(a[1]-a[2]));
+  for(let k=0;k<f.length&&left>0;k++,left--)f[k][2]++;
+  return Object.fromEntries(f.map(([t,,v])=>[t,v]))}
+function legCol(c,leg){
+  const o={...c[leg]},s=Object.values(o).reduce((a,b)=>a+b,0);
+  if(s<.999)o.GOTOWKA=1-s;
+  return round100(o)}
+function renderMatrix(){
+  const head=`<thead><tr><th class="st">Walor</th>`
+    +COMPO.map(c=>`<th>${c.date.slice(8)}.${c.date.slice(5,7)}</th>`).join("")+`</tr></thead>`;
+  let body="";
+  for(const[leg,name]of [["best17","BEST17"],["gpm","GPM"]]){
+    const cols=COMPO.map(c=>legCol(c,leg));
+    const rows=[...ORDER,"GOTOWKA"].filter(t=>cols.some(c=>c[t]));
+    body+=`<tr class="grp"><td class="st">${name}</td><td colspan="${COMPO.length}"></td></tr>`;
+    for(const t of rows)
+      body+=`<tr><td class="st"><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>`
+        +cols.map(c=>{const v=c[t]||0;
+          return v?`<td style="background:rgba(${hexRGB(CSS(KOL[t]||"--s6"))},${(.16+.006*v).toFixed(2)})">${v}</td>`
+                  :'<td class="z">·</td>'}).join("")+`</tr>`}
+  document.getElementById("mxComp").innerHTML=head+"<tbody>"+body+"</tbody>"}
 
 /* ---- ostatnie 12 miesiecy ---- */
 chart("c-month",W=>{
@@ -553,11 +548,9 @@ document.getElementById("segS").addEventListener("click",e=>{
 
 document.getElementById("txTick").innerHTML=ORDER.map(t=>`<option>${t}</option>`).join("");
 document.getElementById("txDate").value=new Date().toISOString().slice(0,10);
-fillAccSelect();renderTX();renderPulpit();renderHero();renderActions();renderHist();renderSklad("sum");renderAccounts();renderWyniki();renderCeny();
+fillAccSelect();renderTX();renderPulpit();renderMatrix();renderHero();renderActions();renderHist();renderSklad("sum");renderAccounts();renderWyniki();renderCeny();
 const EQL=[["Wartość portfela",CSS("--accent")],["Wpłacony kapitał",CSS("--muted")]];
 legend("l-equity",EQL);legend("l-equity2",EQL);
 legend("l-mix",KLASY.map(k=>[k[0],CSS(k[1])]));
-for(const[id,leg]of [["l-comp-all","all"],["l-comp-b17","best17"],["l-comp-gpm","gpm"]])
-  legend(id,compKeys(leg).map(t=>[t==="GOTOWKA"?"Gotówka":t,CSS(KOL[t]||"--s6")]));
 legend("l-canary",[["VT",CSS("--s1")],["XLK",CSS("--s2")]]);
 show(location.hash.slice(1)||"pulpit");
