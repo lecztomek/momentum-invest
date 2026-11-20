@@ -1,0 +1,23 @@
+{
+  "name": "momentum-invest-firebase",
+  "version": "1.0.0",
+  "description": "Narzedzia deweloperskie do regul Firestore - emulator i testy. Strategia zyje w Pythonie.",
+  "scripts": {
+    "test:rules": "firebase emulators:exec --only firestore --project test-regul \"node --test firebase/tests/rules.test.mjs\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lecztomek/momentum-invest.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lecztomek/momentum-invest/issues"
+  },
+  "homepage": "https://github.com/lecztomek/momentum-invest#readme",
+  "type": "module",
+  "dependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.3.0",
+    "firebase-tools": "^13.29.1"
+  },
+  "private": true
+}

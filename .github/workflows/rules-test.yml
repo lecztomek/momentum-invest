@@ -1,0 +1,30 @@
+name: Testy regul Firestore
+
+# Pomylka w jednej linijce regul wystawia salda na swiat, a baza tego nie zglosi.
+# Dlatego kazda zmiana regul musi przejsc przez emulator, zanim trafi do projektu.
+on:
+  push:
+    paths:
+      - 'firebase/**'
+      - 'firebase.json'
+      - '.github/workflows/rules-test.yml'
+  pull_request:
+    paths:
+      - 'firebase/**'
+  workflow_dispatch:
+
+jobs:
+  reguly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: npm ci
+      - run: npm run test:rules

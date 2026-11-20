@@ -1,0 +1,64 @@
+rules_version = '2';
+
+// Podzial odpowiedzialnosci:
+//   repo  - to, co publiczne i tylko do czytania: ceny opublikowane i sygnaly (web/data/*.json)
+//   baza  - to, co trzeba zapisac z przegladarki: ceny wpisane recznie oraz dane uzytkownika
+//
+// Pipeline pisze przez Admin SDK, ktory omija te reguly w calosci. Ponizsze
+// dotycza wylacznie przegladarki.
+
+service cloud.firestore {
+  match /databases/{baza}/documents {
+
+    function zalogowany() {
+      return request.auth != null;
+    }
+
+    function admin() {
+      return zalogowany()
+        && exists(/databases/$(baza)/documents/admins/$(request.auth.uid));
+    }
+
+    function wlasciciel(uid) {
+      return zalogowany() && request.auth.uid == uid;
+    }
+
+    // --- dane wspolne -------------------------------------------------
+    // Ceny wpisane recznie. Czyta kazdy zalogowany, pisze tylko admin.
+    match /price_entries/{id} {
+      allow read:  if zalogowany();
+      allow write: if admin();
+    }
+
+    // Korekty cen. Dokladane obok ceny z feedu, nigdy jej nie nadpisuja -
+    // dlatego istniejacego wpisu nie wolno edytowac, mozna go tylko usunac.
+    match /overrides/{id} {
+      allow read:   if zalogowany();
+      allow create: if admin() && request.resource.data.keys().hasAll(['value','reason','author']);
+      allow delete: if admin();
+      allow update: if false;
+    }
+
+    // Lista adminow. Nadawana wylacznie z konsoli Firebase - zaden klient
+    // nie moze dopisac sam siebie.
+    match /admins/{uid} {
+      allow read:  if zalogowany();
+      allow write: if false;
+    }
+
+    // --- dane uzytkownika ---------------------------------------------
+    // Salda, wplaty i transakcje. Widzi i zmienia je wylacznie wlasciciel,
+    // admin nie ma tu zadnego dostepu.
+    match /users/{uid} {
+      allow read, write: if wlasciciel(uid);
+      match /{sciezka=**} {
+        allow read, write: if wlasciciel(uid);
+      }
+    }
+
+    // --- wszystko pozostale -------------------------------------------
+    match /{sciezka=**} {
+      allow read, write: if false;
+    }
+  }
+}
