@@ -1109,8 +1109,17 @@ function rysujUid(){
   const stare=document.getElementById("uidBox");if(stare)stare.remove();
   if(!USER||ADMIN_BAZA)return;
   const box=document.createElement("div");box.className="uid";box.id="uidBox";
-  box.innerHTML=`Nie masz jeszcze praw zapisu. Wklej swój identyfikator do kolekcji
-    <b>admins</b> w konsoli Firebase — dokument o tym id, zawartość dowolna.<code>${esc(USER.uid)}</code>`;
+  /* Krok jest reczny z zalozenia - zaden klient nie moze dopisac sam siebie do
+     adminow (patrz firestore.rules). Skoro reczny, to niech bedzie na dwa
+     klikniecia, a nie na przepisywanie 28 znakow z ekranu. */
+  const konsola=`https://console.firebase.google.com/project/${esc(FB?.projectId||"")}/firestore/data/~2Fadmins`;
+  box.innerHTML=`<div class="hd">Jesteś zalogowany w trybie <b>podglądu</b>.</div>
+    Wpisywanie cen i korekt wymaga praw admina. Nadaje się je tylko z konsoli — dopisz
+    dokument o poniższym id do kolekcji <b>admins</b> (zawartość dowolna, może być pusta),
+    potem odśwież stronę.
+    <code id="uidKod">${esc(USER.uid)}</code>
+    <div class="akcje"><button type="button" class="btn" id="btnKopiujUid">Kopiuj identyfikator</button>
+      <a class="btn cicho" href="${konsola}" target="_blank" rel="noopener">Otwórz kolekcję admins</a></div>`;
   document.querySelector(".topbar").after(box);
 }
 /* Komunikat ma mowic, CO zrobic. "auth/unauthorized-domain" to najczestszy
@@ -1128,6 +1137,11 @@ function bladLogowania(err){
   return "Logowanie nie powiodło się: "+(err?.message||err);
 }
 document.addEventListener("click",async e=>{
+  if(e.target.id==="btnKopiujUid"){
+    const b=e.target;
+    try{await navigator.clipboard.writeText(USER.uid);b.textContent="Skopiowane"}
+    catch{document.getElementById("uidKod")?.focus();b.textContent="Zaznacz i skopiuj ręcznie"}
+    setTimeout(()=>{b.textContent="Kopiuj identyfikator"},2500);return}
   if(e.target.id==="btnZaloguj"){
     const b=e.target;b.disabled=true;b.textContent="Logowanie…";
     try{await FB.zalogujGoogle()}

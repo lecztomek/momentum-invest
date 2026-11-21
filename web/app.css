@@ -329,6 +329,10 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
 .konto .kto b{font-size:.86rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46vw}
 .konto .kto span{font-size:.72rem;color:var(--faint)}
 .uid{background:var(--surface);border-radius:18px;padding:16px;margin-top:14px;font-size:.92rem;color:var(--muted)}
+.uid .hd{color:var(--fg);font-weight:600;margin-bottom:6px}
+.uid .akcje{display:flex;flex-wrap:wrap;gap:9px;margin-top:11px}
+.uid .akcje .btn{font-size:.86rem;padding:9px 15px;text-decoration:none;display:inline-flex;align-items:center}
+.uid .akcje .btn.cicho{background:var(--surface2);color:var(--muted)}
 .uid code{display:block;font-family:var(--f-mono);font-size:.88rem;color:var(--fg);background:var(--surface2);
   padding:10px 12px;border-radius:12px;margin-top:9px;word-break:break-all;user-select:all}
 

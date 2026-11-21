@@ -13,6 +13,7 @@ import {
 import { FIREBASE } from "./firebase-config.js";
 
 const app = initializeApp(FIREBASE);
+export const projectId = FIREBASE.projectId;   /* do linku w konsoli */
 export const auth = getAuth(app);
 const db = getFirestore(app);
 
