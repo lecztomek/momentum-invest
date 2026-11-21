@@ -71,7 +71,7 @@
 
 <!-- ========== SYGNAL ========== -->
 <section id="v-sygnal" hidden>
-  <div class="phead"><h1>Sygnał</h1><span class="stamp">ceny 2026-12-10</span></div>
+  <div class="phead"><h1>Sygnał</h1><span class="stamp" id="sigStamp"></span></div>
 
   <div class="hero">
     <div class="hval" id="sigVal"></div>
@@ -195,6 +195,10 @@
 <!-- ========== DLACZEGO ========== -->
 <section id="v-dlaczego" hidden>
   <div class="phead"><h1>Dlaczego taki skład</h1></div>
+  <div class="seg" id="segD">
+    <button data-d="10" aria-pressed="true">Transza 10-tego</button>
+    <button data-d="25" aria-pressed="false">Transza 25-tego</button>
+  </div>
   <div id="diagWarn"></div>
 
   <h2 class="psec">Kanarek</h2>

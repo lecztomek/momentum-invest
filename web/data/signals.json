@@ -1,7 +1,7 @@
 {
- "generated": "2026-11-20T23:53:38Z",
- "source": "engine_v2 / strategies_v2/gpm_uk_best17_a",
- "config_hash": "e3385276",
+ "generated": "2026-11-21T00:09:32Z",
+ "source": "engine_v2 / strategies_v2/gpm_uk_best17_a_day10 + strategies_v2/gpm_uk_best17_a_day25",
+ "config_hash": "cb573945",
  "universe": [
   "IUIT",
   "VWRA",
@@ -34,28 +34,40 @@
   "CBU0": "GPM · ochronny",
   "IBTA": "GPM · ochronny"
  },
+ "tranches": [
+  10,
+  25
+ ],
  "signals": [
   {
-   "date": "2026-08-01",
-   "tranche": 1,
+   "date": "2026-06-10",
+   "period": "2026-06-01",
+   "tranche": 10,
    "best17": {
-    "mode": "CASH",
-    "picks": [],
-    "weights": {}
+    "mode": "RISK",
+    "picks": [
+     "IUIT",
+     "CMOD"
+    ],
+    "weights": {
+     "CMOD": 0.2,
+     "IUIT": 0.8
+    }
    },
    "gpm": {
     "mode": "RISK",
     "weights": {
-     "CBU0": 0.2,
      "CMOD": 0.2666666667,
      "CNDX": 0.2666666667,
+     "IBTA": 0.2,
      "IUES": 0.2666666667
     }
    }
   },
   {
-   "date": "2026-07-01",
-   "tranche": 1,
+   "date": "2026-06-25",
+   "period": "2026-06-01",
+   "tranche": 25,
    "best17": {
     "mode": "RISK",
     "picks": [
@@ -70,230 +82,463 @@
    "gpm": {
     "mode": "RISK",
     "weights": {
-     "CBU0": 0.2,
      "CMOD": 0.2666666667,
      "CNDX": 0.2666666667,
+     "IBTA": 0.2,
      "IUES": 0.2666666667
     }
    }
   }
  ],
+ "awaiting": [
+  {
+   "tranche": 10,
+   "period": "2026-07-01",
+   "last": "2026-07-02",
+   "reason": "brak sesji 10-tego lub pozniej - dane koncza sie na 2026-07-02"
+  },
+  {
+   "tranche": 10,
+   "period": "2026-08-01",
+   "reason": "miesiac nie ma jeszcze zadnego notowania"
+  },
+  {
+   "tranche": 25,
+   "period": "2026-07-01",
+   "last": "2026-07-02",
+   "reason": "brak sesji 25-tego lub pozniej - dane koncza sie na 2026-07-02"
+  },
+  {
+   "tranche": 25,
+   "period": "2026-08-01",
+   "reason": "miesiac nie ma jeszcze zadnego notowania"
+  }
+ ],
  "history": [
   [
-   "2026-08-01",
-   "CASH",
-   "",
-   "RISK",
-   "− CSPX, IUIT"
-  ],
-  [
-   "2026-07-01",
+   "2026-06-25",
+   25,
    "RISK",
    "IUIT / CSPX",
    "RISK",
-   "+ CBU0, CSPX · − IBTA"
+   "+ CSPX"
   ],
   [
-   "2026-06-01",
+   "2026-06-10",
+   10,
    "RISK",
    "IUIT / CMOD",
    "RISK",
    "zmiana wag"
   ],
   [
-   "2026-05-01",
+   "2026-05-25",
+   25,
+   "RISK",
+   "CMOD / IUIT",
+   "RISK",
+   "+ CNDX · − CSPX, IGLN"
+  ],
+  [
+   "2026-05-11",
+   10,
    "RISK",
    "CMOD / IUIT",
    "RISK",
    "+ CNDX · − IGLN"
   ],
   [
-   "2026-04-01",
+   "2026-04-27",
+   25,
+   "RISK",
+   "IUIT / CSPX",
+   "RISK",
+   "+ CMOD, IBTA · − XRES"
+  ],
+  [
+   "2026-04-10",
+   10,
    "RISK",
    "IGLN / IUIT",
    "RISK",
    "+ CMOD, IBTA · − XRES"
   ],
   [
-   "2026-03-01",
+   "2026-03-25",
+   25,
+   "RISK",
+   "IUIT / CSPX",
+   "RISK",
+   "+ CSPX, XRES · − CMOD"
+  ],
+  [
+   "2026-03-10",
+   10,
    "RISK",
    "IGLN / IUIT",
    "RISK",
    "+ XRES · − CMOD"
   ]
  ],
- "pending": [
-  "IAU",
-  "DBC"
- ],
- "ranking": [
-  {
-   "t": "XLK",
-   "score": 12.06,
-   "gate": "ok",
-   "weight": 0.0
+ "diagnostics": {
+  "10": {
+   "ranking": [
+    {
+     "t": "IAU",
+     "exec": "IGLN",
+     "score": 12.02,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "XLK",
+     "exec": "IUIT",
+     "score": 10.75,
+     "gate": "ok",
+     "weight": 0.8
+    },
+    {
+     "t": "DBC",
+     "exec": "CMOD",
+     "score": 8.37,
+     "gate": "ok",
+     "weight": 0.2
+    },
+    {
+     "t": "VT",
+     "exec": "VWRA",
+     "score": 6.52,
+     "gate": "canary",
+     "weight": 0.0
+    },
+    {
+     "t": "IVV",
+     "exec": "CSPX",
+     "score": 6.11,
+     "gate": "ok",
+     "weight": 0.0
+    }
+   ],
+   "gate_threshold": 1.0,
+   "canary": {
+    "threshold": -2.0,
+    "months": [
+     "2024-07",
+     "2024-08",
+     "2024-09",
+     "2024-10",
+     "2024-11",
+     "2024-12",
+     "2025-01",
+     "2025-02",
+     "2025-03",
+     "2025-04",
+     "2025-05",
+     "2025-06",
+     "2025-07",
+     "2025-08",
+     "2025-09",
+     "2025-10",
+     "2025-11",
+     "2025-12",
+     "2026-01",
+     "2026-02",
+     "2026-03",
+     "2026-04",
+     "2026-05",
+     "2026-06"
+    ],
+    "vt": [
+     4.76,
+     4.93,
+     5.18,
+     5.37,
+     4.77,
+     4.93,
+     4.07,
+     3.92,
+     3.55,
+     2.46,
+     1.82,
+     2.39,
+     3.34,
+     3.88,
+     4.51,
+     5.16,
+     5.61,
+     5.57,
+     5.27,
+     5.38,
+     5.45,
+     3.99,
+     4.59,
+     5.51
+    ],
+    "xlk": [
+     8.28,
+     7.72,
+     7.11,
+     6.87,
+     6.06,
+     6.22,
+     5.9,
+     5.26,
+     4.21,
+     1.89,
+     0.76,
+     1.81,
+     4.08,
+     5.79,
+     6.35,
+     7.69,
+     9.21,
+     8.53,
+     7.81,
+     6.98,
+     5.49,
+     3.6,
+     5.76,
+     10.25
+    ]
+   },
+   "progi": [
+    {
+     "status": "ok",
+     "title": "XLK przed DBC",
+     "sub": "przewaga w rankingu",
+     "value": "+2,38 pp"
+    },
+    {
+     "status": "ok",
+     "title": "DBC utrzymuje 2. miejsce",
+     "sub": "nad IVV, pierwszym poza podium",
+     "value": "+2,26 pp"
+    },
+    {
+     "status": "no",
+     "title": "IAU pod bramką 3m",
+     "sub": "momentum −21,52% wobec progu +1,00%",
+     "value": "−22,52 pp"
+    },
+    {
+     "status": "ok",
+     "title": "DBC nad bramką 3m",
+     "sub": "momentum +5,69% wobec progu +1,00%",
+     "value": "+4,69 pp"
+    },
+    {
+     "status": "nr",
+     "title": "Kanarek VT",
+     "sub": "+5,51% wobec progu −2,00%",
+     "value": "+7,51 pp"
+    },
+    {
+     "status": "nr",
+     "title": "Kanarek XLK",
+     "sub": "+10,25% wobec progu −2,00%",
+     "value": "+12,25 pp"
+    }
+   ],
+   "pending": [],
+   "gpm_info": [
+    [
+     "Ryzykowne w top 3",
+     "CMOD · IUES · CNDX"
+    ],
+    [
+     "Przeszło filtr trendu",
+     "9 z 10"
+    ],
+    [
+     "Mianownik",
+     "5"
+    ],
+    [
+     "Udział ochronny",
+     "20% · IBTA"
+    ]
+   ],
+   "date": "2026-06-10"
   },
-  {
-   "t": "IAU",
-   "score": 7.0,
-   "gate": "nodata",
-   "weight": 0.0
-  },
-  {
-   "t": "VT",
-   "score": 6.42,
-   "gate": "canary",
-   "weight": 0.0
-  },
-  {
-   "t": "IVV",
-   "score": 6.11,
-   "gate": "ok",
-   "weight": 0.0
-  },
-  {
-   "t": "DBC",
-   "score": 5.94,
-   "gate": "nodata",
-   "weight": 0.0
+  "25": {
+   "ranking": [
+    {
+     "t": "IAU",
+     "exec": "IGLN",
+     "score": 12.02,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "XLK",
+     "exec": "IUIT",
+     "score": 10.75,
+     "gate": "ok",
+     "weight": 0.8
+    },
+    {
+     "t": "DBC",
+     "exec": "CMOD",
+     "score": 8.37,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "VT",
+     "exec": "VWRA",
+     "score": 6.52,
+     "gate": "canary",
+     "weight": 0.0
+    },
+    {
+     "t": "IVV",
+     "exec": "CSPX",
+     "score": 6.11,
+     "gate": "ok",
+     "weight": 0.2
+    }
+   ],
+   "gate_threshold": 1.0,
+   "canary": {
+    "threshold": -2.0,
+    "months": [
+     "2024-07",
+     "2024-08",
+     "2024-09",
+     "2024-10",
+     "2024-11",
+     "2024-12",
+     "2025-01",
+     "2025-02",
+     "2025-03",
+     "2025-04",
+     "2025-05",
+     "2025-06",
+     "2025-07",
+     "2025-08",
+     "2025-09",
+     "2025-10",
+     "2025-11",
+     "2025-12",
+     "2026-01",
+     "2026-02",
+     "2026-03",
+     "2026-04",
+     "2026-05",
+     "2026-06"
+    ],
+    "vt": [
+     4.76,
+     4.93,
+     5.18,
+     5.37,
+     4.77,
+     4.93,
+     4.07,
+     3.92,
+     3.55,
+     2.46,
+     1.82,
+     2.39,
+     3.34,
+     3.88,
+     4.51,
+     5.16,
+     5.61,
+     5.57,
+     5.27,
+     5.38,
+     5.45,
+     3.99,
+     4.59,
+     5.51
+    ],
+    "xlk": [
+     8.28,
+     7.72,
+     7.11,
+     6.87,
+     6.06,
+     6.22,
+     5.9,
+     5.26,
+     4.21,
+     1.89,
+     0.76,
+     1.81,
+     4.08,
+     5.79,
+     6.35,
+     7.69,
+     9.21,
+     8.53,
+     7.81,
+     6.98,
+     5.49,
+     3.6,
+     5.76,
+     10.25
+    ]
+   },
+   "progi": [
+    {
+     "status": "ok",
+     "title": "XLK przed IVV",
+     "sub": "przewaga w rankingu",
+     "value": "+4,64 pp"
+    },
+    {
+     "status": "no",
+     "title": "IAU pod bramką 3m",
+     "sub": "momentum −11,21% wobec progu +1,00%",
+     "value": "−12,21 pp"
+    },
+    {
+     "status": "no",
+     "title": "DBC pod bramką 3m",
+     "sub": "momentum −4,40% wobec progu +1,00%",
+     "value": "−5,40 pp"
+    },
+    {
+     "status": "nr",
+     "title": "Kanarek VT",
+     "sub": "+5,51% wobec progu −2,00%",
+     "value": "+7,51 pp"
+    },
+    {
+     "status": "nr",
+     "title": "Kanarek XLK",
+     "sub": "+10,25% wobec progu −2,00%",
+     "value": "+12,25 pp"
+    }
+   ],
+   "pending": [],
+   "gpm_info": [
+    [
+     "Ryzykowne w top 3",
+     "CMOD · IUES · CNDX"
+    ],
+    [
+     "Przeszło filtr trendu",
+     "9 z 10"
+    ],
+    [
+     "Mianownik",
+     "5"
+    ],
+    [
+     "Udział ochronny",
+     "20% · IBTA"
+    ]
+   ],
+   "date": "2026-06-25"
   }
- ],
- "gate_threshold": 1.0,
- "canary": {
-  "threshold": -2.0,
-  "months": [
-   "2024-09",
-   "2024-10",
-   "2024-11",
-   "2024-12",
-   "2025-01",
-   "2025-02",
-   "2025-03",
-   "2025-04",
-   "2025-05",
-   "2025-06",
-   "2025-07",
-   "2025-08",
-   "2025-09",
-   "2025-10",
-   "2025-11",
-   "2025-12",
-   "2026-01",
-   "2026-02",
-   "2026-03",
-   "2026-04",
-   "2026-05",
-   "2026-06",
-   "2026-07",
-   "2026-08"
-  ],
-  "vt": [
-   5.18,
-   5.37,
-   4.77,
-   4.93,
-   4.07,
-   3.92,
-   3.55,
-   2.46,
-   1.82,
-   2.39,
-   3.34,
-   3.88,
-   4.51,
-   5.16,
-   5.61,
-   5.57,
-   5.27,
-   5.38,
-   5.45,
-   3.99,
-   4.59,
-   5.51,
-   5.55,
-   5.18
-  ],
-  "xlk": [
-   7.11,
-   6.87,
-   6.06,
-   6.22,
-   5.9,
-   5.26,
-   4.21,
-   1.89,
-   0.76,
-   1.81,
-   4.08,
-   5.79,
-   6.35,
-   7.69,
-   9.21,
-   8.53,
-   7.81,
-   6.98,
-   5.49,
-   3.6,
-   5.76,
-   10.25,
-   11.82,
-   10.88
-  ]
  },
- "progi": [
-  {
-   "status": "ok",
-   "title": "XLK przed IVV",
-   "sub": "przewaga w rankingu",
-   "value": "+5,95 pp"
-  },
-  {
-   "status": "no",
-   "title": "IAU bez bramki 3m",
-   "sub": "brak notowania z dnia rebalansu - silnik odcina walor",
-   "value": "brak danych"
-  },
-  {
-   "status": "no",
-   "title": "DBC bez bramki 3m",
-   "sub": "brak notowania z dnia rebalansu - silnik odcina walor",
-   "value": "brak danych"
-  },
-  {
-   "status": "nr",
-   "title": "Kanarek VT",
-   "sub": "+5,18% wobec progu −2,00%",
-   "value": "+7,18 pp"
-  },
-  {
-   "status": "nr",
-   "title": "Kanarek XLK",
-   "sub": "+10,88% wobec progu −2,00%",
-   "value": "+12,88 pp"
-  }
- ],
- "gpm_info": [
-  [
-   "Ryzykowne w top 3",
-   "IUES · CNDX · CMOD"
-  ],
-  [
-   "Przeszło filtr trendu",
-   "9 z 10"
-  ],
-  [
-   "Mianownik",
-   "5"
-  ],
-  [
-   "Udział ochronny",
-   "20% · CBU0"
-  ]
- ],
  "composition": [
   {
-   "date": "2025-09-01",
-   "tranche": 1,
+   "date": "2025-07-10",
+   "period": "2025-07-01",
+   "tranche": 10,
    "best17": {
     "IGLN": 0.8,
     "IUIT": 0.2
@@ -306,8 +551,84 @@
    }
   },
   {
-   "date": "2025-10-01",
-   "tranche": 1,
+   "date": "2025-07-25",
+   "period": "2025-07-01",
+   "tranche": 25,
+   "best17": {
+    "CSPX": 0.2,
+    "IUIT": 0.8
+   },
+   "gpm": {
+    "CNDX": 0.2666666667,
+    "EIMI": 0.2666666667,
+    "IBTA": 0.2,
+    "IGLN": 0.2666666667
+   }
+  },
+  {
+   "date": "2025-08-11",
+   "period": "2025-08-01",
+   "tranche": 10,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CNDX": 0.2666666667,
+    "EIMI": 0.2666666667,
+    "IBTA": 0.2,
+    "IGLN": 0.2666666667
+   }
+  },
+  {
+   "date": "2025-08-25",
+   "period": "2025-08-01",
+   "tranche": 25,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CNDX": 0.2666666667,
+    "EIMI": 0.2666666667,
+    "IBTA": 0.2,
+    "IGLN": 0.2666666667
+   }
+  },
+  {
+   "date": "2025-09-10",
+   "period": "2025-09-01",
+   "tranche": 10,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CNDX": 0.2666666667,
+    "EIMI": 0.2666666667,
+    "IBTA": 0.2,
+    "IGLN": 0.2666666667
+   }
+  },
+  {
+   "date": "2025-09-25",
+   "period": "2025-09-01",
+   "tranche": 25,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CNDX": 0.2666666667,
+    "EIMI": 0.2666666667,
+    "IBTA": 0.2,
+    "IGLN": 0.2666666667
+   }
+  },
+  {
+   "date": "2025-10-10",
+   "period": "2025-10-01",
+   "tranche": 10,
    "best17": {
     "IGLN": 0.8,
     "IUIT": 0.2
@@ -319,8 +640,23 @@
    }
   },
   {
-   "date": "2025-11-01",
-   "tranche": 1,
+   "date": "2025-10-27",
+   "period": "2025-10-01",
+   "tranche": 25,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CNDX": 0.3333333333,
+    "EIMI": 0.3333333333,
+    "IGLN": 0.3333333333
+   }
+  },
+  {
+   "date": "2025-11-10",
+   "period": "2025-11-01",
+   "tranche": 10,
    "best17": {
     "IGLN": 0.8,
     "IUIT": 0.2
@@ -333,8 +669,24 @@
    }
   },
   {
-   "date": "2025-12-01",
-   "tranche": 1,
+   "date": "2025-11-25",
+   "period": "2025-11-01",
+   "tranche": 25,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CNDX": 0.2666666667,
+    "EIMI": 0.2666666667,
+    "IBTA": 0.2,
+    "IGLN": 0.2666666667
+   }
+  },
+  {
+   "date": "2025-12-10",
+   "period": "2025-12-01",
+   "tranche": 10,
    "best17": {
     "IGLN": 0.8,
     "IUIT": 0.2
@@ -346,8 +698,23 @@
    }
   },
   {
-   "date": "2026-01-01",
-   "tranche": 1,
+   "date": "2025-12-26",
+   "period": "2025-12-01",
+   "tranche": 25,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CMOD": 0.3333333333,
+    "CNDX": 0.3333333333,
+    "IGLN": 0.3333333333
+   }
+  },
+  {
+   "date": "2026-01-12",
+   "period": "2026-01-01",
+   "tranche": 10,
    "best17": {
     "IGLN": 0.8,
     "IUIT": 0.2
@@ -359,8 +726,23 @@
    }
   },
   {
-   "date": "2026-02-01",
-   "tranche": 1,
+   "date": "2026-01-26",
+   "period": "2026-01-01",
+   "tranche": 25,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CNDX": 0.3333333333,
+    "EIMI": 0.3333333333,
+    "IGLN": 0.3333333333
+   }
+  },
+  {
+   "date": "2026-02-10",
+   "period": "2026-02-01",
+   "tranche": 10,
    "best17": {
     "IGLN": 0.8,
     "IUIT": 0.2
@@ -372,8 +754,23 @@
    }
   },
   {
-   "date": "2026-03-01",
-   "tranche": 1,
+   "date": "2026-02-25",
+   "period": "2026-02-01",
+   "tranche": 25,
+   "best17": {
+    "IGLN": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CMOD": 0.3333333333,
+    "IGLN": 0.3333333333,
+    "IUES": 0.3333333333
+   }
+  },
+  {
+   "date": "2026-03-10",
+   "period": "2026-03-01",
+   "tranche": 10,
    "best17": {
     "IGLN": 0.8,
     "IUIT": 0.2
@@ -385,8 +782,23 @@
    }
   },
   {
-   "date": "2026-04-01",
-   "tranche": 1,
+   "date": "2026-03-25",
+   "period": "2026-03-01",
+   "tranche": 25,
+   "best17": {
+    "CSPX": 0.2,
+    "IUIT": 0.8
+   },
+   "gpm": {
+    "IGLN": 0.3333333333,
+    "IUES": 0.3333333333,
+    "XRES": 0.3333333333
+   }
+  },
+  {
+   "date": "2026-04-10",
+   "period": "2026-04-01",
+   "tranche": 10,
    "best17": {
     "IGLN": 0.8,
     "IUIT": 0.2
@@ -399,8 +811,24 @@
    }
   },
   {
-   "date": "2026-05-01",
-   "tranche": 1,
+   "date": "2026-04-27",
+   "period": "2026-04-01",
+   "tranche": 25,
+   "best17": {
+    "CSPX": 0.2,
+    "IUIT": 0.8
+   },
+   "gpm": {
+    "CMOD": 0.1333333333,
+    "IBTA": 0.6,
+    "IGLN": 0.1333333333,
+    "IUES": 0.1333333333
+   }
+  },
+  {
+   "date": "2026-05-11",
+   "period": "2026-05-01",
+   "tranche": 10,
    "best17": {
     "CMOD": 0.8,
     "IUIT": 0.2
@@ -413,8 +841,24 @@
    }
   },
   {
-   "date": "2026-06-01",
-   "tranche": 1,
+   "date": "2026-05-25",
+   "period": "2026-05-01",
+   "tranche": 25,
+   "best17": {
+    "CMOD": 0.8,
+    "IUIT": 0.2
+   },
+   "gpm": {
+    "CMOD": 0.2666666667,
+    "CNDX": 0.2666666667,
+    "IBTA": 0.2,
+    "IUES": 0.2666666667
+   }
+  },
+  {
+   "date": "2026-06-10",
+   "period": "2026-06-01",
+   "tranche": 10,
    "best17": {
     "CMOD": 0.2,
     "IUIT": 0.8
@@ -427,27 +871,17 @@
    }
   },
   {
-   "date": "2026-07-01",
-   "tranche": 1,
+   "date": "2026-06-25",
+   "period": "2026-06-01",
+   "tranche": 25,
    "best17": {
     "CSPX": 0.2,
     "IUIT": 0.8
    },
    "gpm": {
-    "CBU0": 0.2,
     "CMOD": 0.2666666667,
     "CNDX": 0.2666666667,
-    "IUES": 0.2666666667
-   }
-  },
-  {
-   "date": "2026-08-01",
-   "tranche": 1,
-   "best17": {},
-   "gpm": {
-    "CBU0": 0.2,
-    "CMOD": 0.2666666667,
-    "CNDX": 0.2666666667,
+    "IBTA": 0.2,
     "IUES": 0.2666666667
    }
   }

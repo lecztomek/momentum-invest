@@ -22,6 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 NOGI = {"best17_a": "data/us", "gpm_uk": "data/uk"}
+TRANSZE = (10, 25)              # musi zgadzac sie z tools/build_signals.py
 
 # panel operuje na skrotach, silnik na nazwach plikow
 TICKER = {
@@ -103,15 +104,21 @@ def main() -> int:
                 dopisane += 1
     print(f"dopisanych notowan: {dopisane}, pominietych dni: {pominiete}")
 
-    # kopie konfiguracji wskazujace na kopie danych
+    # Kopie konfiguracji wskazujace na kopie danych. Kopiujemy DOKLADNIE te strategie,
+    # ktorych uzywa build_signals.py: obie nogi w wariancie kazdej transzy plus
+    # polaczone specy (te maja sciezki wzgledne, wiec wystarczy, ze leza obok).
     for noga, podkatalog in NOGI.items():
-        zrodlo = ROOT / "strategies_v2" / noga
-        cel = ws / "strategies_v2" / noga
-        shutil.copytree(zrodlo, cel)
-        spec = json.loads((cel / "strategy_spec.json").read_text())
-        spec["base_params"]["data_loader"]["data_dir"] = str(ws / podkatalog)
-        (cel / "strategy_spec.json").write_text(json.dumps(spec, indent=4))
-        print(f"{noga}: dane z {ws / podkatalog}")
+        for dzien in TRANSZE:
+            kat = f"{noga}_day{dzien}"
+            cel = ws / "strategies_v2" / kat
+            shutil.copytree(ROOT / "strategies_v2" / kat, cel)
+            spec = json.loads((cel / "strategy_spec.json").read_text())
+            spec["base_params"]["data_loader"]["data_dir"] = str(ws / podkatalog)
+            (cel / "strategy_spec.json").write_text(json.dumps(spec, indent=4))
+            print(f"{kat}: dane z {ws / podkatalog}")
+    for dzien in TRANSZE:
+        kat = f"gpm_uk_best17_a_day{dzien}"
+        shutil.copytree(ROOT / "strategies_v2" / kat, ws / "strategies_v2" / kat)
     return 0
 
 

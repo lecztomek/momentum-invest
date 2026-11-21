@@ -2,8 +2,17 @@
 Zamienia wyjscie silnika na web/data/signals.json - plik, ktory czyta strona.
 
 Strona nic nie liczy. Liczy silnik w Pythonie, a tu tylko tlumaczymy jego wynik
-na ksztalt, ktorego oczekuje front: wagi na walory wykonawcze, tryb kazdej nogi
-i historia zmian.
+na ksztalt, ktorego oczekuje front: wagi na walory wykonawcze, tryb kazdej nogi,
+historia zmian i diagnostyka (ranking, kanarek, bramki).
+
+Kapital stoi w DWOCH transzach - 10-tego i 25-tego - wiec liczymy dwie osobne
+pary strategii (best17_a_day{N} + gpm_uk_day{N}) i publikujemy dwa sygnaly.
+Transze nie moga isc w jednym combined_spec: `fixed_capital_weights` dla daty,
+ktorej dana skladowa nie ma, wstawia PELNA GOTOWKE, wiec zmieszanie dnia 10 i 25
+dawaloby portfel, ktory dwa razy w miesiacu "sprzedaje" polowe samego siebie.
+
+Diagnostyka liczy sie TYMI SAMYMI funkcjami silnika, co sygnal - nie wlasnymi
+kopiami wzorow - zeby nie dalo sie jej rozjechac ze skladem.
 
     python3 tools/build_signals.py
     python3 tools/build_signals.py --okresow 16
@@ -19,12 +28,18 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # import silnika z korzenia repo
 
+import pandas as pd
+
+from engine_v2.combined_pipeline import load_combined_daily_prices
+from engine_v2.combined_spec import CombinedSpec
+from engine_v2.period_anchor import nth_trading_day_dates
 from engine_v2.pipeline import _lookup, _run_phase_a, run_strategy_pipeline
 from engine_v2.spec import StrategySpec
 
 ROOT = Path(__file__).resolve().parent.parent
 WYJSCIE = ROOT / "web" / "data" / "signals.json"
 NOGI = {"best17": "best17_a", "gpm": "gpm_uk"}
+TRANSZE = (10, 25)          # dni rebalansu: polowa kapitalu na kazdy
 MIESIECY_KANARKA = 24
 
 # Sygnaly best17 licza sie na tickerach US, ale kupujesz odpowiedniki z Londynu.
@@ -105,8 +120,6 @@ def diagnostyka_best17(spec: StrategySpec, data: str, wagi_exec: dict[str, float
               and len(cfg.get("assets", [])) == 1}
     prog_bramki = next(iter(bramki.values()))["threshold"] * 100 if bramki else 1.0
 
-    import pandas as pd  # lokalnie: reszta pliku nie potrzebuje pandas
-
     d = pd.Timestamp(data)
     klucz_score = next(iter(spec.base_params["asset_scoring"]["weights"]))
     score_wiersz = wskazniki[klucz_score].loc[d]
@@ -123,6 +136,7 @@ def diagnostyka_best17(spec: StrategySpec, data: str, wagi_exec: dict[str, float
             bramka = {True: "ok", False: "no", None: "nodata"}[stan.get(t)]
         ranking.append({
             "t": t.split(".")[0].upper(),
+            "exec": wykonawczy(t),       # sygnal liczy sie na US, kupujesz linie z Londynu
             "score": round(float(v) * 100, 2),
             "gate": bramka,
             "weight": round(wagi_exec.get(wykonawczy(t), 0.0), 6),
@@ -181,8 +195,6 @@ def diagnostyka_best17(spec: StrategySpec, data: str, wagi_exec: dict[str, float
 def diagnostyka_gpm(spec: StrategySpec, data: str) -> list[list[str]]:
     """Szerokosc rynku i podzial ryzyko/ochrona - odtworzone z tego samego `score`,
     ktorym karmi sie gpm_breadth_protective_split."""
-    import pandas as pd
-
     _md, _ind, score, _tw = _run_phase_a(spec)
     p = spec.base_params["portfolio_risk_engine"]
     ryzykowne, ochronne = p["risky_assets"], p["protective_assets"]
@@ -207,104 +219,141 @@ def diagnostyka_gpm(spec: StrategySpec, data: str) -> list[list[str]]:
     ]
 
 
+def transza(baza: Path, dzien: int, okresow: int) -> dict:
+    """Jedna transza: obie nogi na TYM SAMYM dniu wykonania, plus realne daty transakcji.
+
+    Silnik etykietuje kazdy okres poczatkiem miesiaca NIEZALEZNIE od dnia wykonania (patrz
+    engine_v2/period_anchor.py), wiec sama etykieta nie mowi, kiedy transza faktycznie
+    kupowala. Realna date bierzemy z `nth_trading_day_dates` na tym samym kalendarzu, na
+    ktorym liczy polaczona strategia."""
+    przebiegi, specy = {}, {}
+    for noga, katalog in NOGI.items():
+        spec = StrategySpec.load(baza / f"{katalog}_day{dzien}" / "strategy_spec.json")
+        przebiegi[noga] = run_strategy_pipeline(spec)
+        specy[noga] = spec  # bloki juz rozwiazane przez run_strategy_pipeline
+
+    kat = baza / f"gpm_uk_best17_a_day{dzien}"
+    cs = CombinedSpec.load(kat / "combined_spec.json")
+    daty = nth_trading_day_dates(load_combined_daily_prices(cs, kat).index, dzien)
+
+    etykiety = sorted(set(d.strftime("%Y-%m-%d") for d in przebiegi["gpm"]["date"])
+                      & set(d.strftime("%Y-%m-%d") for d in przebiegi["best17"]["date"]))
+    idx = {n: {d.strftime("%Y-%m-%d"): i for i, d in enumerate(pf["date"])}
+           for n, pf in przebiegi.items()}
+
+    sklad, czekaja = [], []
+    for e in etykiety[-(okresow + 6):]:
+        data = daty.get(pd.Timestamp(e))
+        if data is None or pd.isna(data):
+            czekaja.append({"tranche": dzien, "period": e,
+                            "reason": "miesiac nie ma jeszcze zadnego notowania"})
+            continue
+        if data.day < dzien:
+            # Anchor nie znalazl sesji na/po {dzien}-tym i cofnal sie do ostatniej dostepnej -
+            # czyli miesiac jest urwany na danych. To NIE jest kurs z dnia rebalansu, wiec
+            # takiego okresu nie wolno opublikowac jako sygnalu.
+            czekaja.append({"tranche": dzien, "period": e, "last": data.strftime("%Y-%m-%d"),
+                            "reason": f"brak sesji {dzien}-tego lub pozniej - dane koncza sie "
+                                      f"na {data.strftime('%Y-%m-%d')}"})
+            continue
+        sklad.append({"date": data.strftime("%Y-%m-%d"), "period": e, "tranche": dzien,
+                      **{noga: wagi(pf.iloc[idx[noga][e]]) for noga, pf in przebiegi.items()}})
+
+    if not sklad:
+        raise SystemExit(f"transza {dzien}: zaden okres nie ma kursu z dnia rebalansu "
+                         f"({len(czekaja)} czeka) - nie ma czego opublikowac.")
+    sklad = sklad[-okresow:]
+    print(f"transza {dzien:2}: {len(sklad)} okresow, ostatni {sklad[-1]['date']} "
+          f"(etykieta {sklad[-1]['period']}), czeka {len(czekaja)}")
+    return {"sklad": sklad, "czekaja": czekaja, "specy": specy}
+
+
+def tryb(wpis: dict, noga: str) -> str:
+    return "RISK" if wpis[noga] else "CASH"
+
+
+def sygnal(wpis: dict) -> dict:
+    return {
+        "date": wpis["date"], "period": wpis["period"], "tranche": wpis["tranche"],
+        "best17": {"mode": tryb(wpis, "best17"),
+                   "picks": sorted(wpis["best17"], key=lambda k: -wpis["best17"][k]),
+                   "weights": wpis["best17"]},
+        "gpm": {"mode": tryb(wpis, "gpm"), "weights": wpis["gpm"]},
+    }
+
+
+def opis_zmiany(teraz: dict, poprz: dict | None) -> str:
+    if poprz is None:
+        return "pierwszy okres"
+    if teraz["best17"] == poprz["best17"] and teraz["gpm"] == poprz["gpm"]:
+        return "bez zmian"
+    teraz_t = set(teraz["best17"]) | set(teraz["gpm"])
+    poprz_t = set(poprz["best17"]) | set(poprz["gpm"])
+    return " · ".join(filter(None, [
+        ("+ " + ", ".join(sorted(teraz_t - poprz_t))) if teraz_t - poprz_t else "",
+        ("− " + ", ".join(sorted(poprz_t - teraz_t))) if poprz_t - teraz_t else ""])) or "zmiana wag"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--okresow", type=int, default=12)
     ap.add_argument("--specs", help="katalog z kopiami strategii (np. z sync_prices.py)")
     a = ap.parse_args()
 
-    przebiegi, specy = {}, {}
-    for noga, katalog in NOGI.items():
-        baza = Path(a.specs) if a.specs else ROOT / "strategies_v2"
-        spec = StrategySpec.load(baza / katalog / "strategy_spec.json")
-        pf = run_strategy_pipeline(spec)
-        przebiegi[noga] = pf
-        specy[noga] = spec  # bloki juz rozwiazane przez run_strategy_pipeline
-        print(f"{noga:8} {len(pf)} okresow, ostatni {pf.iloc[-1]['date'].date()}")
+    baza = Path(a.specs) if a.specs else ROOT / "strategies_v2"
+    T = {dzien: transza(baza, dzien, a.okresow) for dzien in TRANSZE}
 
-    daty = [d.strftime("%Y-%m-%d") for d in przebiegi["gpm"]["date"]]
-    inne = [d.strftime("%Y-%m-%d") for d in przebiegi["best17"]["date"]]
-    if daty[-len(inne):] != inne[-len(daty):]:
-        wspolne = sorted(set(daty) & set(inne))
-        print(f"UWAGA: nogi maja rozne daty rebalansu, biore {len(wspolne)} wspolnych")
-        daty = wspolne
+    sygnaly = [sygnal(T[dzien]["sklad"][-1]) for dzien in TRANSZE]
+    czekaja = [c for dzien in TRANSZE for c in T[dzien]["czekaja"]]
 
-    idx = {n: {d.strftime("%Y-%m-%d"): i for i, d in enumerate(pf["date"])}
-           for n, pf in przebiegi.items()}
-    okresy = daty[-a.okresow:]
+    # Historia: obie transze w jednym strumieniu, bo tak to wyglada na rachunku - ale
+    # "co sie zmienilo" liczy sie ZAWSZE wzgledem poprzedniego okresu TEJ SAMEJ transzy.
+    wszystkie = []
+    for dzien in TRANSZE:
+        s = T[dzien]["sklad"]
+        for i, w in enumerate(s):
+            wszystkie.append((w, s[i - 1] if i else None))
+    wszystkie.sort(key=lambda x: x[0]["date"], reverse=True)
+    historia = [[w["date"], w["tranche"], tryb(w, "best17"),
+                 " / ".join(sorted(w["best17"], key=lambda k: -w["best17"][k])) or "—",
+                 tryb(w, "gpm"), opis_zmiany(w, p)]
+                for w, p in wszystkie[:8]]
 
-    sklad = []
-    for d in okresy:
-        wpis = {"date": d, "tranche": int(d[8:10])}
-        for noga, pf in przebiegi.items():
-            wpis[noga] = wagi(pf.iloc[idx[noga][d]])
-        sklad.append(wpis)
-
-    def tryb(noga: str, d: str) -> str:
-        return "RISK" if sklad[[s["date"] for s in sklad].index(d)][noga] else "CASH"
-
-    sygnaly = []
-    for d in okresy[-2:][::-1]:
-        s = sklad[[x["date"] for x in sklad].index(d)]
-        sygnaly.append({
-            "date": d, "tranche": s["tranche"],
-            "best17": {"mode": tryb("best17", d),
-                       "picks": sorted(s["best17"], key=lambda k: -s["best17"][k]),
-                       "weights": s["best17"]},
-            "gpm": {"mode": tryb("gpm", d), "weights": s["gpm"]},
-        })
-
-    historia = []
-    for i in range(len(okresy) - 1, max(-1, len(okresy) - 7), -1):
-        d = okresy[i]
-        s = sklad[i]
-        poprz = sklad[i - 1] if i else None
-        if poprz is None:
-            zmiana = "pierwszy okres"
-        elif s["best17"] == poprz["best17"] and s["gpm"] == poprz["gpm"]:
-            zmiana = "bez zmian"
-        else:
-            weszly = sorted((set(s["best17"]) | set(s["gpm"])) - (set(poprz["best17"]) | set(poprz["gpm"])))
-            wyszly = sorted((set(poprz["best17"]) | set(poprz["gpm"])) - (set(s["best17"]) | set(s["gpm"])))
-            zmiana = " · ".join(filter(None, [
-                ("+ " + ", ".join(weszly)) if weszly else "",
-                ("− " + ", ".join(wyszly)) if wyszly else ""])) or "zmiana wag"
-        historia.append([d, tryb("best17", d),
-                         " / ".join(sygnaly[0]["best17"]["picks"]) if i == len(okresy) - 1
-                         else (" / ".join(sorted(s["best17"], key=lambda k: -s["best17"][k])) or "—"),
-                         tryb("gpm", d), zmiana])
-
-    ostatni = okresy[-1]
-    diag = diagnostyka_best17(specy["best17"], ostatni, sklad[-1]["best17"])
-    gpm_info = diagnostyka_gpm(specy["gpm"], ostatni)
+    diagnostyka = {}
+    for dzien in TRANSZE:
+        ost = T[dzien]["sklad"][-1]
+        d = diagnostyka_best17(T[dzien]["specy"]["best17"], ost["period"], ost["best17"])
+        d["gpm_info"] = diagnostyka_gpm(T[dzien]["specy"]["gpm"], ost["period"])
+        d["date"] = ost["date"]
+        diagnostyka[str(dzien)] = d
 
     stare = json.loads(WYJSCIE.read_text()) if WYJSCIE.exists() else {}
     wynik = {
         "generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "source": "engine_v2 / strategies_v2/gpm_uk_best17_a",
-        "config_hash": hashlib.sha256(
-            (ROOT / "strategies_v2" / "gpm_uk_best17_a" / "combined_spec.json").read_bytes()
-        ).hexdigest()[:8],
+        "source": "engine_v2 / " + " + ".join(f"strategies_v2/gpm_uk_best17_a_day{d}" for d in TRANSZE),
+        "config_hash": hashlib.sha256(b"".join(
+            (ROOT / "strategies_v2" / f"gpm_uk_best17_a_day{d}" / "combined_spec.json").read_bytes()
+            for d in TRANSZE)).hexdigest()[:8],
         "universe": stare.get("universe", []),
         "roles": stare.get("roles", {}),
+        "tranches": list(TRANSZE),
         "signals": sygnaly,
+        "awaiting": czekaja,
         "history": historia,
         # Diagnostyka liczona tymi samymi funkcjami silnika, co sygnal - patrz
         # diagnostyka_best17 / diagnostyka_gpm.
-        "pending": diag["pending"],
-        "ranking": diag["ranking"],
-        "gate_threshold": diag["gate_threshold"],
-        "canary": diag["canary"],
-        "progi": diag["progi"],
-        "gpm_info": gpm_info,
-        "composition": sklad,
+        "diagnostics": diagnostyka,
+        "composition": sorted((w for dzien in TRANSZE for w in T[dzien]["sklad"]),
+                              key=lambda w: w["date"]),
     }
     WYJSCIE.write_text(json.dumps(wynik, indent=1, ensure_ascii=False))
-    print(f"\nzapisano {WYJSCIE.relative_to(ROOT)}: {len(sklad)} okresow, "
-          f"ostatni {okresy[-1]}, hash configu {wynik['config_hash']}")
+    print(f"\nzapisano {WYJSCIE.relative_to(ROOT)}: {len(wynik['composition'])} okresow "
+          f"({len(TRANSZE)} transze), hash configu {wynik['config_hash']}")
     for s in sygnaly:
-        print(f"  {s['date']}  BEST17 {s['best17']['mode']:4} {s['best17']['weights']}")
-        print(f"              GPM    {s['gpm']['mode']:4} {s['gpm']['weights']}")
+        print(f"  transza {s['tranche']:2}  {s['date']}  BEST17 {s['best17']['mode']:4} {s['best17']['weights']}")
+        print(f"                           GPM    {s['gpm']['mode']:4} {s['gpm']['weights']}")
+    for c in czekaja:
+        print(f"  czeka: transza {c['tranche']}, okres {c['period']} - {c['reason']}")
     return 0
 
 

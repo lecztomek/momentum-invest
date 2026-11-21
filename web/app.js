@@ -19,8 +19,12 @@ try{
     +'<code>python3 -m http.server</code> w katalogu glownym repo.</p></div>';
   throw err;
 }
-const SIGNALS=SIG.signals, HIST=SIG.history, RANK=SIG.ranking, CAN_VT=SIG.canary.vt, CAN_XLK=SIG.canary.xlk,
-      ORDER=SIG.universe, ROLE=SIG.roles;
+const SIGNALS=SIG.signals, HIST=SIG.history, ORDER=SIG.universe, ROLE=SIG.roles;
+/* Kazda transza ma wlasny dzien rebalansu, wlasny sygnal i wlasna diagnostyke -
+   ekran Analizy pokazuje jedna naraz, przelacznik wybiera ktora. */
+const TRN=(SIG.tranches||[10,25]).map(String);
+let DTAB=TRN[0];
+const D=()=>SIG.diagnostics[DTAB];
 const CAPITAL=PORT.capital, HOLDINGS=PORT.holdings, MONTHS=PORT.months, VALUE=PORT.value,
       PAID=PORT.paid, MIX=PORT.mix, KLASY=PORT.classes;
 const RET=PERF.monthly;
@@ -255,7 +259,7 @@ chart("c-drift",W=>{
 /* Kanarek: skala i prog ida z danych (signals.json), nie z kodu - inaczej zmiana
    progu w strategii zostawilaby na wykresie stara, nieprawdziwa linie. */
 chart("c-canary",W=>{
-  const CM=SIG.canary.months,TH=SIG.canary.threshold;
+  const CAN=D().canary,CAN_VT=CAN.vt,CAN_XLK=CAN.xlk,CM=CAN.months,TH=CAN.threshold;
   const nr=W<460,H=nr?200:235,L=nr?38:46,R=10,T=12,B=28,n=CM.length,f=FS(W);
   const vs=[...CAN_VT,...CAN_XLK,TH],lo=Math.floor(Math.min(...vs)-1),hi=Math.ceil(Math.max(...vs)+1);
   const st=Math.max(1,Math.round((hi-lo)/5));
@@ -283,7 +287,7 @@ chart("c-canary",W=>{
    nie zawsze to samo. */
 const STAN={ok:["",""],no:["ODCIĘTE","--line-strong"],nodata:["CZEKA NA KURS","--warn"],canary:["KANAREK","--s6"]};
 chart("c-rank",W=>{
-  const G=SIG.gate_threshold,bh=40,H=RANK.length*bh+34,L=58,R=14,f=FS(W);
+  const RANK=D().ranking,G=D().gate_threshold,bh=40,H=RANK.length*bh+34,L=58,R=14,f=FS(W);
   const vs=RANK.map(r=>r.score).concat([G,0]);
   const lo=Math.min(...vs,0),hi=Math.max(...vs)*1.18;
   const SX=v=>L+(W-R-L)*(v-lo)/(hi-lo||1),X0=SX(0);
@@ -299,6 +303,7 @@ chart("c-rank",W=>{
       +(kup?`<text x="${x0+9}" y="${y+16}" fill="#06201D" font-size="${f}" font-weight="700">KUPIONE · ${Math.round(r.weight*100)}%</text>`
            :lab?`<text x="${x0+9}" y="${y+16}" fill="${CSS(r.gate==="no"?"--neg":"--fg")}" font-size="${f}" font-weight="700">${lab}</text>`:"");
     hit.push({x0:0,x1:W,y0:y-5,y1:y+h+5,html:`<div class="th">${r.t}</div>
+      <div class="tr">Kupujesz<span class="tv">${r.exec||r.t}</span></div>
       <div class="tr">Wynik<span class="tv">${sg2(v)}%</span></div>
       <div class="tr">Status<span class="tv">${kup?"kupione, "+Math.round(r.weight*100)+"%":{no:"odcięte bramką",nodata:"czeka na kurs",canary:"tylko kanarek"}[r.gate]||"poza podium"}</span></div>`})});
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Ranking BEST17 z progiem bramki" data-hover='${HV({W,H,max:1e9,hit})}'>${out}</svg>`});
@@ -375,15 +380,22 @@ const FXN=PORT.fx.rate;
    wiec kolejny okres to ten sam dzien miesiaca w nastepnym miesiacu. */
 const MIES=["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca",
   "sierpnia","września","października","listopada","grudnia"];
-function nastepnyRebalans(){
-  const ost=SIGNALS[0].date,d=new Date(ost+"T00:00:00Z");
+/* Dzien rebalansu bierzemy z numeru transzy, nie z daty sygnalu: realna data wykonania
+   bywa pozniejsza (10-ty w niedziele => 11-ty), a regula i tak mowi "10-ty albo pierwsza
+   sesja po nim". */
+function rebalansDla(s){
+  const d=new Date(s.date+"T00:00:00Z");
   d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+1);
-  const dzien=Math.min(+ost.slice(8,10),new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate());
-  d.setUTCDate(dzien);
+  d.setUTCDate(Math.min(s.tranche,new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate()));
   const dni=Math.round((d-new Date(new Date().toISOString().slice(0,10)+"T00:00:00Z"))/864e5);
-  return {iso:d.toISOString().slice(0,10),dni,
+  return {iso:d.toISOString().slice(0,10),dni,tranche:s.tranche,
     opis:`${d.getUTCDate()} ${MIES[d.getUTCMonth()]}`,
     kiedy:dni>1?`za ${dni} dni`:dni===1?"jutro":dni===0?"dzisiaj":`${-dni} dni temu`}}
+/* Najblizszy z obu terminow - ale gdy oba juz minely (sygnal jest stary), pokazujemy
+   ten BARDZIEJ przeterminowany, zeby zaleglosc rzucala sie w oczy, a nie chowala. */
+function nastepnyRebalans(){
+  const r=SIGNALS.map(rebalansDla).sort((a,b)=>a.dni-b.dni);
+  return r.some(x=>x.dni>=0)?r.find(x=>x.dni>=0):r[0]}
 const cur=()=>CURV==="usd"
   ? {v:VUSD,p:PUSD,u:"USD",alt:{v:VALUE,u:"zł"},r:RETC.usd,twr:PORT.twr.usd,k:x=>x}
   : {v:VALUE,p:PAID,u:"zł", alt:{v:VUSD, u:"USD"},r:RETC.pln,twr:PORT.twr.pln,k:x=>x/FXN};
@@ -461,17 +473,22 @@ function renderActions(){
     :'<div class="act hold"><i class="w"></i><div><div class="t">Bez zmian</div></div></div>'}
 function renderHist(){
   const R=nastepnyRebalans();
+  document.getElementById("sigStamp").textContent="policzono "+(SIG.generated||"").slice(0,10);
   document.getElementById("sigVal").innerHTML=`${R.kiedy}<span>do rebalansu</span>`;
-  document.getElementById("sigAlt").textContent=`${R.opis} · ostatni sygnał z ${SIGNALS[0].date}`;
-  document.getElementById("modeCards").innerHTML=[["BEST17",SIGNALS[0].best17,SIGNALS[0].best17.picks.join(" · ")||"gotówka"],
-    ["GPM",SIGNALS[0].gpm,Object.keys(SIGNALS[0].gpm.weights).join(" · ")]].map(([n,L,txt])=>
-    `<div class="legc"><div class="t">${n} <em>sygnał z ${SIGNALS[0].date}</em></div>
+  document.getElementById("sigAlt").textContent=
+    `${R.opis} · transza ${R.tranche}-tego · ostatnie sygnały ${SIGNALS.map(s=>s.date).join(" i ")}`;
+  /* Transze maja wlasne dni rebalansu, wiec i wlasne sygnaly - jedna karta na noge
+     i transze, bo przy roznych datach te sklady naprawde potrafia sie roznic. */
+  document.getElementById("modeCards").innerHTML=SIGNALS.flatMap(s=>[
+    [`BEST17 · ${s.tranche}`,s,s.best17,s.best17.picks.join(" · ")||"gotówka"],
+    [`GPM · ${s.tranche}`,s,s.gpm,Object.keys(s.gpm.weights).join(" · ")||"gotówka"]]).map(([n,s,L,txt])=>
+    `<div class="legc"><div class="t">${n} <em>${s.date}</em></div>
       <div class="n" style="font-size:1.6rem;color:var(${L.mode==="RISK"?"--pos":"--cash"})">${L.mode}</div>
       <div class="d">${esc(txt)}</div></div>`).join("");
   document.getElementById("histList").innerHTML=HIST.map(h=>
-    `<div class="row"><div class="ic" style="background:${CSS(h[1]==="RISK"?"--pos":"--cash")}">${h[1]==="RISK"?"R":"C"}</div>
-      <div class="nm">${h[0]}<em>${esc(h[4])}</em></div>
-      <div class="vl"><b>${esc(h[2])}</b><span>GPM ${h[3]}</span></div></div>`).join("")}
+    `<div class="row"><div class="ic" style="background:${CSS(h[2]==="RISK"?"--pos":"--cash")}">${h[1]}</div>
+      <div class="nm">${h[0]}<em>${esc(h[5])}</em></div>
+      <div class="vl"><b>${esc(h[3])}</b><span>GPM ${h[4]}</span></div></div>`).join("")}
 const viewSum=()=>tbl("<th>ETF</th><th>Kwota</th><th>Udział</th><th>z 10-tego</th><th>z 25-tego</th>",
   Object.entries(COMBINED).sort((a,b)=>b[1]-a[1]).map(([t,v])=>
     `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
@@ -520,22 +537,27 @@ function renderAccounts(){
   fillSel()}
 
 function renderDiag(){
-  /* Bramka 3m liczy sie z kursu Z DNIA REBALANSU. Dopoki tego kursu nie ma w danych,
-     silnik nie potrafi orzec o tych walorach - i cala noga wychodzi na gotowke. To
-     nie jest decyzja strategii i nie wolno jej tak pokazywac. */
-  const cz=SIG.pending||[];
-  document.getElementById("diagWarn").innerHTML=cz.length
-    ? `<div class="ostrz"><b>Sygnał z ${SIGNALS[0].date} jest wstępny.</b>
-       Bramka 3-miesięczna dla ${cz.join(" i ")} liczy się z kursu z dnia rebalansu, a tego kursu jeszcze nie ma w danych.
-       Dopóki nie wpadnie, silnik traktuje te walory jako niezdatne i noga BEST17 wychodzi na gotówkę.</div>` : "";
-  document.getElementById("progi").innerHTML=SIG.progi.map(p=>
+  const d=D(),RANK=d.ranking,CAN=d.canary;
+  document.querySelectorAll("#segD button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.d===DTAB)));
+  /* Dwie rzeczy moga sprawic, ze to, co widac, nie jest sygnalem na dzis:
+     okres, ktoremu brakuje notowania z dnia rebalansu (SIG.awaiting - taki okres w
+     ogole nie jest publikowany), oraz bramka 3m bez kursu (d.pending). */
+  const niepub=(SIG.awaiting||[]).filter(c=>String(c.tranche)===DTAB),cz=d.pending||[];
+  document.getElementById("diagWarn").innerHTML=[
+    niepub.length?`<div class="ostrz"><b>To diagnostyka sygnału z ${d.date}, nie z dzisiaj.</b>
+      ${niepub.map(c=>`Okres ${c.period}: ${c.reason}.`).join(" ")}
+      Dopóki brakuje notowań, nowszy sygnał nie jest liczony — zamiast zgadywać, panel pokazuje ostatni rozstrzygnięty.</div>`:"",
+    cz.length?`<div class="ostrz"><b>Bramka 3-miesięczna dla ${cz.join(" i ")} nie ma kursu z dnia rebalansu.</b>
+      Silnik traktuje wtedy te walory jako niezdatne — to brak danych, nie ocena momentum.</div>`:"",
+  ].join("");
+  document.getElementById("progi").innerHTML=d.progi.map(p=>
     `<div class="row"><div class="ic" style="background:${CSS(p.status==="ok"?"--pos":p.status==="no"?"--neg":"--s6")}">${p.status==="ok"?"✓":p.status==="no"?"!":"~"}</div>
       <div class="nm">${p.title}<em>${p.sub}</em></div><div class="vl"><b>${p.value}</b></div></div>`).join("");
-  document.getElementById("gpmInfo").innerHTML=SIG.gpm_info
+  document.getElementById("gpmInfo").innerHTML=d.gpm_info
     .map(([t,w])=>`<div class="row" style="grid-template-columns:1fr auto">
       <div class="nm">${t}</div><div class="vl"><b>${w}</b></div></div>`).join("");
 
-  const TH=SIG.canary.threshold,ost=[["VT",CAN_VT.at(-1)],["XLK",CAN_XLK.at(-1)]],zle=ost.filter(([,v])=>v<=TH);
+  const TH=CAN.threshold,ost=[["VT",CAN.vt.at(-1)],["XLK",CAN.xlk.at(-1)]],zle=ost.filter(([,v])=>v<=TH);
   document.getElementById("whyCanary").innerHTML=zle.length
     ? `${zle.map(([t,v])=>`<b>${t} ${sg2(v)}%</b>`).join(" i ")} na progu ${sg2(TH)}% lub niżej, więc <b>CASH</b>.
        Wystarczy jeden kanarek pod linią, żeby BEST17 wyszedł do gotówki.`
@@ -544,10 +566,10 @@ function renderDiag(){
 
   const kup=RANK.filter(r=>r.weight>0),od=RANK.filter(r=>r.gate==="no"),nd=RANK.filter(r=>r.gate==="nodata");
   document.getElementById("whyRank").innerHTML=[
-    kup.length?`Kupione: ${kup.map(r=>`<b>${r.t} ${Math.round(r.weight*100)}%</b>`).join(" i ")}.`
+    kup.length?`Kupione: ${kup.map(r=>`<b>${r.exec||r.t} ${Math.round(r.weight*100)}%</b> (sygnał ${r.t})`).join(" i ")}.`
       :nd.length?`Skład nie jest jeszcze rozstrzygnięty — brakuje kursu z dnia rebalansu dla <b>${nd.map(r=>r.t).join(", ")}</b>.`
       :"Nic nie przeszło przez filtry — cała noga stoi w gotówce.",
-    od.length?`Bramki 3-miesięcznej (${sg2(SIG.gate_threshold)}%) nie przeszło: <b>${od.map(r=>r.t).join(", ")}</b>.`:"",
+    od.length?`Bramki 3-miesięcznej (${sg2(d.gate_threshold)}%) nie przeszło: <b>${od.map(r=>r.t).join(", ")}</b>.`:"",
     (kup.length&&nd.length)?`Czeka na kurs z dnia rebalansu: <b>${nd.map(r=>r.t).join(", ")}</b>.`:"",
   ].filter(Boolean).join(" ");
 }
@@ -700,6 +722,9 @@ document.getElementById("segP").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   document.querySelectorAll("#segP button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
   PTAB=b.dataset.p;EDIT=null;PIDX=null;renderCeny()});
+document.getElementById("segD").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b||!SIG.diagnostics[b.dataset.d])return;
+  DTAB=b.dataset.d;renderDiag();renderAll()});
 document.getElementById("segR").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   document.querySelectorAll("#segR button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
