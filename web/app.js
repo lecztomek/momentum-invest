@@ -770,6 +770,15 @@ const interp=(t,i)=>{const P=PRICES[PTAB];
 const asof=(t,i)=>PRICES[PTAB].asof?.[t]?.[i]||PRICES[PTAB].dates[i];
 const pidx=()=>PIDX==null?PRICES[PTAB].dates.length-1:PIDX;
 const pdate=()=>PRICES[PTAB].dates[pidx()];
+/* Pasek dat przewijamy RECZNIE. scrollIntoView przewija takze cala strone, a
+   przy pierwszym rysowaniu (sekcja jeszcze ukryta) nie robi nic - dlatego
+   wolamy to jeszcze raz przy wejsciu na ekran. */
+function przewinPasek(){
+  const pasek=document.getElementById("dStrip");
+  const b=pasek.querySelector('[aria-pressed="true"]');
+  if(!b||!pasek.clientWidth)return;
+  pasek.scrollLeft=Math.max(0,b.offsetLeft-(pasek.clientWidth-b.offsetWidth)/2);
+}
 function renderCeny(){
   const P=PRICES[PTAB],last=pidx();
   document.getElementById("feedStamp").textContent=FEED.source+" · "+FEED.fetched;
@@ -803,7 +812,7 @@ function renderCeny(){
   rysujPrawoZapisu();
   document.getElementById("dPrev").disabled=last===0;
   document.getElementById("dNext").disabled=last===P.dates.length-1;
-  document.querySelector(`#dStrip [data-di="${last}"]`)?.scrollIntoView({block:"nearest",inline:"center"});
+  przewinPasek();
   document.getElementById("checks").innerHTML=chk.map(([s,t,m])=>
     `<div class="row"><div class="ic" style="background:${CSS(s==="ok"?"--pos":"--warn")}">${s==="ok"?"✓":"!"}</div>
       <div class="nm">${esc(t)}</div><div class="vl"><b>${esc(m)}</b></div></div>`).join("");
@@ -1251,6 +1260,7 @@ function show(v){
   if(!VIEWS.includes(v))v=ZAL()?"pulpit":"sygnal";
   if(!ZAL()&&TYLKO_ZALOGOWANY.includes(v))v="sygnal";
   VIEWS.forEach(x=>document.getElementById("v-"+x).hidden=(x!==v));
+  if(v==="ceny")requestAnimationFrame(przewinPasek);   /* ukryty pasek ma szerokosc 0 */
   document.querySelectorAll("#nav a").forEach(a=>a.getAttribute("href")==="#"+v?a.setAttribute("aria-current","page"):a.removeAttribute("aria-current"));
   renderAll();scrollTo(0,0)}
 addEventListener("hashchange",()=>show(location.hash.slice(1)));
