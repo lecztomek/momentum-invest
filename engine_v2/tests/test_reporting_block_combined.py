@@ -84,4 +84,4 @@ def test_all_combined_strategies_declare_reporting_block():
         assert spec.reporting == "monthly_csv_export", d.name
         assert spec.reporting_params["output_path"] == f"results/monthly/{d.name}.csv", d.name
         checked += 1
-    assert checked == 44  # 32 + 4 (2026-07-16 (4)) + 6 nowe execution_day_of_month dni 15/20/25 (2026-07-16 (6)) + 1 gpm_mid_10_defensive_best17_a_offensive (2026-08-08) + 1 gpm_uk_best17_a (2026-08-12)
+    assert checked == 47  # 32 + 4 (2026-07-16 (4)) + 6 nowe execution_day_of_month dni 15/20/25 (2026-07-16 (6)) + 1 gpm_mid_10_defensive_best17_a_offensive (2026-08-08) + 1 gpm_uk_best17_a (2026-08-12) + 1 gpm_uk_best17_a_uk (2026-07-15, licznik nie byl wtedy podbity - ten test padal juz przed 2026-11-21) + 2 transze gpm_uk_best17_a_day10/day25 (2026-11-21)
