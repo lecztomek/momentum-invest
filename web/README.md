@@ -175,6 +175,35 @@ Dla dat sprzed pierwszego kursu panel bierze najstarszy, jaki zna, i nie udaje,
 że zna wcześniejsze. Bez ani jednego kursu pokazuje dolary i mówi, że złotówki
 liczy kursem zastępczym.
 
+## Ile dni trzeba wpisać ręcznie
+
+Ceny można dopisywać **kiedykolwiek i dla dowolnej daty** - także wstecz, żeby
+załatać lukę. Warunek jest jeden: dzień musi mieć **komplet 17 instrumentów**,
+inaczej `sync_prices.py` pomija go z komunikatem (niekompletny dzień dałby
+błędny sygnał).
+
+Ale sam dzień rebalansu **nie wystarczy**. Sprawdzone na danych: pełna historia
+do stycznia 2026, dalej tylko wpisy ręczne, porównanie 24 okresów obu transz
+z wynikiem na pełnych danych:
+
+| co wpisane | okresów ze zmienionym składem |
+|---|---|
+| 10-ty i 25-ty (2 dni/mies.) | **6 z 24** |
+| + ostatnia sesja miesiąca (3 dni/mies.) | **0 z 24** |
+
+Przy dwóch dniach w miesiącu w maju 2026 noga BEST17 odwróciła wagi (CMOD 80 /
+IUIT 20 zamiast IUIT 80 / CMOD 20), a w marcu GPM kupił CNDX zamiast XRES.
+
+Powód jest konkretny: ranking (`ema7_16`) i kanarek (`ema5_12`) liczą się na
+cenach **końca miesiąca**, a nie z dnia rebalansu. Bez ostatniej sesji miesiąca
+silnik bierze za „koniec miesiąca" ostatni dzień, jaki ma - czyli 25-ty - i
+wskaźniki przesuwają się o ułamek punktu. To wystarcza, żeby przestawić
+kolejność w rankingu.
+
+**Minimum to trzy dni w miesiącu: 10-ty, 25-ty i ostatnia sesja.** Pełny szereg
+dzienny (`tools/fetch_prices.py`) jest oczywiście lepszy, ale te trzy dni dają
+wynik co do grosza taki sam jak pełne dane.
+
 ## Stan
 
 | Dane | Skąd | Prawdziwe? |
