@@ -123,9 +123,15 @@ kursie na całą historię:
 - TWR w złotych wychodzi inaczej niż w dolarach i tak ma być: kto liczy
   w złotówkach, ten zarabia lub traci także na kursie.
 
-Kursy wpisujesz sam — przy stanie konta (jedno pole obok kwoty) albo osobnym
-wpisem dla dowolnej daty. Dla dat sprzed pierwszego kursu panel bierze
-najstarszy, jaki zna, i nie udaje, że zna wcześniejsze.
+Kursy są **danymi wspólnymi**, nie prywatnymi — kurs z 10 marca jest ten sam
+dla każdego — więc leżą w `fx_rates` i wpisuje je **admin**: przy stanie konta
+(pole obok kwoty) albo osobnym wpisem dla dowolnej daty. Pozostali widzą listę
+i liczby, ale nie mają czym ich zmienić; reguły Firestore pilnują tego po
+stronie bazy, nie tylko w interfejsie.
+
+Dla dat sprzed pierwszego kursu panel bierze najstarszy, jaki zna, i nie udaje,
+że zna wcześniejsze. Bez ani jednego kursu pokazuje dolary i mówi, że złotówki
+liczy kursem zastępczym.
 
 ## Stan
 

@@ -93,6 +93,28 @@ try{
     for(const[t]of INSTR)P.px[t].push(d.ceny[t]??null);
   }
 }catch(e){}
+async function wczytajKursyZBazy(){
+  if(!FB||!USER)return;
+  try{
+    const z=await FB.wczytajKursy();
+    KURSY=z.map(r=>({id:r.id,d:r.d,k:+r.k})).filter(r=>r.d&&r.k>0);
+    zapiszKursyLokalnie();
+  }catch(e){console.warn("kursy z bazy:",e.message)}
+  poWpisach();
+}
+async function dodajKurs(d,k){
+  const r={id:d,d,k};
+  KURSY=KURSY.filter(x=>x.d!==d).concat(r);
+  zapiszKursyLokalnie();
+  if(FB&&ADMIN_BAZA){try{await FB.zapiszKurs(d,{d,k})}catch(e){alert("Nie zapisano kursu w bazie: "+e.message)}}
+  poWpisach();
+}
+async function usunKurs(d){
+  KURSY=KURSY.filter(x=>x.d!==d);
+  zapiszKursyLokalnie();
+  if(FB&&ADMIN_BAZA){try{await FB.usunKurs(d)}catch(e){console.warn(e.message)}}
+  poWpisach();
+}
 async function wczytajCenyZBazy(){
   if(!FB||!USER)return;
   try{
@@ -913,15 +935,20 @@ async function usunTX(i){
   else saveTX();
   poWpisach();
 }
-const TYP={stan:"Stan konta",wplata:"Wpłata",wyplata:"Wypłata",kurs:"Kurs USD/PLN"};
-const TXI={stan:["=","--accent"],wplata:["↓","--pos"],wyplata:["↑","--cash"],kurs:["zł","--s5"]};
+const TYP={stan:"Stan konta",wplata:"Wpłata",wyplata:"Wypłata"};
+const TXI={stan:["=","--accent"],wplata:["↓","--pos"],wyplata:["↑","--cash"]};
 
 /* ---- portfel policzony z wpisow ---- */
 const mies=d=>d.slice(0,7);
-/* Kursy USD/PLN z konkretnych dni - user podaje je przy stanie konta albo
-   osobno. Jeden kurs na cala historie zanizalby albo zawyzal stare wplaty,
-   a "wplacone w zlotych" ma byc tym, co naprawde wyszlo z konta. */
-const kursy=()=>TX.filter(r=>r.t==="kurs"&&r.k>0).sort((a,b)=>a.d.localeCompare(b.d));
+/* Kursy USD/PLN z konkretnych dni. To dane WSPOLNE - kurs z 10 marca jest taki
+   sam dla kazdego - wiec wpisuje je admin, a reszta tylko czyta. Trzymamy kopie
+   w przegladarce, zeby po wylogowaniu panel nie tracil nagle zlotowek.
+   Jeden kurs na cala historie zanizalby albo zawyzal stare wplaty, a "wplacone
+   w zlotych" ma byc tym, co naprawde wyszlo z konta. */
+let KURSY=[];
+try{KURSY=JSON.parse(localStorage.getItem("fx")||"[]")}catch(e){KURSY=[]}
+const zapiszKursyLokalnie=()=>{try{localStorage.setItem("fx",JSON.stringify(KURSY))}catch(e){}};
+const kursy=()=>KURSY.filter(r=>r.k>0).sort((a,b)=>a.d.localeCompare(b.d));
 function kursNa(data){
   const k=kursy();
   if(!k.length)return KURS;
@@ -1061,7 +1088,7 @@ function poWpisach(){
   if(P&&P.accounts.length){SETUPS.moje={label:"Moje konta",accounts:P.accounts};SETUP="moje"}
   else{Object.assign(SETUPS,UKLADY_PRZYKLAD);SETUP="rozdzielnie"}
   ustawPortfel(P);
-  rysujPasek();renderTX();renderPulpit();renderActions();renderHist();renderAccounts();renderAll();
+  rysujPasek();rysujRozbicie();renderTX();renderPulpit();renderActions();renderHist();renderAccounts();renderAll();
   const m=document.querySelector("#segS button[aria-pressed='true']");if(m)renderSklad(m.dataset.s);
 }
 
@@ -1071,6 +1098,9 @@ function fillAccSelect(){
   const lista=wlasne.length?wlasne:SETUPS[SETUP].accounts.map(a=>a.name);
   s.innerHTML=lista.map(a=>`<option>${esc(a)}</option>`).join("")+`<option value="__nowe">+ nowe konto…</option>`;
   if(lista.includes(cur))s.value=cur}
+/* Bez bazy (offline, brak logowania) pozwalamy wpisywac lokalnie - inaczej
+   panel bylby bezuzyteczny dla kogos, kto tylko oglada. Z baza decyduje admin. */
+const mozeKursy=()=>!FB||!USER||ADMIN_BAZA;
 function rysujRozbicie(){
   const typ=document.getElementById("txType").value,pok=typ==="stan";
   document.getElementById("txSplit").hidden=!pok;
@@ -1078,6 +1108,12 @@ function rysujRozbicie(){
      albo osobnym wpisem dla dowolnej daty. */
   document.getElementById("txKursWrap").hidden=!pok;
   document.getElementById("txAcc").closest(".fld").hidden=typ==="kurs";
+  /* Kurs to dane wspolne - wpisuje je admin. Reszta widzi liste, ale bez pol.
+     `hidden` na <option> nie dziala wszedzie, wiec do tego jeszcze `disabled`. */
+  document.getElementById("txKursWrap").hidden=!pok||!mozeKursy();
+  const opt=document.querySelector('#txType option[value="kurs"]');
+  opt.hidden=opt.disabled=!mozeKursy();
+  if(opt.disabled&&typ==="kurs"){document.getElementById("txType").value="stan";rysujRozbicie()}
   document.getElementById("txAmtLbl").textContent=
     typ==="kurs"?"Ile złotych za dolara":pok?"Wartość konta w USD":"Kwota w USD";
   if(!pok)return;
@@ -1100,10 +1136,10 @@ function sumujRozbicie(){
 function renderTX(){
   TX.sort((a,b)=>b.d.localeCompare(a.d));
   /* polska odmiana: 1 wpis, 2-4 wpisy, 0 i 5+ wpisow (plus wyjatek 12-14) */
-  const n=TX.filter(r=>r.t!=="kurs").length,d=n%10,st=n%100;
+  const n=TX.length,d=n%10,st=n%100;
   document.getElementById("txCount").textContent=
     n+" "+(n===1?"wpis":(d>=2&&d<=4&&!(st>=12&&st<=14))?"wpisy":"wpisów");
-  const lista=TX.map((r,i)=>[r,i]).filter(([r])=>r.t!=="kurs");
+  const lista=TX.map((r,i)=>[r,i]);
   document.getElementById("txList").innerHTML=lista.length?lista.map(([r,i])=>{
     const[sym,c]=TXI[r.t]||["?","--s6"];
     return `<div class="row"><div class="ic" style="background:${CSS(c)}">${sym}</div>
@@ -1111,17 +1147,21 @@ function renderTX(){
       <div class="vl" style="display:flex;align-items:center;gap:10px"><b>${zl(r.k)} USD</b>
         <button class="del" data-del="${i}" aria-label="Usuń wpis z ${r.d}">×</button></div></div>`}).join("")
     :'<div class="empty">Brak wpisów. Dopisz pierwszy stan konta powyżej — od tego momentu Pulpit liczy z Twoich liczb, nie z przykładu.</div>';
-  const kur=kursy();
+  const kur=kursy(),moge=mozeKursy();
   document.getElementById("kursList").innerHTML=kur.length
-    ? kur.slice().reverse().map(r=>{const i=TX.indexOf(r);
-        return `<div class="row"><div class="ic" style="background:${CSS("--s5")}">zł</div>
+    ? kur.slice().reverse().map(r=>
+        `<div class="row"><div class="ic" style="background:${CSS("--s5")}">zł</div>
           <div class="nm">${r.d}<em>${r.k.toFixed(4).replace(".",",")} zł za dolara</em></div>
           <div class="vl" style="display:flex;align-items:center;gap:10px"><b>${r.k.toFixed(2).replace(".",",")}</b>
-            <button class="del" data-del="${i}" aria-label="Usuń kurs z ${r.d}">×</button></div></div>`}).join("")
-    : `<div class="empty">Brak kursów. Dopisz choć jeden — bez niego panel pokazuje tylko dolary
-       (przyjmuje ${KURS.toFixed(2).replace(".",",")} jako kurs zastępczy).</div>`;
+            ${moge?`<button class="del" data-fx="${r.d}" aria-label="Usuń kurs z ${r.d}">×</button>`:""}</div></div>`).join("")
+    : `<div class="empty">${moge
+        ? `Brak kursów. Dopisz choć jeden — bez niego panel pokazuje tylko dolary (przyjmuje ${KURS.toFixed(2).replace(".",",")} jako kurs zastępczy).`
+        : "Brak kursów. Wpisuje je admin — do tego czasu złotówki liczą się kursem zastępczym "+KURS.toFixed(2).replace(".",",")+"."}</div>`;
+  const nota=document.getElementById("kursNote");
+  nota.textContent=moge?"":"Kursy są wspólne dla wszystkich — wpisuje je admin.";
+  nota.hidden=moge;
   const acc={};
-  for(const r of TX){if(r.t==="kurs")continue;acc[r.a]=acc[r.a]||{in:0,stan:null,d:""};
+  for(const r of TX){acc[r.a]=acc[r.a]||{in:0,stan:null,d:""};
     if(r.t==="wplata")acc[r.a].in+=r.k;
     if(r.t==="wyplata")acc[r.a].in-=r.k;
     if(r.t==="stan"&&r.d>=acc[r.a].d){acc[r.a].stan=r.k;acc[r.a].d=r.d}}
@@ -1149,7 +1189,7 @@ document.getElementById("txForm").addEventListener("submit",e=>{
     k:parseFloat(document.getElementById("txAmt").value)||0};
   if(t==="kurs"){
     if(!(rec.k>0)){alert("Kurs musi być większy od zera.");return}
-    rec.a="";dodajTX(rec);
+    dodajKurs(rec.d,rec.k);
     e.target.reset();document.getElementById("txDate").value=new Date().toISOString().slice(0,10);
     fillAccSelect();rysujRozbicie();return}
   if(t==="stan"){
@@ -1161,7 +1201,7 @@ document.getElementById("txForm").addEventListener("submit",e=>{
     /* Kurs podany przy stanie konta zapisuje sie jako OSOBNY wpis z ta sama data -
        dzieki temu dziala tak samo, jak gdyby go wpisac recznie. */
     const kr=parseFloat(document.getElementById("txKurs").value);
-    if(kr>0)dodajTX({d:rec.d,a:"",t:"kurs",k:kr});
+    if(kr>0&&mozeKursy())dodajKurs(rec.d,kr);
   }
   dodajTX(rec);
   e.target.reset();
@@ -1170,6 +1210,9 @@ document.getElementById("txForm").addEventListener("submit",e=>{
 document.getElementById("txList").addEventListener("click",e=>{
   const b=e.target.closest("[data-del]");if(!b)return;
   usunTX(+b.dataset.del)});
+document.getElementById("kursList").addEventListener("click",e=>{
+  const b=e.target.closest("[data-fx]");if(!b)return;
+  usunKurs(b.dataset.fx)});
 
 
 /* ============ nawigacja ============ */
@@ -1253,6 +1296,6 @@ if(FB)FB.naZmianeKonta(async u=>{
   USER=u;
   ADMIN_BAZA=u?await FB.czyAdmin(u.uid):false;
   rysujKonto();rysujUid();rysujPrawoZapisu();
-  if(u){await wczytajTXzBazy();await wczytajCenyZBazy()} else renderTX();
+  if(u){await wczytajTXzBazy();await wczytajKursyZBazy();await wczytajCenyZBazy()} else poWpisach();
 });
 rysujKonto();

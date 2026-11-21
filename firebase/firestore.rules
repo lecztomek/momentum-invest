@@ -30,6 +30,14 @@ service cloud.firestore {
       allow write: if admin();
     }
 
+    // Kursy USD/PLN z konkretnych dni. To dane WSPOLNE, nie prywatne: kurs
+    // z 10 marca jest taki sam dla kazdego, wiec wpisuje je admin, a czyta
+    // kazdy zalogowany - dokladnie jak ceny.
+    match /fx_rates/{id} {
+      allow read:  if zalogowany();
+      allow write: if admin();
+    }
+
     // Korekty cen. Dokladane obok ceny z feedu, nigdy jej nie nadpisuja -
     // dlatego istniejacego wpisu nie wolno edytowac, mozna go tylko usunac.
     match /overrides/{id} {

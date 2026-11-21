@@ -56,6 +56,14 @@ test("admin zapisuje ceny", async () => {
   );
 });
 
+test("kursy walut: czyta kazdy zalogowany, pisze tylko admin", async () => {
+  await assertFails(getDoc(doc(nikt(), "fx_rates/2026-03-10")));
+  await assertSucceeds(getDoc(doc(ala(), "fx_rates/2026-03-10")));
+  await assertFails(setDoc(doc(ala(), "fx_rates/2026-03-10"), { d: "2026-03-10", k: 4.2 }));
+  await assertSucceeds(setDoc(doc(szef(), "fx_rates/2026-03-10"), { d: "2026-03-10", k: 4.2 }));
+  await assertSucceeds(deleteDoc(doc(szef(), "fx_rates/2026-03-10")));
+});
+
 test("korekta wymaga powodu i autora, i nie da sie jej podmienic", async () => {
   await assertFails(setDoc(doc(szef(), "overrides/10_2026-12-10_XLK"), { value: 1 }));
   await assertSucceeds(

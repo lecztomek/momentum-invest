@@ -81,6 +81,21 @@ export async function usunCeny(id) {
   await deleteDoc(doc(db, "price_entries", id));
 }
 
+/** Kursy USD/PLN. Wspolne dla wszystkich, zapis tylko dla admina - kurs z
+    danego dnia jest jeden, nie kazdy ma swoj. */
+export async function wczytajKursy() {
+  const snap = await getDocs(collection(db, "fx_rates"));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function zapiszKurs(id, dane) {
+  await setDoc(doc(db, "fx_rates", id), dane);
+}
+
+export async function usunKurs(id) {
+  await deleteDoc(doc(db, "fx_rates", id));
+}
+
 /** Korekty cen. Nigdy nie nadpisuja ceny zrodlowej - leza obok niej. */
 export async function wczytajKorekty() {
   const snap = await getDocs(collection(db, "overrides"));
