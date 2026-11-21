@@ -31,7 +31,7 @@ const RET=PERF.monthly;
 /* Aktywa sa dolarowe: USD jest wartoscia pierwotna, PLN to przeliczenie po kursie z danego miesiaca. */
 const FXS=PORT.fx.series, VUSD=PORT.value_usd, PUSD=PORT.paid_usd, RETC=PORT.returns, LEGS=PORT.legs;
 const CUR={usd:{v:VUSD,p:PUSD,u:"USD",r:RETC.usd},pln:{v:VALUE,p:PAID,u:"zł",r:RETC.pln}};
-const INSTR=PRC.instruments, BASE=PRC.base, FEED=PRC.feed;
+const INSTR=PRC.instruments, FEED=PRC.feed;
 const COMPO=SIG.composition;
 
 /* Wlasne grupowanie: pl-PL nie grupuje liczb czterocyfrowych (minimumGroupingDigits=2),
@@ -53,23 +53,15 @@ function ruleDate(y,m,day){
     (d.getUTCMonth()===0&&d.getUTCDate()===1)||(d.getUTCMonth()===11&&(d.getUTCDate()===25||d.getUTCDate()===26)))
     d.setUTCDate(d.getUTCDate()+1);
   return d.toISOString().slice(0,10)}
-function lastDates(day,n,endY,endM){
-  const out=[];let y=endY,m=endM;
-  for(let i=0;i<n;i++){out.unshift(ruleDate(y,m,day));m--;if(m<0){m=11;y--}}
-  return out}
 
-/* ============ ceny: deterministyczny szereg wstecz od ceny biezacej ============ */
-function mkPrices(day,endY,endM){
-  const dates=lastDates(day,13,endY,endM),out={};
-  let s=day*7919;const rnd=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff};
-  for(const[t]of INSTR){
-    const a=[BASE[t]*(day===10?1:0.982)];
-    for(let i=1;i<dates.length;i++)a.unshift(a[0]/(1+(rnd()-.46)*.09));
-    out[t]=a.map(v=>+v.toFixed(v<20?4:2))}
-  /* w danych demo jeden zastoj, zeby bylo widac po co jest kontrola */
-  if(day===10)out.CMOD[12]=out.CMOD[11];
-  return{dates,px:out}}
-const PRICES={10:mkPrices(10,2026,11),25:mkPrices(25,2026,10)};
+/* ============ ceny: to, czym liczyl silnik ============
+   Nic tu nie generujemy. px to notowanie z sesji (null = tego dnia gielda tego
+   waloru byla zamknieta), used to liczba, z ktora silnik naprawde pracowal
+   (interpolacja), asof to dzien, z ktorego pochodzi kurs - potrafi byc inny niz
+   data kolumny, bo nogi US i UK maja rozne swieta. */
+const PRICES=Object.fromEntries(Object.entries(PRC.series).map(([k,s])=>
+  [k,{dates:[...s.dates],px:Object.fromEntries(Object.entries(s.px).map(([t,v])=>[t,[...v]])),
+      used:s.used,asof:s.asof}]));
 /* dni wpisane recznie doklejaja sie do szeregu z feedu */
 try{
   const r=JSON.parse(localStorage.getItem("recz")||"{}");
@@ -601,7 +593,13 @@ let ADMIN=false,EDIT=null,PIDX=null;  /* PIDX: ktora data jest ogladana; null = 
 let OVR={};try{OVR=JSON.parse(localStorage.getItem("ovr")||"{}")}catch(e){OVR={}}
 const saveOVR=()=>{try{localStorage.setItem("ovr",JSON.stringify(OVR))}catch(e){}};
 const okey=(t,d)=>t+"@"+d;
-const eff=(t,i)=>{const P=PRICES[PTAB],o=OVR[okey(t,P.dates[i])];return o?o.v:P.px[t][i]};
+/* Kolejnosc: korekta reczna > notowanie z sesji > liczba, ktorej uzyl silnik
+   (interpolacja, gdy tego dnia gielda tego waloru byla zamknieta). */
+const eff=(t,i)=>{const P=PRICES[PTAB],o=OVR[okey(t,P.dates[i])];
+  return o?o.v:(P.px[t][i]??P.used?.[t]?.[i]??null)};
+const interp=(t,i)=>{const P=PRICES[PTAB];
+  return !OVR[okey(t,P.dates[i])]&&P.px[t][i]==null&&P.used?.[t]?.[i]!=null};
+const asof=(t,i)=>PRICES[PTAB].asof?.[t]?.[i]||PRICES[PTAB].dates[i];
 const pidx=()=>PIDX==null?PRICES[PTAB].dates.length-1:PIDX;
 const pdate=()=>PRICES[PTAB].dates[pidx()];
 function renderCeny(){
@@ -611,7 +609,14 @@ function renderCeny(){
   const brak=INSTR.filter(([t])=>eff(t,last)==null);
   chk.push([brak.length?"warn":"ok","Komplet instrumentów",(INSTR.length-brak.length)+"/"+INSTR.length]);
   chk.push(["ok","Data zgodna z regułą "+PTAB+"-tego",P.dates[last]]);
-  const stale=last>0?INSTR.filter(([t])=>eff(t,last)===eff(t,last-1)).map(a=>a[0]):[];
+  const itp=INSTR.filter(([t])=>interp(t,last)).map(a=>a[0]);
+  if(itp.length)chk.push(["warn","Bez notowania, silnik interpolował: "+itp.join(", "),"święto"]);
+  const inne=INSTR.filter(([t])=>asof(t,last)!==P.dates[last]&&!interp(t,last)).map(a=>a[0]);
+  if(inne.length)chk.push(["warn","Kurs z innego dnia: "+inne.join(", "),asof(inne[0],last)]);
+  /* Wartosc interpolowana potrafi po zaokragleniu trafic w sasiednie notowanie -
+     to nie jest zastoj ceny, tylko artefakt, wiec takich par nie zglaszamy. */
+  const stale=last>0?INSTR.filter(([t])=>eff(t,last)===eff(t,last-1)
+    &&!interp(t,last)&&!interp(t,last-1)).map(a=>a[0]):[];
   chk.push([stale.length?"warn":"ok",stale.length?"Cena bez zmian: "+stale.join(", "):"Brak zastoju cen",stale.length?"sprawdź":"OK"]);
   const jump=last>0?INSTR.filter(([t])=>Math.abs(eff(t,last)/eff(t,last-1)-1)>.25).map(a=>a[0]):[];
   chk.push([jump.length?"warn":"ok",jump.length?"Skok powyżej 25%: "+jump.join(", "):"Brak skoków powyżej 25%",jump.length?"sprawdź":"OK"]);
@@ -644,7 +649,9 @@ function renderCeny(){
       <div class="fld"><button class="btn" type="button" data-cancel style="background:var(--surface2);color:var(--muted)">Anuluj</button></div>
     </form></div>`;
     return `<div class="row"><div class="ic" style="background:${CSS(KOL[t]||"--s6")}">${t.slice(0,2)}</div>
-      <div class="nm">${t}<em>${mk==="US"?"sygnał":"wykonanie"} · ${d}${o?` · <span style="color:var(--cash)">skorygowane</span>`:""}</em></div>
+      <div class="nm">${t}<em>${mk==="US"?"sygnał":"wykonanie"} · ${asof(t,last)}${
+        interp(t,last)?` · <span style="color:var(--warn)">brak sesji, interpolacja</span>`:""}${
+        o?` · <span style="color:var(--cash)">skorygowane</span>`:""}</em></div>
       <div class="vl" style="display:flex;align-items:center;gap:12px"><div><b>${px(v)}</b>
         <span style="color:${ch==null?"var(--faint)":ch>=0?"var(--pos)":"var(--neg)"}">${ch==null?"—":sg(ch)+"%"}</span></div>
         ${ADMIN?`<button class="del" data-edit="${t}" style="font-size:.8rem">zmień</button>`:""}

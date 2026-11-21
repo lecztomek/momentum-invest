@@ -27,6 +27,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # import silnika z korzenia repo
+sys.path.insert(0, str(Path(__file__).resolve().parent))         # wspolne narzedzia
 
 import pandas as pd
 
@@ -35,6 +36,7 @@ from engine_v2.combined_spec import CombinedSpec
 from engine_v2.period_anchor import nth_trading_day_dates
 from engine_v2.pipeline import _lookup, _run_phase_a, run_strategy_pipeline
 from engine_v2.spec import StrategySpec
+from wspolne import zapisz_jesli_zmiana
 
 ROOT = Path(__file__).resolve().parent.parent
 WYJSCIE = ROOT / "web" / "data" / "signals.json"
@@ -346,8 +348,8 @@ def main() -> int:
         "composition": sorted((w for dzien in TRANSZE for w in T[dzien]["sklad"]),
                               key=lambda w: w["date"]),
     }
-    WYJSCIE.write_text(json.dumps(wynik, indent=1, ensure_ascii=False))
-    print(f"\nzapisano {WYJSCIE.relative_to(ROOT)}: {len(wynik['composition'])} okresow "
+    zapisz_jesli_zmiana(WYJSCIE, wynik)
+    print(f"\n{WYJSCIE.relative_to(ROOT)}: {len(wynik['composition'])} okresow "
           f"({len(TRANSZE)} transze), hash configu {wynik['config_hash']}")
     for s in sygnaly:
         print(f"  transza {s['tranche']:2}  {s['date']}  BEST17 {s['best17']['mode']:4} {s['best17']['weights']}")

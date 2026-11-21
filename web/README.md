@@ -20,7 +20,7 @@ Strona czyta dane przez `fetch`, więc musi być serwowana po HTTP — otwarcie
 | `app.js` | render i wykresy (moduł ES, bez bibliotek) | ręcznie |
 | `data/signals.json` | sygnał obu transz, historia, diagnostyka per transza | pipeline (silnik) |
 | `data/performance.json` | miesięczne stopy zwrotu strategii | pipeline |
-| `data/prices.json` | instrumenty źródłowe i stan feedu | pipeline |
+| `data/prices.json` | ceny wykonania obu transz - te, ktorymi liczyl silnik | pipeline (silnik) |
 | `data/portfolio.json` | kapitał, stan posiadania, krzywa wartości | docelowo baza |
 | `.nojekyll` | wylacza Jekylla na Pages (serwuje pliki bez przetwarzania) | — |
 
@@ -52,13 +52,25 @@ publikowany jako sygnał**: wpada do `awaiting` z powodem. Opublikowanie go
 dałoby skład policzony z ceny z innego dnia, a tam, gdzie brakuje danych do
 bramki 3-miesięcznej, nawet fałszywe „wszystko do gotówki".
 
+## Ceny
+
+Ekran *Ceny* nie pobiera nic na zywo i nie ma pobierac. Pokazuje **liczby, z
+ktorych policzony zostal sygnal**, zebys mogl porownac je z rachunkiem u brokera.
+Dlatego czyta je ten sam loader i to samo kotwiczenie dnia, co strategia.
+
+Kazda noga ma wlasny kalendarz gieldowy, wiec kurs potrafi byc z innego dnia niz
+data kolumny (np. Memorial Day w US, bank holiday w UK) - panel pisze wtedy przy
+cenie, z ktorej sesji naprawde pochodzi. Gdy danego dnia sesji nie bylo w ogole,
+pokazuje liczbe, ktorej uzyl silnik, i oznacza ja jako interpolacje - bo to nie
+jest notowanie.
+
 ## Stan
 
 | Dane | Skąd | Prawdziwe? |
 |---|---|---|
 | `signals.json` | `tools/build_signals.py`, silnik `engine_v2` | tak |
 | `performance.json` | — | przykładowe |
-| `prices.json` | `base` z feedu; szereg dzienny dorabia strona | częściowo |
+| `prices.json` | `tools/build_prices.py`, silnik `engine_v2` | tak |
 | `portfolio.json` | — | przykładowe (salda, wpłaty, konta) |
 
 Pasek „Prototyp — dane przykładowe" u góry strony dotyczy tych pozycji, które
