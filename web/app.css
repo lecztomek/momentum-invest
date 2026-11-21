@@ -315,6 +315,17 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
 .dstrip button.fix::after{content:"";position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--cash)}
 .dstrip button:focus-visible{outline:2px solid var(--accent)}
 
+/* ile jeszcze dni trzeba wpisac - lista, nie zgadywanka */
+.braki{background:var(--surface);border-left:4px solid var(--accent);border-radius:14px;padding:15px 16px;margin-bottom:16px}
+.braki b{color:var(--fg)}
+.braki p{font-size:.9rem;color:var(--muted);line-height:1.5;margin:7px 0 12px}
+.braki .dni{display:flex;flex-wrap:wrap;gap:7px}
+.braki .dni button{font:inherit;font-size:.74rem;color:var(--muted);border:0;border-radius:12px;
+  background:var(--surface2);padding:7px 11px;cursor:pointer;line-height:1.3;text-align:left}
+.braki .dni button b{display:block;font-size:.95rem;color:var(--fg)}
+.braki .dni button:hover{background:var(--raised)}
+.braki .dni button:focus-visible{outline:2px solid var(--accent)}
+
 /* wpisywanie dnia recznie - sciezka rownorzedna z feedem, nie awaryjna */
 .addbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
 .addbar .note{margin:0}

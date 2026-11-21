@@ -47,6 +47,45 @@ NOGI = {"us": "best17_a", "uk": "gpm_uk"}
 RYNEK = {t: ("US" if n.endswith(".us") else "UK") for t, n in TICKER.items()}
 
 
+SWIETA = {(1, 1), (12, 25), (12, 26)}
+
+
+def sesja(d: dt.date) -> dt.date:
+    """Pierwszy dzien roboczy na/po `d` - ta sama regula, co w silniku i w panelu.
+    Nie znamy przyszlych swiat gieldowych, wiec to jest DATA SPODZIEWANA: jesli
+    gielda akurat byla zamknieta, obowiazuje pierwsza sesja po niej."""
+    while d.weekday() >= 5 or (d.month, d.day) in SWIETA:
+        d += dt.timedelta(days=1)
+    return d
+
+
+def ostatnia_sesja(rok: int, mies: int) -> dt.date:
+    d = dt.date(rok + (mies == 12), (mies % 12) + 1, 1) - dt.timedelta(days=1)
+    while d.weekday() >= 5 or (d.month, d.day) in SWIETA:
+        d -= dt.timedelta(days=1)
+    return d
+
+
+def brakujace(ostatnia_w_danych: dt.date, dzis: dt.date) -> list[dict]:
+    """Dni, ktorych silnik potrzebuje, a ktorych nie ma w danych.
+
+    Trzy na miesiac: oba dni rebalansu i KONIEC MIESIACA. Ten ostatni nie jest
+    fanaberia - ranking (ema7_16) i kanarek (ema5_12) licza sie na cenach konca
+    miesiaca, wiec bez niego silnik bierze za koniec miesiaca 25-ty i wskazniki
+    sie przesuwaja (zmierzone: 6 z 24 okresow wychodzi wtedy z innym skladem)."""
+    out, rok, mies = [], ostatnia_w_danych.year, ostatnia_w_danych.month
+    while (rok, mies) <= (dzis.year, dzis.month):
+        for po_co, d in ((f"rebalans {TRANSZE[0]}-tego", sesja(dt.date(rok, mies, TRANSZE[0]))),
+                         (f"rebalans {TRANSZE[1]}-tego", sesja(dt.date(rok, mies, TRANSZE[1]))),
+                         ("koniec miesiąca", ostatnia_sesja(rok, mies))):
+            if ostatnia_w_danych < d <= dzis and all(x["date"] != d.strftime("%Y-%m-%d") for x in out):
+                out.append({"date": d.strftime("%Y-%m-%d"), "why": po_co})
+        mies += 1
+        if mies > 12:
+            mies, rok = 1, rok + 1
+    return sorted(out, key=lambda x: x["date"])
+
+
 def cena(x) -> float | None:
     return None if pd.isna(x) else round(float(x), 4 if float(x) < 20 else 2)
 
@@ -86,12 +125,12 @@ def main() -> int:
 
     baza = Path(a.specs) if a.specs else ROOT / "strategies_v2"
     serie: dict[str, dict] = {}
-    ostatnia_sesja = None
+    koniec_danych = None
 
     for dzien in TRANSZE:
         nogi = {rynek: noga_dnia(baza, katalog, dzien) for rynek, katalog in NOGI.items()}
         for g in nogi.values():
-            ostatnia_sesja = g["koniec"] if ostatnia_sesja is None else max(ostatnia_sesja, g["koniec"])
+            koniec_danych = g["koniec"] if koniec_danych is None else max(koniec_danych, g["koniec"])
 
         def n(t):                      # noga, ktora wycenia ten instrument
             return nogi[RYNEK[t].lower()]
@@ -123,14 +162,16 @@ def main() -> int:
         "generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "feed": {
             "source": "repo + wpisy reczne",
-            "fetched": ostatnia_sesja.strftime("%Y-%m-%d"),
+            "fetched": koniec_danych.strftime("%Y-%m-%d"),
         },
         "instruments": [[t, RYNEK[t]] for t in TICKER],
+        "missing": brakujace(koniec_danych.date(), dt.date.today()),
         "series": serie,
     }
     zapisz_jesli_zmiana(WYJSCIE, wynik)
     print(f"\n{WYJSCIE.relative_to(ROOT)}: {len(TICKER)} instrumentow, "
-          f"ostatnia sesja w danych {wynik['feed']['fetched']}")
+          f"ostatnia sesja w danych {wynik['feed']['fetched']}, "
+          f"dni do wpisania: {len(wynik['missing'])}")
     return 0
 
 

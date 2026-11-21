@@ -853,8 +853,9 @@ function renderCeny(){
     const fix=INSTR.some(([t])=>OVR[okey(t,d)]);
     return `<button type="button" data-di="${i}" aria-pressed="${i===last}" class="${fix?"fix":""}">
       <b>${d.slice(8)}.${d.slice(5,7)}</b>${d.slice(0,4)}</button>`}).join("");
-  document.getElementById("addHint").textContent=`Następny dzień wg reguły: ${nastepnaData()}`;
-  rysujPrawoZapisu();
+  document.getElementById("addHint").textContent=PRC.missing?.length
+    ? `Najbliższy brakujący: ${nastepnaData()}` : `Następny dzień wg reguły: ${nastepnaData()}`;
+  rysujPrawoZapisu();rysujBraki();
   document.getElementById("dPrev").disabled=last===0;
   document.getElementById("dNext").disabled=last===P.dates.length-1;
   przewinPasek();
@@ -879,8 +880,26 @@ function renderCeny(){
         ${ADMIN()?`<button class="del" data-edit="${t}" style="font-size:.8rem">zmień</button>`:""}
         ${ADMIN()&&o?`<button class="del" data-undo="${t}">×</button>`:""}</div></div>`}).join("")}
 
+/* Lista dni, ktorych silnikowi brakuje. Liczy ja pipeline (build_prices), bo
+   tylko on wie, co naprawde jest w data/ - panel tylko pokazuje. */
+function rysujBraki(){
+  const b=PRC.missing||[],box=document.getElementById("brakiBox");
+  if(!b.length){box.innerHTML="";box.hidden=true;return}
+  box.hidden=false;
+  const ile=b.length*INSTR.length;
+  box.innerHTML=`<div class="braki"><b>Do wpisania: ${b.length} ${b.length===1?"dzień":b.length<5?"dni":"dni"} ·
+      ${ile} ${ile<5?"ceny":"cen"}</b>
+    <p>Silnik potrzebuje trzech dni z miesiąca: obu dni rebalansu i <b>ostatniej sesji</b> —
+      na niej liczą się ranking i kanarek. Bez niej co czwarty okres wychodzi z innym składem.
+      Jeśli któregoś dnia giełda była zamknięta, wpisz pierwszą sesję po nim.</p>
+    <div class="dni">${b.map(x=>
+      `<button type="button" data-brak="${x.date}"><b>${x.date.slice(8)}.${x.date.slice(5,7)}</b>${x.why}</button>`).join("")}</div></div>`;
+}
 /* nastepna data wedlug reguly: pierwsza sesja N-tego lub pozniej w kolejnym miesiacu */
 function nastepnaData(){
+  /* Najpierw to, czego naprawde brakuje - dopiero gdy nic nie brakuje, kolejny
+     dzien z reguly. */
+  if(PRC.missing?.length)return PRC.missing[0].date;
   const P=PRICES[PTAB],ost=P.dates.at(-1),d=new Date(ost+"T00:00:00Z");
   d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+1);
   return ruleDate(d.getUTCFullYear(),d.getUTCMonth(),+PTAB)}
@@ -889,7 +908,7 @@ function rysujFormularz(){
   const P=PRICES[PTAB],ost=P.dates.length-1;
   document.getElementById("addForm").innerHTML=
     `<div class="hd"><label for="adData">Data</label><input type="date" id="adData" value="${nastepnaData()}">
-       <span class="note">Podpowiedziana z reguły ${PTAB}-tego. Przy każdym polu poprzednia cena — literówka rzuci się w oczy.</span></div>
+       <span class="note">${PRC.missing?.length?"Pierwszy brakujący dzień":"Z reguły "+PTAB+"-tego"}. Przy każdym polu poprzednia cena — literówka rzuci się w oczy.</span></div>
      <div class="pgrid">${INSTR.map(([t,mk])=>
        `<label class="pf"><b>${t}<em>${mk==="US"?"sygnał":"wykon."}</em></b>
          <input type="number" step="0.0001" min="0" data-t="${t}" placeholder="${px(eff(t,ost))}"></label>`).join("")}</div>
@@ -906,6 +925,12 @@ function rysujPrawoZapisu(){
     :!USER?"Zaloguj się, żeby zapisywać ceny w bazie."
     :!ADMIN_BAZA?"Podgląd — wpisywanie cen wymaga uprawnień admina.":"";
 }
+document.getElementById("brakiBox").addEventListener("click",e=>{
+  const b=e.target.closest("[data-brak]");if(!b)return;
+  const f=document.getElementById("addForm");
+  rysujFormularz();f.hidden=false;
+  document.getElementById("adData").value=b.dataset.brak;
+  f.scrollIntoView({block:"nearest"})});
 document.getElementById("addDay").addEventListener("click",()=>{
   const f=document.getElementById("addForm");
   if(!f.hidden){f.hidden=true;return}
