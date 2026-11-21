@@ -31,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))         # wspolne narze
 
 import pandas as pd
 
+from engine_v2.annual_tax import apply_annual_tax
 from engine_v2.backtest_engine import daily_equity_curve
 from engine_v2.combined_pipeline import (find_combined_valid_window_start,
                                           load_combined_daily_prices, run_combined_pipeline)
@@ -79,9 +80,11 @@ def main() -> int:
 
     baza = Path(a.specs) if a.specs else ROOT / "strategies_v2"
     zwroty, wagi, krzywe, obroty = {}, {}, {}, {}
+    stawki = set()
     for dzien in TRANSZE:
         kat = baza / f"gpm_uk_best17_a_day{dzien}"
         cs = CombinedSpec.load(kat / "combined_spec.json")
+        stawki.add(float(cs.reporting_params.get("annual_tax_rate", 0.0)))
         pf = run_combined_pipeline(cs, kat)
         s = pf.set_index("date")["net_return"]
 
@@ -158,15 +161,35 @@ def main() -> int:
     obrot = pd.DataFrame({"date": wspolny,
                           "turnover": [pd.Series([obroty[d].get(x) for d in TRANSZE]).dropna().mean()
                                        for x in wspolny]})
-    metryki = compute_metrics(equity, obrot, {})
-    metryki["multiple"] = float(kapital.iloc[-1] / kapital.iloc[0])
-    metryki["from"] = dni[0].strftime("%Y-%m-%d")
-    metryki["to"] = dni[-1].strftime("%Y-%m-%d")
+    if len(stawki) != 1:
+        raise SystemExit(f"transze maja rozne stawki podatku: {sorted(stawki)}")
+    podatek = stawki.pop()
+
+    # PODATEK. Strategia rebalansuje co miesiac, wiec zyski realizuja sie na
+    # biezaco - silnik modeluje to rocznym poborem od wzrostu ponad dotychczasowy
+    # szczyt (high-water mark, patrz engine_v2/annual_tax.py). Rok stratny nie
+    # daje zwrotu, ale tez nie kasuje szczytu.
+    equity_po = apply_annual_tax(equity, podatek)
+    kapital_po = equity_po.set_index("date")["equity"]
+
+    def metryki_z(krzywa, obrot_df):
+        m = compute_metrics(pd.DataFrame({"date": krzywa.index, "equity": krzywa.values}),
+                            obrot_df, {})
+        m["multiple"] = float(krzywa.iloc[-1] / krzywa.iloc[0])
+        m["from"] = krzywa.index[0].strftime("%Y-%m-%d")
+        m["to"] = krzywa.index[-1].strftime("%Y-%m-%d")
+        return {k: (round(v, 6) if isinstance(v, float) else v) for k, v in m.items()}
+
+    metryki = metryki_z(kapital_po, obrot)
+    metryki_brutto = metryki_z(kapital, obrot)
+    print(f"\npodatek {podatek*100:.0f}%: CAGR {metryki_brutto['cagr']*100:.2f}% -> "
+          f"{metryki['cagr']*100:.2f}%, mnoznik x{metryki_brutto['multiple']:.2f} -> "
+          f"x{metryki['multiple']:.2f}")
 
     # Krzywa obsuniecia do wykresu - probkowana tygodniowo, zeby plik nie puchl,
     # ale liczona z DZIENNEJ krzywej, wiec dolki sa prawdziwe.
-    szczyt = kapital.cummax()
-    obs = (kapital / szczyt - 1) * 100
+    szczyt = kapital_po.cummax()
+    obs = (kapital_po / szczyt - 1) * 100
     tyg = obs.resample("W").min().dropna()
 
     # --- benchmarki: kup i trzymaj w tym samym oknie co strategia --------
@@ -185,22 +208,26 @@ def main() -> int:
             print(f"benchmark {b['key']}: za malo danych w oknie, pomijam")
             continue
         kr = ceny / ceny.iloc[0]
-        eq = pd.DataFrame({"date": kr.index, "equity": kr.values})
-        m = compute_metrics(eq, pd.DataFrame({"date": kr.index, "turnover": 0.0}), {})
-        m["multiple"] = float(kr.iloc[-1])
+        # Kup i trzymaj NIE placi podatku co roku - nic nie sprzedaje. Placi raz,
+        # przy sprzedazy, od calego zysku. Krzywa pokazuje wiec "ile zostaje, jesli
+        # sprzedam tego dnia". Odroczenie podatku to realna przewaga tej strategii
+        # i nie wolno jej ukryc, karzac benchmark rocznym poborem.
+        kr_po = 1 + (kr - 1) * (1 - podatek)
+        pusty = pd.DataFrame({"date": kr.index, "turnover": 0.0})
+        m = metryki_z(kr_po, pusty)
         benchmarki.append({**b, "from": kr.index[0].strftime("%Y-%m-%d"),
                            "to": kr.index[-1].strftime("%Y-%m-%d"),
                            "pelne_okno": kr.index[0] == dni[0],
-                           "metrics": {k: (round(v, 6) if isinstance(v, float) else v)
-                                       for k, v in m.items()},
-                           "_krzywa": kr})
+                           "metrics": m, "metrics_pre_tax": metryki_z(kr, pusty),
+                           "_krzywa": kr_po})
         print(f"benchmark {b['key']:5}: {kr.index[0].date()} .. {kr.index[-1].date()}, "
-              f"CAGR {m['cagr']*100:5.2f}%, MaxDD {m['max_drawdown']*100:6.2f}%, x{kr.iloc[-1]:.2f}")
+              f"CAGR {m['cagr']*100:5.2f}%, MaxDD {m['max_drawdown']*100:6.2f}%, "
+              f"x{kr.iloc[-1]:.2f} przed podatkiem -> x{kr_po.iloc[-1]:.2f} po")
 
     # Wspolna, tygodniowa os do wykresu. Benchmark, ktory zaczyna sie pozniej,
     # startuje od wartosci STRATEGII z tamtego dnia - inaczej jego krzywa wisialaby
     # w powietrzu i nie dalo by sie porownac ksztaltu.
-    os_tyg = kapital.resample("W").last().dropna()
+    os_tyg = kapital_po.resample("W").last().dropna()
     porownanie = {"dates": [x.strftime("%Y-%m-%d") for x in os_tyg.index],
                   "strategy": [round(float(v), 4) for v in os_tyg]}
     for b in benchmarki:
@@ -208,7 +235,7 @@ def main() -> int:
         # Tygodniowa os konczy sie w niedziele, a notowania sa w dni handlowe -
         # samo reindex zgubiloby KAZDY punkt, wiec najpierw unia indeksow i ffill.
         kr_w = kr.reindex(kr.index.union(os_tyg.index)).ffill().reindex(os_tyg.index)
-        skala = float(kapital.asof(kr.index[0]))
+        skala = float(kapital_po.asof(kr.index[0]))
         porownanie[b["key"]] = [None if pd.isna(v) else round(float(v) * skala, 4) for v in kr_w]
 
     laczny = float((seria + 1).prod())
@@ -218,12 +245,18 @@ def main() -> int:
         "source": "engine_v2 / " + " + ".join(f"gpm_uk_best17_a_day{d}" for d in TRANSZE),
         "currency": "waluta notowan",
         "net_of_costs": True,
-        "pre_tax": True,
+        "pre_tax": False,          # metryki i wykresy sa PO podatku
+        "monthly_pre_tax": True,   # ...ale siatka miesieczna nie, patrz nizej
         "note": "polowa kapitalu w transzy 10-tego, polowa w 25-tego; okres transzy "
-                "biegnie od jej dnia do jej dnia, nie od 1-szego do 1-szego",
+                "biegnie od jej dnia do jej dnia, nie od 1-szego do 1-szego. "
+                "Metryki i wykresy po podatku; siatka miesieczna przed - podatek "
+                "pobiera sie raz w roku, wiec nie da sie go rozlozyc na miesiace "
+                "bez zmyslania.",
         "months": int(len(seria)),
         "monthly": {rok: miesieczne[rok] for rok in sorted(miesieczne)},
-        "metrics": {k: (round(v, 6) if isinstance(v, float) else v) for k, v in metryki.items()},
+        "tax_rate": podatek,
+        "metrics": metryki,
+        "metrics_pre_tax": metryki_brutto,
         "positive_months": round(float((seria > 0).mean()) * 100, 1),
         "drawdown": {"dates": [x.strftime("%Y-%m-%d") for x in tyg.index],
                      "dd": [round(float(v), 2) for v in tyg]},

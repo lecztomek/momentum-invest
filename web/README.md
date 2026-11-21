@@ -79,6 +79,30 @@ wyglądałoby jak "miesiąc na zero".
 CAGR, MaxDD, Sharpe i Calmar liczą się z **dziennej** krzywej kapitału. Z samych
 miesięcznych zamknięć MaxDD wychodził −7,8% zamiast prawdziwych −15,8%.
 
+### Podatek
+
+Metryki i wykresy są **po podatku 19%**, liczonym tak jak w silniku
+(`engine_v2/annual_tax.py`): raz w roku, od wzrostu ponad poprzedni szczyt bazy
+podatkowej. Rok stratny nie daje zwrotu, ale też nie kasuje szczytu.
+
+Siatka miesięczna zostaje **przed podatkiem** i tak jest podpisana - podatek
+pobiera się raz w roku, więc nie da się go rozłożyć na miesiące bez zmyślania.
+
+Benchmark płaci **inaczej, i to jest tu najważniejsze**: kup i trzymaj nic nie
+sprzedaje, więc nie płaci co roku, tylko raz - przy sprzedaży. Jego krzywa
+pokazuje, ile zostaje, gdyby sprzedać tego dnia. To odroczenie jest realną
+przewagą i nie wolno jej ukryć, karząc benchmark rocznym poborem.
+
+Skutek jest konkretny i zmienia wniosek:
+
+| | przed podatkiem | po podatku |
+|---|---|---|
+| strategia | 15,26% · ×3,09 | **12,83% · ×2,61** |
+| S&P 500 | 14,85% · ×3,01 | **12,91% · ×2,63** |
+
+Po podatku przewaga w zwrocie znika. Zostaje przewaga w ryzyku: MaxDD −15,8%
+wobec −28,6%, Calmar 0,81 wobec 0,45.
+
 ## Benchmark
 
 Porównanie siedzi na ekranie *Wyniki*. Benchmarki to **UK-listowane ETF-y klasy

@@ -741,12 +741,20 @@ function renderDiag(){
 
 function renderWyniki(){
   document.getElementById("wynStamp").textContent=PERF.metrics.from+" – "+PERF.metrics.to;
+  /* Podatek jest na tyle duzy, ze bez wyjasnienia liczby wygladaja na blad:
+     x3,09 przed i x2,61 po to ta sama historia. */
+  const pod=Math.round((PERF.tax_rate||0)*100),B=PERF.metrics_pre_tax;
+  document.getElementById("podatekNota").innerHTML=!pod?"":
+    `Liczby <b>po podatku ${pod}%</b>, liczonym tak, jak robi to silnik: raz w roku, od wzrostu ponad
+     poprzedni szczyt (rok stratny nie daje zwrotu, ale nie kasuje szczytu).
+     Przed podatkiem byłoby ${sg2(B.cagr*100)}% rocznie i ×${B.multiple.toFixed(2).replace(".",",")}.`;
+  document.getElementById("mgridSub").textContent=PERF.monthly_pre_tax?"· przed podatkiem":"";
   /* Liczby z silnika, nie przeliczone z miesiecznej siatki: MaxDD i Sharpe licza
      sie z DZIENNEJ krzywej kapitalu, wiec obsuniecie w srodku miesiaca nie znika.
      Z samych miesiecy MaxDD wychodzil dwa razy plytszy niz byl naprawde. */
   const M=PERF.metrics;
   document.getElementById("tiles").innerHTML=[
-    ["CAGR",sg2(M.cagr*100)+"%","rocznie","--pos"],
+    ["CAGR",sg2(M.cagr*100)+"%",PERF.pre_tax?"rocznie":"rocznie, po podatku","--pos"],
     ["MaxDD",(M.max_drawdown*100).toFixed(1).replace(".",",")+"%","dziennie, najgłębsze","--neg"],
     ["Calmar",M.calmar.toFixed(2).replace(".",","),"zysk do ryzyka","--fg"],
     ["Sharpe",M.sharpe.toFixed(2).replace(".",","),"rf = 0","--fg"],
@@ -758,7 +766,7 @@ function renderWyniki(){
     ["Dodatnie miesiące",PERF.positive_months.toFixed(0)+"%",PERF.months+" miesięcy","--fg"],
     ["Pod wodą",M.max_time_underwater_months+" mies.","najdłużej","--warn"],
     ["Obrót",M.annual_turnover.toFixed(1).replace(".",",")+"×","rocznie","--muted"],
-    ["Mnożnik","×"+M.multiple.toFixed(2).replace(".",","),"bez wpłat","--accent"]
+    ["Mnożnik","×"+M.multiple.toFixed(2).replace(".",","),PERF.pre_tax?"bez wpłat":"bez wpłat, po podatku","--accent"]
   ].map(([l,v,d,c])=>`<div class="tile"><div class="lbl">${l}</div><div class="v" style="color:var(${c})">${v}</div><div class="d">${d}</div></div>`).join("");
   const col=r=>{const a=Math.min(Math.abs(r)/6,1)*.55+.08;return `background:rgba(${r>=0?"12,163,12":"208,59,59"},${a.toFixed(2)})`};
   let h=`<thead><tr><th>Rok</th>${MN.map(m=>`<th>${m}</th>`).join("")}<th>Rok</th></tr></thead><tbody>`;
@@ -783,7 +791,11 @@ function renderWyniki(){
     +BENCH.map((b,i)=>wiersz(b.label,b.note+" · "+b.from+" – "+b.to,b.metrics,["--s2","--s5","--s3"][i]||"--s6")).join("");
   const krotsze=BENCH.filter(b=>!b.pelne_okno).map(b=>b.label+" od "+b.from);
   document.getElementById("cmpNote").innerHTML=
-    "Benchmarki to ETF-y klasy <b>Acc</b> — dywidendy wchodzą w NAV, więc nie są zaniżone. "
+    (pod?`<b>Obie strony po podatku ${pod}%, ale płaconym inaczej</b> — i to jest tu najważniejsze.
+      Strategia rebalansuje co miesiąc, więc realizuje zyski i płaci co roku. Kup i trzymaj nie
+      sprzedaje nic, więc płaci raz, przy sprzedaży — krzywa pokazuje, ile zostaje, gdyby sprzedać
+      tego dnia. To odroczenie jest realną przewagą benchmarku i nie wolno jej ukryć. `:"")
+    +"Benchmarki to ETF-y klasy <b>Acc</b> — dywidendy wchodzą w NAV, więc nie są zaniżone. "
     +"Noga BEST17 liczy się na surowych cenach z USA, <b>bez dywidend</b> — czyli strategia jest tu "
     +"raczej zaniżona niż podkoloryzowana."
     +(krotsze.length?" Krótsza historia: "+krotsze.join(", ")+" — wykres startuje wtedy od wartości strategii z tamtego dnia.":"")}
