@@ -21,13 +21,14 @@ Strona czyta dane przez `fetch`, więc musi być serwowana po HTTP — otwarcie
 | `data/signals.json` | sygnał obu transz, historia, diagnostyka per transza | pipeline (silnik) |
 | `data/performance.json` | historia strategii: miesiące, metryki, obsunięcie, miks klas | pipeline (silnik) |
 | `data/prices.json` | ceny wykonania obu transz - te, ktorymi liczyl silnik | pipeline (silnik) |
-| `data/portfolio.json` | kapitał, stan posiadania, krzywa wartości | docelowo baza |
+| `data/portfolio.json` | przykład na start; po pierwszym wpisie panel liczy z bazy | przykład |
 | `.nojekyll` | wylacza Jekylla na Pages (serwuje pliki bez przetwarzania) | — |
 
 Zadnego pliku nie generuje sie w trakcie wdrozenia - co w repo, to na stronie.
 
-`data/portfolio.json` jest tu tylko dla prototypu — docelowo te dane są prywatne
-i idą do bazy (per użytkownik), a nie do repozytorium.
+`data/portfolio.json` to tylko przykład na start. Prawdziwe dane konta są
+prywatne i leżą w bazie per użytkownik (`users/{uid}/transactions`) - panel
+przestaje czytać plik, gdy tylko pojawi się pierwszy wpis stanu konta.
 
 ## Publikacja
 
@@ -78,6 +79,26 @@ wyglądałoby jak "miesiąc na zero".
 CAGR, MaxDD, Sharpe i Calmar liczą się z **dziennej** krzywej kapitału. Z samych
 miesięcznych zamknięć MaxDD wychodził −7,8% zamiast prawdziwych −15,8%.
 
+## Dane konta
+
+User nie prowadzi księgi transakcji - *"co jakiś czas wpisuje, ile ma na
+koncie"*. Panel przyjmuje więc **migawki stanu** (data, konto, wartość w USD)
+oraz wpłaty i wypłaty, i z tego liczy wszystko, co pokazuje Pulpit:
+
+- kapitał = suma ostatnich stanów wszystkich kont,
+- wpłacone = skumulowane przepływy od początku historii,
+- wynik = kapitał − wpłacone,
+- TWR = zwroty łączone **tylko między miesiącami, w których jest wpis stanu**,
+  z odjętymi przepływami. Miesiąc bez wpisu nie jest miesiącem na zero - po
+  prostu nie wiadomo, ile konto było wtedy warte, i panel go nie rysuje.
+
+Przy stanie konta można (nieobowiązkowo) rozpisać kwoty na walory. Dopiero
+wtedy panel wie, **co dokupić, a co sprzedać** - bez rozbicia mówi to wprost
+zamiast zgadywać. Z rozbicia odczytuje też, która noga leży na którym koncie:
+nie z deklaracji, tylko z tego, co tam naprawdę jest.
+
+Kwoty są w USD (ETF-y są dolarowe), złote to przeliczenie po kursie.
+
 ## Stan
 
 | Dane | Skąd | Prawdziwe? |
@@ -85,7 +106,7 @@ miesięcznych zamknięć MaxDD wychodził −7,8% zamiast prawdziwych −15,8%.
 | `signals.json` | `tools/build_signals.py`, silnik `engine_v2` | tak |
 | `performance.json` | `tools/build_performance.py`, silnik `engine_v2` | tak |
 | `prices.json` | `tools/build_prices.py`, silnik `engine_v2` | tak |
-| `portfolio.json` | — | przykładowe (salda, wpłaty, konta) |
+| `portfolio.json` | przykład, dopóki nie ma własnych wpisów | przykładowe |
 
 Pasek „Prototyp — dane przykładowe" u góry strony dotyczy tych pozycji, które
 nie są jeszcze prawdziwe.

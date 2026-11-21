@@ -24,7 +24,7 @@
   </nav>
 </aside>
 
-<div class="demo"><div class="wrap">Sygnał, ceny i wyniki liczy silnik. <b>Przykładowe są tylko dane konta</b>: kapitał, salda, wpłaty i stan posiadania.</div></div>
+<div class="demo" id="demoBar"><div class="wrap" id="demoTxt"></div></div>
 
 <div class="shell"><main class="wrap">
 
@@ -101,23 +101,27 @@
 
 <!-- ========== TRANSAKCJE ========== -->
 <section id="v-transakcje" hidden>
-  <div class="phead"><h1>Transakcje</h1><span class="stamp" id="txCount"></span></div>
+  <div class="phead"><h1>Wpisy</h1><span class="stamp" id="txCount"></span></div>
   <div class="card">
     <div class="lbl" style="margin-bottom:12px">Dopisz rekord</div>
     <form class="form" id="txForm">
       <div class="fld"><label for="txDate">Data</label><input type="date" id="txDate" required></div>
       <div class="fld"><label for="txAcc">Konto</label><select id="txAcc"></select></div>
       <div class="fld"><label for="txType">Typ</label><select id="txType">
+        <option value="stan">Stan konta</option>
         <option value="wplata">Wpłata</option><option value="wyplata">Wypłata</option>
-        <option value="kupno">Kupno</option><option value="sprzedaz">Sprzedaż</option>
       </select></div>
-      <div class="fld" id="txTickWrap" hidden><label for="txTick">Walor</label><select id="txTick"></select></div>
-      <div class="fld"><label for="txAmt">Kwota w zł</label><input type="number" id="txAmt" step="0.01" min="0" placeholder="0,00" required></div>
+      <div class="fld"><label for="txAmt"><span id="txAmtLbl">Wartość konta w USD</span></label><input type="number" id="txAmt" step="0.01" min="0" placeholder="0,00" required></div>
       <div class="fld w2" style="justify-content:flex-end"><button class="btn" type="submit">Dopisz</button></div>
     </form>
+    <div id="txSplit">
+      <div class="lbl" style="margin:16px 0 8px">Rozbicie na walory <span style="font-weight:400;text-transform:none;letter-spacing:0">— nieobowiązkowe. Bez niego panel pokaże kapitał i wynik, ale nie policzy, co dokupić.</span></div>
+      <div class="pgrid" id="txPx"></div>
+      <p class="note" id="txSplitSum"></p>
+    </div>
   </div>
 
-  <h2 class="psec">Wpłacone na konta</h2>
+  <h2 class="psec">Konta</h2>
   <div class="stats" id="depStats"></div>
 
   <h2 class="psec">Historia</h2>
