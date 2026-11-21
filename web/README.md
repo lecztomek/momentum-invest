@@ -113,7 +113,19 @@ wtedy panel wie, **co dokupić, a co sprzedać** - bez rozbicia mówi to wprost
 zamiast zgadywać. Z rozbicia odczytuje też, która noga leży na którym koncie:
 nie z deklaracji, tylko z tego, co tam naprawdę jest.
 
-Kwoty są w USD (ETF-y są dolarowe), złote to przeliczenie po kursie.
+Kwoty są w USD — ETF-y są dolarowe i w dolarach podajesz stan konta. Złote to
+warstwa wyświetlania, licząca się **po kursie z danej daty**, a nie po jednym
+kursie na całą historię:
+
+- wartość konta w danym miesiącu — po kursie z końca tego miesiąca,
+- **każda wpłata po kursie z dnia, w którym ją zrobiłeś** — tyle naprawdę
+  kosztowała,
+- TWR w złotych wychodzi inaczej niż w dolarach i tak ma być: kto liczy
+  w złotówkach, ten zarabia lub traci także na kursie.
+
+Kursy wpisujesz sam — przy stanie konta (jedno pole obok kwoty) albo osobnym
+wpisem dla dowolnej daty. Dla dat sprzed pierwszego kursu panel bierze
+najstarszy, jaki zna, i nie udaje, że zna wcześniejsze.
 
 ## Stan
 

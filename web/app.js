@@ -30,7 +30,7 @@ const D=()=>SIG.diagnostics[DTAB];
    48 680 USD, jest gorszy niz panel, ktory mowi "nie wiem, ile masz".
    BRAK = nie ma ani jednego wpisu stanu konta, wiec kwot nie pokazujemy wcale,
    a sklad docelowy idzie w procentach. */
-let CAPITAL,HOLDINGS,MONTHS,VALUE,PAID,VUSD,PUSD,RETC,FXN,BRAK=true,ZLOZONE=false;
+let CAPITAL,HOLDINGS,MONTHS,VALUE,PAID,VUSD,PUSD,RETC,FXN,BRAK=true,ZLOZONE=false,WPISY=false;
 function ustawPortfel(P){
   PORT=P;BRAK=!P;
   if(P){
@@ -40,7 +40,7 @@ function ustawPortfel(P){
     /* 100 + 100 = "sto procent kazdej nogi" - te same wzory licza wtedy udzialy
        zamiast zlotowek, a formatowanie pilnuje, zeby nikt nie wzial ich za kwote. */
     CAPITAL={best17:100,gpm:100,split10:.5};HOLDINGS={};MONTHS=[];VALUE=[];PAID=[];
-    VUSD=[];PUSD=[];RETC={usd:[],pln:[]};FXN=KURS;
+    VUSD=[];PUSD=[];RETC={usd:[],pln:[]};FXN=WPISY?kursTeraz():KURS;   /* przy starcie wpisow jeszcze nie ma */
   }
   if(ZLOZONE)przeliczTransze();   /* przy pierwszym wywolaniu transz jeszcze nie ma */
 }
@@ -61,6 +61,9 @@ const sg=n=>(n>=0?"+":"−")+Math.abs(n).toFixed(1).replace(".",",");
 const sg2=n=>(n>=0?"+":"−")+Math.abs(n).toFixed(2).replace(".",",");
 const px=n=>n.toFixed(n<20?4:2).replace(".",",");
 const CSS=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+/* Wszystkie kwoty w kodzie sa w USD (bo w USD sa wpisy i notowania). Ta funkcja
+   jest JEDYNYM miejscem, w ktorym robi sie z nich zlotowki. */
+const kw=v=>CURV==="usd"?zl(v)+" USD":zl(v*FXN)+" zł";
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const MN=["sty","lut","mar","kwi","maj","cze","lip","sie","wrz","paź","lis","gru"];
 const mLbl=m=>MN[+m.slice(5)-1]+" "+m.slice(2,4);
@@ -307,7 +310,7 @@ chart("c-drift",W=>{
       +`<text x="${L-10}" y="${y+14}" text-anchor="end" fill="${CSS("--fg")}" font-size="${f+1.5}" font-weight="700">${r.t==="GOTOWKA"?"Gotówka":r.t}</text>`
       +`<text x="${r.pp>=0?C+w+8:C-w-8}" y="${y+14}" text-anchor="${r.pp>=0?"start":"end"}" fill="${CSS("--muted")}" font-size="${f}" font-family="var(--f-mono)" font-weight="600">${sg(r.pp)} pp</text>`;
     hit.push({x0:0,x1:W,y0:y-5,y1:y+h+5,html:`<div class="th">${r.t}</div>
-      <div class="tr">Mam<span class="tv">${zl(r.have)} zł</span></div><div class="tr">Cel<span class="tv">${zl(r.want)} zł</span></div>`})});
+      <div class="tr">Mam<span class="tv">${kw(r.have)}</span></div><div class="tr">Cel<span class="tv">${kw(r.want)}</span></div>`})});
   out+=`<text x="${C+8}" y="${rows.length*bh+24}" fill="${CSS("--faint")}" font-size="${f}">nadwaga →</text>`
     +`<text x="${C-8}" y="${rows.length*bh+24}" text-anchor="end" fill="${CSS("--faint")}" font-size="${f}">← niedowaga</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Odchylenie od składu docelowego" data-hover='${HV({W,H,max:1e9,hit})}'>${out}</svg>`});
@@ -454,7 +457,7 @@ function nastepnyRebalans(){
   return r.some(x=>x.dni>=0)?r.find(x=>x.dni>=0):r[0]}
 const cur=()=>CURV==="usd"
   ? {v:VUSD,p:PUSD,u:"USD",alt:{v:VALUE,u:"zł"},r:RETC.usd,twr:PORT?.twr.usd??0,k:x=>x}
-  : {v:VALUE,p:PAID,u:"zł", alt:{v:VUSD, u:"USD"},r:RETC.pln,twr:PORT?.twr.pln??0,k:x=>x/FXN};
+  : {v:VALUE,p:PAID,u:"zł", alt:{v:VUSD, u:"USD"},r:RETC.pln,twr:PORT?.twr.pln??0,k:x=>x*FXN};
 
 /* duzy wykres kapitalu: sama krzywa i wypelnienie, bez siatki i osi */
 chart("c-hero",W=>{
@@ -520,7 +523,7 @@ function renderPulpit(){
     const nm=t==="GOTOWKA"?"Gotówka":t;
     return `<div class="row"><div class="ic" style="background:${CSS(KOL[t]||"--s6")}">${nm.slice(0,2).toUpperCase()}</div>
       <div class="nm">${nm}<em>${t==="GOTOWKA"?"nieulokowane":(ROLE[t]||"")}</em></div>
-      <div class="vl"><b>${zl(CURV==="usd"?v/FXN:v)} ${C.u}</b><span>${pc(v/HT)}</span></div></div>`}).join("");
+      <div class="vl"><b>${kw(v)}</b><span>${pc(v/HT)}</span></div></div>`}).join("");
 }
 document.getElementById("curTog").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
@@ -541,8 +544,8 @@ function renderActions(){
     .filter(r=>Math.abs(r.d)>=TOTAL*.02).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d));
   document.getElementById("actions").innerHTML=rows.length?rows.map(r=>
     `<div class="act ${r.d>0?"buy":"sell"}"><i class="w"></i><div><div class="t">${r.d>0?"Kup":"Sprzedaj"} ${r.t}</div>
-     <div class="sub">${ROLE[r.t]||""}</div></div><div class="q"><b>${zl(Math.abs(r.d))} zł</b>
-     <span class="sub">cel ${zl(r.want)} zł</span></div></div>`).join("")
+     <div class="sub">${ROLE[r.t]||""}</div></div><div class="q"><b>${kw(Math.abs(r.d))}</b>
+     <span class="sub">cel ${kw(r.want)}</span></div></div>`).join("")
     :'<div class="act hold"><i class="w"></i><div><div class="t">Bez zmian</div></div></div>'}
 function renderHist(){
   const R=nastepnyRebalans();
@@ -567,14 +570,14 @@ function renderHist(){
    od tego, ile kto ma. */
 const kwota=(v)=>BRAK?"":`<td class="num">${zl(v)}</td>`;
 const kolKwota=BRAK?"":"<th>Kwota</th>";
-const viewSum=()=>tbl(`<th>ETF</th>${BRAK?"":"<th>Kwota</th>"}<th>Udział</th><th>z 10-tego</th><th>z 25-tego</th>`,
+const viewSum=()=>tbl(`<th>ETF</th>${BRAK?"":`<th>${CURV==="usd"?"USD":"zł"}</th>`}<th>Udział</th><th>z 10-tego</th><th>z 25-tego</th>`,
   Object.entries(COMBINED).sort((a,b)=>b[1]-a[1]).map(([t,v])=>
     `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
-     ${BRAK?"":`<td class="num">${zl(v)}</td>`}<td class="num">${pc(v/TOTAL)}</td>
-     <td class="num sub">${BRAK?pc((T10.out[t]||0)/(TOTAL/2)):zl(T10.out[t]||0)}</td>
-     <td class="num sub">${BRAK?pc((T25.out[t]||0)/(TOTAL/2)):zl(T25.out[t]||0)}</td></tr>`).join(""),
-  `<tr><td>Razem</td>${BRAK?"":`<td class="num">${zl(TOTAL)}</td>`}<td class="num">100,0%</td>
-   <td class="num">${BRAK?"100,0%":zl(TOTAL/2)}</td><td class="num">${BRAK?"100,0%":zl(TOTAL/2)}</td></tr>`);
+     ${BRAK?"":`<td class="num">${zl(CURV==="usd"?v:v*FXN)}</td>`}<td class="num">${pc(v/TOTAL)}</td>
+     <td class="num sub">${BRAK?pc((T10.out[t]||0)/(TOTAL/2)):zl(CURV==="usd"?(T10.out[t]||0):(T10.out[t]||0)*FXN)}</td>
+     <td class="num sub">${BRAK?pc((T25.out[t]||0)/(TOTAL/2)):zl(CURV==="usd"?(T25.out[t]||0):(T25.out[t]||0)*FXN)}</td></tr>`).join(""),
+  `<tr><td>Razem</td>${BRAK?"":`<td class="num">${zl(CURV==="usd"?TOTAL:TOTAL*FXN)}</td>`}<td class="num">100,0%</td>
+   <td class="num">${BRAK?"100,0%":zl(CURV==="usd"?TOTAL/2:TOTAL/2*FXN)}</td><td class="num">${BRAK?"100,0%":zl(CURV==="usd"?TOTAL/2:TOTAL/2*FXN)}</td></tr>`);
 function viewAcc(){
   if(BRAK)return `<div class="pusto"><b>Nie wiem, na których kontach to trzymasz.</b>
     <p>Dopisz stan każdego konta w zakładce Wpisy — najlepiej z rozbiciem na walory.
@@ -583,27 +586,27 @@ function viewAcc(){
   const s=SETUPS[SETUP];let h=`<div class="seg setupSel"></div>`;
   for(const a of s.accounts){
     const o=accComp(a),cap=accTarget(a);
-    h+=`<h2 class="psec">${esc(a.name)} <span class="sub" style="font-weight:400">· ${accLegs(a)} · ${zl(cap)} zł</span></h2>`
-      +tbl("<th>ETF</th><th>Kwota</th><th>Udział konta</th>",Object.entries(o).map(([t,v])=>
+    h+=`<h2 class="psec">${esc(a.name)} <span class="sub" style="font-weight:400">· ${accLegs(a)} · ${kw(cap)}</span></h2>`
+      +tbl(`<th>ETF</th><th>${CURV==="usd"?"USD":"zł"}</th><th>Udział konta</th>`,Object.entries(o).map(([t,v])=>
         `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
-         <td class="num">${zl(v)}</td><td class="num">${pc(v/cap)}</td></tr>`).join(""))}
+         <td class="num">${zl(CURV==="usd"?v:v*FXN)}</td><td class="num">${pc(v/cap)}</td></tr>`).join(""))}
   return h}
 const viewDat=()=>[[T10,SIGNALS[0]],[T25,SIGNALS[1]]].map(([T,s])=>
   `<h2 class="psec">Transza ${s.tranche}-tego <span class="sub" style="font-weight:400">· ${s.date}</span></h2>
    <div style="margin-bottom:11px">
      <div class="leg"><b>BEST17</b><span class="pill ${s.best17.mode==="RISK"?"p-risk":"p-cash"}">${s.best17.mode}</span><span class="as">${s.best17.picks.join(" · ")||"gotówka"}</span></div>
      <div class="leg"><b>GPM</b><span class="pill ${s.gpm.mode==="RISK"?"p-risk":"p-cash"}">${s.gpm.mode}</span><span class="as">${Object.keys(s.gpm.weights).join(" · ")}</span></div></div>`
-  +tbl(`<th>ETF</th>${BRAK?"":"<th>Kwota</th>"}<th>Udział</th>`,Object.entries(T.out).filter(([,v])=>v>.5).sort((a,b)=>b[1]-a[1]).map(([t,v])=>
+  +tbl(`<th>ETF</th>${BRAK?"":`<th>${CURV==="usd"?"USD":"zł"}</th>`}<th>Udział</th>`,Object.entries(T.out).filter(([,v])=>v>.5).sort((a,b)=>b[1]-a[1]).map(([t,v])=>
     `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
-     ${BRAK?"":`<td class="num">${zl(v)}</td>`}<td class="num">${pc(v/(T.kB+T.kG))}</td></tr>`).join(""))).join("");
+     ${BRAK?"":`<td class="num">${zl(CURV==="usd"?v:v*FXN)}</td>`}<td class="num">${pc(v/(T.kB+T.kG))}</td></tr>`).join(""))).join("");
 function renderSklad(m){document.getElementById("skladBody").innerHTML=m==="acc"?viewAcc():m==="dat"?viewDat():viewSum();fillSel()}
 function renderAccounts(){
   const s=SETUPS[SETUP];
   document.getElementById("accCards").innerHTML=s.accounts.map(a=>{
     const o=accComp(a),cap=accTarget(a),d=a.value-cap,capo=Object.values(o).reduce((x,y)=>x+y,0);
     return `<div class="legc"><div class="t">${esc(a.name)} <em>${accLegs(a)}</em></div>
-      <div class="n">${zl(CURV==="usd"?a.value/FXN:a.value)}<span>${CURV==="usd"?"USD":"zł"}</span></div>
-      <div class="d">cel ${zl(CURV==="usd"?cap/FXN:cap)} · <span style="color:var(${Math.abs(d)<cap*.02?"--faint":"--warn"})">${d>=0?"+":"−"}${zl(CURV==="usd"?d/FXN:d)}</span></div>
+      <div class="n">${zl(CURV==="usd"?a.value:a.value*FXN)}<span>${CURV==="usd"?"USD":"zł"}</span></div>
+      <div class="d">cel ${kw(cap)} · <span style="color:var(${Math.abs(d)<cap*.02?"--faint":"--warn"})">${d>=0?"+":"−"}${kw(Math.abs(d))}</span></div>
       <div class="d">TWR <span style="color:var(${a.pln>=0?"--pos":"--neg"})">${sg(a.pln)}% PLN</span> · <span style="color:var(${a.usd>=0?"--pos":"--neg"})">${sg(a.usd)}% USD</span></div>
       <div class="bar">${Object.entries(o).map(([t,v])=>{const pr=v/capo*100;
         return `<span style="flex:${pr};background:${CSS(KOL[t]||"--s6")}" title="${t} ${pc(v/capo)}">${pr>13?(t==="GOTOWKA"?"GOT.":t):""}</span>`}).join("")}</div></div>`}).join("");
@@ -616,8 +619,8 @@ function renderAccounts(){
     .sort((a,b)=>Math.abs(b.pp)-Math.abs(a.pp)).map(r=>{
       const nm=r.t==="GOTOWKA"?"Gotówka":r.t,c=Math.abs(r.pp)<1?"--faint":r.pp>0?"--warn":"--cash";
       return `<div class="row"><div class="ic" style="background:${CSS(KOL[r.t]||"--s6")}">${nm.slice(0,2).toUpperCase()}</div>
-        <div class="nm">${nm}<em>mam ${zl(r.h)} · cel ${zl(r.w)} zł</em></div>
-        <div class="vl"><b style="color:var(${c})">${r.d>=0?"+":"−"}${zl(r.d)} zł</b><span>${sg(r.pp)} pp</span></div></div>`}).join("");
+        <div class="nm">${nm}<em>mam ${kw(r.h)} · cel ${kw(r.w)}</em></div>
+        <div class="vl"><b style="color:var(${c})">${r.d>=0?"+":"−"}${kw(Math.abs(r.d))}</b><span>${sg(r.pp)} pp</span></div></div>`}).join("");
   fillSel()}
 
 function renderDiag(){
@@ -887,12 +890,13 @@ document.getElementById("priceList").addEventListener("submit",e=>{
 let TX=[];
 try{TX=JSON.parse(localStorage.getItem("tx")||"[]")}catch(e){TX=[]}
 const saveTX=()=>{try{localStorage.setItem("tx",JSON.stringify(TX))}catch(e){}};
+WPISY=true;   /* od tego miejsca wolno pytac o kursy z wpisow */
 /* Zalogowany trzyma wpisy w bazie - przezywaja zmiane urzadzenia.
    Niezalogowany zostaje przy przegladarce, zeby panel dalo sie klikac. */
 async function wczytajTXzBazy(){
   try{
     const z=await FB.wczytaj(USER.uid,"transactions");
-    TX=z.map(r=>({id:r.id,d:r.d,a:r.a,t:r.t,k:r.k,px:r.px||null}));
+    TX=z.map(r=>({id:r.id,d:r.d,a:r.a||"",t:r.t,k:r.k,px:r.px||null}));
   }catch(e){console.warn("nie udalo sie wczytac wpisow:",e.message)}
   poWpisach();
 }
@@ -909,16 +913,44 @@ async function usunTX(i){
   else saveTX();
   poWpisach();
 }
-const TYP={stan:"Stan konta",wplata:"Wpłata",wyplata:"Wypłata"};
-const TXI={stan:["=","--accent"],wplata:["↓","--pos"],wyplata:["↑","--cash"]};
+const TYP={stan:"Stan konta",wplata:"Wpłata",wyplata:"Wypłata",kurs:"Kurs USD/PLN"};
+const TXI={stan:["=","--accent"],wplata:["↓","--pos"],wyplata:["↑","--cash"],kurs:["zł","--s5"]};
 
 /* ---- portfel policzony z wpisow ---- */
 const mies=d=>d.slice(0,7);
+/* Kursy USD/PLN z konkretnych dni - user podaje je przy stanie konta albo
+   osobno. Jeden kurs na cala historie zanizalby albo zawyzal stare wplaty,
+   a "wplacone w zlotych" ma byc tym, co naprawde wyszlo z konta. */
+const kursy=()=>TX.filter(r=>r.t==="kurs"&&r.k>0).sort((a,b)=>a.d.localeCompare(b.d));
+function kursNa(data){
+  const k=kursy();
+  if(!k.length)return KURS;
+  let w=k[0].k;                       /* przed pierwszym wpisem - najstarszy znany */
+  for(const r of k){if(r.d<=data)w=r.k;else break}
+  return w;
+}
+const kursTeraz=()=>{const k=kursy();return k.length?k.at(-1).k:KURS};
 /* Ktora noga odpowiada za dany walor - z ROLE w signals.json. Walor wspolny dla
    obu nog (np. CSPX: BEST17 + GPM) liczy sie po polowie. */
 const nogaWaloru=t=>{const r=ROLE[t]||"";const b=r.includes("BEST17"),g=r.includes("GPM");
   return b&&g?{best17:.5,gpm:.5}:b?{best17:1,gpm:0}:{best17:0,gpm:1}};
 
+/* Lancuch zwrotow miedzy obserwowanymi miesiacami. Ta sama funkcja liczy TWR w
+   dolarach i w zlotych - roznia sie tylko tym, jakie tablice dostanie. W zlotych
+   wychodzi inaczej, bo dochodzi na to ruch kursu, i tak ma byc: kto liczy w
+   zlotowkach, ten zarabia lub traci takze na kursie. */
+function lancuch(wart,wpl,obs){
+  const zwr=wart.map(()=>null);
+  let poprz=-1;
+  wart.forEach((_,i)=>{
+    if(!obs.has(OSTATNIA_OS[i])||!wart[i])return;
+    if(poprz>=0&&wart[poprz])
+      zwr[i]=+(((wart[i]-(wpl[i]-wpl[poprz]))/wart[poprz]-1)*100).toFixed(2);
+    poprz=i});
+  const twr=(zwr.filter(x=>x!=null).reduce((a,r)=>a*(1+r/100),1)-1)*100;
+  return {zwr,twr:+twr.toFixed(2)};
+}
+let OSTATNIA_OS=[];
 function liczPortfel(){
   const stany=TX.filter(r=>r.t==="stan"&&r.k>0);
   if(!stany.length)return null;
@@ -933,6 +965,7 @@ function liczPortfel(){
   const os=[];{const [y0,m0]=msc[0].split("-").map(Number),[y1,m1]=msc.at(-1).split("-").map(Number);
     for(let y=y0,m=m0;y<y1||(y===y1&&m<=m1);m++){if(m>12){m=1;y++}
       os.push(y+"-"+String(m).padStart(2,"0"))}}
+  OSTATNIA_OS=os;
 
   /* Jedna funkcja na calosc i na pojedyncze konto - inaczej suma kont i portfel
      liczylyby sie innym kodem i predzej czy pozniej by sie rozjechaly. */
@@ -950,15 +983,8 @@ function liczPortfel(){
        konto wtedy bylo warte, a wykres pokazujacy tam 0,0% klamalby.
        Przeplyw odejmujemy, inaczej wplata wygladalaby jak zysk. */
     const obs=new Set(stany.filter(moje).map(r=>mies(r.d)));
-    const zwr=os.map(()=>null);
-    let poprz=-1;
-    os.forEach((m,i)=>{
-      if(!obs.has(m)||!wart[i])return;
-      if(poprz>=0&&wart[poprz])
-        zwr[i]=+(((wart[i]-(wpl[i]-wpl[poprz]))/wart[poprz]-1)*100).toFixed(2);
-      poprz=i});
-    const twr=(zwr.filter(x=>x!=null).reduce((a,r)=>a*(1+r/100),1)-1)*100;
-    return {wart,wpl,zwr,twr:+twr.toFixed(2)};
+    const {zwr,twr}=lancuch(wart,wpl,obs);
+    return {wart,wpl,zwr,twr};
   };
   const P=seria(null);
 
@@ -983,11 +1009,11 @@ function liczPortfel(){
     for(const[t,v]of Object.entries(perKonto[k]||{})){
       if(t==="GOTOWKA")continue;
       const n=nogaWaloru(t);udzial.best17[k]+=v*n.best17;udzial.gpm[k]+=v*n.gpm}}
-  const kurs=KURS;
+  const kurs=kursTeraz();   /* kurs "na teraz" - do kwot bez wlasnej daty */
   const konce=Object.fromEntries(konta.map(k=>[k,seria(k)]));
   const accounts=konta.map(k=>{
     const sum=l=>konta.reduce((a,x)=>a+udzial[l][x],0);
-    const a={name:k,value:Math.round(konce[k].wart.at(-1)*kurs),
+    const a={name:k,value:Math.round(konce[k].wart.at(-1)),
              pln:konce[k].twr,usd:konce[k].twr,
              alloc:{best17:sum("best17")?udzial.best17[k]/sum("best17"):0,
                     gpm:sum("gpm")?udzial.gpm[k]/sum("gpm"):0}};
@@ -996,20 +1022,26 @@ function liczPortfel(){
       a.alloc={best17:konce[k].wart.at(-1)/cal,gpm:konce[k].wart.at(-1)/cal}}
     return a});
 
-  /* Panel trzyma kwoty w zlotych i dzieli przez kurs, gdy pokazuje USD - wpisy sa
-     w USD, wiec przeliczamy je tutaj, zeby reszta kodu nie musiala o tym wiedziec. */
-  const kapital=P.wart.at(-1)*kurs;
-  for(const t of Object.keys(trzymam))trzymam[t]*=kurs;
+  /* Wszystko zostaje w DOLARACH - w nich sa wpisy i w nich notowane sa ETF-y.
+     Zlote to wylacznie warstwa wyswietlania (funkcja kw()), po kursie z daty. */
+  const kapital=P.wart.at(-1);
+  const wartPln=P.wart.map((v,i)=>Math.round(v*kursNa(os[i]+"-28")));
+  const wplPln=os.map(m=>Math.round(TX.filter(r=>mies(r.d)<=m)
+    .reduce((a,r)=>a+(r.t==="wplata"?r.k*kursNa(r.d):r.t==="wyplata"?-r.k*kursNa(r.d):0),0)));
+  const pln=lancuch(wartPln,wplPln,new Set(stany.map(r=>mies(r.d))));
   return {
     owner:"wpisy", capital:{best17:kapital/2,gpm:kapital/2,split10:.5},
     holdings:trzymam, accounts,
-    months:os, value:P.wart.map(v=>Math.round(v*kurs)), paid:P.wpl.map(v=>Math.round(v*kurs)),
+    months:os,
+    /* Wartosc w zlotych: kurs z konca danego miesiaca. Wplacone w zlotych:
+       KAZDY przeplyw po swoim wlasnym kursie - tyle naprawde kosztowal. */
+    value:wartPln, paid:wplPln,
     value_usd:P.wart, paid_usd:P.wpl,
-    returns:{usd:P.zwr,pln:P.zwr},
+    returns:{usd:P.zwr,pln:pln.zwr},
     legs:{best17:{value_usd:P.wart.at(-1)/2,paid_usd:P.wpl.at(-1)/2},
           gpm:{value_usd:P.wart.at(-1)/2,paid_usd:P.wpl.at(-1)/2}},
-    fx:{pair:"USD/PLN",rate:kurs,series:os.map(()=>kurs)},
-    twr:{usd:P.twr,pln:P.twr},
+    fx:{pair:"USD/PLN",rate:kurs,series:os.map(m=>kursNa(m+"-28"))},
+    twr:{usd:P.twr,pln:pln.twr},
   };
 }
 function rysujPasek(){
@@ -1040,9 +1072,14 @@ function fillAccSelect(){
   s.innerHTML=lista.map(a=>`<option>${esc(a)}</option>`).join("")+`<option value="__nowe">+ nowe konto…</option>`;
   if(lista.includes(cur))s.value=cur}
 function rysujRozbicie(){
-  const pok=document.getElementById("txType").value==="stan";
+  const typ=document.getElementById("txType").value,pok=typ==="stan";
   document.getElementById("txSplit").hidden=!pok;
-  document.getElementById("txAmtLbl").textContent=pok?"Wartość konta w USD":"Kwota w USD";
+  /* Kurs podaje sie przy stanie konta (bo wtedy i tak patrzysz na rachunek)
+     albo osobnym wpisem dla dowolnej daty. */
+  document.getElementById("txKursWrap").hidden=!pok;
+  document.getElementById("txAcc").closest(".fld").hidden=typ==="kurs";
+  document.getElementById("txAmtLbl").textContent=
+    typ==="kurs"?"Ile złotych za dolara":pok?"Wartość konta w USD":"Kwota w USD";
   if(!pok)return;
   /* Walory WYKONAWCZE - to te linie realnie lezą na rachunku, nie tickery
      sygnalowe z USA (sygnal liczy sie na XLK, kupujesz IUIT). */
@@ -1063,18 +1100,28 @@ function sumujRozbicie(){
 function renderTX(){
   TX.sort((a,b)=>b.d.localeCompare(a.d));
   /* polska odmiana: 1 wpis, 2-4 wpisy, 0 i 5+ wpisow (plus wyjatek 12-14) */
-  const n=TX.length,d=n%10,st=n%100;
+  const n=TX.filter(r=>r.t!=="kurs").length,d=n%10,st=n%100;
   document.getElementById("txCount").textContent=
     n+" "+(n===1?"wpis":(d>=2&&d<=4&&!(st>=12&&st<=14))?"wpisy":"wpisów");
-  document.getElementById("txList").innerHTML=TX.length?TX.map((r,i)=>{
+  const lista=TX.map((r,i)=>[r,i]).filter(([r])=>r.t!=="kurs");
+  document.getElementById("txList").innerHTML=lista.length?lista.map(([r,i])=>{
     const[sym,c]=TXI[r.t]||["?","--s6"];
     return `<div class="row"><div class="ic" style="background:${CSS(c)}">${sym}</div>
       <div class="nm">${TYP[r.t]||r.t}<em>${r.d} · ${esc(r.a)}${r.px?" · rozbite na walory":""}</em></div>
       <div class="vl" style="display:flex;align-items:center;gap:10px"><b>${zl(r.k)} USD</b>
         <button class="del" data-del="${i}" aria-label="Usuń wpis z ${r.d}">×</button></div></div>`}).join("")
     :'<div class="empty">Brak wpisów. Dopisz pierwszy stan konta powyżej — od tego momentu Pulpit liczy z Twoich liczb, nie z przykładu.</div>';
+  const kur=kursy();
+  document.getElementById("kursList").innerHTML=kur.length
+    ? kur.slice().reverse().map(r=>{const i=TX.indexOf(r);
+        return `<div class="row"><div class="ic" style="background:${CSS("--s5")}">zł</div>
+          <div class="nm">${r.d}<em>${r.k.toFixed(4).replace(".",",")} zł za dolara</em></div>
+          <div class="vl" style="display:flex;align-items:center;gap:10px"><b>${r.k.toFixed(2).replace(".",",")}</b>
+            <button class="del" data-del="${i}" aria-label="Usuń kurs z ${r.d}">×</button></div></div>`}).join("")
+    : `<div class="empty">Brak kursów. Dopisz choć jeden — bez niego panel pokazuje tylko dolary
+       (przyjmuje ${KURS.toFixed(2).replace(".",",")} jako kurs zastępczy).</div>`;
   const acc={};
-  for(const r of TX){acc[r.a]=acc[r.a]||{in:0,stan:null,d:""};
+  for(const r of TX){if(r.t==="kurs")continue;acc[r.a]=acc[r.a]||{in:0,stan:null,d:""};
     if(r.t==="wplata")acc[r.a].in+=r.k;
     if(r.t==="wyplata")acc[r.a].in-=r.k;
     if(r.t==="stan"&&r.d>=acc[r.a].d){acc[r.a].stan=r.k;acc[r.a].d=r.d}}
@@ -1100,12 +1147,21 @@ document.getElementById("txForm").addEventListener("submit",e=>{
   if(konto==="__nowe"){alert("Najpierw nazwij konto.");return}
   const rec={d:document.getElementById("txDate").value,a:konto,t,
     k:parseFloat(document.getElementById("txAmt").value)||0};
+  if(t==="kurs"){
+    if(!(rec.k>0)){alert("Kurs musi być większy od zera.");return}
+    rec.a="";dodajTX(rec);
+    e.target.reset();document.getElementById("txDate").value=new Date().toISOString().slice(0,10);
+    fillAccSelect();rysujRozbicie();return}
   if(t==="stan"){
     const px={};for(const i of document.querySelectorAll("#txPx input")){
       const v=parseFloat(i.value)||0;if(v>0)px[i.dataset.pt]=v}
     const suma=Object.values(px).reduce((a,b)=>a+b,0);
     if(suma-rec.k>0.5){alert("Rozbicie na walory jest większe niż wartość konta.");return}
     if(Object.keys(px).length)rec.px=px;
+    /* Kurs podany przy stanie konta zapisuje sie jako OSOBNY wpis z ta sama data -
+       dzieki temu dziala tak samo, jak gdyby go wpisac recznie. */
+    const kr=parseFloat(document.getElementById("txKurs").value);
+    if(kr>0)dodajTX({d:rec.d,a:"",t:"kurs",k:kr});
   }
   dodajTX(rec);
   e.target.reset();
@@ -1114,14 +1170,7 @@ document.getElementById("txForm").addEventListener("submit",e=>{
 document.getElementById("txList").addEventListener("click",e=>{
   const b=e.target.closest("[data-del]");if(!b)return;
   usunTX(+b.dataset.del)});
-/* Kurs do przeliczenia na zlote - jedna liczba, zapisana lokalnie. */
-const polKurs=document.getElementById("kursPln");
-polKurs.value=KURS;
-polKurs.addEventListener("change",()=>{
-  const k=parseFloat(polKurs.value);
-  if(!(k>0)){polKurs.value=KURS;return}
-  KURS=k;try{localStorage.setItem("kurs",String(k))}catch(e){}
-  poWpisach()});
+
 
 /* ============ nawigacja ============ */
 const VIEWS=["pulpit","sygnal","wyniki","transakcje","ceny","dlaczego"];

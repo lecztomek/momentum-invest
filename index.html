@@ -117,8 +117,11 @@
       <div class="fld"><label for="txType">Typ</label><select id="txType">
         <option value="stan">Stan konta</option>
         <option value="wplata">Wpłata</option><option value="wyplata">Wypłata</option>
+        <option value="kurs">Kurs USD/PLN</option>
       </select></div>
       <div class="fld"><label for="txAmt"><span id="txAmtLbl">Wartość konta w USD</span></label><input type="number" id="txAmt" step="0.01" min="0" placeholder="0,00" required></div>
+      <div class="fld" id="txKursWrap"><label for="txKurs">Kurs USD/PLN tego dnia</label>
+        <input type="number" id="txKurs" step="0.0001" min="0.1" placeholder="nieobowiązkowe"></div>
       <div class="fld w2" style="justify-content:flex-end"><button class="btn" type="submit">Dopisz</button></div>
     </form>
     <div id="txSplit">
@@ -134,16 +137,11 @@
   <h2 class="psec">Historia</h2>
   <div class="list" id="txList"></div>
 
-  <h2 class="psec">Przeliczenie na złote</h2>
-  <div class="card">
-    <div class="form" style="grid-template-columns:1fr">
-      <div class="fld"><label for="kursPln">Kurs USD/PLN</label>
-        <input type="number" id="kursPln" step="0.0001" min="0.1"></div>
-    </div>
-    <p class="note">Wpisy są w dolarach. Ta jedna liczba służy tylko do pokazania ich w złotych —
-      jest stosowana do całej historii, więc krzywa w PLN to krzywa w USD przeskalowana, nie
-      prawdziwe przeliczenie po kursie z każdego dnia.</p>
-  </div>
+  <h2 class="psec">Kursy USD/PLN</h2>
+  <div class="list" id="kursList"></div>
+  <p class="note">Wpisy są w dolarach — ETF-y są dolarowe. Złote liczą się po kursie z danej daty:
+    wartość konta po kursie z końca miesiąca, a każda wpłata po kursie z dnia, w którym ją zrobiłeś.
+    Dla dat sprzed pierwszego kursu panel bierze najstarszy, jaki zna.</p>
 </section>
 
 <!-- ========== PORTFEL ========== -->
