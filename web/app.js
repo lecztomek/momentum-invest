@@ -26,7 +26,7 @@ const TRN=(SIG.tranches||[10,25]).map(String);
 let DTAB=TRN[0];
 const D=()=>SIG.diagnostics[DTAB];
 const CAPITAL=PORT.capital, HOLDINGS=PORT.holdings, MONTHS=PORT.months, VALUE=PORT.value,
-      PAID=PORT.paid, MIX=PORT.mix, KLASY=PORT.classes;
+      PAID=PORT.paid;
 const RET=PERF.monthly;
 /* Aktywa sa dolarowe: USD jest wartoscia pierwotna, PLN to przeliczenie po kursie z danego miesiaca. */
 const FXS=PORT.fx.series, VUSD=PORT.value_usd, PUSD=PORT.paid_usd, RETC=PORT.returns, LEGS=PORT.legs;
@@ -181,8 +181,11 @@ function wire(box,svg,tip,H){
 const HV=o=>JSON.stringify(o).replace(/'/g,"&apos;");
 const FS=w=>w<460?11:12.5;
 
+/* Miks klas to historia STRATEGII, nie portfela - idzie z performance.json,
+   ktore liczy silnik, i ma wlasna os czasu (okresy rebalansu obu transz). */
+const KLASY=PERF.classes, MIX=PERF.mix, MIXM=PERF.mix_months;
 chart("c-mix",W=>{
-  const nr=W<460,H=nr?220:260,L=nr?34:40,R=10,T=12,B=28,n=MONTHS.length,f=FS(W);
+  const nr=W<460,H=nr?220:260,L=nr?34:40,R=10,T=12,B=28,n=MIXM.length,f=FS(W);
   const X=i=>L+(W-L-R)*i/(n-1),Y=p=>T+(H-T-B)*(1-p/100);
   const cum=MIX.map(r=>{let a=0;return r.map(v=>a+=v)});
   let paths="";
@@ -190,29 +193,33 @@ chart("c-mix",W=>{
     const d=cum.map((r,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(r[s]).toFixed(1)).join(" ")+` L${X(n-1)} ${Y(0)} L${X(0)} ${Y(0)} Z`;
     paths+=`<path d="${d}" fill="${CSS(KLASY[s][1])}" stroke="${CSS("--surface")}" stroke-width="2" stroke-linejoin="round"/>`}
   let g="";for(let p=0;p<=100;p+=25)g+=`<text x="${L-7}" y="${Y(p)+4}" text-anchor="end" fill="${CSS("--faint")}" font-size="${f}">${p}</text>`;
-  let xl="";for(let i=0;i<n;i+=nr?6:4)xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${mLbl(MONTHS[i])}</text>`;
-  const hit=MONTHS.map((m,i)=>({cx:X(i),html:`<div class="th">${mLbl(m)}</div>`+KLASY.map((k,s)=>MIX[i][s]?
+  let xl="";for(let i=0;i<n;i+=nr?6:4)xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${mLbl(MIXM[i])}</text>`;
+  const hit=MIXM.map((m,i)=>({cx:X(i),html:`<div class="th">${mLbl(m)}</div>`+KLASY.map((k,s)=>MIX[i][s]?
     `<div class="tr"><span class="sw" style="background:${CSS(k[1])}"></span>${k[0]}<span class="tv">${MIX[i][s]}%</span></div>`:"").join("")}));
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Udział klas aktywów w czasie" data-hover='${HV({W,H,max:(W-L-R)/n,hit})}'>
     ${g}${paths}<line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--fg")}" style="opacity:0"/>${xl}</svg>`});
 
+/* Obsuniecie liczone z DZIENNEJ krzywej kapitalu (silnik), probkowane tygodniowo -
+   z miesiecznych zamkniec dolki wychodza plytsze, niz byly. */
+const DD=PERF.drawdown;
 chart("c-dd",W=>{
-  const nr=W<460,H=nr?190:225,L=nr?40:48,R=10,T=12,B=28,c=STAT.curve,n=c.length,f=FS(W);
-  const lo=Math.floor(STAT.mdd/5)*5-2;
+  const nr=W<460,H=nr?190:225,L=nr?40:48,R=10,T=12,B=28,c=DD.dd,n=c.length,f=FS(W);
+  const lo=Math.floor(Math.min(...c)/5)*5-2;
   const X=i=>L+(W-L-R)*i/(n-1),Y=v=>T+(H-T-B)*(1-(v-lo)/(0-lo));
-  const d=c.map((p,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(p.dd).toFixed(1)).join(" ");
+  const d=c.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)).join(" ");
   let g="";for(let v=0;v>=lo;v-=5)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${CSS("--line")}"/><text x="${L-7}" y="${Y(v)+4}" text-anchor="end" fill="${CSS("--faint")}" font-size="${f}">${v}%</text>`;
-  let xl="";for(let i=0;i<n;i+=nr?24:12)xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${c[i].y}</text>`;
-  const mi=c.reduce((b,p,i)=>p.dd<c[b].dd?i:b,0);
-  const hit=c.map((p,i)=>({cx:X(i),html:`<div class="th">${MN[p.m]} ${p.y}</div>
-    <div class="tr">Obsunięcie<span class="tv" style="color:${CSS("--neg")}">${p.dd.toFixed(1).replace(".",",")}%</span></div>
-    <div class="tr">Miesiąc<span class="tv" style="color:${p.r>=0?CSS("--pos"):CSS("--neg")}">${sg(p.r)}%</span></div>`}));
+  let xl="",ost="";for(let i=0;i<n;i++){const y=DD.dates[i].slice(0,4);
+    if(y!==ost){ost=y;if(nr&&+y%2)continue;
+      xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${y}</text>`}}
+  const mi=c.reduce((b,v,i)=>v<c[b]?i:b,0);
+  const hit=c.map((v,i)=>({cx:X(i),html:`<div class="th">${DD.dates[i]}</div>
+    <div class="tr">Obsunięcie<span class="tv" style="color:${CSS("--neg")}">${v.toFixed(1).replace(".",",")}%</span></div>`}));
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Obsunięcie od szczytu" data-hover='${HV({W,H,max:(W-L-R)/n,hit})}'>
     <defs><linearGradient id="dg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${CSS("--neg")}" stop-opacity="0"/><stop offset="1" stop-color="${CSS("--neg")}" stop-opacity=".35"/></linearGradient></defs>
     ${g}${xl}<path d="${d} L${X(n-1)} ${Y(0)} L${X(0)} ${Y(0)} Z" fill="url(#dg)"/>
     <path d="${d}" fill="none" stroke="${CSS("--neg")}" stroke-width="2.5" stroke-linejoin="round"/>
     <line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>
-    <circle cx="${X(mi)}" cy="${Y(c[mi].dd)}" r="5" fill="${CSS("--neg")}" stroke="${CSS("--surface")}" stroke-width="2.5"/>
+    <circle cx="${X(mi)}" cy="${Y(c[mi])}" r="5" fill="${CSS("--neg")}" stroke="${CSS("--surface")}" stroke-width="2.5"/>
     <text x="${X(mi)}" y="${Y(c[mi].dd)+19}" text-anchor="middle" fill="${CSS("--neg")}" font-size="${f+1}" font-weight="700">MaxDD ${STAT.mdd.toFixed(1).replace(".",",")}%</text></svg>`});
 
 chart("c-yr",W=>{
@@ -567,17 +574,25 @@ function renderDiag(){
 }
 
 function renderWyniki(){
-  document.getElementById("wynStamp").textContent=
-    `${mLbl(SER[0].y+"-"+String(SER[0].m+1).padStart(2,"0"))} – ${mLbl(SER.at(-1).y+"-"+String(SER.at(-1).m+1).padStart(2,"0"))}`;
+  document.getElementById("wynStamp").textContent=PERF.metrics.from+" – "+PERF.metrics.to;
+  /* Liczby z silnika, nie przeliczone z miesiecznej siatki: MaxDD i Sharpe licza
+     sie z DZIENNEJ krzywej kapitalu, wiec obsuniecie w srodku miesiaca nie znika.
+     Z samych miesiecy MaxDD wychodzil dwa razy plytszy niz byl naprawde. */
+  const M=PERF.metrics;
   document.getElementById("tiles").innerHTML=[
-    ["CAGR",sg2(STAT.cagr)+"%","rocznie","--pos"],
-    ["MaxDD",STAT.mdd.toFixed(1).replace(".",",")+"%","najgłębsze","--neg"],
-    ["Calmar",STAT.calmar.toFixed(2).replace(".",","),"zysk do ryzyka","--fg"],
+    ["CAGR",sg2(M.cagr*100)+"%","rocznie","--pos"],
+    ["MaxDD",(M.max_drawdown*100).toFixed(1).replace(".",",")+"%","dziennie, najgłębsze","--neg"],
+    ["Calmar",M.calmar.toFixed(2).replace(".",","),"zysk do ryzyka","--fg"],
+    ["Sharpe",M.sharpe.toFixed(2).replace(".",","),"rf = 0","--fg"],
+    /* Lata biora sie z TEJ SAMEJ siatki, ktora user widzi nizej - inaczej kafelek
+       i tabela pokazywalyby dla 2025 dwie rozne liczby (okresy transz vs rok
+       kalendarzowy z dziennej krzywej). */
     ["Najgorszy rok",sg(STAT.worst)+"%","z "+STAT.yl.length+" lat","--neg"],
     ["Najlepszy rok",sg(STAT.best)+"%","","--pos"],
-    ["Dodatnie miesiące",STAT.win.toFixed(0)+"%",SER.length+" miesięcy","--fg"],
-    ["Pod wodą",STAT.maxuw+" mies.","najdłużej","--warn"],
-    ["Mnożnik","×"+STAT.eq.toFixed(2).replace(".",","),"bez wpłat","--accent"]
+    ["Dodatnie miesiące",PERF.positive_months.toFixed(0)+"%",PERF.months+" miesięcy","--fg"],
+    ["Pod wodą",M.max_time_underwater_months+" mies.","najdłużej","--warn"],
+    ["Obrót",M.annual_turnover.toFixed(1).replace(".",",")+"×","rocznie","--muted"],
+    ["Mnożnik","×"+M.multiple.toFixed(2).replace(".",","),"bez wpłat","--accent"]
   ].map(([l,v,d,c])=>`<div class="tile"><div class="lbl">${l}</div><div class="v" style="color:var(${c})">${v}</div><div class="d">${d}</div></div>`).join("");
   const col=r=>{const a=Math.min(Math.abs(r)/6,1)*.55+.08;return `background:rgba(${r>=0?"12,163,12":"208,59,59"},${a.toFixed(2)})`};
   let h=`<thead><tr><th>Rok</th>${MN.map(m=>`<th>${m}</th>`).join("")}<th>Rok</th></tr></thead><tbody>`;

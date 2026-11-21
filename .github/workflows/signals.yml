@@ -2,7 +2,8 @@ name: Sygnal
 
 # Liczy sygnal i publikuje go do web/data/signals.json oraz ceny wykonania do
 # web/data/prices.json (to te same liczby, ktorymi liczyl silnik - ekran "Ceny"
-# sluzy do porownania ich z rachunkiem u brokera).
+# sluzy do porownania ich z rachunkiem u brokera) oraz historie strategii do
+# web/data/performance.json.
 #
 # Ceny wpisane recznie zyja w Firestore, dane dostawcy w repo. Pipeline laczy
 # jedno z drugim w KOPII, nigdy nie ruszajac plikow w data/ - to sa dane zrodlowe
@@ -41,15 +42,18 @@ jobs:
       - name: Wystaw ceny wykonania
         run: python3 tools/build_prices.py --specs "$RUNNER_TEMP/ws/strategies_v2"
 
+      - name: Przelicz historie strategii
+        run: python3 tools/build_performance.py --specs "$RUNNER_TEMP/ws/strategies_v2"
+
       - name: Opublikuj, jesli cokolwiek sie zmienilo
         run: |
-          if git diff --quiet -- web/data/signals.json web/data/prices.json; then
+          if git diff --quiet -- web/data/signals.json web/data/prices.json web/data/performance.json; then
             echo "sygnal i ceny bez zmian - nic do opublikowania"
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add web/data/signals.json web/data/prices.json
+          git add web/data/signals.json web/data/prices.json web/data/performance.json
           git commit -m "Sygnal: $(python3 -c "import json;d=json.load(open('web/data/signals.json'));print(d['signals'][0]['date'])")"
           git push
 
