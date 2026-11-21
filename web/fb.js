@@ -4,7 +4,8 @@
    renderowania. */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
+  getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
+  signOut, onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs,
@@ -15,7 +16,28 @@ const app = initializeApp(FIREBASE);
 export const auth = getAuth(app);
 const db = getFirestore(app);
 
-export const zalogujGoogle = () => signInWithPopup(auth, new GoogleAuthProvider());
+/* Popup bywa zablokowany (przegladarka mobilna, tryb prywatny, blokada reklam).
+   Nie ma po co pokazywac wtedy bledu - przechodzimy na pelne przekierowanie,
+   ktore dziala wszedzie. Zamkniecie okienka przez uzytkownika to NIE blad i nie
+   jest powodem, zeby wywalac go ze strony. */
+const NA_PRZEKIEROWANIE = [
+  "auth/popup-blocked",
+  "auth/cancelled-popup-request",
+  "auth/operation-not-supported-in-this-environment",
+];
+export async function zalogujGoogle() {
+  const dostawca = new GoogleAuthProvider();
+  try {
+    return await signInWithPopup(auth, dostawca);
+  } catch (e) {
+    if (e.code === "auth/popup-closed-by-user") return null;
+    if (NA_PRZEKIEROWANIE.includes(e.code)) return signInWithRedirect(auth, dostawca);
+    throw e;
+  }
+}
+/* Po powrocie z przekierowania - zwraca blad, jesli logowanie sie nie udalo
+   (onAuthStateChanged sam w sobie milczy o przyczynie). */
+export const wynikPrzekierowania = () => getRedirectResult(auth).catch((e) => e);
 export const wyloguj = () => signOut(auth);
 export const naZmianeKonta = (cb) => onAuthStateChanged(auth, cb);
 

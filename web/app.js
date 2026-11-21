@@ -1111,12 +1111,31 @@ function rysujUid(){
   const box=document.createElement("div");box.className="uid";box.id="uidBox";
   box.innerHTML=`Nie masz jeszcze praw zapisu. Wklej swój identyfikator do kolekcji
     <b>admins</b> w konsoli Firebase — dokument o tym id, zawartość dowolna.<code>${esc(USER.uid)}</code>`;
-  document.querySelector("#v-pulpit .hero").after(box);
+  document.querySelector(".topbar").after(box);
+}
+/* Komunikat ma mowic, CO zrobic. "auth/unauthorized-domain" to najczestszy
+   przypadek przy wlasnej domenie i bez tej podpowiedzi nie da sie zgadnac. */
+function bladLogowania(err){
+  const kod=err?.code||"";
+  if(kod==="auth/unauthorized-domain")
+    return `Firebase nie dopuszcza domeny ${location.hostname}.\n\n`
+      +"Konsola Firebase → Authentication → Settings → Authorized domains → dodaj "
+      +location.hostname+".";
+  if(kod==="auth/popup-blocked"||kod==="auth/cancelled-popup-request")
+    return "Przeglądarka zablokowała okienko logowania. Spróbuj jeszcze raz — przełączę się na przekierowanie.";
+  if(kod==="auth/network-request-failed")
+    return "Brak połączenia z Firebase. Sprawdź sieć i spróbuj ponownie.";
+  return "Logowanie nie powiodło się: "+(err?.message||err);
 }
 document.addEventListener("click",async e=>{
   if(e.target.id==="btnZaloguj"){
-    try{await FB.zalogujGoogle()}catch(err){alert("Logowanie nie powiodło się: "+err.message)}}
+    const b=e.target;b.disabled=true;b.textContent="Logowanie…";
+    try{await FB.zalogujGoogle()}
+    catch(err){alert(bladLogowania(err))}
+    finally{if(document.body.contains(b)){b.disabled=false;b.textContent="Zaloguj przez Google"}}}
   else if(e.target.id==="btnWyloguj"){await FB.wyloguj()}});
+/* Powrot z przekierowania: jesli sie nie udalo, user musi wiedziec dlaczego. */
+if(FB?.wynikPrzekierowania)FB.wynikPrzekierowania().then(w=>{if(w&&w.code)alert(bladLogowania(w))});
 
 if(FB)FB.naZmianeKonta(async u=>{
   USER=u;

@@ -60,6 +60,10 @@ h1,h2,h3{text-wrap:balance;margin:0}
 
 .wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .demo{background:#2A2210;color:var(--warn);font-size:.82rem;font-weight:600}
+/* Pasek konta musi byc na KAZDYM ekranie - logowanie schowane w naglowku jednej
+   zakladki jest nie do znalezienia z pozostalych pieciu. */
+.topbar{border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;justify-content:flex-end;align-items:center;gap:10px;min-height:52px;padding-block:8px}
 .demo .wrap{padding-block:7px}
 .vh{display:flex;align-items:center;gap:14px;padding-block:22px 6px;flex-wrap:wrap}
 .vh h1{font-size:1.5rem;font-weight:700;letter-spacing:-.03em;margin-right:auto}
