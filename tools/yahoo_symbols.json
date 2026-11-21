@@ -1,0 +1,25 @@
+{
+  "_opis": [
+    "Ticker w data/ -> symbol w Yahoo Finance. Mapowanie jest ZGADYWANE i musi byc",
+    "sprawdzone: fetch_prices.py porownuje dzienne ZWROTY z tym, co juz jest w data/,",
+    "i odrzuca kazdy symbol, ktory sie nie zgadza. Zly wpis konczy sie wiec komunikatem,",
+    "nie cicho zepsutymi danymi. null = nie wiem, jaki to symbol - uzupelnij albo zostaw."
+  ],
+  "xlk.us": "XLK",
+  "ivv.us": "IVV",
+  "vt.us": "VT",
+  "iau.us": "IAU",
+  "dbc.us": "DBC",
+  "cspx.uk": "CSPX.L",
+  "cndx.uk": "CNDX.L",
+  "eimi.uk": "EIMI.L",
+  "cmod.uk": "CMOD.L",
+  "igln.uk": "IGLN.L",
+  "ihya.uk": "IHYA.L",
+  "lqda.uk": "LQDA.L",
+  "dtla.uk": "DTLA.L",
+  "iues.uk": "IUES.L",
+  "cbu0.uk": "CBU0.L",
+  "ibta.uk": "IBTA.L",
+  "xres.uk": null
+}
