@@ -195,7 +195,7 @@ const fillSel=()=>document.querySelectorAll(".setupSel").forEach(e=>e.innerHTML=
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-setup]");if(!b)return;
   SETUP=b.dataset.setup;fillSel();renderAccounts();fillAccSelect();renderPulpit();
-  const m=document.querySelector("#segS button[aria-pressed='true']");if(m)renderSklad(m.dataset.s)});
+  renderSklad()});
 
 /* ============ statystyki ============ */
 const SER=[];
@@ -576,20 +576,45 @@ function renderActions(){
      <div class="sub">${ROLE[r.t]||""}</div></div><div class="q"><b>${kw(Math.abs(r.d))}</b>
      <span class="sub">cel ${kw(r.want)}</span></div></div>`).join("")
     :'<div class="act hold"><i class="w"></i><div><div class="t">Bez zmian</div></div></div>'}
+/* Pasek skladu: segment na kazdy walor, podpis w srodku jesli sie miesci.
+   To ma byc PIERWSZA rzecz widoczna na ekranie - odpowiedz na "co trzymac",
+   a nie slowo RISK powtorzone cztery razy. */
+function segmenty(sklad,suma){
+  return Object.entries(sklad).filter(([,v])=>v/suma>.001).sort((a,b)=>b[1]-a[1]).map(([t,v])=>{
+    const pr=v/suma*100;
+    return `<span style="flex:${pr};background:${CSS(KOL[t]||"--s6")}" title="${t} ${pc(v/suma)}">${
+      pr>9?(t==="GOTOWKA"?"GOT.":t)+(pr>13?`<em>${Math.round(pr)}%</em>`:""):""}</span>`}).join("");
+}
+const pasek=(sklad,suma,wys)=>`<div class="skladbar"${wys?` style="height:${wys}px"`:""}>${segmenty(sklad,suma)}</div>`;
 function renderHist(){
   const R=nastepnyRebalans();
   document.getElementById("sigStamp").textContent="policzono "+(SIG.generated||"").slice(0,10);
-  document.getElementById("sigVal").innerHTML=`${R.kiedy}<span>do rebalansu</span>`;
-  document.getElementById("sigAlt").textContent=
-    `${R.opis} · transza ${R.tranche}-tego · ostatnie sygnały ${SIGNALS.map(s=>s.date).join(" i ")}`;
-  /* Transze maja wlasne dni rebalansu, wiec i wlasne sygnaly - jedna karta na noge
-     i transze, bo przy roznych datach te sklady naprawde potrafia sie roznic. */
-  document.getElementById("modeCards").innerHTML=SIGNALS.flatMap(s=>[
-    [`BEST17 · ${s.tranche}`,s,s.best17,s.best17.picks.join(" · ")||"gotówka"],
-    [`GPM · ${s.tranche}`,s,s.gpm,Object.keys(s.gpm.weights).join(" · ")||"gotówka"]]).map(([n,s,L,txt])=>
-    `<div class="legc"><div class="t">${n} <em>${s.date}</em></div>
-      <div class="n" style="font-size:1.6rem;color:var(${L.mode==="RISK"?"--pos":"--cash"})">${L.mode}</div>
-      <div class="d">${esc(txt)}</div></div>`).join("");
+  document.getElementById("sigNext").innerHTML=
+    `<div class="ico">${R.iso.slice(8,10)}</div><div><b>Najbliższy rebalans</b><span>${R.opis} · transza ${R.tranche}-tego</span></div>
+     <div class="r"${R.dni<0?' style="color:var(--neg)"':""}>${R.kiedy}</div>`;
+
+  /* Sklad docelowy calosci - pasek plus lista z udzialami. */
+  document.getElementById("skladBar").innerHTML=segmenty(COMBINED,TOTAL);
+  const naj=Math.max(...Object.values(COMBINED));
+  document.getElementById("skladLista").innerHTML=Object.entries(COMBINED)
+    .sort((a,b)=>b[1]-a[1]).map(([t,v])=>{
+      const nm=t==="GOTOWKA"?"Gotówka":t;
+      return `<div class="row"><div class="ic" style="background:${CSS(KOL[t]||"--s6")}">${nm.slice(0,2).toUpperCase()}</div>
+        <div class="nm">${nm}<em>${t==="GOTOWKA"?"nieulokowane":(ROLE[t]||"")}</em></div>
+        <div class="vl" style="display:flex;align-items:center;gap:12px">
+          <span class="udz"><i style="width:${v/naj*100}%;background:${CSS(KOL[t]||"--s6")}"></i></span>
+          <div><b>${pc(v/TOTAL)}</b>${BRAK?"":`<span>${kw(v)}</span>`}</div></div></div>`}).join("");
+
+  /* Transze maja wlasne dni rebalansu, wiec i wlasne sklady - jedna karta na
+     transze, z trybem obu nog jako plakietka, a nie jako naglowek. */
+  document.getElementById("modeCards").innerHTML=[[T10,SIGNALS[0]],[T25,SIGNALS[1]]].map(([T,s])=>
+    `<div class="legc"><div class="t">Transza ${s.tranche}-tego <em>${s.date}</em></div>
+      <div class="pills">
+        <span class="pill ${s.best17.mode==="RISK"?"p-risk":"p-cash"}">BEST17 ${s.best17.mode}</span>
+        <span class="pill ${s.gpm.mode==="RISK"?"p-risk":"p-cash"}">GPM ${s.gpm.mode}</span></div>
+      ${pasek(T.out,T.kB+T.kG,38)}
+      <div class="d">${Object.entries(T.out).filter(([,v])=>v/(T.kB+T.kG)>.001).sort((a,b)=>b[1]-a[1])
+        .map(([t,v])=>`${t==="GOTOWKA"?"Gotówka":t} ${pc(v/(T.kB+T.kG))}`).join(" · ")}</div></div>`).join("");
   document.getElementById("histList").innerHTML=HIST.map(h=>
     `<div class="row"><div class="ic" style="background:${CSS(h[2]==="RISK"?"--pos":"--cash")}">${h[1]}</div>
       <div class="nm">${h[0]}<em>${esc(h[5])}</em></div>
@@ -599,15 +624,11 @@ function renderHist(){
    od tego, ile kto ma. */
 const kwota=(v)=>BRAK?"":`<td class="num">${zl(v)}</td>`;
 const kolKwota=BRAK?"":"<th>Kwota</th>";
-const viewSum=()=>tbl(`<th>ETF</th>${BRAK?"":`<th>${CURV==="usd"?"USD":"zł"}</th>`}<th>Udział</th><th>z 10-tego</th><th>z 25-tego</th>`,
-  Object.entries(COMBINED).sort((a,b)=>b[1]-a[1]).map(([t,v])=>
-    `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
-     ${BRAK?"":`<td class="num">${zl(CURV==="usd"?v:v*FXN)}</td>`}<td class="num">${pc(v/TOTAL)}</td>
-     <td class="num sub">${BRAK?pc((T10.out[t]||0)/(TOTAL/2)):zl(CURV==="usd"?(T10.out[t]||0):(T10.out[t]||0)*FXN)}</td>
-     <td class="num sub">${BRAK?pc((T25.out[t]||0)/(TOTAL/2)):zl(CURV==="usd"?(T25.out[t]||0):(T25.out[t]||0)*FXN)}</td></tr>`).join(""),
-  `<tr><td>Razem</td>${BRAK?"":`<td class="num">${zl(CURV==="usd"?TOTAL:TOTAL*FXN)}</td>`}<td class="num">100,0%</td>
-   <td class="num">${BRAK?"100,0%":zl(CURV==="usd"?TOTAL/2:TOTAL/2*FXN)}</td><td class="num">${BRAK?"100,0%":zl(CURV==="usd"?TOTAL/2:TOTAL/2*FXN)}</td></tr>`);
 function viewAcc(){
+  if(!ZAL())return `<div class="pusto"><b>Podział na konta jest Twój, nie strategii.</b>
+    <p>Strategia mówi, co trzymać i w jakich proporcjach — to widać wyżej. Na ile kont to
+    rozbijesz i która noga wyląduje u którego brokera, to już Twoja sprawa i Twoje dane.</p>
+    <button type="button" class="btn" data-login>Zaloguj się, żeby prowadzić portfel</button></div>`;
   if(BRAK)return `<div class="pusto"><b>Nie wiem, na których kontach to trzymasz.</b>
     <p>Dopisz stan każdego konta w zakładce Wpisy — najlepiej z rozbiciem na walory.
     Wtedy panel sam odczyta, która noga leży gdzie, i policzy cel dla każdego konta osobno.</p>
@@ -620,15 +641,10 @@ function viewAcc(){
         `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
          <td class="num">${zl(CURV==="usd"?v:v*FXN)}</td><td class="num">${pc(v/cap)}</td></tr>`).join(""))}
   return h}
-const viewDat=()=>[[T10,SIGNALS[0]],[T25,SIGNALS[1]]].map(([T,s])=>
-  `<h2 class="psec">Transza ${s.tranche}-tego <span class="sub" style="font-weight:400">· ${s.date}</span></h2>
-   <div style="margin-bottom:11px">
-     <div class="leg"><b>BEST17</b><span class="pill ${s.best17.mode==="RISK"?"p-risk":"p-cash"}">${s.best17.mode}</span><span class="as">${s.best17.picks.join(" · ")||"gotówka"}</span></div>
-     <div class="leg"><b>GPM</b><span class="pill ${s.gpm.mode==="RISK"?"p-risk":"p-cash"}">${s.gpm.mode}</span><span class="as">${Object.keys(s.gpm.weights).join(" · ")}</span></div></div>`
-  +tbl(`<th>ETF</th>${BRAK?"":`<th>${CURV==="usd"?"USD":"zł"}</th>`}<th>Udział</th>`,Object.entries(T.out).filter(([,v])=>v>.5).sort((a,b)=>b[1]-a[1]).map(([t,v])=>
-    `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
-     ${BRAK?"":`<td class="num">${zl(CURV==="usd"?v:v*FXN)}</td>`}<td class="num">${pc(v/(T.kB+T.kG))}</td></tr>`).join(""))).join("");
-function renderSklad(m){document.getElementById("skladBody").innerHTML=m==="acc"?viewAcc():m==="dat"?viewDat():viewSum();fillSel()}
+/* Jedyny widok, ktorego nie ma wyzej: podzial miedzy KONTA. Sklad calosci
+   i transz pokazuja paski w sekcji "Co trzymac" - powtarzanie go w tabelce
+   tylko rozwadnialo ekran. */
+function renderSklad(){document.getElementById("skladBody").innerHTML=viewAcc();fillSel()}
 function renderAccounts(){
   const s=SETUPS[SETUP];
   document.getElementById("accCards").innerHTML=s.accounts.map(a=>{
@@ -1098,7 +1114,7 @@ function poWpisach(){
   else{Object.assign(SETUPS,UKLADY_PRZYKLAD);SETUP="rozdzielnie"}
   ustawPortfel(P);
   rysujPasek();rysujRozbicie();renderTX();renderPulpit();renderActions();renderHist();renderAccounts();renderAll();
-  const m=document.querySelector("#segS button[aria-pressed='true']");if(m)renderSklad(m.dataset.s);
+  renderSklad();
 }
 
 function fillAccSelect(){
@@ -1238,13 +1254,10 @@ function show(v){
   document.querySelectorAll("#nav a").forEach(a=>a.getAttribute("href")==="#"+v?a.setAttribute("aria-current","page"):a.removeAttribute("aria-current"));
   renderAll();scrollTo(0,0)}
 addEventListener("hashchange",()=>show(location.hash.slice(1)));
-document.getElementById("segS").addEventListener("click",e=>{
-  const b=e.target.closest("button");if(!b)return;
-  document.querySelectorAll("#segS button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
-  renderSklad(b.dataset.s)});
+
 
 document.getElementById("txDate").value=new Date().toISOString().slice(0,10);
-rysujPasek();fillAccSelect();rysujRozbicie();renderTX();renderPulpit();renderMatrix();renderActions();renderHist();renderSklad("sum");renderAccounts();renderWyniki();renderDiag();renderCeny();
+rysujPasek();fillAccSelect();rysujRozbicie();renderTX();renderPulpit();renderMatrix();renderActions();renderHist();renderSklad();renderAccounts();renderWyniki();renderDiag();renderCeny();
 
 legend("l-mix",KLASY.map(k=>[k[0],CSS(k[1])]));
 legend("l-cmp",CMPK.map(k=>[k.label,CSS(k.col)]));
@@ -1264,7 +1277,7 @@ function rysujKonto(){
     ? `<div class="kto"><b>${esc(USER.displayName||USER.email||"zalogowany")}</b>
         <span>${ADMIN_BAZA?"admin":"podgląd"}</span></div>
        <button type="button" class="cicho" id="btnWyloguj">Wyloguj</button>`
-    : `<button type="button" id="btnZaloguj">Zaloguj przez Google</button>`;
+    : `<button type="button" data-login>Zaloguj przez Google</button>`;
 }
 function rysujUid(){
   const stare=document.getElementById("uidBox");if(stare)stare.remove();
@@ -1303,12 +1316,15 @@ document.addEventListener("click",async e=>{
     try{await navigator.clipboard.writeText(USER.uid);b.textContent="Skopiowane"}
     catch{document.getElementById("uidKod")?.focus();b.textContent="Zaznacz i skopiuj ręcznie"}
     setTimeout(()=>{b.textContent="Kopiuj identyfikator"},2500);return}
-  if(e.target.id==="btnZaloguj"){
-    const b=e.target;b.disabled=true;b.textContent="Logowanie…";
+  const loguj=e.target.closest("[data-login]");
+  if(loguj){
+    e.preventDefault();
+    const b=loguj;b.disabled=true;b.textContent="Logowanie…";
     try{await FB.zalogujGoogle()}
     catch(err){alert(bladLogowania(err))}
-    finally{if(document.body.contains(b)){b.disabled=false;b.textContent="Zaloguj przez Google"}}}
-  else if(e.target.id==="btnWyloguj"){await FB.wyloguj()}});
+    finally{if(document.body.contains(b)){b.disabled=false;b.textContent="Zaloguj przez Google"}}
+    return}
+  if(e.target.id==="btnWyloguj"){await FB.wyloguj()}});
 /* Powrot z przekierowania: jesli sie nie udalo, user musi wiedziec dlaczego. */
 if(FB?.wynikPrzekierowania)FB.wynikPrzekierowania().then(w=>{if(w&&w.code)alert(bladLogowania(w))});
 

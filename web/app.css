@@ -261,7 +261,9 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
   display:grid;place-items:center;flex:0 0 auto;font-size:1.15rem;font-weight:700}
 .nxt b{display:block;font-size:1.02rem}
 .nxt span{font-size:.88rem;color:var(--faint)}
-.nxt .r{margin-left:auto;text-align:right;font-weight:700;font-size:1.02rem;color:var(--warn)}
+.nxt .r{margin-left:auto;text-align:right;font-weight:700;font-size:1.02rem;color:var(--warn);
+  white-space:nowrap;flex:0 0 auto}
+.nxt>div:not(.ico):not(.r){min-width:0}
 
 .legs{display:grid;gap:12px;grid-template-columns:1fr}
 @media(min-width:680px){.legs{grid-template-columns:1fr 1fr}}
@@ -272,10 +274,22 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
 .legc .n{font-size:1.9rem;font-weight:700;letter-spacing:-.03em;margin-top:9px;font-variant-numeric:tabular-nums}
 .legc .n span{font-size:.95rem;font-weight:600;color:var(--muted);margin-left:5px}
 .legc .d{font-size:.92rem;color:var(--faint);margin-top:4px;font-variant-numeric:tabular-nums}
+.legc .pills{display:flex;flex-wrap:wrap;gap:7px;margin:11px 0 13px}
+.legc .skladbar{height:38px;border-radius:11px}
+.legc .d{margin-top:10px;line-height:1.5}
 .legc .bar{display:flex;height:34px;border-radius:11px;overflow:hidden;gap:2px;margin-top:16px}
 .legc .bar span{display:grid;place-items:center;font-size:.74rem;font-weight:700;color:#0A1014;min-width:0;overflow:hidden;white-space:nowrap}
 
 .list{background:var(--surface);border-radius:20px;padding:6px 16px}
+.list.plask{background:transparent;padding:0;margin-top:14px}
+/* pasek skladu docelowego - pierwsza rzecz, ktora widac na ekranie Sygnalu */
+.skladbar{display:flex;height:54px;border-radius:14px;overflow:hidden;gap:2px}
+.skladbar span{display:grid;place-items:center;font-size:.82rem;font-weight:700;color:#0A1014;
+  min-width:0;overflow:hidden;white-space:nowrap;line-height:1.15}
+.skladbar span em{display:block;font-style:normal;font-size:.72rem;font-weight:600;opacity:.75}
+.row .udz{width:84px;height:6px;border-radius:999px;background:var(--surface2);overflow:hidden;flex:0 0 auto}
+.row .udz i{display:block;height:100%;border-radius:999px}
+@media(max-width:559px){.row .udz{width:54px}}
 .row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding:14px 0}
 .row+.row{border-top:1px solid var(--line)}
 .row .ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:.72rem;font-weight:700;color:#0A1014}
