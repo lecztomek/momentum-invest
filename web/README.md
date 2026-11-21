@@ -21,14 +21,14 @@ Strona czyta dane przez `fetch`, więc musi być serwowana po HTTP — otwarcie
 | `data/signals.json` | sygnał obu transz, historia, diagnostyka per transza | pipeline (silnik) |
 | `data/performance.json` | historia strategii: miesiące, metryki, obsunięcie, miks klas | pipeline (silnik) |
 | `data/prices.json` | ceny wykonania obu transz - te, ktorymi liczyl silnik | pipeline (silnik) |
-| `data/portfolio.json` | przykład na start; po pierwszym wpisie panel liczy z bazy | przykład |
 | `.nojekyll` | wylacza Jekylla na Pages (serwuje pliki bez przetwarzania) | — |
 
 Zadnego pliku nie generuje sie w trakcie wdrozenia - co w repo, to na stronie.
 
-`data/portfolio.json` to tylko przykład na start. Prawdziwe dane konta są
-prywatne i leżą w bazie per użytkownik (`users/{uid}/transactions`) - panel
-przestaje czytać plik, gdy tylko pojawi się pierwszy wpis stanu konta.
+Dane konta są prywatne i leżą wyłącznie w bazie, per użytkownik
+(`users/{uid}/transactions`). W repozytorium nie ma ich w żadnej postaci - nie
+ma też pliku z przykładowym portfelem. Panel bez wpisów nie pokazuje **żadnej
+kwoty**, tylko mówi, czego mu brakuje.
 
 ## Publikacja
 
@@ -122,7 +122,10 @@ Kwoty są w USD (ETF-y są dolarowe), złote to przeliczenie po kursie.
 | `signals.json` | `tools/build_signals.py`, silnik `engine_v2` | tak |
 | `performance.json` | `tools/build_performance.py`, silnik `engine_v2` | tak |
 | `prices.json` | `tools/build_prices.py`, silnik `engine_v2` | tak |
-| `portfolio.json` | przykład, dopóki nie ma własnych wpisów | przykładowe |
 
-Pasek „Prototyp — dane przykładowe" u góry strony dotyczy tych pozycji, które
-nie są jeszcze prawdziwe.
+Wszystkie trzy pliki liczy silnik. Czwartego nie ma: dane konta nie mieszkają
+w repozytorium.
+
+Zasada, której panel się trzyma: **nie pokazuje liczby, której nie zna**.
+Zamiast wymyślonego kapitału pisze, że go nie zna, a skład docelowy podaje
+w procentach — udział jest prawdziwy niezależnie od tego, ile kto ma.

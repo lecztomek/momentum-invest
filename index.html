@@ -40,34 +40,38 @@
     </div>
   </div>
 
-  <div class="hero">
-    <div class="hval" id="heroVal"></div>
-    <div class="halt" id="heroAlt"></div>
-    <div class="hsub" id="heroSub"></div>
-  </div>
-
-  <div class="chart hchart" id="c-hero"></div>
-  <div class="ranges" id="ranges">
-    <button type="button" data-r="3">3M</button>
-    <button type="button" data-r="6" aria-pressed="true">6M</button>
-    <button type="button" data-r="12">1R</button>
-    <button type="button" data-r="0">MAX</button>
-  </div>
-
-  <div class="stats" id="heroStats"></div>
-
   <div class="nxt" id="nextBox"></div>
 
-  <h2 class="psec">Konta</h2>
-  <div class="seg setupSel"></div>
-  <div class="legs" id="accCards"></div>
-  <p class="note" id="accNote"></p>
+  <div id="pulpitPusty" hidden></div>
 
-  <h2 class="psec">Co trzymam</h2>
-  <div class="list" id="holdList"></div>
+  <div id="pulpitDane">
+    <div class="hero">
+      <div class="hval" id="heroVal"></div>
+      <div class="halt" id="heroAlt"></div>
+      <div class="hsub" id="heroSub"></div>
+    </div>
 
-  <h2 class="psec">Ostatnie miesiące</h2>
-  <div class="panel"><div class="chart" id="c-month"></div></div>
+    <div class="chart hchart" id="c-hero"></div>
+    <div class="ranges" id="ranges">
+      <button type="button" data-r="3">3M</button>
+      <button type="button" data-r="6" aria-pressed="true">6M</button>
+      <button type="button" data-r="12">1R</button>
+      <button type="button" data-r="0">MAX</button>
+    </div>
+
+    <div class="stats" id="heroStats"></div>
+
+    <h2 class="psec">Konta</h2>
+    <div class="seg setupSel"></div>
+    <div class="legs" id="accCards"></div>
+    <p class="note" id="accNote"></p>
+
+    <h2 class="psec">Co trzymam</h2>
+    <div class="list" id="holdList"></div>
+
+    <h2 class="psec">Ostatnie miesiące</h2>
+    <div class="panel"><div class="chart" id="c-month"></div></div>
+  </div>
 </section>
 
 <!-- ========== SYGNAL ========== -->
@@ -81,12 +85,14 @@
 
   <div class="legs" id="modeCards" style="margin-top:18px"></div>
 
-  <h2 class="psec">Do zrobienia</h2>
-  <div id="actions"></div>
+  <div id="sygDane">
+    <h2 class="psec">Do zrobienia</h2>
+    <div id="actions"></div>
 
-  <h2 class="psec">Odchylenie od celu</h2>
-  <div class="panel"><div class="chart" id="c-drift"></div></div>
-  <div class="list" id="driftList" style="margin-top:12px"></div>
+    <h2 class="psec">Odchylenie od celu</h2>
+    <div class="panel"><div class="chart" id="c-drift"></div></div>
+    <div class="list" id="driftList" style="margin-top:12px"></div>
+  </div>
 
   <h2 class="psec">Gdzie co ma być</h2>
   <div class="seg" id="segS">
@@ -127,6 +133,17 @@
 
   <h2 class="psec">Historia</h2>
   <div class="list" id="txList"></div>
+
+  <h2 class="psec">Przeliczenie na złote</h2>
+  <div class="card">
+    <div class="form" style="grid-template-columns:1fr">
+      <div class="fld"><label for="kursPln">Kurs USD/PLN</label>
+        <input type="number" id="kursPln" step="0.0001" min="0.1"></div>
+    </div>
+    <p class="note">Wpisy są w dolarach. Ta jedna liczba służy tylko do pokazania ich w złotych —
+      jest stosowana do całej historii, więc krzywa w PLN to krzywa w USD przeskalowana, nie
+      prawdziwe przeliczenie po kursie z każdego dnia.</p>
+  </div>
 </section>
 
 <!-- ========== PORTFEL ========== -->

@@ -328,6 +328,11 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
 .konto .kto{display:flex;flex-direction:column;line-height:1.25;min-width:0}
 .konto .kto b{font-size:.86rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46vw}
 .konto .kto span{font-size:.72rem;color:var(--faint)}
+/* ekran "nie mam jeszcze Twoich danych" - ma tlumaczyc, nie udawac pustki */
+.pusto{background:var(--surface);border-radius:20px;padding:22px 20px;margin-top:16px}
+.pusto b{display:block;font-size:1.15rem;color:var(--fg);margin-bottom:8px}
+.pusto p{color:var(--muted);font-size:.95rem;line-height:1.5;margin:0 0 14px}
+.pusto .btn{display:inline-block;text-decoration:none}
 .uid{background:var(--surface);border-radius:18px;padding:16px;margin-top:14px;font-size:.92rem;color:var(--muted)}
 .uid .hd{color:var(--fg);font-weight:600;margin-bottom:6px}
 .uid .akcje{display:flex;flex-wrap:wrap;gap:9px;margin-top:11px}

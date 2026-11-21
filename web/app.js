@@ -8,9 +8,9 @@ let FB=null;
 try{ FB=await import("./fb.js") }catch(e){ console.warn("Firebase niedostepny:",e.message) }
 let USER=null, ADMIN_BAZA=false;
 
-let SIG,PERF,PRC,PORT;
+let SIG,PERF,PRC,PORT=null;
 try{
-  [SIG,PERF,PRC,PORT]=await Promise.all(["signals","performance","prices","portfolio"]
+  [SIG,PERF,PRC]=await Promise.all(["signals","performance","prices"]
     .map(f=>fetch(`web/data/${f}.json`).then(r=>{if(!r.ok)throw new Error(f+".json: HTTP "+r.status);return r.json()})));
 }catch(err){
   document.body.innerHTML='<div class="fatal"><b>Nie udalo sie wczytac danych.</b>'
@@ -25,18 +25,30 @@ const SIGNALS=SIG.signals, HIST=SIG.history, ORDER=SIG.universe, ROLE=SIG.roles;
 const TRN=(SIG.tranches||[10,25]).map(String);
 let DTAB=TRN[0];
 const D=()=>SIG.diagnostics[DTAB];
-/* Dane konta sa wlasnoscia uzytkownika i licza sie z JEGO wpisow (stan konta +
-   wplaty). Plik portfolio.json to tylko przyklad na start - gdy sa wlasne wpisy,
-   PORT jest podmieniany przez ustawPortfel() i caly panel liczy z nich. */
-const PORT_PRZYKLAD=PORT;
-let CAPITAL,HOLDINGS,MONTHS,VALUE,PAID,FXS,VUSD,PUSD,RETC,LEGS,FXN,WLASNE=false,ZLOZONE=false;
+/* Dane konta sa wlasnoscia uzytkownika i licza sie WYLACZNIE z jego wpisow.
+   Nie ma zadnego "przykladowego portfela" - panel, ktory pokazuje wymyslone
+   48 680 USD, jest gorszy niz panel, ktory mowi "nie wiem, ile masz".
+   BRAK = nie ma ani jednego wpisu stanu konta, wiec kwot nie pokazujemy wcale,
+   a sklad docelowy idzie w procentach. */
+let CAPITAL,HOLDINGS,MONTHS,VALUE,PAID,VUSD,PUSD,RETC,FXN,BRAK=true,ZLOZONE=false;
 function ustawPortfel(P){
-  PORT=P;WLASNE=P!==PORT_PRZYKLAD;
-  CAPITAL=P.capital;HOLDINGS=P.holdings;MONTHS=P.months;VALUE=P.value;PAID=P.paid;
-  FXS=P.fx.series;VUSD=P.value_usd;PUSD=P.paid_usd;RETC=P.returns;LEGS=P.legs;FXN=P.fx.rate;
+  PORT=P;BRAK=!P;
+  if(P){
+    CAPITAL=P.capital;HOLDINGS=P.holdings;MONTHS=P.months;VALUE=P.value;PAID=P.paid;
+    VUSD=P.value_usd;PUSD=P.paid_usd;RETC=P.returns;FXN=P.fx.rate;
+  }else{
+    /* 100 + 100 = "sto procent kazdej nogi" - te same wzory licza wtedy udzialy
+       zamiast zlotowek, a formatowanie pilnuje, zeby nikt nie wzial ich za kwote. */
+    CAPITAL={best17:100,gpm:100,split10:.5};HOLDINGS={};MONTHS=[];VALUE=[];PAID=[];
+    VUSD=[];PUSD=[];RETC={usd:[],pln:[]};FXN=KURS;
+  }
   if(ZLOZONE)przeliczTransze();   /* przy pierwszym wywolaniu transz jeszcze nie ma */
 }
-ustawPortfel(PORT);
+/* Kurs do przeliczenia na zlote. Jedna liczba dla calej historii - to jest
+   uproszczenie i panel tak to podpisuje. */
+let KURS=4.06;
+try{const k=parseFloat(localStorage.getItem("kurs"));if(k>0)KURS=k}catch(e){}
+ustawPortfel(null);
 const RET=PERF.monthly;
 const INSTR=PRC.instruments, FEED=PRC.feed;
 const COMPO=SIG.composition;
@@ -393,6 +405,7 @@ document.getElementById("segMx").addEventListener("click",e=>{
 
 /* ---- ostatnie miesiace: slupki w wybranej walucie ---- */
 chart("c-month",W=>{
+  if(BRAK)return "";
   const R=cur().r,K=6,idx=[...Array(K)].map((_,k)=>MONTHS.length-K+k);
   const nr=W<520,H=nr?150:175,T=20,B=26,L=6,Rp=6,f=FS(W);
   const mx=Math.max(...idx.map(i=>Math.abs(R[i]||0)))*1.35||1;
@@ -440,11 +453,12 @@ function nastepnyRebalans(){
   const r=SIGNALS.map(rebalansDla).sort((a,b)=>a.dni-b.dni);
   return r.some(x=>x.dni>=0)?r.find(x=>x.dni>=0):r[0]}
 const cur=()=>CURV==="usd"
-  ? {v:VUSD,p:PUSD,u:"USD",alt:{v:VALUE,u:"zł"},r:RETC.usd,twr:PORT.twr.usd,k:x=>x}
-  : {v:VALUE,p:PAID,u:"zł", alt:{v:VUSD, u:"USD"},r:RETC.pln,twr:PORT.twr.pln,k:x=>x/FXN};
+  ? {v:VUSD,p:PUSD,u:"USD",alt:{v:VALUE,u:"zł"},r:RETC.usd,twr:PORT?.twr.usd??0,k:x=>x}
+  : {v:VALUE,p:PAID,u:"zł", alt:{v:VUSD, u:"USD"},r:RETC.pln,twr:PORT?.twr.pln??0,k:x=>x/FXN};
 
 /* duzy wykres kapitalu: sama krzywa i wypelnienie, bez siatki i osi */
 chart("c-hero",W=>{
+  if(BRAK)return "";
   const C=cur(),n=C.v.length,from=RNG?Math.max(0,n-RNG-1):0,V=C.v.slice(from),P=C.p.slice(from),M=MONTHS.slice(from);
   const m=V.length,nr=W<520,H=nr?170:210,T=14,B=26,L=4,R=4;
   const all=[...V,...P],lo=Math.min(...all),hi=Math.max(...all),pad=(hi-lo)*.14||1;
@@ -467,6 +481,23 @@ chart("c-hero",W=>{
   </svg>`});
 
 function renderPulpit(){
+  const R0=nastepnyRebalans();
+  document.getElementById("nextBox").innerHTML=
+    `<div class="ico">${R0.iso.slice(8,10)}</div><div><b>Najbliższy rebalans</b><span>${R0.opis} · ostatni sygnał ${SIGNALS[0].date}</span></div>
+     <div class="r"${R0.dni<0?' style="color:var(--neg)"':""}>${R0.kiedy}</div>`;
+  /* Bez wpisow nie pokazujemy ZADNEJ kwoty - zamiast wymyslonego portfela
+     jedno zdanie o tym, czego brakuje, i przycisk tam, gdzie to sie wpisuje. */
+  document.getElementById("pulpitDane").hidden=BRAK;
+  document.getElementById("pulpitPusty").hidden=!BRAK;
+  document.getElementById("curTog").hidden=BRAK;
+  if(BRAK){
+    document.getElementById("pulpitPusty").innerHTML=
+      `<div class="pusto"><b>Panel nie wie, ile masz na koncie.</b>
+        <p>Sygnał, ceny i wyniki strategii są policzone przez silnik i są prawdziwe.
+        Kapitał, wynik i „co dokupić” wymagają jednej rzeczy od Ciebie: wpisania stanu konta.</p>
+        <a class="btn" href="#transakcje">Dopisz stan konta</a></div>`;
+    return;
+  }
   const C=cur(),V=C.v.at(-1),P=C.p.at(-1),zy=V-P;
   const from=RNG?Math.max(0,C.v.length-RNG-1):0;
   const okres=C.v.at(-1)-C.v[from]-(C.p.at(-1)-C.p[from]);
@@ -481,11 +512,6 @@ function renderPulpit(){
     ["Wynik",(zy>=0?"+":"−")+zl(zy)+" "+C.u,zy>=0?"--pos":"--neg"],
     ["TWR",sg2(C.twr)+"%",C.twr>=0?"--pos":"--neg"]
   ].map(([l,v,c])=>`<div><span>${l}</span><b style="color:var(${c})">${v}</b></div>`).join("");
-
-  const R=nastepnyRebalans();
-  document.getElementById("nextBox").innerHTML=
-    `<div class="ico">${R.iso.slice(8,10)}</div><div><b>Najbliższy rebalans</b><span>${R.opis} · ostatni sygnał ${SIGNALS[0].date}</span></div>
-     <div class="r"${R.dni<0?' style="color:var(--neg)"':""}>${R.kiedy}</div>`;
 
   renderAccounts();
 
@@ -506,6 +532,8 @@ document.getElementById("ranges").addEventListener("click",e=>{
   RNG=+b.dataset.r;renderPulpit();mount(charts.find(c=>c.id==="c-hero"))});
 
 function renderActions(){
+  document.getElementById("sygDane").hidden=BRAK;
+  if(BRAK)return;
   if(!Object.keys(HOLDINGS).length){
     document.getElementById("actions").innerHTML=BRAK_SKLADU;return}
   const rows=[...new Set([...Object.keys(T25.out),...Object.keys(HOLDINGS)])].filter(t=>t!=="GOTOWKA")
@@ -534,13 +562,24 @@ function renderHist(){
     `<div class="row"><div class="ic" style="background:${CSS(h[2]==="RISK"?"--pos":"--cash")}">${h[1]}</div>
       <div class="nm">${h[0]}<em>${esc(h[5])}</em></div>
       <div class="vl"><b>${esc(h[3])}</b><span>GPM ${h[4]}</span></div></div>`).join("")}
-const viewSum=()=>tbl("<th>ETF</th><th>Kwota</th><th>Udział</th><th>z 10-tego</th><th>z 25-tego</th>",
+/* Bez wpisow pokazujemy UDZIALY, nie kwoty - kolumna "Kwota" liczona z
+   wymyslonego kapitalu bylaby zwykla sciema. Udzial jest prawdziwy niezaleznie
+   od tego, ile kto ma. */
+const kwota=(v)=>BRAK?"":`<td class="num">${zl(v)}</td>`;
+const kolKwota=BRAK?"":"<th>Kwota</th>";
+const viewSum=()=>tbl(`<th>ETF</th>${BRAK?"":"<th>Kwota</th>"}<th>Udział</th><th>z 10-tego</th><th>z 25-tego</th>`,
   Object.entries(COMBINED).sort((a,b)=>b[1]-a[1]).map(([t,v])=>
     `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
-     <td class="num">${zl(v)}</td><td class="num">${pc(v/TOTAL)}</td>
-     <td class="num sub">${zl(T10.out[t]||0)}</td><td class="num sub">${zl(T25.out[t]||0)}</td></tr>`).join(""),
-  `<tr><td>Razem</td><td class="num">${zl(TOTAL)}</td><td class="num">100,0%</td><td class="num">${zl(TOTAL/2)}</td><td class="num">${zl(TOTAL/2)}</td></tr>`);
+     ${BRAK?"":`<td class="num">${zl(v)}</td>`}<td class="num">${pc(v/TOTAL)}</td>
+     <td class="num sub">${BRAK?pc((T10.out[t]||0)/(TOTAL/2)):zl(T10.out[t]||0)}</td>
+     <td class="num sub">${BRAK?pc((T25.out[t]||0)/(TOTAL/2)):zl(T25.out[t]||0)}</td></tr>`).join(""),
+  `<tr><td>Razem</td>${BRAK?"":`<td class="num">${zl(TOTAL)}</td>`}<td class="num">100,0%</td>
+   <td class="num">${BRAK?"100,0%":zl(TOTAL/2)}</td><td class="num">${BRAK?"100,0%":zl(TOTAL/2)}</td></tr>`);
 function viewAcc(){
+  if(BRAK)return `<div class="pusto"><b>Nie wiem, na których kontach to trzymasz.</b>
+    <p>Dopisz stan każdego konta w zakładce Wpisy — najlepiej z rozbiciem na walory.
+    Wtedy panel sam odczyta, która noga leży gdzie, i policzy cel dla każdego konta osobno.</p>
+    <a class="btn" href="#transakcje">Dopisz stan konta</a></div>`;
   const s=SETUPS[SETUP];let h=`<div class="seg setupSel"></div>`;
   for(const a of s.accounts){
     const o=accComp(a),cap=accTarget(a);
@@ -554,9 +593,9 @@ const viewDat=()=>[[T10,SIGNALS[0]],[T25,SIGNALS[1]]].map(([T,s])=>
    <div style="margin-bottom:11px">
      <div class="leg"><b>BEST17</b><span class="pill ${s.best17.mode==="RISK"?"p-risk":"p-cash"}">${s.best17.mode}</span><span class="as">${s.best17.picks.join(" · ")||"gotówka"}</span></div>
      <div class="leg"><b>GPM</b><span class="pill ${s.gpm.mode==="RISK"?"p-risk":"p-cash"}">${s.gpm.mode}</span><span class="as">${Object.keys(s.gpm.weights).join(" · ")}</span></div></div>`
-  +tbl("<th>ETF</th><th>Kwota</th><th>Udział</th>",Object.entries(T.out).filter(([,v])=>v>.5).sort((a,b)=>b[1]-a[1]).map(([t,v])=>
+  +tbl(`<th>ETF</th>${BRAK?"":"<th>Kwota</th>"}<th>Udział</th>`,Object.entries(T.out).filter(([,v])=>v>.5).sort((a,b)=>b[1]-a[1]).map(([t,v])=>
     `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
-     <td class="num">${zl(v)}</td><td class="num">${pc(v/(T.kB+T.kG))}</td></tr>`).join(""))).join("");
+     ${BRAK?"":`<td class="num">${zl(v)}</td>`}<td class="num">${pc(v/(T.kB+T.kG))}</td></tr>`).join(""))).join("");
 function renderSklad(m){document.getElementById("skladBody").innerHTML=m==="acc"?viewAcc():m==="dat"?viewDat():viewSum();fillSel()}
 function renderAccounts(){
   const s=SETUPS[SETUP];
@@ -944,7 +983,7 @@ function liczPortfel(){
     for(const[t,v]of Object.entries(perKonto[k]||{})){
       if(t==="GOTOWKA")continue;
       const n=nogaWaloru(t);udzial.best17[k]+=v*n.best17;udzial.gpm[k]+=v*n.gpm}}
-  const kurs=PORT_PRZYKLAD.fx.rate;
+  const kurs=KURS;
   const konce=Object.fromEntries(konta.map(k=>[k,seria(k)]));
   const accounts=konta.map(k=>{
     const sum=l=>konta.reduce((a,x)=>a+udzial[l][x],0);
@@ -974,11 +1013,13 @@ function liczPortfel(){
   };
 }
 function rysujPasek(){
-  /* Pasek ma mowic prawde o TYM, co jest na ekranie - a nie wisiec na zawsze. */
-  document.getElementById("demoBar").hidden=WLASNE;
-  if(!WLASNE)document.getElementById("demoTxt").innerHTML=
-    "Sygnał, ceny i wyniki liczy silnik. <b>Dane konta są przykładowe</b> — kapitał, salda i stan posiadania. "
-    +"Dopisz swój stan konta w zakładce Wpisy, a panel policzy je z Twoich liczb.";
+  /* Pasek ma mowic prawde o TYM, co jest na ekranie - a nie wisiec na zawsze.
+     Nie ma juz "danych przykladowych": albo sa Twoje liczby, albo panel nie
+     pokazuje zadnych. */
+  document.getElementById("demoBar").hidden=!BRAK;
+  if(BRAK)document.getElementById("demoTxt").innerHTML=
+    "Sygnał, ceny i wyniki są policzone przez silnik. <b>O Twoim koncie panel nic nie wie</b> — "
+    +"dopisz stan konta w zakładce Wpisy, a policzy kapitał, wynik i co dokupić.";
 }
 function poWpisach(){
   const P=liczPortfel();
@@ -987,7 +1028,7 @@ function poWpisach(){
   for(const k of Object.keys(SETUPS))delete SETUPS[k];
   if(P&&P.accounts.length){SETUPS.moje={label:"Moje konta",accounts:P.accounts};SETUP="moje"}
   else{Object.assign(SETUPS,UKLADY_PRZYKLAD);SETUP="rozdzielnie"}
-  ustawPortfel(P||PORT_PRZYKLAD);
+  ustawPortfel(P);
   rysujPasek();renderTX();renderPulpit();renderActions();renderHist();renderAccounts();renderAll();
   const m=document.querySelector("#segS button[aria-pressed='true']");if(m)renderSklad(m.dataset.s);
 }
@@ -1073,6 +1114,14 @@ document.getElementById("txForm").addEventListener("submit",e=>{
 document.getElementById("txList").addEventListener("click",e=>{
   const b=e.target.closest("[data-del]");if(!b)return;
   usunTX(+b.dataset.del)});
+/* Kurs do przeliczenia na zlote - jedna liczba, zapisana lokalnie. */
+const polKurs=document.getElementById("kursPln");
+polKurs.value=KURS;
+polKurs.addEventListener("change",()=>{
+  const k=parseFloat(polKurs.value);
+  if(!(k>0)){polKurs.value=KURS;return}
+  KURS=k;try{localStorage.setItem("kurs",String(k))}catch(e){}
+  poWpisach()});
 
 /* ============ nawigacja ============ */
 const VIEWS=["pulpit","sygnal","wyniki","transakcje","ceny","dlaczego"];
