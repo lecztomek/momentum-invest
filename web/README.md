@@ -95,6 +95,24 @@ surowych cenach z USA, więc **strategia jest zaniżona**, nie podkoloryzowana.
 jego wiersz w tabeli ma własne daty, a na wykresie krzywa startuje od wartości
 strategii z tamtego dnia.
 
+## Kto co może
+
+| | niezalogowany | zalogowany | admin |
+|---|---|---|---|
+| Sygnał, Wyniki, Ceny, Analiza | czyta | czyta | czyta |
+| Pulpit i Wpisy (portfel) | **niedostępne** | swoje dane | swoje dane |
+| wpisywanie cen i korekt | — | — | zapisuje |
+| kursy USD/PLN | — | czyta | zapisuje |
+
+Niezalogowany ogląda samą strategię. Portfel to dane konkretnej osoby, więc bez
+konta nie ma czego pokazać - zakładki Pulpit i Wpisy są wtedy schowane, a wejście
+na nie adresem przerzuca na Sygnał. Nie ma też trybu „zapisz lokalnie": dane
+portfela mają przeżyć zmianę urządzenia, a nie zniknąć z wyczyszczoną pamięcią
+przeglądarki.
+
+Blokady są po stronie reguł Firestore, nie tylko w interfejsie - panel ich nie
+udaje, tylko pokazuje to, co i tak wynika z bazy.
+
 ## Dane konta
 
 User nie prowadzi księgi transakcji - *"co jakiś czas wpisuje, ile ma na

@@ -7,6 +7,11 @@
 let FB=null;
 try{ FB=await import("./fb.js") }catch(e){ console.warn("Firebase niedostepny:",e.message) }
 let USER=null, ADMIN_BAZA=false;
+/* Niezalogowany oglada strategie i nic poza tym: zadnego portfela i zadnego
+   zapisu. Portfel to dane konkretnej osoby, wiec bez konta nie ma czego
+   pokazac - a udawanie, ze cos sie zapisalo "lokalnie", tylko myli. */
+const ZAL=()=>!!USER;
+const TYLKO_ZALOGOWANY=["pulpit","transakcje"];
 
 let SIG,PERF,PRC,PORT=null;
 try{
@@ -104,15 +109,17 @@ async function wczytajKursyZBazy(){
 }
 async function dodajKurs(d,k){
   const r={id:d,d,k};
+  if(!mozeKursy()){alert("Kursy wpisuje admin.");return}
   KURSY=KURSY.filter(x=>x.d!==d).concat(r);
   zapiszKursyLokalnie();
-  if(FB&&ADMIN_BAZA){try{await FB.zapiszKurs(d,{d,k})}catch(e){alert("Nie zapisano kursu w bazie: "+e.message)}}
+  try{await FB.zapiszKurs(d,{d,k})}catch(e){alert("Nie zapisano kursu w bazie: "+e.message)}
   poWpisach();
 }
 async function usunKurs(d){
+  if(!mozeKursy())return;
   KURSY=KURSY.filter(x=>x.d!==d);
   zapiszKursyLokalnie();
-  if(FB&&ADMIN_BAZA){try{await FB.usunKurs(d)}catch(e){console.warn(e.message)}}
+  try{await FB.usunKurs(d)}catch(e){console.warn(e.message)}
   poWpisach();
 }
 async function wczytajCenyZBazy(){
@@ -733,7 +740,8 @@ function renderWyniki(){
     +(krotsze.length?" Krótsza historia: "+krotsze.join(", ")+" — wykres startuje wtedy od wartości strategii z tamtego dnia.":"")}
 
 /* ---- ceny: cena z feedu jest nietykalna, korekta to osobny wpis ---- */
-let ADMIN=false,EDIT=null,PIDX=null;  /* PIDX: ktora data jest ogladana; null = ostatnia */
+let EDIT=null,PIDX=null;  /* PIDX: ktora data jest ogladana; null = ostatnia */
+const ADMIN=()=>ADMIN_BAZA;   /* prawo wpisywania cen - z bazy, nie z przelacznika w UI */
 let OVR={};try{OVR=JSON.parse(localStorage.getItem("ovr")||"{}")}catch(e){OVR={}}
 const saveOVR=()=>{try{localStorage.setItem("ovr",JSON.stringify(OVR))}catch(e){}};
 const okey=(t,d)=>t+"@"+d;
@@ -798,8 +806,8 @@ function renderCeny(){
         o?` · <span style="color:var(--cash)">skorygowane</span>`:""}</em></div>
       <div class="vl" style="display:flex;align-items:center;gap:12px"><div><b>${px(v)}</b>
         <span style="color:${ch==null?"var(--faint)":ch>=0?"var(--pos)":"var(--neg)"}">${ch==null?"—":sg(ch)+"%"}</span></div>
-        ${ADMIN?`<button class="del" data-edit="${t}" style="font-size:.8rem">zmień</button>`:""}
-        ${ADMIN&&o?`<button class="del" data-undo="${t}">×</button>`:""}</div></div>`}).join("")}
+        ${ADMIN()?`<button class="del" data-edit="${t}" style="font-size:.8rem">zmień</button>`:""}
+        ${ADMIN()&&o?`<button class="del" data-undo="${t}">×</button>`:""}</div></div>`}).join("")}
 
 /* nastepna data wedlug reguly: pierwsza sesja N-tego lub pozniej w kolejnym miesiacu */
 function nastepnaData(){
@@ -822,10 +830,11 @@ function rysujFormularz(){
 function rysujPrawoZapisu(){
   const b=document.getElementById("addDay"),h=document.getElementById("addHint");
   if(!b)return;
-  const moze=!FB||ADMIN_BAZA;
+  const moze=ADMIN_BAZA;
   b.disabled=!moze;b.style.opacity=moze?"":"0.45";b.style.cursor=moze?"":"default";
-  if(FB&&USER&&!ADMIN_BAZA)h.textContent="Podgląd — wpisywanie cen wymaga uprawnień admina.";
-  else if(FB&&!USER)h.textContent="Zaloguj się, żeby zapisywać ceny w bazie.";
+  h.textContent=!FB?"Baza niedostępna — ceny tylko do odczytu."
+    :!USER?"Zaloguj się, żeby zapisywać ceny w bazie."
+    :!ADMIN_BAZA?"Podgląd — wpisywanie cen wymaga uprawnień admina.":"";
 }
 document.getElementById("addDay").addEventListener("click",()=>{
   const f=document.getElementById("addForm");
@@ -876,10 +885,7 @@ document.getElementById("segP").addEventListener("click",e=>{
 document.getElementById("segD").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b||!SIG.diagnostics[b.dataset.d])return;
   DTAB=b.dataset.d;renderDiag();renderAll()});
-document.getElementById("segR").addEventListener("click",e=>{
-  const b=e.target.closest("button");if(!b)return;
-  document.querySelectorAll("#segR button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
-  ADMIN=b.dataset.r==="1";EDIT=null;renderCeny()});
+
 document.getElementById("dStrip").addEventListener("click",e=>{
   const b=e.target.closest("[data-di]");if(!b)return;PIDX=+b.dataset.di;EDIT=null;renderCeny()});
 document.getElementById("dPrev").addEventListener("click",()=>{PIDX=Math.max(0,pidx()-1);EDIT=null;renderCeny()});
@@ -888,7 +894,7 @@ document.getElementById("priceList").addEventListener("click",e=>{
   const ed=e.target.closest("[data-edit]"),un=e.target.closest("[data-undo]"),ca=e.target.closest("[data-cancel]");
   if(ed){EDIT=ed.dataset.edit;renderCeny();document.getElementById("ovrV")?.focus()}
   else if(un){delete OVR[okey(un.dataset.undo,pdate())];saveOVR();
-    if(FB&&ADMIN_BAZA)FB.usunKorekte(`${PTAB}_${pdate()}_${un.dataset.undo}`).catch(()=>{});
+    if(ADMIN_BAZA)FB.usunKorekte(`${PTAB}_${pdate()}_${un.dataset.undo}`).catch(()=>{});
     renderCeny()}
   else if(ca){EDIT=null;renderCeny()}});
 document.getElementById("priceList").addEventListener("submit",e=>{
@@ -897,7 +903,7 @@ document.getElementById("priceList").addEventListener("submit",e=>{
     r:document.getElementById("ovrR").value,who:USER?.email||"admin",
     when:new Date().toISOString().slice(0,16).replace("T"," ")};
   OVR[klucz]=wpis;saveOVR();
-  if(FB&&ADMIN_BAZA)FB.zapiszKorekte(`${PTAB}_${pdate()}_${EDIT}`,
+  if(ADMIN_BAZA)FB.zapiszKorekte(`${PTAB}_${pdate()}_${EDIT}`,
     {value:wpis.v,reason:wpis.r,author:wpis.who,created_at:wpis.when})
     .catch(err=>console.warn("korekta nie trafila do bazy:",err.message));
   EDIT=null;renderCeny()});
@@ -909,9 +915,10 @@ document.getElementById("priceList").addEventListener("submit",e=>{
    policzyc bez rozbicia na walory, to co dokupic - i tak to jest napisane.
 
    Kwoty sa w USD, bo ETF-y sa dolarowe. Zlote to przeliczenie po kursie. */
+/* Wpisy zyja WYLACZNIE w bazie, pod kontem uzytkownika. Nie ma wersji
+   "lokalnej": dane portfela sa prywatne i maja przezyc zmiane urzadzenia, a
+   nie zniknac z wyczyszczona pamiecia przegladarki. */
 let TX=[];
-try{TX=JSON.parse(localStorage.getItem("tx")||"[]")}catch(e){TX=[]}
-const saveTX=()=>{try{localStorage.setItem("tx",JSON.stringify(TX))}catch(e){}};
 WPISY=true;   /* od tego miejsca wolno pytac o kursy z wpisow */
 /* Zalogowany trzyma wpisy w bazie - przezywaja zmiane urzadzenia.
    Niezalogowany zostaje przy przegladarce, zeby panel dalo sie klikac. */
@@ -923,16 +930,15 @@ async function wczytajTXzBazy(){
   poWpisach();
 }
 async function dodajTX(r){
+  if(!ZAL()){alert("Zaloguj się, żeby prowadzić portfel.");return}
   r.id=r.id||(r.d+"_"+Date.now().toString(36));
   TX.push(r);
-  if(USER){try{await FB.zapisz(USER.uid,"transactions",r.id,r)}catch(e){alert("Nie zapisano w bazie: "+e.message)}}
-  else saveTX();
+  try{await FB.zapisz(USER.uid,"transactions",r.id,r)}catch(e){alert("Nie zapisano w bazie: "+e.message)}
   poWpisach();
 }
 async function usunTX(i){
   const r=TX[i];TX.splice(i,1);
-  if(USER&&r?.id){try{await FB.usun(USER.uid,"transactions",r.id)}catch(e){console.warn(e.message)}}
-  else saveTX();
+  if(r?.id){try{await FB.usun(USER.uid,"transactions",r.id)}catch(e){console.warn(e.message)}}
   poWpisach();
 }
 const TYP={stan:"Stan konta",wplata:"Wpłata",wyplata:"Wypłata"};
@@ -1076,9 +1082,12 @@ function rysujPasek(){
      Nie ma juz "danych przykladowych": albo sa Twoje liczby, albo panel nie
      pokazuje zadnych. */
   document.getElementById("demoBar").hidden=!BRAK;
-  if(BRAK)document.getElementById("demoTxt").innerHTML=
-    "Sygnał, ceny i wyniki są policzone przez silnik. <b>O Twoim koncie panel nic nie wie</b> — "
-    +"dopisz stan konta w zakładce Wpisy, a policzy kapitał, wynik i co dokupić.";
+  if(!BRAK)return;
+  document.getElementById("demoTxt").innerHTML=ZAL()
+    ? "Sygnał, ceny i wyniki są policzone przez silnik. <b>O Twoim koncie panel nic nie wie</b> — "
+      +"dopisz stan konta w zakładce Wpisy, a policzy kapitał, wynik i co dokupić."
+    : "Oglądasz samą strategię: sygnał, wyniki i ceny, z których są policzone. "
+      +"<b>Portfel wymaga zalogowania</b> — dane konta są prywatne i leżą w bazie, nie w tej stronie.";
 }
 function poWpisach(){
   const P=liczPortfel();
@@ -1098,9 +1107,8 @@ function fillAccSelect(){
   const lista=wlasne.length?wlasne:SETUPS[SETUP].accounts.map(a=>a.name);
   s.innerHTML=lista.map(a=>`<option>${esc(a)}</option>`).join("")+`<option value="__nowe">+ nowe konto…</option>`;
   if(lista.includes(cur))s.value=cur}
-/* Bez bazy (offline, brak logowania) pozwalamy wpisywac lokalnie - inaczej
-   panel bylby bezuzyteczny dla kogos, kto tylko oglada. Z baza decyduje admin. */
-const mozeKursy=()=>!FB||!USER||ADMIN_BAZA;
+/* Kurs to dane wspolne - wpisuje je wylacznie admin. */
+const mozeKursy=()=>ADMIN_BAZA;
 function rysujRozbicie(){
   const typ=document.getElementById("txType").value,pok=typ==="stan";
   document.getElementById("txSplit").hidden=!pok;
@@ -1217,8 +1225,15 @@ document.getElementById("kursList").addEventListener("click",e=>{
 
 /* ============ nawigacja ============ */
 const VIEWS=["pulpit","sygnal","wyniki","transakcje","ceny","dlaczego"];
+function rysujNawigacje(){
+  for(const v of TYLKO_ZALOGOWANY)
+    document.querySelector(`#nav a[href="#${v}"]`).hidden=!ZAL();
+  const teraz=location.hash.slice(1);
+  if(!ZAL()&&TYLKO_ZALOGOWANY.includes(teraz))location.hash="#sygnal";
+}
 function show(v){
-  if(!VIEWS.includes(v))v="pulpit";
+  if(!VIEWS.includes(v))v=ZAL()?"pulpit":"sygnal";
+  if(!ZAL()&&TYLKO_ZALOGOWANY.includes(v))v="sygnal";
   VIEWS.forEach(x=>document.getElementById("v-"+x).hidden=(x!==v));
   document.querySelectorAll("#nav a").forEach(a=>a.getAttribute("href")==="#"+v?a.setAttribute("aria-current","page"):a.removeAttribute("aria-current"));
   renderAll();scrollTo(0,0)}
@@ -1234,7 +1249,12 @@ rysujPasek();fillAccSelect();rysujRozbicie();renderTX();renderPulpit();renderMat
 legend("l-mix",KLASY.map(k=>[k[0],CSS(k[1])]));
 legend("l-cmp",CMPK.map(k=>[k.label,CSS(k.col)]));
 legend("l-canary",[["VT",CSS("--s1")],["XLK",CSS("--s2")]]);
-show(location.hash.slice(1)||"pulpit");
+/* Przy wejsciu bez adresu nie wiemy jeszcze, czy ktos jest zalogowany - Firebase
+   odpowiada chwile pozniej. Dlatego zapamietujemy, ze user NIE wybral ekranu
+   sam, i po zalogowaniu przestawiamy go na Pulpit (jego ekran). Jesli wszedl
+   prosto na #wyniki, zostaje tam, gdzie chcial. */
+const WEJSCIE_BEZ_WYBORU=!location.hash;
+rysujNawigacje();show(location.hash.slice(1)||(ZAL()?"pulpit":"sygnal"));
 
 /* ============ konto ============ */
 function rysujKonto(){
@@ -1295,7 +1315,9 @@ if(FB?.wynikPrzekierowania)FB.wynikPrzekierowania().then(w=>{if(w&&w.code)alert(
 if(FB)FB.naZmianeKonta(async u=>{
   USER=u;
   ADMIN_BAZA=u?await FB.czyAdmin(u.uid):false;
-  rysujKonto();rysujUid();rysujPrawoZapisu();
-  if(u){await wczytajTXzBazy();await wczytajKursyZBazy();await wczytajCenyZBazy()} else poWpisach();
+  rysujKonto();rysujUid();rysujPrawoZapisu();rysujNawigacje();
+  if(u&&WEJSCIE_BEZ_WYBORU&&!location.hash)show("pulpit");
+  if(u){await wczytajTXzBazy();await wczytajKursyZBazy();await wczytajCenyZBazy()}
+  else{TX=[];KURSY=[];poWpisach()}   /* wylogowanie zabiera ze soba cudze dane z ekranu */
 });
 rysujKonto();
