@@ -79,6 +79,22 @@ wyglądałoby jak "miesiąc na zero".
 CAGR, MaxDD, Sharpe i Calmar liczą się z **dziennej** krzywej kapitału. Z samych
 miesięcznych zamknięć MaxDD wychodził −7,8% zamiast prawdziwych −15,8%.
 
+## Benchmark
+
+Porównanie siedzi na ekranie *Wyniki*. Benchmarki to **UK-listowane ETF-y klasy
+Acc** — `cspx.uk` (S&P 500) i `vwra.uk` (świat) — a nie surowe `spy.us`/`vt.us`
+z `data/us`. Powód jest konkretny: pliki z `data/us` to ceny zamknięcia **bez
+reinwestycji dywidend** (patrz `dividend_adjusted_csv_loader`), więc benchmark
+z nich byłby zaniżony o całą stopę dywidendy i porównanie wychodziłoby za ładnie
+dla strategii. Klasa Acc trzyma dywidendy w NAV, więc jest uczciwa.
+
+W drugą stronę uczciwości już nie ma i panel to pisze: noga BEST17 liczy się na
+surowych cenach z USA, więc **strategia jest zaniżona**, nie podkoloryzowana.
+
+`vwra.uk` jest notowany dopiero od 2019-07, czyli krócej niż okno strategii —
+jego wiersz w tabeli ma własne daty, a na wykresie krzywa startuje od wartości
+strategii z tamtego dnia.
+
 ## Dane konta
 
 User nie prowadzi księgi transakcji - *"co jakiś czas wpisuje, ile ma na

@@ -214,6 +214,34 @@ chart("c-mix",W=>{
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Udział klas aktywów w czasie" data-hover='${HV({W,H,max:(W-L-R)/n,hit})}'>
     ${g}${paths}<line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--fg")}" style="opacity:0"/>${xl}</svg>`});
 
+/* Porownanie z rynkiem. Benchmarki to UK-listowane ETF-y klasy Acc - te same,
+   ktore user realnie kupuje - wiec licza dywidendy w NAV. Benchmark zaczynajacy
+   sie pozniej startuje od wartosci strategii z tamtego dnia, zeby dalo sie
+   porownac ksztalt, a nie tylko poziom. */
+const CMP=PERF.compare, BENCH=PERF.benchmarks||[];
+const CMPK=[{key:"strategy",label:"BEST17 + GPM",col:"--accent"},
+  ...BENCH.map((b,i)=>({key:b.key,label:b.label,col:["--s2","--s5","--s3"][i]||"--s6"}))];
+chart("c-cmp",W=>{
+  const n=CMP.dates.length,nr=W<460,H=nr?210:250,L=nr?34:42,R=10,T=14,B=28,f=FS(W);
+  const wsz=CMPK.flatMap(k=>CMP[k.key]||[]).filter(v=>v!=null);
+  const lo=Math.min(1,...wsz)*.98,hi=Math.max(...wsz)*1.03;
+  const X=i=>L+(W-L-R)*i/(n-1),Y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo));
+  const st=(hi-lo)/4;
+  let g="";for(let v=Math.ceil(lo/st)*st;v<=hi;v+=st)
+    g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${CSS("--line")}"/><text x="${L-7}" y="${Y(v)+4}" text-anchor="end" fill="${CSS("--faint")}" font-size="${f}">×${v.toFixed(1).replace(".",",")}</text>`;
+  let xl="",ost="";for(let i=0;i<n;i++){const y=CMP.dates[i].slice(0,4);
+    if(y!==ost){ost=y;if(nr&&+y%2)continue;
+      xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${y}</text>`}}
+  let paths="";
+  for(const k of CMPK){const a=CMP[k.key];if(!a)continue;
+    let d="",otw=false;
+    a.forEach((v,i)=>{if(v==null){otw=false;return}d+=(otw?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)+" ";otw=true});
+    paths+=`<path d="${d}" fill="none" stroke="${CSS(k.col)}" stroke-width="${k.key==="strategy"?3:2}" stroke-linejoin="round"/>`}
+  const hit=CMP.dates.map((d,i)=>({cx:X(i),html:`<div class="th">${d}</div>`
+    +CMPK.map(k=>CMP[k.key]?.[i]==null?"":`<div class="tr"><span class="sw" style="background:${CSS(k.col)}"></span>${k.label}<span class="tv">×${CMP[k.key][i].toFixed(2).replace(".",",")}</span></div>`).join("")}));
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Strategia na tle rynku" data-hover='${HV({W,H,max:(W-L-R)/n,hit})}'>
+    ${g}<line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>${paths}${xl}</svg>`});
+
 /* Obsuniecie liczone z DZIENNEJ krzywej kapitalu (silnik), probkowane tygodniowo -
    z miesiecznych zamkniec dolki wychodza plytsze, niz byly. */
 const DD=PERF.drawdown;
@@ -619,7 +647,26 @@ function renderWyniki(){
     /* spread, nie r.map: tablica rzadka gubi w map puste sloty i przesuwa miesiace o kolumne */
     h+=`<tr><td>${y}</td>`+[...RET[y]].map(v=>v==null?'<td class="na">·</td>':`<td style="${col(v)}">${sg(v)}</td>`).join("")
       +`<td class="yr" style="color:var(${yv>=0?"--pos":"--neg"})">${sg(yv)}</td></tr>`}
-  document.getElementById("mgrid").innerHTML=h+"</tbody>"}
+  document.getElementById("mgrid").innerHTML=h+"</tbody>";
+
+  /* Porownanie: kazdy wiersz z wlasnym oknem, bo VWRA notowany jest krocej niz
+     strategia i udawanie, ze to ten sam okres, byloby nieprawda. */
+  const wiersz=(nazwa,sub,m,col)=>
+    `<div class="row" style="grid-template-columns:auto 1fr auto auto auto;gap:10px">
+      <div class="ic" style="background:${CSS(col)};width:10px;height:34px;border-radius:4px"></div>
+      <div class="nm">${nazwa}<em>${sub}</em></div>
+      <div class="vl" style="min-width:74px"><b style="color:var(${m.cagr>=0?"--pos":"--neg"})">${sg2(m.cagr*100)}%</b><span>CAGR</span></div>
+      <div class="vl" style="min-width:74px"><b style="color:var(--neg)">${(m.max_drawdown*100).toFixed(1).replace(".",",")}%</b><span>MaxDD</span></div>
+      <div class="vl" style="min-width:58px"><b>×${m.multiple.toFixed(2).replace(".",",")}</b><span>wzrost</span></div></div>`;
+  document.getElementById("cmpList").innerHTML=
+    wiersz("BEST17 + GPM","strategia · "+M.from+" – "+M.to,M,"--accent")
+    +BENCH.map((b,i)=>wiersz(b.label,b.note+" · "+b.from+" – "+b.to,b.metrics,["--s2","--s5","--s3"][i]||"--s6")).join("");
+  const krotsze=BENCH.filter(b=>!b.pelne_okno).map(b=>b.label+" od "+b.from);
+  document.getElementById("cmpNote").innerHTML=
+    "Benchmarki to ETF-y klasy <b>Acc</b> — dywidendy wchodzą w NAV, więc nie są zaniżone. "
+    +"Noga BEST17 liczy się na surowych cenach z USA, <b>bez dywidend</b> — czyli strategia jest tu "
+    +"raczej zaniżona niż podkoloryzowana."
+    +(krotsze.length?" Krótsza historia: "+krotsze.join(", ")+" — wykres startuje wtedy od wartości strategii z tamtego dnia.":"")}
 
 /* ---- ceny: cena z feedu jest nietykalna, korekta to osobny wpis ---- */
 let ADMIN=false,EDIT=null,PIDX=null;  /* PIDX: ktora data jest ogladana; null = ostatnia */
@@ -1044,6 +1091,7 @@ document.getElementById("txDate").value=new Date().toISOString().slice(0,10);
 rysujPasek();fillAccSelect();rysujRozbicie();renderTX();renderPulpit();renderMatrix();renderActions();renderHist();renderSklad("sum");renderAccounts();renderWyniki();renderDiag();renderCeny();
 
 legend("l-mix",KLASY.map(k=>[k[0],CSS(k[1])]));
+legend("l-cmp",CMPK.map(k=>[k.label,CSS(k.col)]));
 legend("l-canary",[["VT",CSS("--s1")],["XLK",CSS("--s2")]]);
 show(location.hash.slice(1)||"pulpit");
 

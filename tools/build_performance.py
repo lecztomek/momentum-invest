@@ -36,6 +36,8 @@ from engine_v2.combined_pipeline import (find_combined_valid_window_start,
                                           load_combined_daily_prices, run_combined_pipeline)
 from engine_v2.combined_spec import CombinedSpec
 from engine_v2.metrics import compute_metrics
+from engine_v2.pipeline import _lookup
+from engine_v2.spec import StrategySpec
 from engine_v2.period_anchor import nth_trading_day_dates
 from wspolne import zapisz_jesli_zmiana
 
@@ -43,6 +45,15 @@ ROOT = Path(__file__).resolve().parent.parent
 WYJSCIE = ROOT / "web" / "data" / "performance.json"
 TRANSZE = (10, 25)              # musi zgadzac sie z tools/build_signals.py
 MIESIECY_MIKSU = 24
+
+# Benchmark: UK-listowane ETF-y klasy Acc, te same, ktore user realnie kupuje.
+# NIE surowe spy.us/vt.us z data/us - tamte sa bez reinwestycji dywidend (patrz
+# docstring dividend_adjusted_csv_loader), wiec zanizalyby benchmark o cala stope
+# dywidendy i porownanie wychodzilo by za ladnie dla strategii.
+BENCHMARKI = [
+    {"key": "cspx", "ticker": "cspx.uk", "label": "S&P 500", "note": "CSPX, Acc"},
+    {"key": "vwra", "ticker": "vwra.uk", "label": "Świat", "note": "VWRA, Acc"},
+]
 
 # Klasa aktywa wprost z mapowania, ktore repo juz ma (uk_ticker_mapping.json przy
 # strategiach) - nie zgadujemy, co to za ETF: cspx=SPY, cndx=QQQ, eimi=VWO,
@@ -158,6 +169,48 @@ def main() -> int:
     obs = (kapital / szczyt - 1) * 100
     tyg = obs.resample("W").min().dropna()
 
+    # --- benchmarki: kup i trzymaj w tym samym oknie co strategia --------
+    spec_uk = StrategySpec.load(baza / f"gpm_uk_day{TRANSZE[0]}" / "strategy_spec.json")
+    loader = _lookup("data_loader", spec_uk.blocks["data_loader"])
+    cleaner = _lookup("data_cleaner", spec_uk.blocks["data_cleaner"])
+    bench_params = {**spec_uk.base_params.get("data_loader", {}), "frequency": "daily"}
+
+    benchmarki = []
+    for b in BENCHMARKI:
+        md = loader([b["ticker"]], bench_params)
+        ceny = cleaner(md, spec_uk.base_params.get("data_cleaner", {})).prices[b["ticker"]]
+        ceny = ceny.reindex(dni).ffill()
+        ceny = ceny.loc[ceny.first_valid_index():].dropna()
+        if len(ceny) < 60:
+            print(f"benchmark {b['key']}: za malo danych w oknie, pomijam")
+            continue
+        kr = ceny / ceny.iloc[0]
+        eq = pd.DataFrame({"date": kr.index, "equity": kr.values})
+        m = compute_metrics(eq, pd.DataFrame({"date": kr.index, "turnover": 0.0}), {})
+        m["multiple"] = float(kr.iloc[-1])
+        benchmarki.append({**b, "from": kr.index[0].strftime("%Y-%m-%d"),
+                           "to": kr.index[-1].strftime("%Y-%m-%d"),
+                           "pelne_okno": kr.index[0] == dni[0],
+                           "metrics": {k: (round(v, 6) if isinstance(v, float) else v)
+                                       for k, v in m.items()},
+                           "_krzywa": kr})
+        print(f"benchmark {b['key']:5}: {kr.index[0].date()} .. {kr.index[-1].date()}, "
+              f"CAGR {m['cagr']*100:5.2f}%, MaxDD {m['max_drawdown']*100:6.2f}%, x{kr.iloc[-1]:.2f}")
+
+    # Wspolna, tygodniowa os do wykresu. Benchmark, ktory zaczyna sie pozniej,
+    # startuje od wartosci STRATEGII z tamtego dnia - inaczej jego krzywa wisialaby
+    # w powietrzu i nie dalo by sie porownac ksztaltu.
+    os_tyg = kapital.resample("W").last().dropna()
+    porownanie = {"dates": [x.strftime("%Y-%m-%d") for x in os_tyg.index],
+                  "strategy": [round(float(v), 4) for v in os_tyg]}
+    for b in benchmarki:
+        kr = b.pop("_krzywa")
+        # Tygodniowa os konczy sie w niedziele, a notowania sa w dni handlowe -
+        # samo reindex zgubiloby KAZDY punkt, wiec najpierw unia indeksow i ffill.
+        kr_w = kr.reindex(kr.index.union(os_tyg.index)).ffill().reindex(os_tyg.index)
+        skala = float(kapital.asof(kr.index[0]))
+        porownanie[b["key"]] = [None if pd.isna(v) else round(float(v) * skala, 4) for v in kr_w]
+
     laczny = float((seria + 1).prod())
     lat = len(seria) / 12
     wynik = {
@@ -174,6 +227,8 @@ def main() -> int:
         "positive_months": round(float((seria > 0).mean()) * 100, 1),
         "drawdown": {"dates": [x.strftime("%Y-%m-%d") for x in tyg.index],
                      "dd": [round(float(v), 2) for v in tyg]},
+        "benchmarks": benchmarki,
+        "compare": porownanie,
         "classes": KLASY,
         "mix_months": [x.strftime("%Y-%m") for x in mies_miksu],
         "mix": miks,
