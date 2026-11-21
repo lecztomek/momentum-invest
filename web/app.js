@@ -244,17 +244,20 @@ const FS=w=>w<460?11:12.5;
    ktore liczy silnik, i ma wlasna os czasu (okresy rebalansu obu transz). */
 const KLASY=PERF.classes, MIX=PERF.mix, MIXM=PERF.mix_months;
 chart("c-mix",W=>{
-  const nr=W<460,H=nr?220:260,L=nr?34:40,R=10,T=12,B=28,n=MIXM.length,f=FS(W);
+  const od=MIXM.length-odcinek(MIXM.length,1);
+  const MIXM_=MIXM.slice(od),MIX_=MIX.slice(od);
+  const nr=W<460,H=nr?220:260,L=nr?34:40,R=10,T=12,B=28,n=MIXM_.length,f=FS(W);
   const X=i=>L+(W-L-R)*i/(n-1),Y=p=>T+(H-T-B)*(1-p/100);
-  const cum=MIX.map(r=>{let a=0;return r.map(v=>a+=v)});
+  const cum=MIX_.map(r=>{let a=0;return r.map(v=>a+=v)});
   let paths="";
   for(let s=KLASY.length-1;s>=0;s--){
     const d=cum.map((r,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(r[s]).toFixed(1)).join(" ")+` L${X(n-1)} ${Y(0)} L${X(0)} ${Y(0)} Z`;
     paths+=`<path d="${d}" fill="${CSS(KLASY[s][1])}" stroke="${CSS("--surface")}" stroke-width="2" stroke-linejoin="round"/>`}
   let g="";for(let p=0;p<=100;p+=25)g+=`<text x="${L-7}" y="${Y(p)+4}" text-anchor="end" fill="${CSS("--faint")}" font-size="${f}">${p}</text>`;
-  let xl="";for(let i=0;i<n;i+=nr?6:4)xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${mLbl(MIXM[i])}</text>`;
-  const hit=MIXM.map((m,i)=>({cx:X(i),html:`<div class="th">${mLbl(m)}</div>`+KLASY.map((k,s)=>MIX[i][s]?
-    `<div class="tr"><span class="sw" style="background:${CSS(k[1])}"></span>${k[0]}<span class="tv">${MIX[i][s]}%</span></div>`:"").join("")}));
+  const kr=Math.max(1,Math.round(n/(nr?4:6)));
+  let xl="";for(let i=0;i<n;i+=kr)xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${mLbl(MIXM_[i])}</text>`;
+  const hit=MIXM_.map((m,i)=>({cx:X(i),html:`<div class="th">${mLbl(m)}</div>`+KLASY.map((k,s)=>MIX_[i][s]?
+    `<div class="tr"><span class="sw" style="background:${CSS(k[1])}"></span>${k[0]}<span class="tv">${MIX_[i][s]}%</span></div>`:"").join("")}));
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Udział klas aktywów w czasie" data-hover='${HV({W,H,max:(W-L-R)/n,hit})}'>
     ${g}${paths}<line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--fg")}" style="opacity:0"/>${xl}</svg>`});
 
@@ -266,40 +269,70 @@ const CMP=PERF.compare, BENCH=PERF.benchmarks||[];
 const CMPK=[{key:"strategy",label:"BEST17 + GPM",col:"--accent"},
   ...BENCH.map((b,i)=>({key:b.key,label:b.label,col:["--s2","--s5","--s3"][i]||"--s6"}))];
 chart("c-cmp",W=>{
-  const n=CMP.dates.length,nr=W<460,H=nr?210:250,L=nr?34:42,R=10,T=14,B=28,f=FS(W);
-  const wsz=CMPK.flatMap(k=>CMP[k.key]||[]).filter(v=>v!=null);
+  /* Przy wybranym zakresie KAZDA seria startuje od x1 - wtedy koniec krzywej
+     czyta sie wprost jako "tyle zarobil w tym okresie". Przy calej historii
+     zostaje oryginalne polozenie, zeby bylo widac, ze benchmark o krotszej
+     historii doklada sie pozniej, a nie od poczatku. */
+  const od=CMP.dates.length-odcinek(CMP.dates.length,4.345);
+  const daty=CMP.dates.slice(od);
+  const SER_=Object.fromEntries(CMPK.map(k=>{
+    const a=(CMP[k.key]||[]).slice(od);
+    const baza=ZAKRES?(a.find(v=>v!=null)||1):1;
+    return [k.key,a.map(v=>v==null?null:v/baza)]}));
+  const n=daty.length,nr=W<460,H=nr?210:250,L=nr?34:42,R=10,T=14,B=28,f=FS(W);
+  const wsz=CMPK.flatMap(k=>SER_[k.key]||[]).filter(v=>v!=null);
   const lo=Math.min(1,...wsz)*.98,hi=Math.max(...wsz)*1.03;
   const X=i=>L+(W-L-R)*i/(n-1),Y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo));
   const st=(hi-lo)/4;
   let g="";for(let v=Math.ceil(lo/st)*st;v<=hi;v+=st)
     g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${CSS("--line")}"/><text x="${L-7}" y="${Y(v)+4}" text-anchor="end" fill="${CSS("--faint")}" font-size="${f}">×${v.toFixed(1).replace(".",",")}</text>`;
-  let xl="",ost="";for(let i=0;i<n;i++){const y=CMP.dates[i].slice(0,4);
+  let xl="",ost="";for(let i=0;i<n;i++){const y=ZAKRES&&ZAKRES<=12?daty[i].slice(0,7):daty[i].slice(0,4);
     if(y!==ost){ost=y;if(nr&&+y%2)continue;
-      xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${y}</text>`}}
+      xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${ZAKRES&&ZAKRES<=12?mLbl(y):y}</text>`}}
   let paths="";
-  for(const k of CMPK){const a=CMP[k.key];if(!a)continue;
+  for(const k of CMPK){const a=SER_[k.key];if(!a)continue;
     let d="",otw=false;
     a.forEach((v,i)=>{if(v==null){otw=false;return}d+=(otw?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)+" ";otw=true});
     paths+=`<path d="${d}" fill="none" stroke="${CSS(k.col)}" stroke-width="${k.key==="strategy"?3:2}" stroke-linejoin="round"/>`}
-  const hit=CMP.dates.map((d,i)=>({cx:X(i),html:`<div class="th">${d}</div>`
-    +CMPK.map(k=>CMP[k.key]?.[i]==null?"":`<div class="tr"><span class="sw" style="background:${CSS(k.col)}"></span>${k.label}<span class="tv">×${CMP[k.key][i].toFixed(2).replace(".",",")}</span></div>`).join("")}));
+  const hit=daty.map((d,i)=>({cx:X(i),html:`<div class="th">${d}</div>`
+    +CMPK.map(k=>SER_[k.key]?.[i]==null?"":`<div class="tr"><span class="sw" style="background:${CSS(k.col)}"></span>${k.label}<span class="tv">×${SER_[k.key][i].toFixed(2).replace(".",",")}</span></div>`).join("")}));
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Strategia na tle rynku" data-hover='${HV({W,H,max:(W-L-R)/n,hit})}'>
     ${g}<line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>${paths}${xl}</svg>`});
 
 /* Obsuniecie liczone z DZIENNEJ krzywej kapitalu (silnik), probkowane tygodniowo -
    z miesiecznych zamkniec dolki wychodza plytsze, niz byly. */
 const DD=PERF.drawdown;
+/* Zakres wykresow na Wynikach. Jeden wspolny stan - ten sam przelacznik stoi
+   pod kazdym wykresem, ktorego dotyczy, zeby bylo widac, co zmienia.
+   Kafelki i tabela miesieczna zostaja na calej historii: CAGR czy MaxDD z
+   trzech miesiecy to nie jest ta sama wielkosc i nie wolno ich mieszac. */
+let ZAKRES=0;   /* w miesiacach; 0 = cala historia */
+const ZAKRESY=[[3,"3M"],[6,"6M"],[12,"1R"],[36,"3L"],[0,"MAX"]];
+function rysujZakresy(){
+  const h=ZAKRESY.map(([m,l])=>
+    `<button type="button" data-z="${m}" aria-pressed="${m===ZAKRES}">${l}</button>`).join("");
+  document.querySelectorAll(".zakres").forEach(e=>e.innerHTML=h);
+}
+/* Ile ostatnich punktow zostawic przy danym zakresie (tygodnie albo miesiace). */
+const odcinek=(n,naMiesiac)=>ZAKRES?Math.max(2,Math.min(n,Math.round(ZAKRES*naMiesiac))):n;
+document.addEventListener("click",e=>{
+  const b=e.target.closest(".zakres button");if(!b)return;
+  ZAKRES=+b.dataset.z;rysujZakresy();
+  for(const id of ["c-dd","c-cmp","c-mix"])mount(charts.find(c=>c.id===id));
+});
 chart("c-dd",W=>{
-  const nr=W<460,H=nr?190:225,L=nr?40:48,R=10,T=12,B=28,c=DD.dd,n=c.length,f=FS(W);
+  const od=DD.dd.length-odcinek(DD.dd.length,4.345);
+  const c=DD.dd.slice(od),daty=DD.dates.slice(od);
+  const nr=W<460,H=nr?190:225,L=nr?40:48,R=10,T=12,B=28,n=c.length,f=FS(W);
   const lo=Math.floor(Math.min(...c)/5)*5-2;
   const X=i=>L+(W-L-R)*i/(n-1),Y=v=>T+(H-T-B)*(1-(v-lo)/(0-lo));
   const d=c.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)).join(" ");
   let g="";for(let v=0;v>=lo;v-=5)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${CSS("--line")}"/><text x="${L-7}" y="${Y(v)+4}" text-anchor="end" fill="${CSS("--faint")}" font-size="${f}">${v}%</text>`;
-  let xl="",ost="";for(let i=0;i<n;i++){const y=DD.dates[i].slice(0,4);
+  let xl="",ost="";for(let i=0;i<n;i++){const y=ZAKRES&&ZAKRES<=12?daty[i].slice(0,7):daty[i].slice(0,4);
     if(y!==ost){ost=y;if(nr&&+y%2)continue;
-      xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${y}</text>`}}
+      xl+=`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="${CSS("--faint")}" font-size="${f}">${ZAKRES&&ZAKRES<=12?mLbl(y):y}</text>`}}
   const mi=c.reduce((b,v,i)=>v<c[b]?i:b,0);
-  const hit=c.map((v,i)=>({cx:X(i),html:`<div class="th">${DD.dates[i]}</div>
+  const hit=c.map((v,i)=>({cx:X(i),html:`<div class="th">${daty[i]}</div>
     <div class="tr">Obsunięcie<span class="tv" style="color:${CSS("--neg")}">${v.toFixed(1).replace(".",",")}%</span></div>`}));
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Obsunięcie od szczytu" data-hover='${HV({W,H,max:(W-L-R)/n,hit})}'>
     <defs><linearGradient id="dg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${CSS("--neg")}" stop-opacity="0"/><stop offset="1" stop-color="${CSS("--neg")}" stop-opacity=".35"/></linearGradient></defs>
@@ -307,7 +340,7 @@ chart("c-dd",W=>{
     <path d="${d}" fill="none" stroke="${CSS("--neg")}" stroke-width="2.5" stroke-linejoin="round"/>
     <line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>
     <circle cx="${X(mi)}" cy="${Y(c[mi])}" r="5" fill="${CSS("--neg")}" stroke="${CSS("--surface")}" stroke-width="2.5"/>
-    <text x="${X(mi)}" y="${Y(c[mi].dd)+19}" text-anchor="middle" fill="${CSS("--neg")}" font-size="${f+1}" font-weight="700">MaxDD ${STAT.mdd.toFixed(1).replace(".",",")}%</text></svg>`});
+    <text x="${X(mi)}" y="${Y(c[mi])+19}" text-anchor="middle" fill="${CSS("--neg")}" font-size="${f+1}" font-weight="700">${ZAKRES?"najgłębiej tu":"MaxDD"} ${c[mi].toFixed(1).replace(".",",")}%</text></svg>`});
 
 chart("c-yr",W=>{
   const yl=STAT.yl,n=yl.length,H=W<460?195:215,T=16,B=30,L=36,R=10,f=FS(W);
@@ -1271,6 +1304,7 @@ rysujPasek();fillAccSelect();rysujRozbicie();renderTX();renderPulpit();renderMat
 
 legend("l-mix",KLASY.map(k=>[k[0],CSS(k[1])]));
 legend("l-cmp",CMPK.map(k=>[k.label,CSS(k.col)]));
+rysujZakresy();
 legend("l-canary",[["VT",CSS("--s1")],["XLK",CSS("--s2")]]);
 /* Przy wejsciu bez adresu nie wiemy jeszcze, czy ktos jest zalogowany - Firebase
    odpowiada chwile pozniej. Dlatego zapamietujemy, ze user NIE wybral ekranu
