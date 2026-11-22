@@ -9,6 +9,9 @@ name: Sygnal
 # jedno z drugim w KOPII, nigdy nie ruszajac plikow w data/ - to sa dane zrodlowe
 # i maja zostac takie, jakie przyszly.
 on:
+  push:
+    branches: [main]
+    paths: ['data/**']
   schedule:
     - cron: '23 7 * * *'
   workflow_dispatch:
