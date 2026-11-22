@@ -172,6 +172,29 @@ albo osobnym wpisem dla samej daty. Pozostali widzą listę i liczby, ale nie
 mają czym ich zmienić; reguły Firestore pilnują tego po stronie bazy, nie
 tylko w interfejsie.
 
+## Pulpit: wykres i porównanie ze strategią
+
+Wykres kapitału ma punkt na **każdy wpisany dzień**, nie na miesiąc. Oś
+miesięczna gubiła drugi wpis w tym samym miesiącu i rysowała płaską linię tam,
+gdzie nic nie wpisano — a to właśnie wpisy są jedynym, co o koncie wiadomo.
+Pionowa kreska oznacza przelew (niebieska — wpłata, żółta — wypłata), żeby skok
+wartości nie wyglądał na zysk.
+
+Procent obok kwoty to **TWR okna**, nie zysk podzielony przez wartość
+początkową. Przy wpłatach w środku okresu ten drugi kłamie: 30 tys., które
+urosło do 89 tys. po dołożeniu 41 tys., wyglądałoby na +60%, a zarobione jest
++37,5%.
+
+Pod spodem **„Ty a strategia"**: Twój wynik, wynik strategii i S&P 500, wszystko
+metodą TWR i wszystko wyzerowane w dniu Twojego pierwszego wpisu w wybranym
+zakresie. TWR jest tu kluczowy — bez niego wpłata na Twoje konto wyglądałaby
+jak przewaga nad strategią. Linia strategii kończy się tam, gdzie kończy się
+policzony okres, i panel mówi to wprost zamiast ciągnąć ją płasko.
+
+TWR liczy się z osi wpisów także w kafelku i na kartach kont, więc wszystkie
+trzy miejsca podają tę samą liczbę. Na kartach PLN i USD to **dwie różne
+liczby** — w złotych dochodzi ruch kursu.
+
 ## Import stanu kont
 
 Przycisk **Importuj stan konta** w zakładce Wpisy bierze wklejoną tabelkę

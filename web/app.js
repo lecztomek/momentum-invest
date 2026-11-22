@@ -35,17 +35,17 @@ const D=()=>SIG.diagnostics[DTAB];
    48 680 USD, jest gorszy niz panel, ktory mowi "nie wiem, ile masz".
    BRAK = nie ma ani jednego wpisu stanu konta, wiec kwot nie pokazujemy wcale,
    a sklad docelowy idzie w procentach. */
-let CAPITAL,HOLDINGS,MONTHS,VALUE,PAID,VUSD,PUSD,RETC,FXN,BRAK=true,ZLOZONE=false,WPISY=false;
+let CAPITAL,HOLDINGS,MONTHS,VALUE,PAID,VUSD,PUSD,RETC,FXN,TRACK=[],BRAK=true,ZLOZONE=false,WPISY=false;
 function ustawPortfel(P){
   PORT=P;BRAK=!P;
   if(P){
     CAPITAL=P.capital;HOLDINGS=P.holdings;MONTHS=P.months;VALUE=P.value;PAID=P.paid;
-    VUSD=P.value_usd;PUSD=P.paid_usd;RETC=P.returns;FXN=P.fx.rate;
+    VUSD=P.value_usd;PUSD=P.paid_usd;RETC=P.returns;FXN=P.fx.rate;TRACK=P.track||[];
   }else{
     /* 100 + 100 = "sto procent kazdej nogi" - te same wzory licza wtedy udzialy
        zamiast zlotowek, a formatowanie pilnuje, zeby nikt nie wzial ich za kwote. */
     CAPITAL={best17:100,gpm:100,split10:.5};HOLDINGS={};MONTHS=[];VALUE=[];PAID=[];
-    VUSD=[];PUSD=[];RETC={usd:[],pln:[]};FXN=WPISY?kursTeraz():null;   /* przy starcie wpisow jeszcze nie ma */
+    VUSD=[];PUSD=[];RETC={usd:[],pln:[]};FXN=WPISY?kursTeraz():null;TRACK=[];   /* przy starcie wpisow jeszcze nie ma */
   }
   if(ZLOZONE)przeliczTransze();   /* przy pierwszym wywolaniu transz jeszcze nie ma */
 }
@@ -518,32 +518,103 @@ const cur=()=>CURV==="usd"
   ? {v:VUSD,p:PUSD,u:"USD",alt:{v:VALUE,u:"zł"},r:RETC.usd,twr:PORT?.twr.usd??0,k:x=>x}
   : {v:VALUE,p:PAID,u:"zł", alt:{v:VUSD, u:"USD"},r:RETC.pln,twr:PORT?.twr.pln??0,k:x=>x*FXN};
 
-/* duzy wykres kapitalu: sama krzywa i wypelnienie, bez siatki i osi */
+/* Punkty widoczne na Pulpicie: KAZDY wpisany dzien, przyciety do wybranego
+   zakresu. Nie miesiace - miesiac bez wpisu nic nie mowi, a dwa wpisy w jednym
+   miesiacu to dwie rozne informacje. */
+function trackWidok(){
+  const pln=CURV!=="usd";
+  const pkt=TRACK.map(p=>({d:p.d,v:pln?p.wartPln:p.wart,p:pln?p.wplPln:p.wpl,ruch:p.ruch||0}))
+    .filter(x=>x.v!=null&&x.p!=null);
+  if(!RNG||pkt.length<3)return pkt;
+  const o=new Date(pkt.at(-1).d);
+  const gr=Date.UTC(o.getUTCFullYear(),o.getUTCMonth()-RNG,o.getUTCDate());
+  const w=pkt.filter(x=>Date.parse(x.d)>=gr);
+  return w.length>=2?w:pkt.slice(-2);
+}
+const dLbl=d=>(+d.slice(8,10))+" "+MN[+d.slice(5,7)-1];
+
 chart("c-hero",W=>{
   if(BRAK)return "";
-  const C=cur(),n=C.v.length;
-  const i0=C.v.findIndex((v,i)=>v!=null&&C.p[i]!=null);
-  if(i0<0)return "";
-  const from=Math.max(i0,RNG?Math.max(0,n-RNG-1):0);
-  const V=C.v.slice(from),P=C.p.slice(from),M=MONTHS.slice(from);
-  const m=V.length,nr=W<520,H=nr?170:210,T=14,B=26,L=4,R=4;
-  const all=[...V,...P],lo=Math.min(...all),hi=Math.max(...all),pad=(hi-lo)*.14||1;
-  const X=i=>L+(W-L-R)*(m>1?i/(m-1):.5),Y=v=>T+(H-T-B)*(1-(v-lo+pad)/(hi-lo+2*pad));
-  const pa=a=>a.map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)).join(" ");
-  const up=V.at(-1)>=V[0],col=up?CSS("--pos-soft2"):CSS("--neg");
-  const hit=M.map((mm,i)=>({cx:X(i),html:`<div class="th">${mLbl(mm)}</div>
-    <div class="tr">Wartość<span class="tv">${zl(V[i])} ${C.u}</span></div>
-    <div class="tr">Wpłacone<span class="tv">${zl(P[i])} ${C.u}</span></div>`}));
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Wartosc portfela" data-hover='${HV({W,H,max:(W-L-R)/m,hit})}'>
+  const pkt=trackWidok();
+  if(pkt.length<2)return "";
+  const nr=W<520,H=nr?180:220,T=16,B=28,L=6,R=6;
+  const ts=x=>Date.parse(x.d),t0=ts(pkt[0]);
+  const t1=Math.max(ts(pkt.at(-1)),t0+1);
+  const X=x=>L+(W-L-R)*(ts(x)-t0)/(t1-t0);
+  const all=pkt.flatMap(x=>[x.v,x.p]);
+  const lo=Math.min(...all),hi=Math.max(...all),pad=(hi-lo)*.16||Math.max(1,Math.abs(hi)*.06);
+  const Y=v=>T+(H-T-B)*(1-(v-lo+pad)/(hi-lo+2*pad));
+  const pa=k=>pkt.map((x,i)=>(i?"L":"M")+X(x).toFixed(1)+" "+Y(x[k]).toFixed(1)).join(" ");
+  const up=pkt.at(-1).v>=pkt[0].v,col=up?CSS("--pos-soft2"):CSS("--neg");
+  const jed=CURV==="usd"?"USD":"zł";
+  const hit=pkt.map(x=>({cx:X(x),html:`<div class="th">${x.d}</div>
+    <div class="tr">Wartość<span class="tv">${zl(x.v)} ${jed}</span></div>
+    <div class="tr">Wpłacone<span class="tv">${zl(x.p)} ${jed}</span></div>`
+    +(x.ruch?`<div class="tr">${x.ruch>0?"Wpłata":"Wypłata"}<span class="tv">${zl(Math.abs(x.ruch))} USD</span></div>`:"")}));
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Wartosc portfela w czasie" data-hover='${HV({W,H,max:(W-L-R)/Math.max(pkt.length,2),hit})}'>
     <defs><linearGradient id="hg" x1="0" x2="0" y1="0" y2="1">
       <stop offset="0" stop-color="${col}" stop-opacity=".30"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
-    <path d="${pa(V)} L${X(m-1)} ${H-B} L${X(0)} ${H-B} Z" fill="url(#hg)"/>
-    <path d="${pa(P)}" fill="none" stroke="${CSS("--line-strong")}" stroke-width="1.8" stroke-dasharray="5 5"/>
-    <path d="${pa(V)}" fill="none" stroke="${col}" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>
-    <circle cx="${X(m-1)}" cy="${Y(V.at(-1))}" r="5" fill="${col}" stroke="${CSS("--bg")}" stroke-width="3"/>
+    <path d="${pa("v")} L${X(pkt.at(-1)).toFixed(1)} ${H-B} L${X(pkt[0]).toFixed(1)} ${H-B} Z" fill="url(#hg)"/>
+    ${pkt.filter(x=>x.ruch).map(x=>`<line x1="${X(x).toFixed(1)}" x2="${X(x).toFixed(1)}" y1="${T}" y2="${H-B}" stroke="${CSS(x.ruch>0?"--cash":"--warn")}" stroke-width="1.2" stroke-dasharray="3 3" opacity=".8"/>`).join("")}
+    <path d="${pa("p")}" fill="none" stroke="${CSS("--line-strong")}" stroke-width="1.8" stroke-dasharray="5 5"/>
+    <path d="${pa("v")}" fill="none" stroke="${col}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pkt.map((x,i)=>`<circle cx="${X(x).toFixed(1)}" cy="${Y(x.v).toFixed(1)}" r="${i===pkt.length-1?5:3.2}" fill="${col}" stroke="${CSS("--bg")}" stroke-width="2.2"/>`).join("")}
     <line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>
-    <text x="${L}" y="${H-7}" fill="${CSS("--faint")}" font-size="${nr?11:12}">${mLbl(M[0])}</text>
-    <text x="${W-R}" y="${H-7}" text-anchor="end" fill="${CSS("--faint")}" font-size="${nr?11:12}">${mLbl(M.at(-1))}</text>
+    <text x="${L}" y="${H-7}" fill="${CSS("--faint")}" font-size="${nr?11:12}">${dLbl(pkt[0].d)}</text>
+    <text x="${W-R}" y="${H-7}" text-anchor="end" fill="${CSS("--faint")}" font-size="${nr?11:12}">${dLbl(pkt.at(-1).d)}</text>
+  </svg>`});
+
+/* Twoj wynik obok wyniku strategii. Obie linie licza sie metoda TWR - wplaty
+   i wyplaty nie ruszaja wyniku, wiec da sie je zestawic. Punktem wspolnym jest
+   dzien Twojego pierwszego wpisu: tam obie startuja ze 100. */
+function serieVs(){
+  const pole=CURV==="usd"?"idx":"idxPln";
+  const okno=trackWidok();
+  if(okno.length<2)return null;
+  const pkt=TRACK.filter(p=>p.d>=okno[0].d&&p[pole]!=null);
+  if(pkt.length<2||!pkt[0][pole])return null;
+  const od=pkt[0].d,doD=pkt.at(-1).d;
+  const C=PERF.compare||{},dat=C.dates||[];
+  const rebase=k=>{
+    if(!C[k])return null;
+    const pary=dat.map((d,i)=>[d,C[k][i]]).filter(([,v])=>v!=null&&v>0);
+    const baza=pary.filter(([d])=>d<=od).at(-1);
+    if(!baza)return null;
+    const s=pary.filter(([d])=>d>=baza[0]&&d<=doD).map(([d,v])=>({d,i:v/baza[1]}));
+    return s.length>=2?s:null;
+  };
+  return {moje:pkt.map(p=>({d:p.d,i:p[pole]/pkt[0][pole]})),
+          strategia:rebase("strategy"),rynek:rebase("cspx"),od,doD};
+}
+
+chart("c-vs",W=>{
+  if(BRAK)return "";
+  const S=serieVs();
+  if(!S){document.getElementById("l-vs").innerHTML="";return ""}
+  const linie=[["Ty",S.moje,CSS("--accent"),2.8],
+               ["Strategia",S.strategia,CSS("--s1"),2],
+               ["S&P 500",S.rynek,CSS("--faint"),1.6]].filter(x=>x[1]);
+  const wsz=linie.flatMap(x=>x[1]);
+  const nr=W<520,H=nr?170:200,T=16,B=26,L=6,R=6;
+  const t0=Math.min(...wsz.map(p=>Date.parse(p.d)));
+  const t1=Math.max(t0+1,...wsz.map(p=>Date.parse(p.d)));
+  const lo=Math.min(...wsz.map(p=>p.i)),hi=Math.max(...wsz.map(p=>p.i));
+  const pad=(hi-lo)*.18||.02;
+  const X=d=>L+(W-L-R)*(Date.parse(d)-t0)/(t1-t0);
+  const Y=v=>T+(H-T-B)*(1-(v-lo+pad)/(hi-lo+2*pad));
+  const pa=s=>s.map((p,i)=>(i?"L":"M")+X(p.d).toFixed(1)+" "+Y(p.i).toFixed(1)).join(" ");
+  const naDzien=(s,d)=>s.filter(p=>p.d<=d).at(-1);
+  const hit=S.moje.map(p=>({cx:X(p.d),html:`<div class="th">${p.d}</div>`
+    +linie.map(([n,s])=>{const q=naDzien(s,p.d);return q
+      ?`<div class="tr">${n}<span class="tv" style="color:${q.i>=1?CSS("--pos"):CSS("--neg")}">${sg2((q.i-1)*100)}%</span></div>`:""}).join("")}));
+  legend("l-vs",linie.map(([n,,c])=>[n,c]));
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Twoj wynik obok strategii" data-hover='${HV({W,H,max:(W-L-R)/Math.max(S.moje.length,2),hit})}'>
+    <line x1="${L}" x2="${W-R}" y1="${Y(1).toFixed(1)}" y2="${Y(1).toFixed(1)}" stroke="${CSS("--line")}" stroke-dasharray="4 4"/>
+    ${linie.map(([,s,c,gr])=>`<path d="${pa(s)}" fill="none" stroke="${c}" stroke-width="${gr}" stroke-linejoin="round" stroke-linecap="round"/>`).join("")}
+    ${linie.map(([,s,c])=>`<circle cx="${X(s.at(-1).d).toFixed(1)}" cy="${Y(s.at(-1).i).toFixed(1)}" r="4" fill="${c}" stroke="${CSS("--bg")}" stroke-width="2"/>`).join("")}
+    <line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>
+    <text x="${L}" y="${H-7}" fill="${CSS("--faint")}" font-size="${nr?11:12}">${dLbl(S.od)}</text>
+    <text x="${W-R}" y="${H-7}" text-anchor="end" fill="${CSS("--faint")}" font-size="${nr?11:12}">${dLbl(S.doD)}</text>
   </svg>`});
 
 function renderPulpit(){
@@ -564,28 +635,52 @@ function renderPulpit(){
         <a class="btn" href="#transakcje">Dopisz stan konta</a></div>`;
     return;
   }
-  const brakPln=FXN==null||VALUE.at(-1)==null||PAID.at(-1)==null;
+  const brakPln=FXN==null||!TRACK.some(p=>p.wartPln!=null&&p.wplPln!=null);
   const plnBtn=document.querySelector('#curTog button[data-cur="pln"]');
   plnBtn.disabled=brakPln;
   plnBtn.title=brakPln?"Brak kursu USD/PLN — kursy wpisuje admin":"";
   if(brakPln&&CURV!=="usd"){CURV="usd";
     document.querySelectorAll("#curTog button").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.cur==="usd")))}
-  const C=cur(),V=C.v.at(-1),P=C.p.at(-1),zy=V-P;
-  const i0=C.v.findIndex((v,i)=>v!=null&&C.p[i]!=null);
-  const from=Math.max(i0<0?0:i0,RNG?Math.max(0,C.v.length-RNG-1):0);
-  const okres=C.v.at(-1)-C.v[from]-(C.p.at(-1)-C.p[from]);
-  const pct=C.v[from]?okres/C.v[from]*100:0;
-  document.getElementById("heroVal").innerHTML=`${zl(V)}<span>${C.u}</span>`;
-  document.getElementById("heroSub").innerHTML=
-    `<span style="color:var(${okres>=0?"--pos":"--neg"})">${okres>=0?"+":"−"}${zl(okres)} ${C.u} · ${sg(pct)}%</span>`
-    +` <em>${RNG?"w "+RNG+" mies.":"od początku"}</em>`;
-  const alt=C.alt.v.at(-1);
-  document.getElementById("heroAlt").textContent=alt==null?"":`≈ ${zl(alt)} ${C.alt.u}`;
+  const pln=CURV!=="usd",jed=pln?"zł":"USD";
+  /* Kwoty bierzemy z TYCH SAMYCH punktow, ktore widac na wykresie - inaczej
+     liczba w naglowku mowilaby o czym innym niz krzywa pod nia. */
+  const okno=trackWidok(),a0=okno[0],ostW=okno.at(-1);
+  const V=ostW?ostW.v:0,P=ostW?ostW.p:0,zy=V-P;
+  const okres=okno.length<2?0:V-a0.v-(P-a0.p);
+  /* Procent to TWR okna, nie zysk/wartosc poczatkowa. Przy wplatach w srodku
+     ten drugi zawyza wynik: 30 tys. urosle do 89 tys. po dolozeniu 41 tys.
+     wygladaloby na +60%, a zarobione jest kilkanascie. */
+  const polIdx=pln?"idxPln":"idx";
+  const i1=okno.length>1?TRACK.find(p=>p.d===a0.d)?.[polIdx]:null;
+  const i2=okno.length>1?TRACK.find(p=>p.d===ostW.d)?.[polIdx]:null;
+  const pct=i1&&i2?(i2/i1-1)*100:0;
+  const twr=pln?(PORT?.twr.pln??0):(PORT?.twr.usd??0);
+  document.getElementById("heroVal").innerHTML=`${zl(V)}<span>${jed}</span>`;
+  document.getElementById("heroSub").innerHTML=okno.length>=2
+    ? `<span style="color:var(${okres>=0?"--pos":"--neg"})">${okres>=0?"+":"−"}${zl(okres)} ${jed} · ${sg(pct)}%</span>`
+      +` <em>${dLbl(a0.d)} – ${dLbl(ostW.d)}</em>`
+    : pln&&TRACK.length>1
+      ? `<em>Wcześniejsze wpisy nie mają kursu — w złotych mam tylko ten jeden punkt.</em>`
+      : `<em>Jeden wpis — wynik policzę od drugiego.</em>`;
+  const tOst=ostW?TRACK.find(p=>p.d===ostW.d):null;
+  const alt=tOst?(pln?tOst.wart:tOst.wartPln):null;
+  document.getElementById("heroAlt").textContent=alt==null?"":`≈ ${zl(alt)} ${pln?"USD":"zł"}`;
   document.getElementById("heroStats").innerHTML=[
-    ["Wpłacone",zl(P)+" "+C.u,"--muted"],
-    ["Wynik",(zy>=0?"+":"−")+zl(zy)+" "+C.u,zy>=0?"--pos":"--neg"],
-    ["TWR",sg2(C.twr)+"%",C.twr>=0?"--pos":"--neg"]
+    ["Wpłacone",zl(P)+" "+jed,"--muted"],
+    ["Wynik",(zy>=0?"+":"−")+zl(zy)+" "+jed,zy>=0?"--pos":"--neg"],
+    ["TWR",sg2(twr)+"%",twr>=0?"--pos":"--neg"]
   ].map(([l,v,c])=>`<div><span>${l}</span><b style="color:var(${c})">${v}</b></div>`).join("");
+
+  const S=serieVs(),nota=document.getElementById("vsNote");
+  if(!S)nota.textContent=TRACK.length<2
+    ? "Porównanie pojawi się przy drugim wpisie stanu konta — jeden punkt nie tworzy wyniku."
+    : "Twoje daty nie nakładają się z policzoną historią strategii.";
+  else{
+    const kon=S.strategia&&S.strategia.at(-1).d<S.doD?S.strategia.at(-1).d:null;
+    nota.textContent="Obie linie to TWR: wpłaty i wypłaty nie ruszają wyniku, więc da się je zestawić. "
+      +"Start = 0% w dniu Twojego pierwszego wpisu w tym zakresie."
+      +(kon?` Linia strategii urywa się ${kon} — dalej nie ma jeszcze policzonego okresu.`:"");
+  }
 
   renderAccounts();
 
@@ -599,11 +694,13 @@ function renderPulpit(){
 document.getElementById("curTog").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b||b.disabled)return;
   document.querySelectorAll("#curTog button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
-  CURV=b.dataset.cur;renderPulpit();mount(charts.find(c=>c.id==="c-hero"));mount(charts.find(c=>c.id==="c-month"))});
+  CURV=b.dataset.cur;renderPulpit();
+  for(const id of ["c-hero","c-month","c-vs"])mount(charts.find(c=>c.id===id))});
 document.getElementById("ranges").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   document.querySelectorAll("#ranges button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
-  RNG=+b.dataset.r;renderPulpit();mount(charts.find(c=>c.id==="c-hero"))});
+  RNG=+b.dataset.r;renderPulpit();
+  for(const id of ["c-hero","c-vs"])mount(charts.find(c=>c.id===id))});
 
 function renderActions(){
   document.getElementById("sygDane").hidden=BRAK;
@@ -694,7 +791,7 @@ function renderAccounts(){
     return `<div class="legc"><div class="t">${esc(a.name)} <em>${accLegs(a)}</em></div>
       <div class="n">${zlk(a.value)}<span>${CURV==="usd"?"USD":"zł"}</span></div>
       <div class="d">cel ${kw(cap)} · <span style="color:var(${Math.abs(d)<cap*.02?"--faint":"--warn"})">${d>=0?"+":"−"}${kw(Math.abs(d))}</span></div>
-      <div class="d">TWR <span style="color:var(${a.pln>=0?"--pos":"--neg"})">${sg(a.pln)}% PLN</span> · <span style="color:var(${a.usd>=0?"--pos":"--neg"})">${sg(a.usd)}% USD</span></div>
+      <div class="d">TWR <span style="color:var(${a.usd>=0?"--pos":"--neg"})">${sg(a.usd)}% USD</span>${a.pln==null?"":` · <span style="color:var(${a.pln>=0?"--pos":"--neg"})">${sg(a.pln)}% PLN</span>`}</div>
       <div class="bar">${Object.entries(o).map(([t,v])=>{const pr=v/capo*100;
         return `<span style="flex:${pr};background:${CSS(KOL[t]||"--s6")}" title="${t} ${pc(v/capo)}">${pr>13?(t==="GOTOWKA"?"GOT.":t):""}</span>`}).join("")}</div></div>`}).join("");
   document.getElementById("accNote").textContent=s.accounts.length===1
@@ -1123,6 +1220,46 @@ function liczPortfel(){
   };
   const P=seria(null);
 
+  /* Druga, gestsza os: punkt na KAZDY dzien, w ktorym wpisales stan. Os
+     miesieczna gubi drugi wpis w tym samym miesiacu i rysuje plaska linie
+     tam, gdzie nic nie wpisales - a to wlasnie te punkty sa jedynym, co
+     o koncie naprawde wiadomo. */
+  const przeplyw=r=>r.t==="wplata"?r.k:r.t==="wyplata"?-r.k:0;
+  const trackDla=kt=>{
+    const moje=r=>!kt||r.a===kt;
+    const daty=[...new Set(stany.filter(moje).map(r=>r.d))].sort();
+    const pkt=daty.map(d=>{
+      let w=0;
+      for(const k of (kt?[kt]:konta)){
+        const o=stany.filter(r=>r.a===k&&r.d<=d).sort((a,b)=>a.d.localeCompare(b.d)).at(-1);
+        if(o)w+=o.k}
+      const ruchy=TX.filter(r=>moje(r)&&r.d<=d&&przeplyw(r));
+      const kurs=kursNa(d),brak=ruchy.some(r=>kursNa(r.d)==null);
+      return {d,wart:Math.round(w),wpl:Math.round(ruchy.reduce((s,r)=>s+przeplyw(r),0)),
+              wartPln:kurs==null?null:Math.round(w*kurs),
+              wplPln:brak?null:Math.round(ruchy.reduce((s,r)=>s+przeplyw(r)*kursNa(r.d),0))};
+    });
+    let i=1,ip=1,maPln=false;
+    pkt.forEach((p,n)=>{
+      const q=n?pkt[n-1]:null;
+      if(q&&q.wart>0)i*=(p.wart-(p.wpl-q.wpl))/q.wart;
+      p.idx=i;
+      if(p.wartPln==null||p.wplPln==null)p.idxPln=null;
+      else{
+        if(q&&q.wartPln!=null&&q.wplPln!=null&&q.wartPln>0)
+          ip*=(p.wartPln-(p.wplPln-q.wplPln))/q.wartPln;
+        p.idxPln=ip;maPln=true}
+    });
+    /* Wplaty POMIEDZY punktami - zeby bylo widac, ze skok wartosci to przelew,
+       a nie zysk. */
+    for(let n=1;n<pkt.length;n++)
+      pkt[n].ruch=TX.filter(r=>moje(r)&&r.d>pkt[n-1].d&&r.d<=pkt[n].d&&przeplyw(r))
+        .reduce((s,r)=>s+przeplyw(r),0);
+    return {pkt,twr:+((i-1)*100).toFixed(2),twrPln:maPln?+((ip-1)*100).toFixed(2):null};
+  };
+  const CALY=trackDla(null),track=CALY.pkt;
+  const idx=1+CALY.twr/100,idxPln=1+(CALY.twrPln??0)/100;
+
   /* Co trzymam: z ostatniego rozbicia kazdego konta, jesli user je podal. */
   const trzymam={},perKonto={};
   for(const k of konta){
@@ -1148,8 +1285,9 @@ function liczPortfel(){
   const konce=Object.fromEntries(konta.map(k=>[k,seria(k)]));
   const accounts=konta.map(k=>{
     const sum=l=>konta.reduce((a,x)=>a+udzial[l][x],0);
+    const tk=trackDla(k);
     const a={name:k,value:Math.round(konce[k].wart.at(-1)),
-             pln:konce[k].twr,usd:konce[k].twr,
+             pln:tk.twrPln,usd:tk.twr,
              alloc:{best17:sum("best17")?udzial.best17[k]/sum("best17"):0,
                     gpm:sum("gpm")?udzial.gpm[k]/sum("gpm"):0}};
     if(!sum("best17")&&!sum("gpm")){
@@ -1178,7 +1316,10 @@ function liczPortfel(){
     legs:{best17:{value_usd:P.wart.at(-1)/2,paid_usd:P.wpl.at(-1)/2},
           gpm:{value_usd:P.wart.at(-1)/2,paid_usd:P.wpl.at(-1)/2}},
     fx:{pair:"USD/PLN",rate:kurs,series:os.map(m=>kursNa(m+"-28"))},
-    twr:{usd:P.twr,pln:pln.twr},
+    /* TWR z osi wpisow, nie z miesiecznej - liczy KAZDY wpis, takze drugi
+       w tym samym miesiacu. */
+    twr:{usd:CALY.twr,pln:CALY.twrPln??pln.twr},
+    track,
   };
 }
 function rysujPasek(){
