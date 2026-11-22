@@ -656,9 +656,10 @@ function renderPulpit(){
   const pct=i1&&i2?(i2/i1-1)*100:0;
   const twr=pln?(PORT?.twr.pln??0):(PORT?.twr.usd??0);
   document.getElementById("heroVal").innerHTML=`${zl(V)}<span>${jed}</span>`;
+  const pelneOkno=okno.length>=2&&a0.d===(TRACK.find(p=>(pln?p.wartPln:p.wart)!=null)||{}).d;
   document.getElementById("heroSub").innerHTML=okno.length>=2
     ? `<span style="color:var(${okres>=0?"--pos":"--neg"})">${okres>=0?"+":"−"}${zl(okres)} ${jed} · ${sg(pct)}%</span>`
-      +` <em>${dLbl(a0.d)} – ${dLbl(ostW.d)}</em>`
+      +` <em>${pelneOkno?"od początku":"w oknie"} ${dLbl(a0.d)} – ${dLbl(ostW.d)}</em>`
     : pln&&TRACK.length>1
       ? `<em>Wcześniejsze wpisy nie mają kursu — w złotych mam tylko ten jeden punkt.</em>`
       : `<em>Jeden wpis — wynik policzę od drugiego.</em>`;
@@ -666,10 +667,26 @@ function renderPulpit(){
   const alt=tOst?(pln?tOst.wart:tOst.wartPln):null;
   document.getElementById("heroAlt").textContent=alt==null?"":`≈ ${zl(alt)} ${pln?"USD":"zł"}`;
   document.getElementById("heroStats").innerHTML=[
-    ["Wpłacone",zl(P)+" "+jed,"--muted"],
-    ["Wynik",(zy>=0?"+":"−")+zl(zy)+" "+jed,zy>=0?"--pos":"--neg"],
-    ["TWR",sg2(twr)+"%",twr>=0?"--pos":"--neg"]
+    ["Wpłacone łącznie",zl(P)+" "+jed,"--muted"],
+    ["Wynik od początku",(zy>=0?"+":"−")+zl(zy)+" "+jed,zy>=0?"--pos":"--neg"],
+    ["TWR od początku",sg2(twr)+"%",twr>=0?"--pos":"--neg"]
   ].map(([l,v,c])=>`<div><span>${l}</span><b style="color:var(${c})">${v}</b></div>`).join("");
+
+  /* Wykres liczy WYBRANY ZAKRES, kafelki caly czas od poczatku. Gdy te dwie
+     liczby maja rozne znaki, wyglada to na sprzecznosc - trzeba powiedziec
+     wprost, ze to dwa rozne okresy. */
+  const przedPierwszym=TRACK.length&&TX.some(r=>(r.t==="wplata"||r.t==="wyplata")&&r.d<TRACK[0].d);
+  const hn=document.getElementById("heroNote");
+  const uwagi=[];
+  if(okno.length>=2&&!pelneOkno&&Math.sign(okres)!==Math.sign(zy)&&okres&&zy)
+    uwagi.push(`Wykres pokazuje wybrany zakres (${okres>=0?"+":"−"}${zl(okres)} ${jed} od ${dLbl(a0.d)}), `
+      +`a kafelki całą historię (${zy>=0?"+":"−"}${zl(zy)} ${jed}). `
+      +`${zy<0?"Strata":"Zysk"} powstał${zy<0?"a":""} wcześniej — przełącz zakres na MAX, żeby zobaczyć całość.`);
+  if(przedPierwszym)
+    uwagi.push(`Masz przepływy sprzed pierwszego wpisanego stanu (${TRACK[0].d}). `
+      +`Liczą się do „wpłacone”, ale tamtego okresu nie da się wycenić — dopisz stan konta z wcześniejszej daty, jeśli go znasz.`);
+  hn.textContent=uwagi.join(" ");
+  hn.hidden=!uwagi.length;
 
   const S=serieVs(),nota=document.getElementById("vsNote");
   if(!S)nota.textContent=TRACK.length<2

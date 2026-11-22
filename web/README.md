@@ -191,6 +191,17 @@ zakresie. TWR jest tu kluczowy — bez niego wpłata na Twoje konto wyglądałab
 jak przewaga nad strategią. Linia strategii kończy się tam, gdzie kończy się
 policzony okres, i panel mówi to wprost zamiast ciągnąć ją płasko.
 
+**Wykres liczy wybrany zakres, kafelki całą historię** — i to są dwie różne
+liczby, które potrafią mieć przeciwne znaki: zysk w ostatnich trzech
+miesiącach przy stracie od początku. Kafelki mówią to w nazwie („Wynik od
+początku”), podpis pod kwotą mówi „w oknie”, a gdy znaki się rozjeżdżają,
+panel pisze wprost, że chodzi o dwa różne okresy, i odsyła do MAX.
+
+Osobne ostrzeżenie dostajesz, gdy masz **przepływy sprzed pierwszego wpisanego
+stanu**. Liczą się one do „wpłacone”, ale tamtego okresu nie da się wycenić —
+nie wiadomo, ile konto było wtedy warte. Dopóki nie dopiszesz stanu z
+wcześniejszej daty, część wyniku pozostaje niemierzalna.
+
 TWR liczy się z osi wpisów także w kafelku i na kartach kont, więc wszystkie
 trzy miejsca podają tę samą liczbę. Na kartach PLN i USD to **dwie różne
 liczby** — w złotych dochodzi ruch kursu.
