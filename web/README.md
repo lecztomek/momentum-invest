@@ -172,6 +172,26 @@ albo osobnym wpisem dla samej daty. Pozostali widzą listę i liczby, ale nie
 mają czym ich zmienić; reguły Firestore pilnują tego po stronie bazy, nie
 tylko w interfejsie.
 
+## Import stanu kont
+
+Przycisk **Importuj stan konta** w zakładce Wpisy bierze wklejoną tabelkę
+z arkusza — same wiersze, bez nagłówków. Układ kolumn deklarujesz raz, w panelu:
+przy każdej kolumnie wybierasz z listy, czym jest (data, konkretne konto, „Razem”
+do kontroli, kurs USD/PLN albo *pomiń*). Wybór zapamiętuje się w przeglądarce,
+więc przy kolejnym imporcie tylko wklejasz dane.
+
+Nic nie jest zapisywane, zanim nie zobaczysz podglądu: dla każdego dnia i konta
+panel mówi, czy to nowa wartość, poprawka (z poprzednią kwotą obok), czy nic się
+nie zmienia. Dzień, który już jest, zostaje **poprawiony, nie zdublowany** —
+stany mają deterministyczne id `stan_<data>_<konto>`.
+
+Liczby czyta w formacie z arkusza: `$42 150,96` to 42150.96, `3,79588` to kurs.
+Kolumna „Razem” nie jest nigdzie zapisywana — służy wyłącznie do kontroli sumy,
+a rozjazd jest pokazany na żółto i nie blokuje zapisu, tylko ostrzega.
+
+Kursy z importu idą do `fx_rates`, więc wpisze je **tylko admin** — pozostali
+zaimportują same stany kont, o czym panel mówi wprost przed zapisem.
+
 Kurs i złotówki to ta sama informacja podana z dwóch stron, więc formularz
 przyjmuje jedno albo drugie i dolicza brakujące na bieżąco: wpiszesz kurs —
 pokaże kwotę w złotych, wpiszesz złotówki — policzy kurs. Przy wpłacie

@@ -1344,6 +1344,236 @@ document.getElementById("kursList").addEventListener("click",e=>{
   const b=e.target.closest("[data-fx]");if(!b)return;
   usunKurs(b.dataset.fx)});
 
+const D_ISO=/^\d{4}-\d{2}-\d{2}$/;
+const D_PL=/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/;
+function naDate(s){
+  const t=String(s??"").trim();
+  if(D_ISO.test(t))return t;
+  const m=t.match(D_PL);
+  return m?`${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`:null;
+}
+/* "$42 150,96" -> 42150.96. Przecinek dziesietny wygrywa z kropka tysiecy;
+   gdy przecinka nie ma, kropka jest dziesietna. */
+function naLiczbe(s){
+  let t=String(s??"").replace(/[^\d.,-]/g,"");
+  if(!t||!/\d/.test(t))return null;
+  if(t.includes(","))t=t.replace(/\./g,"").replace(",",".");
+  const v=parseFloat(t);
+  return Number.isFinite(v)?v:null;
+}
+const komorki=w=>w.includes("\t")?w.split("\t"):w.split(/\s{2,}/);
+const odm=(n,a,b,c)=>{const d=n%10,s=n%100;return n+" "+(n===1?a:d>=2&&d<=4&&(s<10||s>=20)?b:c)};
+
+const IMP_STALE=[["pomin","— pomiń —"],["data","Data"],["razem","Razem (kontrola)"],["kurs","Kurs USD/PLN"]];
+let IMP_MAP=[];
+try{IMP_MAP=JSON.parse(localStorage.getItem("impmap")||"[]")}catch(e){IMP_MAP=[]}
+const zapiszMape=()=>{try{localStorage.setItem("impmap",JSON.stringify(IMP_MAP))}catch(e){}};
+
+const impKonta=()=>[...new Set([
+  ...TX.filter(r=>r.a).map(r=>r.a),
+  ...IMP_MAP.filter(x=>x.startsWith("konto:")).map(x=>x.slice(6)),
+  "LYNX","XTB"])];
+
+const impSzerokosc=tekst=>{
+  const l=String(tekst??"").split(/\r?\n/).map(w=>w.trim()).filter(Boolean);
+  return l.length?Math.max(...l.map(w=>komorki(w).length)):0;
+};
+
+function impDomyslna(szer){
+  const m=new Array(szer).fill("pomin");
+  if(szer>0)m[0]="data";
+  if(szer>=5){m[1]="konto:LYNX";m[2]="konto:XTB";m[3]="razem";m[4]="kurs"}
+  else if(szer===4){m[1]="konto:LYNX";m[2]="konto:XTB";m[3]="kurs"}
+  else if(szer===3){m[1]="konto:LYNX";m[2]="kurs"}
+  else if(szer===2)m[1]="konto:LYNX";
+  return m;
+}
+
+function impBledy(mapa){
+  const b=[],ile=r=>mapa.filter(x=>x===r).length;
+  if(!ile("data"))b.push("wskaż kolumnę z datą");
+  if(ile("data")>1)b.push("data może być tylko w jednej kolumnie");
+  if(ile("razem")>1)b.push("„Razem” może być tylko w jednej kolumnie");
+  if(ile("kurs")>1)b.push("kurs może być tylko w jednej kolumnie");
+  const k=mapa.filter(x=>x.startsWith("konto:"));
+  if(!k.length)b.push("wskaż przynajmniej jedną kolumnę z kontem");
+  const dub=[...new Set(k.filter((x,i)=>k.indexOf(x)!==i))];
+  if(dub.length)b.push(`to samo konto w dwóch kolumnach: ${dub.map(x=>x.slice(6)).join(", ")}`);
+  return b;
+}
+
+function parsujImport(tekst,mapa){
+  const linie=String(tekst??"").split(/\r?\n/).map(w=>w.trim()).filter(Boolean);
+  const problemy=[],wiersze=[],iData=mapa.indexOf("data");
+  if(iData<0)return {wiersze,problemy};
+  for(const linia of linie){
+    const r=komorki(linia);
+    const d=naDate(r[iData]);
+    if(!d){problemy.push(`pomijam wiersz bez daty: ${linia.slice(0,50)}`);continue}
+    const kwoty={},w={d,kwoty,kurs:null,razem:null};
+    mapa.forEach((rola,i)=>{
+      if(rola==="pomin"||rola==="data")return;
+      const v=naLiczbe(r[i]);
+      if(v==null)return;
+      if(rola==="kurs")w.kurs=v;
+      else if(rola==="razem")w.razem=v;
+      else kwoty[rola.slice(6)]=v;
+    });
+    if(!Object.keys(kwoty).length){problemy.push(`${d}: żadnej kwoty, pomijam`);continue}
+    wiersze.push(w);
+  }
+  return {wiersze,problemy};
+}
+
+const stanTeraz=(d,a)=>{const r=TX.find(x=>x.t==="stan"&&x.d===d&&x.a===a);return r?r.k:null};
+
+async function ustawStan(d,a,k){
+  const i=TX.findIndex(x=>x.t==="stan"&&x.d===d&&x.a===a);
+  if(i>=0){
+    if(Math.abs(TX[i].k-k)<0.005)return false;
+    TX[i].k=k;
+    if(FB&&USER)await FB.zapisz(USER.uid,"transactions",TX[i].id,TX[i]);
+    return true;
+  }
+  const r={id:`stan_${d}_${a.replace(/[^\w]+/g,"-")}`,d,a,t:"stan",k,px:null};
+  TX.push(r);
+  if(FB&&USER)await FB.zapisz(USER.uid,"transactions",r.id,r);
+  return true;
+}
+async function ustawKurs(d,k){
+  const ist=KURSY.find(x=>x.d===d);
+  if(ist&&Math.abs(ist.k-k)<1e-9)return false;
+  KURSY=KURSY.filter(x=>x.d!==d).concat({id:d,d,k});
+  zapiszKursyLokalnie();
+  if(FB)await FB.zapiszKurs(d,{d,k});
+  return true;
+}
+
+let IMPORT=null,IMP_SZER=-1;
+function rysujMape(){
+  const konta=impKonta();
+  const opcje=r=>[...IMP_STALE,...konta.map(a=>[`konto:${a}`,a]),["nowe","+ inne konto…"]]
+    .map(([v,t])=>`<option value="${esc(v)}"${v===r?" selected":""}>${esc(t)}</option>`).join("");
+  document.getElementById("impMapa").innerHTML=IMP_MAP.map((r,i)=>
+    `<label><span>kolumna ${i+1}</span><select data-kol="${i}">${opcje(r)}</select></label>`).join("");
+}
+function rysujImport(){
+  const tekst=document.getElementById("impTekst").value;
+  const szer=impSzerokosc(tekst)||IMP_MAP.length||5;
+  if(szer!==IMP_MAP.length)IMP_MAP=impDomyslna(szer);
+  if(szer!==IMP_SZER){IMP_SZER=szer;rysujMape()}
+  const pod=document.getElementById("impPodglad"),btn=document.getElementById("impZapisz");
+  const zle=impBledy(IMP_MAP);
+  if(zle.length){
+    IMPORT=null;
+    pod.innerHTML=`<p class="note" style="color:var(--neg)">${zle.map(esc).join("<br>")}</p>`;
+    btn.disabled=true;return}
+  const p=parsujImport(tekst,IMP_MAP);
+  IMPORT=p;
+  const konta=IMP_MAP.filter(x=>x.startsWith("konto:")).map(x=>x.slice(6));
+  let h=p.problemy.length?`<p class="note" style="color:var(--warn)">${p.problemy.map(esc).join("<br>")}</p>`:"";
+  if(!p.wiersze.length){
+    pod.innerHTML=h||'<p class="note">Wklej wiersze powyżej, a pokażę, co z nich wyjdzie.</p>';
+    btn.disabled=true;return}
+  let nowe=0,zmiany=0,bezZmian=0,kursow=0,rozjazd=0;
+  const wiersze=p.wiersze.map(w=>{
+    const suma=Object.values(w.kwoty).reduce((a,b)=>a+b,0);
+    const zgoda=w.razem==null||Math.abs(suma-w.razem)<0.5;
+    if(!zgoda)rozjazd++;
+    const kom=konta.map(a=>{
+      const v=w.kwoty[a];
+      if(v==null)return '<td class="num">—</td>';
+      const b=stanTeraz(w.d,a);
+      let st;
+      if(b==null){st="nowy";nowe++}
+      else if(Math.abs(b-v)<0.005){st="bez zmian";bezZmian++}
+      else {st=`było ${zl(b)}`;zmiany++}
+      return `<td class="num">${zl(v)}<em>${esc(st)}</em></td>`}).join("");
+    let kk;
+    if(!(w.kurs>0))kk='<td class="num">—</td>';
+    else if(!mozeKursy())kk='<td class="num">'+w.kurs.toFixed(4).replace(".",",")+'<em>tylko admin</em></td>';
+    else{
+      const ist=KURSY.find(x=>x.d===w.d);
+      const nowy=!ist||Math.abs(ist.k-w.kurs)>1e-9;
+      if(nowy)kursow++;
+      kk=`<td class="num">${w.kurs.toFixed(4).replace(".",",")}<em>${nowy?(ist?"zmiana":"nowy"):"bez zmian"}</em></td>`}
+    return `<tr${zgoda?"":' style="background:color-mix(in srgb,var(--warn) 12%,transparent)"'}>
+      <td>${w.d}</td>${kom}${kk}
+      <td class="num">${zgoda?"":`<span style="color:var(--warn)">Razem ${zl(w.razem)} ≠ ${zl(suma)}</span>`}</td></tr>`}).join("");
+  h+=`<div class="card tw imp"><table>
+    <thead><tr><th>Data</th>${konta.map(a=>`<th class="num">${esc(a)}</th>`).join("")}
+      <th class="num">USD/PLN</th><th class="num">Kontrola</th></tr></thead>
+    <tbody>${wiersze}</tbody></table></div>`;
+  const co=[nowe?odm(nowe,"nowy stan","nowe stany","nowych stanów"):"",
+            zmiany?`${zmiany} do poprawienia`:"",
+            bezZmian?`${bezZmian} bez zmian`:"",
+            kursow?odm(kursow,"kurs","kursy","kursów"):""].filter(Boolean);
+  h+=`<p class="note">${co.join(" · ")||"nic do zapisania"}`
+    +(rozjazd?` <span style="color:var(--warn)">· ${odm(rozjazd,"wiersz nie zgadza się","wiersze nie zgadzają się","wierszy nie zgadza się")} z kolumną „Razem” — zapiszę je mimo to, ale sprawdź.</span>`:"")
+    +(!mozeKursy()&&p.wiersze.some(w=>w.kurs>0)?' <span style="color:var(--warn)">· kursy pominę, wpisuje je admin.</span>':"")+"</p>";
+  pod.innerHTML=h;
+  btn.disabled=!(nowe+zmiany+kursow);
+  btn.textContent=`Zapisz ${odm(nowe+zmiany,"stan","stany","stanów")}`
+    +(kursow?` i ${odm(kursow,"kurs","kursy","kursów")}`:"");
+}
+
+async function wykonajImport(){
+  const p=IMPORT;if(!p?.wiersze.length)return;
+  if(!ZAL()){alert("Zaloguj się, żeby zapisać wpisy.");return}
+  const btn=document.getElementById("impZapisz");
+  btn.disabled=true;btn.textContent="Zapisuję…";
+  let stany=0,kursy=0;const bledy=[];
+  for(const w of p.wiersze){
+    for(const[a,k]of Object.entries(w.kwoty)){
+      try{if(await ustawStan(w.d,a,k))stany++}
+      catch(e){bledy.push(`${w.d} ${a}: ${e.message}`)}}
+    if(w.kurs>0&&mozeKursy()){
+      try{if(await ustawKurs(w.d,w.kurs))kursy++}
+      catch(e){bledy.push(`${w.d} kurs: ${e.message}`)}}
+  }
+  poWpisach();
+  const pod=document.getElementById("impPodglad");
+  pod.innerHTML=`<p class="note" style="color:var(${bledy.length?"--warn":"--pos"})">
+    Zapisane: ${odm(stany,"stan","stany","stanów")}, ${odm(kursy,"kurs","kursy","kursów")}.${bledy.length?"<br>Nie zapisano "+bledy.length+":<br>"+bledy.map(esc).join("<br>"):""}</p>`;
+  document.getElementById("impTekst").value="";
+  btn.textContent="Zapisz";btn.disabled=true;
+}
+
+document.getElementById("btnImport").addEventListener("click",()=>{
+  const box=document.getElementById("importBox");
+  if(!box.hidden){box.hidden=true;return}
+  box.innerHTML=`<div class="card">
+    <div class="lbl" style="margin-bottom:10px">Import stanu kont</div>
+    <p class="note" style="margin:0 0 10px">Wklej same wiersze z arkusza, bez nagłówków — potem niżej
+      powiedz, co jest w której kolumnie. Czego nie potrzebuję, zostaw na „pomiń”.
+      Dzień, który już jest, zostanie poprawiony, nie zdublowany.</p>
+    <textarea id="impTekst" rows="7" spellcheck="false" placeholder="2026-07-29&#9;$42 150,96&#9;$43 300,00&#9;$85 450,96&#9;3,79588"></textarea>
+    <div class="lbl" style="margin:14px 0 8px">Co jest w której kolumnie</div>
+    <div class="impmap" id="impMapa"></div>
+    <div id="impPodglad" style="margin-top:14px"></div>
+    <div class="akcje" style="margin-top:12px">
+      <button type="button" class="btn" id="impZapisz" disabled>Zapisz</button>
+      <button type="button" class="btn cicho" id="impAnuluj">Zamknij</button></div>
+  </div>`;
+  box.hidden=false;
+  document.getElementById("impTekst").addEventListener("input",rysujImport);
+  document.getElementById("impZapisz").addEventListener("click",wykonajImport);
+  document.getElementById("impAnuluj").addEventListener("click",()=>{box.hidden=true});
+  document.getElementById("impMapa").addEventListener("change",e=>{
+    const s=e.target.closest("select");if(!s)return;
+    const i=+s.dataset.kol;
+    if(s.value==="nowe"){
+      const n=(prompt("Nazwa konta")||"").trim();
+      if(!n){s.value=IMP_MAP[i];return}
+      IMP_MAP[i]="konto:"+n;
+      zapiszMape();rysujMape();rysujImport();return}
+    IMP_MAP[i]=s.value;
+    zapiszMape();rysujImport();
+  });
+  IMP_SZER=-1;
+  rysujImport();
+});
+
 
 /* ============ nawigacja ============ */
 const VIEWS=["pulpit","sygnal","wyniki","transakcje","ceny","dlaczego"];
