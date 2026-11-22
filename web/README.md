@@ -191,11 +191,12 @@ zakresie. TWR jest tu kluczowy — bez niego wpłata na Twoje konto wyglądałab
 jak przewaga nad strategią. Linia strategii kończy się tam, gdzie kończy się
 policzony okres, i panel mówi to wprost zamiast ciągnąć ją płasko.
 
-**Wykres liczy wybrany zakres, kafelki całą historię** — i to są dwie różne
-liczby, które potrafią mieć przeciwne znaki: zysk w ostatnich trzech
-miesiącach przy stracie od początku. Kafelki mówią to w nazwie („Wynik od
-początku”), podpis pod kwotą mówi „w oknie”, a gdy znaki się rozjeżdżają,
-panel pisze wprost, że chodzi o dwa różne okresy, i odsyła do MAX.
+**Największa liczba na ekranie mówi o całej historii**, nie o wycinku: pod
+wartością konta stoi wynik i TWR od początku, te same, co w kafelkach. Wynik
+wybranego zakresu jest niżej, pod przyciskami 3M/6M/1R/MAX, i jest tam wprost
+nazwany wycinkiem. Inaczej nagłówek chwaliłby się zyskiem z ostatnich tygodni
+w sytuacji, gdy od początku jest strata — a to dokładnie ta liczba, na którą
+patrzy się pierwszą sekundę.
 
 Osobne ostrzeżenie dostajesz, gdy masz **przepływy sprzed pierwszego wpisanego
 stanu**. Liczą się one do „wpłacone”, ale tamtego okresu nie da się wycenić —

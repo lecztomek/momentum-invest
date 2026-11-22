@@ -657,12 +657,23 @@ function renderPulpit(){
   const twr=pln?(PORT?.twr.pln??0):(PORT?.twr.usd??0);
   document.getElementById("heroVal").innerHTML=`${zl(V)}<span>${jed}</span>`;
   const pelneOkno=okno.length>=2&&a0.d===(TRACK.find(p=>(pln?p.wartPln:p.wart)!=null)||{}).d;
+  /* Najwieksza liczba na ekranie mowi o CALEJ historii, nie o wycinku. Wynik
+     wybranego zakresu stoi nizej, przy przyciskach zakresu - inaczej naglowek
+     potrafi chwalic sie zyskiem z ostatnich tygodni, kiedy od poczatku jest
+     strata. */
   document.getElementById("heroSub").innerHTML=okno.length>=2
-    ? `<span style="color:var(${okres>=0?"--pos":"--neg"})">${okres>=0?"+":"−"}${zl(okres)} ${jed} · ${sg(pct)}%</span>`
-      +` <em>${pelneOkno?"od początku":"w oknie"} ${dLbl(a0.d)} – ${dLbl(ostW.d)}</em>`
+    ? `<span style="color:var(${zy>=0?"--pos":"--neg"})">${zy>=0?"+":"−"}${zl(zy)} ${jed} · ${sg2(twr)}%</span>`
+      +` <em>od początku</em>`
     : pln&&TRACK.length>1
       ? `<em>Wcześniejsze wpisy nie mają kursu — w złotych mam tylko ten jeden punkt.</em>`
       : `<em>Jeden wpis — wynik policzę od drugiego.</em>`;
+  const rn=document.getElementById("rngNote");
+  rn.hidden=okno.length<2;
+  if(okno.length>=2)rn.innerHTML=pelneOkno
+    ? `Wykres pokazuje całą historię: ${dLbl(a0.d)} – ${dLbl(ostW.d)}.`
+    : `W tym zakresie (${dLbl(a0.d)} – ${dLbl(ostW.d)}): `
+      +`<b style="color:var(${okres>=0?"--pos":"--neg"})">${okres>=0?"+":"−"}${zl(okres)} ${jed} · ${sg(pct)}%</b>`
+      +` — to tylko wycinek, kwota wyżej liczy od początku.`;
   const tOst=ostW?TRACK.find(p=>p.d===ostW.d):null;
   const alt=tOst?(pln?tOst.wart:tOst.wartPln):null;
   document.getElementById("heroAlt").textContent=alt==null?"":`≈ ${zl(alt)} ${pln?"USD":"zł"}`;
@@ -672,21 +683,14 @@ function renderPulpit(){
     ["TWR od początku",sg2(twr)+"%",twr>=0?"--pos":"--neg"]
   ].map(([l,v,c])=>`<div><span>${l}</span><b style="color:var(${c})">${v}</b></div>`).join("");
 
-  /* Wykres liczy WYBRANY ZAKRES, kafelki caly czas od poczatku. Gdy te dwie
-     liczby maja rozne znaki, wyglada to na sprzecznosc - trzeba powiedziec
-     wprost, ze to dwa rozne okresy. */
   const przedPierwszym=TRACK.length&&TX.some(r=>(r.t==="wplata"||r.t==="wyplata")&&r.d<TRACK[0].d);
   const hn=document.getElementById("heroNote");
-  const uwagi=[];
-  if(okno.length>=2&&!pelneOkno&&Math.sign(okres)!==Math.sign(zy)&&okres&&zy)
-    uwagi.push(`Wykres pokazuje wybrany zakres (${okres>=0?"+":"−"}${zl(okres)} ${jed} od ${dLbl(a0.d)}), `
-      +`a kafelki całą historię (${zy>=0?"+":"−"}${zl(zy)} ${jed}). `
-      +`${zy<0?"Strata":"Zysk"} powstał${zy<0?"a":""} wcześniej — przełącz zakres na MAX, żeby zobaczyć całość.`);
-  if(przedPierwszym)
-    uwagi.push(`Masz przepływy sprzed pierwszego wpisanego stanu (${TRACK[0].d}). `
-      +`Liczą się do „wpłacone”, ale tamtego okresu nie da się wycenić — dopisz stan konta z wcześniejszej daty, jeśli go znasz.`);
-  hn.textContent=uwagi.join(" ");
-  hn.hidden=!uwagi.length;
+  hn.hidden=!przedPierwszym;
+  hn.textContent=przedPierwszym
+    ? `Masz przepływy sprzed pierwszego wpisanego stanu (${TRACK[0].d}). `
+      +`Liczą się do „wpłacone”, ale tamtego okresu nie da się wycenić — dopisz stan konta `
+      +`z wcześniejszej daty, jeśli go znasz.`
+    : "";
 
   const S=serieVs(),nota=document.getElementById("vsNote");
   if(!S)nota.textContent=TRACK.length<2
