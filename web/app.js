@@ -564,6 +564,44 @@ chart("c-hero",W=>{
     <text x="${W-R}" y="${H-7}" text-anchor="end" fill="${CSS("--faint")}" font-size="${nr?11:12}">${dLbl(pkt.at(-1).d)}</text>
   </svg>`});
 
+/* Ile konto jest nad albo pod wplaconym - w kazdym dniu, ktory wpisales.
+   Krzywa kapitalu rosnie takze od samych wplat, wiec sama nie odpowiada na
+   pytanie "jestem na plusie czy na minusie". Ta odpowiada. */
+chart("c-zysk",W=>{
+  if(BRAK)return "";
+  const pkt=trackWidok().map(x=>({d:x.d,z:x.v-x.p,v:x.v,p:x.p}));
+  const nota=document.getElementById("zyskNote");
+  if(pkt.length<2){if(nota)nota.textContent="";return ""}
+  const nr=W<520,H=nr?160:190,T=16,B=26,L=6,R=6;
+  const ts=x=>Date.parse(x.d),t0=ts(pkt[0]),t1=Math.max(ts(pkt.at(-1)),t0+1);
+  const X=x=>L+(W-L-R)*(ts(x)-t0)/(t1-t0);
+  const zs=pkt.map(x=>x.z);
+  const lo=Math.min(0,...zs),hi=Math.max(0,...zs),pad=(hi-lo)*.18||1;
+  const Y=v=>T+(H-T-B)*(1-(v-lo+pad)/(hi-lo+2*pad));
+  const d0=pa=>pa.map((x,i)=>(i?"L":"M")+X(x).toFixed(1)+" "+Y(x.z).toFixed(1)).join(" ");
+  const ost=pkt.at(-1).z,col=CSS(ost>=0?"--pos":"--neg");
+  const jed=CURV==="usd"?"USD":"zł";
+  const hit=pkt.map(x=>({cx:X(x),html:`<div class="th">${x.d}</div>
+    <div class="tr">${x.z>=0?"Nad wpłaconym":"Pod wpłaconym"}<span class="tv" style="color:${CSS(x.z>=0?"--pos":"--neg")}">${zl(x.z)} ${jed}</span></div>
+    <div class="tr">Wartość<span class="tv">${zl(x.v)} ${jed}</span></div>
+    <div class="tr">Wpłacone<span class="tv">${zl(x.p)} ${jed}</span></div>`
+    +(x.p?`<div class="tr">Wobec wpłaconego<span class="tv">${sg2(x.z/x.p*100)}%</span></div>`:"")}));
+  if(nota)nota.textContent=ost>=0
+    ? `Linia nad zerem znaczy, że konto jest warte więcej, niż w nie włożyłeś. Teraz: ${zl(ost)} ${jed} nad.`
+    : `Linia pod zerem znaczy, że konto jest warte mniej, niż w nie włożyłeś. Teraz: ${zl(-ost)} ${jed} pod.`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Ile konto jest nad albo pod wplaconym" data-hover='${HV({W,H,max:(W-L-R)/Math.max(pkt.length,2),hit})}'>
+    <defs><linearGradient id="zg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+    <path d="${d0(pkt)} L${X(pkt.at(-1)).toFixed(1)} ${Y(0).toFixed(1)} L${X(pkt[0]).toFixed(1)} ${Y(0).toFixed(1)} Z" fill="url(#zg)"/>
+    <line x1="${L}" x2="${W-R}" y1="${Y(0).toFixed(1)}" y2="${Y(0).toFixed(1)}" stroke="${CSS("--line-strong")}"/>
+    <text x="${W-R}" y="${Y(0)-5}" text-anchor="end" fill="${CSS("--faint")}" font-size="${nr?10:11}">wpłacone</text>
+    <path d="${d0(pkt)}" fill="none" stroke="${col}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pkt.map((x,i)=>`<circle cx="${X(x).toFixed(1)}" cy="${Y(x.z).toFixed(1)}" r="${i===pkt.length-1?5:3.2}" fill="${CSS(x.z>=0?"--pos":"--neg")}" stroke="${CSS("--bg")}" stroke-width="2.2"/>`).join("")}
+    <line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>
+    <text x="${L}" y="${H-7}" fill="${CSS("--faint")}" font-size="${nr?11:12}">${dLbl(pkt[0].d)}</text>
+    <text x="${W-R}" y="${H-7}" text-anchor="end" fill="${CSS("--faint")}" font-size="${nr?11:12}">${dLbl(pkt.at(-1).d)}</text>
+  </svg>`});
+
 /* Twoj wynik obok wyniku strategii. Obie linie licza sie metoda TWR - wplaty
    i wyplaty nie ruszaja wyniku, wiec da sie je zestawic. Punktem wspolnym jest
    dzien Twojego pierwszego wpisu: tam obie startuja ze 100. */
@@ -669,11 +707,16 @@ function renderPulpit(){
       : `<em>Jeden wpis — wynik policzę od drugiego.</em>`;
   const rn=document.getElementById("rngNote");
   rn.hidden=okno.length<2;
+  /* Gdy od poczatku jest strata, "+8 616" czyta sie jak zysk, a to jest
+     odrobiona czesc straty. Nazywamy rzecz po imieniu. */
+  const zmiana=!okres?"bez zmian"
+    :zy<0?(okres>0?`strata zmalała o ${zl(okres)} ${jed}`:`strata urosła o ${zl(-okres)} ${jed}`)
+    :(okres>0?`+${zl(okres)} ${jed}`:`−${zl(-okres)} ${jed}`);
   if(okno.length>=2)rn.innerHTML=pelneOkno
     ? `Wykres pokazuje całą historię: ${dLbl(a0.d)} – ${dLbl(ostW.d)}.`
-    : `W tym zakresie (${dLbl(a0.d)} – ${dLbl(ostW.d)}): `
-      +`<b style="color:var(${okres>=0?"--pos":"--neg"})">${okres>=0?"+":"−"}${zl(okres)} ${jed} · ${sg(pct)}%</b>`
-      +` — to tylko wycinek, kwota wyżej liczy od początku.`;
+    : `Od ${dLbl(a0.d)}, czyli tyle, ile widać na wykresie: `
+      +`<b style="color:var(${okres>=0?"--pos":"--neg"})">${zmiana} · ${sg(pct)}%</b>`
+      +`. Całość liczy kwota wyżej.`;
   const tOst=ostW?TRACK.find(p=>p.d===ostW.d):null;
   const alt=tOst?(pln?tOst.wart:tOst.wartPln):null;
   document.getElementById("heroAlt").textContent=alt==null?"":`≈ ${zl(alt)} ${pln?"USD":"zł"}`;
@@ -683,14 +726,15 @@ function renderPulpit(){
     ["TWR od początku",sg2(twr)+"%",twr>=0?"--pos":"--neg"]
   ].map(([l,v,c])=>`<div><span>${l}</span><b style="color:var(${c})">${v}</b></div>`).join("");
 
-  const przedPierwszym=TRACK.length&&TX.some(r=>(r.t==="wplata"||r.t==="wyplata")&&r.d<TRACK[0].d);
-  const hn=document.getElementById("heroNote");
-  hn.hidden=!przedPierwszym;
-  hn.textContent=przedPierwszym
-    ? `Masz przepływy sprzed pierwszego wpisanego stanu (${TRACK[0].d}). `
-      +`Liczą się do „wpłacone”, ale tamtego okresu nie da się wycenić — dopisz stan konta `
-      +`z wcześniejszej daty, jeśli go znasz.`
-    : "";
+  const hn=document.getElementById("heroNote"),uw=[];
+  for(const b of (PORT?.bezStanu||[]))
+    uw.push(`Konto ${b} ma wpłaty, ale ani jednego wpisanego stanu — jego pieniądze nie wchodzą do żadnej z liczb powyżej.`);
+  for(const s of (PORT?.spoznione||[]))
+    uw.push(`Na koncie ${s.konto} są wpłaty sprzed pierwszego wpisanego stanu (${s.od}). `
+      +`Liczą się dopiero od tej daty — wcześniej nie wiadomo, ile konto było warte. `
+      +`Dopisz stan z wcześniejszej daty, jeśli go znasz.`);
+  hn.hidden=!uw.length;
+  hn.textContent=uw.join(" ");
 
   const S=serieVs(),nota=document.getElementById("vsNote");
   if(!S)nota.textContent=TRACK.length<2
@@ -716,12 +760,12 @@ document.getElementById("curTog").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b||b.disabled)return;
   document.querySelectorAll("#curTog button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
   CURV=b.dataset.cur;renderPulpit();
-  for(const id of ["c-hero","c-month","c-vs"])mount(charts.find(c=>c.id===id))});
+  for(const id of ["c-hero","c-month","c-vs","c-zysk"])mount(charts.find(c=>c.id===id))});
 document.getElementById("ranges").addEventListener("click",e=>{
   const b=e.target.closest("button");if(!b)return;
   document.querySelectorAll("#ranges button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
   RNG=+b.dataset.r;renderPulpit();
-  for(const id of ["c-hero","c-vs"])mount(charts.find(c=>c.id===id))});
+  for(const id of ["c-hero","c-vs","c-zysk"])mount(charts.find(c=>c.id===id))});
 
 function renderActions(){
   document.getElementById("sygDane").hidden=BRAK;
@@ -1222,6 +1266,17 @@ function liczPortfel(){
 
   /* Jedna funkcja na calosc i na pojedyncze konto - inaczej suma kont i portfel
      liczylyby sie innym kodem i predzej czy pozniej by sie rozjechaly. */
+  const przeplyw=r=>r.t==="wplata"?r.k:r.t==="wyplata"?-r.k:0;
+  /* Konto wchodzi do sumy dopiero z pierwszym wpisanym stanem. Jego wplaty
+     musza wejsc W TYM SAMYM MOMENCIE - inaczej wczesniejsze punkty maja
+     wplaty konta, ktorego wartosci jeszcze nie licza, i wygladaja na strate,
+     ktorej nie bylo. */
+  const odKiedy={};
+  for(const k of konta){
+    const p=stany.filter(r=>r.a===k).map(r=>r.d).sort()[0];
+    if(p)odKiedy[k]=p;
+  }
+  const liczone=(r,d)=>odKiedy[r.a]!=null&&odKiedy[r.a]<=d;
   const seria=kt=>{
     const moje=r=>!kt||r.a===kt;
     const wart=os.map(m=>{let sum=0;
@@ -1229,8 +1284,8 @@ function liczPortfel(){
         const ost=stany.filter(r=>r.a===k&&mies(r.d)<=m).sort((a,b)=>a.d.localeCompare(b.d)).at(-1);
         if(ost)sum+=ost.k}
       return Math.round(sum)});
-    const wpl=os.map(m=>Math.round(TX.filter(r=>moje(r)&&mies(r.d)<=m)
-      .reduce((s,r)=>s+(r.t==="wplata"?r.k:r.t==="wyplata"?-r.k:0),0)));
+    const wpl=os.map(m=>Math.round(TX.filter(r=>moje(r)&&mies(r.d)<=m&&liczone(r,m+"-31"))
+      .reduce((s,r)=>s+przeplyw(r),0)));
     /* Zwrot liczymy TYLKO miedzy miesiacami, w ktorych naprawde jest wpis stanu.
        Miesiac bez wpisu nie jest "miesiacem na zero" - po prostu nie wiadomo, ile
        konto wtedy bylo warte, a wykres pokazujacy tam 0,0% klamalby.
@@ -1245,7 +1300,6 @@ function liczPortfel(){
      miesieczna gubi drugi wpis w tym samym miesiacu i rysuje plaska linie
      tam, gdzie nic nie wpisales - a to wlasnie te punkty sa jedynym, co
      o koncie naprawde wiadomo. */
-  const przeplyw=r=>r.t==="wplata"?r.k:r.t==="wyplata"?-r.k:0;
   const trackDla=kt=>{
     const moje=r=>!kt||r.a===kt;
     const daty=[...new Set(stany.filter(moje).map(r=>r.d))].sort();
@@ -1254,7 +1308,7 @@ function liczPortfel(){
       for(const k of (kt?[kt]:konta)){
         const o=stany.filter(r=>r.a===k&&r.d<=d).sort((a,b)=>a.d.localeCompare(b.d)).at(-1);
         if(o)w+=o.k}
-      const ruchy=TX.filter(r=>moje(r)&&r.d<=d&&przeplyw(r));
+      const ruchy=TX.filter(r=>moje(r)&&r.d<=d&&przeplyw(r)&&liczone(r,d));
       const kurs=kursNa(d),brak=ruchy.some(r=>kursNa(r.d)==null);
       return {d,wart:Math.round(w),wpl:Math.round(ruchy.reduce((s,r)=>s+przeplyw(r),0)),
               wartPln:kurs==null?null:Math.round(w*kurs),
@@ -1274,8 +1328,7 @@ function liczPortfel(){
     /* Wplaty POMIEDZY punktami - zeby bylo widac, ze skok wartosci to przelew,
        a nie zysk. */
     for(let n=1;n<pkt.length;n++)
-      pkt[n].ruch=TX.filter(r=>moje(r)&&r.d>pkt[n-1].d&&r.d<=pkt[n].d&&przeplyw(r))
-        .reduce((s,r)=>s+przeplyw(r),0);
+      pkt[n].ruch=pkt[n].wpl-pkt[n-1].wpl;
     return {pkt,twr:+((i-1)*100).toFixed(2),twrPln:maPln?+((ip-1)*100).toFixed(2):null};
   };
   const CALY=trackDla(null),track=CALY.pkt;
@@ -1321,9 +1374,9 @@ function liczPortfel(){
   const kapital=P.wart.at(-1);
   const wartPln=P.wart.map((v,i)=>{const k=kursNa(os[i]+"-28");return k==null?null:Math.round(v*k)});
   const wplPln=os.map(m=>{
-    const ruchy=TX.filter(r=>mies(r.d)<=m&&(r.t==="wplata"||r.t==="wyplata"));
+    const ruchy=TX.filter(r=>mies(r.d)<=m&&przeplyw(r)&&liczone(r,m+"-31"));
     if(ruchy.some(r=>kursNa(r.d)==null))return null;
-    return Math.round(ruchy.reduce((a,r)=>a+(r.t==="wplata"?1:-1)*r.k*kursNa(r.d),0))});
+    return Math.round(ruchy.reduce((a,r)=>a+przeplyw(r)*kursNa(r.d),0))});
   const pln=lancuch(wartPln,wplPln,new Set(stany.map(r=>mies(r.d))));
   return {
     owner:"wpisy", capital:{best17:kapital/2,gpm:kapital/2,split10:.5},
@@ -1341,6 +1394,11 @@ function liczPortfel(){
        w tym samym miesiacu. */
     twr:{usd:CALY.twr,pln:CALY.twrPln??pln.twr},
     track,
+    /* Konta, ktorych pieniadze nie sa (albo nie byly) widziane przez panel -
+       user ma o tym wiedziec, bo to jego wplaty. */
+    spoznione:konta.filter(k=>odKiedy[k]&&TX.some(r=>r.a===k&&przeplyw(r)&&r.d<odKiedy[k]))
+      .map(k=>({konto:k,od:odKiedy[k]})),
+    bezStanu:konta.filter(k=>!odKiedy[k]&&TX.some(r=>r.a===k&&przeplyw(r))),
   };
 }
 function rysujPasek(){

@@ -185,6 +185,18 @@ początkową. Przy wpłatach w środku okresu ten drugi kłamie: 30 tys., które
 urosło do 89 tys. po dołożeniu 41 tys., wyglądałoby na +60%, a zarobione jest
 +37,5%.
 
+Drugi wykres, **„Nad wpłaconym czy pod"**, odpowiada wprost na pytanie „jestem
+na plusie czy na minusie". Krzywa kapitału rośnie także od samych wpłat, więc
+sama tego nie mówi; ta rysuje różnicę `wartość − wpłacone` wokół zera.
+
+**Konto wchodzi do wyliczeń dopiero z pierwszym wpisanym stanem — i razem
+z nim wchodzą jego wpłaty.** Wcześniej liczyło się inaczej: wartość brała tylko
+konta mające już wpis, a „wpłacone" sumowało wpłaty ze wszystkich. Konto
+z wpłatami, ale bez stanu, zaniżało więc każdy wcześniejszy punkt, a jego
+pojawienie się wyglądało jak odrabianie straty, której nie było. Panel mówi
+teraz wprost, gdy jakieś konto ma wpłaty sprzed swojego pierwszego stanu —
+albo nie ma stanu w ogóle i jego pieniądze nie wchodzą do żadnej liczby.
+
 Pod spodem **„Ty a strategia"**: Twój wynik, wynik strategii i S&P 500, wszystko
 metodą TWR i wszystko wyzerowane w dniu Twojego pierwszego wpisu w wybranym
 zakresie. TWR jest tu kluczowy — bez niego wpłata na Twoje konto wyglądałaby
