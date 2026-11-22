@@ -172,6 +172,13 @@ albo osobnym wpisem dla samej daty. Pozostali widzą listę i liczby, ale nie
 mają czym ich zmienić; reguły Firestore pilnują tego po stronie bazy, nie
 tylko w interfejsie.
 
+Kurs i złotówki to ta sama informacja podana z dwóch stron, więc formularz
+przyjmuje jedno albo drugie i dolicza brakujące na bieżąco: wpiszesz kurs —
+pokaże kwotę w złotych, wpiszesz złotówki — policzy kurs. Przy wpłacie
+częściej wiadomo „zapłaciłem 4550 zł" niż „kupiłem po 4,55". Do bazy idzie
+w obu przypadkach **sam kurs** — złotówki nie są nigdzie zapisywane, bo da się
+je odtworzyć, a dwa źródła tej samej liczby prędzej czy później się rozjeżdżają.
+
 Kurs obowiązuje **od swojej daty do następnego wpisu**. Czego panel nie wie,
 tego nie zmyśla: dla dat **sprzed pierwszego kursu** nie przelicza nic —
 wartość w złotych jest `null`, wykres zaczyna się od pierwszego miesiąca

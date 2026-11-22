@@ -1220,6 +1220,8 @@ function rysujRozbicie(){
   /* Kurs to dane wspolne - wpisuje je admin. Reszta widzi liste, ale bez pol.
      `hidden` na <option> nie dziala wszedzie, wiec do tego jeszcze `disabled`. */
   document.getElementById("txKursWrap").hidden=typ==="kurs"||!mozeKursy();
+  document.getElementById("txPlnWrap").hidden=typ==="kurs"||!mozeKursy();
+  document.getElementById("txPlnLbl").textContent=pok?"Wartość konta w zł":"Kwota w zł";
   const opt=document.querySelector('#txType option[value="kurs"]');
   opt.hidden=opt.disabled=!mozeKursy();
   if(opt.disabled&&typ==="kurs"){document.getElementById("txType").value="stan";rysujRozbicie()}
@@ -1281,6 +1283,23 @@ function renderTX(){
     :'<div><span>Brak wpisów</span><b>—</b></div>'}
 
 document.getElementById("txType").addEventListener("change",rysujRozbicie);
+
+/* Kurs i zlotowki to ta sama informacja podana z dwoch stron: przy wplacie
+   czesciej wiesz, ile zaplaciles, niz po jakim kursie. Do bazy i tak idzie
+   sam kurs - zlotowki nie sa nigdzie zapisywane. */
+let KURS_Z="kurs";
+function przeliczKwoty(zrodlo){
+  if(document.getElementById("txKursWrap").hidden)return;
+  const u=document.getElementById("txAmt"),k=document.getElementById("txKurs"),p=document.getElementById("txPln");
+  const usd=parseFloat(u.value)||0,kurs=parseFloat(k.value)||0,pln=parseFloat(p.value)||0;
+  if(zrodlo!=="amt")KURS_Z=zrodlo;
+  if(zrodlo==="pln"||(zrodlo==="amt"&&KURS_Z==="pln")){
+    if(usd>0&&pln>0)k.value=+(pln/usd).toFixed(4);
+    return}
+  if(usd>0&&kurs>0)p.value=+(usd*kurs).toFixed(2);
+}
+for(const[id,zr]of[["txAmt","amt"],["txKurs","kurs"],["txPln","pln"]])
+  document.getElementById(id).addEventListener("input",()=>przeliczKwoty(zr));
 document.getElementById("txAmt").addEventListener("input",sumujRozbicie);
 document.getElementById("txPx").addEventListener("input",sumujRozbicie);
 document.getElementById("txAcc").addEventListener("change",e=>{
@@ -1310,7 +1329,9 @@ document.getElementById("txForm").addEventListener("submit",e=>{
   }
   /* Kurs podany przy wpisie zapisuje sie jako OSOBNY wpis z ta sama data -
      dzieki temu dziala tak samo, jak gdyby go wpisac recznie. */
-  const kr=parseFloat(document.getElementById("txKurs").value);
+  let kr=parseFloat(document.getElementById("txKurs").value)||0;
+  const wZl=parseFloat(document.getElementById("txPln").value)||0;
+  if(!(kr>0)&&wZl>0&&rec.k>0)kr=+(wZl/rec.k).toFixed(4);
   if(kr>0&&mozeKursy())dodajKurs(rec.d,kr);
   dodajTX(rec);
   e.target.reset();
