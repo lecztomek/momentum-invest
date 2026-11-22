@@ -166,14 +166,22 @@ kursie na całą historię:
   w złotówkach, ten zarabia lub traci także na kursie.
 
 Kursy są **danymi wspólnymi**, nie prywatnymi — kurs z 10 marca jest ten sam
-dla każdego — więc leżą w `fx_rates` i wpisuje je **admin**: przy stanie konta
-(pole obok kwoty) albo osobnym wpisem dla dowolnej daty. Pozostali widzą listę
-i liczby, ale nie mają czym ich zmienić; reguły Firestore pilnują tego po
-stronie bazy, nie tylko w interfejsie.
+dla każdego — więc leżą w `fx_rates` i wpisuje je **admin**: przy dowolnym
+wpisie (pole obok kwoty — również przy wpłacie, bo to wtedy kurs się zna)
+albo osobnym wpisem dla samej daty. Pozostali widzą listę i liczby, ale nie
+mają czym ich zmienić; reguły Firestore pilnują tego po stronie bazy, nie
+tylko w interfejsie.
 
-Dla dat sprzed pierwszego kursu panel bierze najstarszy, jaki zna, i nie udaje,
-że zna wcześniejsze. Bez ani jednego kursu pokazuje dolary i mówi, że złotówki
-liczy kursem zastępczym.
+Kurs obowiązuje **od swojej daty do następnego wpisu**. Czego panel nie wie,
+tego nie zmyśla: dla dat **sprzed pierwszego kursu** nie przelicza nic —
+wartość w złotych jest `null`, wykres zaczyna się od pierwszego miesiąca
+z kursem, a miesiąc bez niego nie wchodzi do łańcucha TWR. Tak samo „wpłacone
+w złotych": jeśli choć jeden przepływ nie ma kursu, suma jest nieznana, a nie
+policzona po czymkolwiek. Gdy nieznany jest ostatni miesiąc albo nie ma ani
+jednego kursu, **przełącznik PLN jest wyłączony** i panel pokazuje same dolary.
+
+Nie ma żadnego kursu zastępczego. Wcześniej w tym miejscu siedziała stała
+4,06 — liczby w złotych wyglądały wtedy na policzone, choć nie były.
 
 ## Ile dni trzeba wpisać ręcznie
 

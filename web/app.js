@@ -45,14 +45,10 @@ function ustawPortfel(P){
     /* 100 + 100 = "sto procent kazdej nogi" - te same wzory licza wtedy udzialy
        zamiast zlotowek, a formatowanie pilnuje, zeby nikt nie wzial ich za kwote. */
     CAPITAL={best17:100,gpm:100,split10:.5};HOLDINGS={};MONTHS=[];VALUE=[];PAID=[];
-    VUSD=[];PUSD=[];RETC={usd:[],pln:[]};FXN=WPISY?kursTeraz():KURS;   /* przy starcie wpisow jeszcze nie ma */
+    VUSD=[];PUSD=[];RETC={usd:[],pln:[]};FXN=WPISY?kursTeraz():null;   /* przy starcie wpisow jeszcze nie ma */
   }
   if(ZLOZONE)przeliczTransze();   /* przy pierwszym wywolaniu transz jeszcze nie ma */
 }
-/* Kurs do przeliczenia na zlote. Jedna liczba dla calej historii - to jest
-   uproszczenie i panel tak to podpisuje. */
-let KURS=4.06;
-try{const k=parseFloat(localStorage.getItem("kurs"));if(k>0)KURS=k}catch(e){}
 ustawPortfel(null);
 const RET=PERF.monthly;
 const INSTR=PRC.instruments, FEED=PRC.feed;
@@ -68,7 +64,8 @@ const px=n=>n.toFixed(n<20?4:2).replace(".",",");
 const CSS=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 /* Wszystkie kwoty w kodzie sa w USD (bo w USD sa wpisy i notowania). Ta funkcja
    jest JEDYNYM miejscem, w ktorym robi sie z nich zlotowki. */
-const kw=v=>CURV==="usd"?zl(v)+" USD":zl(v*FXN)+" zł";
+const kw=v=>CURV==="usd"?zl(v)+" USD":FXN==null?"— zł":zl(v*FXN)+" zł";
+const zlk=v=>CURV==="usd"?zl(v):FXN==null?"—":zl(v*FXN);
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const MN=["sty","lut","mar","kwi","maj","cze","lip","sie","wrz","paź","lis","gru"];
 const mLbl=m=>MN[+m.slice(5)-1]+" "+m.slice(2,4);
@@ -524,7 +521,11 @@ const cur=()=>CURV==="usd"
 /* duzy wykres kapitalu: sama krzywa i wypelnienie, bez siatki i osi */
 chart("c-hero",W=>{
   if(BRAK)return "";
-  const C=cur(),n=C.v.length,from=RNG?Math.max(0,n-RNG-1):0,V=C.v.slice(from),P=C.p.slice(from),M=MONTHS.slice(from);
+  const C=cur(),n=C.v.length;
+  const i0=C.v.findIndex((v,i)=>v!=null&&C.p[i]!=null);
+  if(i0<0)return "";
+  const from=Math.max(i0,RNG?Math.max(0,n-RNG-1):0);
+  const V=C.v.slice(from),P=C.p.slice(from),M=MONTHS.slice(from);
   const m=V.length,nr=W<520,H=nr?170:210,T=14,B=26,L=4,R=4;
   const all=[...V,...P],lo=Math.min(...all),hi=Math.max(...all),pad=(hi-lo)*.14||1;
   const X=i=>L+(W-L-R)*(m>1?i/(m-1):.5),Y=v=>T+(H-T-B)*(1-(v-lo+pad)/(hi-lo+2*pad));
@@ -563,15 +564,23 @@ function renderPulpit(){
         <a class="btn" href="#transakcje">Dopisz stan konta</a></div>`;
     return;
   }
+  const brakPln=FXN==null||VALUE.at(-1)==null||PAID.at(-1)==null;
+  const plnBtn=document.querySelector('#curTog button[data-cur="pln"]');
+  plnBtn.disabled=brakPln;
+  plnBtn.title=brakPln?"Brak kursu USD/PLN — kursy wpisuje admin":"";
+  if(brakPln&&CURV!=="usd"){CURV="usd";
+    document.querySelectorAll("#curTog button").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.cur==="usd")))}
   const C=cur(),V=C.v.at(-1),P=C.p.at(-1),zy=V-P;
-  const from=RNG?Math.max(0,C.v.length-RNG-1):0;
+  const i0=C.v.findIndex((v,i)=>v!=null&&C.p[i]!=null);
+  const from=Math.max(i0<0?0:i0,RNG?Math.max(0,C.v.length-RNG-1):0);
   const okres=C.v.at(-1)-C.v[from]-(C.p.at(-1)-C.p[from]);
   const pct=C.v[from]?okres/C.v[from]*100:0;
   document.getElementById("heroVal").innerHTML=`${zl(V)}<span>${C.u}</span>`;
   document.getElementById("heroSub").innerHTML=
     `<span style="color:var(${okres>=0?"--pos":"--neg"})">${okres>=0?"+":"−"}${zl(okres)} ${C.u} · ${sg(pct)}%</span>`
     +` <em>${RNG?"w "+RNG+" mies.":"od początku"}</em>`;
-  document.getElementById("heroAlt").textContent=`≈ ${zl(C.alt.v.at(-1))} ${C.alt.u}`;
+  const alt=C.alt.v.at(-1);
+  document.getElementById("heroAlt").textContent=alt==null?"":`≈ ${zl(alt)} ${C.alt.u}`;
   document.getElementById("heroStats").innerHTML=[
     ["Wpłacone",zl(P)+" "+C.u,"--muted"],
     ["Wynik",(zy>=0?"+":"−")+zl(zy)+" "+C.u,zy>=0?"--pos":"--neg"],
@@ -588,7 +597,7 @@ function renderPulpit(){
       <div class="vl"><b>${kw(v)}</b><span>${pc(v/HT)}</span></div></div>`}).join("");
 }
 document.getElementById("curTog").addEventListener("click",e=>{
-  const b=e.target.closest("button");if(!b)return;
+  const b=e.target.closest("button");if(!b||b.disabled)return;
   document.querySelectorAll("#curTog button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
   CURV=b.dataset.cur;renderPulpit();mount(charts.find(c=>c.id==="c-hero"));mount(charts.find(c=>c.id==="c-month"))});
 document.getElementById("ranges").addEventListener("click",e=>{
@@ -672,7 +681,7 @@ function viewAcc(){
     h+=`<h2 class="psec">${esc(a.name)} <span class="sub" style="font-weight:400">· ${accLegs(a)} · ${kw(cap)}</span></h2>`
       +tbl(`<th>ETF</th><th>${CURV==="usd"?"USD":"zł"}</th><th>Udział konta</th>`,Object.entries(o).map(([t,v])=>
         `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
-         <td class="num">${zl(CURV==="usd"?v:v*FXN)}</td><td class="num">${pc(v/cap)}</td></tr>`).join(""))}
+         <td class="num">${zlk(v)}</td><td class="num">${pc(v/cap)}</td></tr>`).join(""))}
   return h}
 /* Jedyny widok, ktorego nie ma wyzej: podzial miedzy KONTA. Sklad calosci
    i transz pokazuja paski w sekcji "Co trzymac" - powtarzanie go w tabelce
@@ -683,7 +692,7 @@ function renderAccounts(){
   document.getElementById("accCards").innerHTML=s.accounts.map(a=>{
     const o=accComp(a),cap=accTarget(a),d=a.value-cap,capo=Object.values(o).reduce((x,y)=>x+y,0);
     return `<div class="legc"><div class="t">${esc(a.name)} <em>${accLegs(a)}</em></div>
-      <div class="n">${zl(CURV==="usd"?a.value:a.value*FXN)}<span>${CURV==="usd"?"USD":"zł"}</span></div>
+      <div class="n">${zlk(a.value)}<span>${CURV==="usd"?"USD":"zł"}</span></div>
       <div class="d">cel ${kw(cap)} · <span style="color:var(${Math.abs(d)<cap*.02?"--faint":"--warn"})">${d>=0?"+":"−"}${kw(Math.abs(d))}</span></div>
       <div class="d">TWR <span style="color:var(${a.pln>=0?"--pos":"--neg"})">${sg(a.pln)}% PLN</span> · <span style="color:var(${a.usd>=0?"--pos":"--neg"})">${sg(a.usd)}% USD</span></div>
       <div class="bar">${Object.entries(o).map(([t,v])=>{const pr=v/capo*100;
@@ -1051,13 +1060,11 @@ try{KURSY=JSON.parse(localStorage.getItem("fx")||"[]")}catch(e){KURSY=[]}
 const zapiszKursyLokalnie=()=>{try{localStorage.setItem("fx",JSON.stringify(KURSY))}catch(e){}};
 const kursy=()=>KURSY.filter(r=>r.k>0).sort((a,b)=>a.d.localeCompare(b.d));
 function kursNa(data){
-  const k=kursy();
-  if(!k.length)return KURS;
-  let w=k[0].k;                       /* przed pierwszym wpisem - najstarszy znany */
-  for(const r of k){if(r.d<=data)w=r.k;else break}
+  let w=null;
+  for(const r of kursy()){if(r.d<=data)w=r.k;else break}
   return w;
 }
-const kursTeraz=()=>{const k=kursy();return k.length?k.at(-1).k:KURS};
+const kursTeraz=()=>kursy().at(-1)?.k??null;
 /* Ktora noga odpowiada za dany walor - z ROLE w signals.json. Walor wspolny dla
    obu nog (np. CSPX: BEST17 + GPM) liczy sie po polowie. */
 const nogaWaloru=t=>{const r=ROLE[t]||"";const b=r.includes("BEST17"),g=r.includes("GPM");
@@ -1071,8 +1078,8 @@ function lancuch(wart,wpl,obs){
   const zwr=wart.map(()=>null);
   let poprz=-1;
   wart.forEach((_,i)=>{
-    if(!obs.has(OSTATNIA_OS[i])||!wart[i])return;
-    if(poprz>=0&&wart[poprz])
+    if(!obs.has(OSTATNIA_OS[i])||!wart[i]||wpl[i]==null)return;
+    if(poprz>=0&&wart[poprz]&&wpl[poprz]!=null)
       zwr[i]=+(((wart[i]-(wpl[i]-wpl[poprz]))/wart[poprz]-1)*100).toFixed(2);
     poprz=i});
   const twr=(zwr.filter(x=>x!=null).reduce((a,r)=>a*(1+r/100),1)-1)*100;
@@ -1153,9 +1160,11 @@ function liczPortfel(){
   /* Wszystko zostaje w DOLARACH - w nich sa wpisy i w nich notowane sa ETF-y.
      Zlote to wylacznie warstwa wyswietlania (funkcja kw()), po kursie z daty. */
   const kapital=P.wart.at(-1);
-  const wartPln=P.wart.map((v,i)=>Math.round(v*kursNa(os[i]+"-28")));
-  const wplPln=os.map(m=>Math.round(TX.filter(r=>mies(r.d)<=m)
-    .reduce((a,r)=>a+(r.t==="wplata"?r.k*kursNa(r.d):r.t==="wyplata"?-r.k*kursNa(r.d):0),0)));
+  const wartPln=P.wart.map((v,i)=>{const k=kursNa(os[i]+"-28");return k==null?null:Math.round(v*k)});
+  const wplPln=os.map(m=>{
+    const ruchy=TX.filter(r=>mies(r.d)<=m&&(r.t==="wplata"||r.t==="wyplata"));
+    if(ruchy.some(r=>kursNa(r.d)==null))return null;
+    return Math.round(ruchy.reduce((a,r)=>a+(r.t==="wplata"?1:-1)*r.k*kursNa(r.d),0))});
   const pln=lancuch(wartPln,wplPln,new Set(stany.map(r=>mies(r.d))));
   return {
     owner:"wpisy", capital:{best17:kapital/2,gpm:kapital/2,split10:.5},
@@ -1207,13 +1216,10 @@ const mozeKursy=()=>ADMIN_BAZA;
 function rysujRozbicie(){
   const typ=document.getElementById("txType").value,pok=typ==="stan";
   document.getElementById("txSplit").hidden=!pok;
-  /* Kurs podaje sie przy stanie konta (bo wtedy i tak patrzysz na rachunek)
-     albo osobnym wpisem dla dowolnej daty. */
-  document.getElementById("txKursWrap").hidden=!pok;
   document.getElementById("txAcc").closest(".fld").hidden=typ==="kurs";
   /* Kurs to dane wspolne - wpisuje je admin. Reszta widzi liste, ale bez pol.
      `hidden` na <option> nie dziala wszedzie, wiec do tego jeszcze `disabled`. */
-  document.getElementById("txKursWrap").hidden=!pok||!mozeKursy();
+  document.getElementById("txKursWrap").hidden=typ==="kurs"||!mozeKursy();
   const opt=document.querySelector('#txType option[value="kurs"]');
   opt.hidden=opt.disabled=!mozeKursy();
   if(opt.disabled&&typ==="kurs"){document.getElementById("txType").value="stan";rysujRozbicie()}
@@ -1258,8 +1264,8 @@ function renderTX(){
           <div class="vl" style="display:flex;align-items:center;gap:10px"><b>${r.k.toFixed(2).replace(".",",")}</b>
             ${moge?`<button class="del" data-fx="${r.d}" aria-label="Usuń kurs z ${r.d}">×</button>`:""}</div></div>`).join("")
     : `<div class="empty">${moge
-        ? `Brak kursów. Dopisz choć jeden — bez niego panel pokazuje tylko dolary (przyjmuje ${KURS.toFixed(2).replace(".",",")} jako kurs zastępczy).`
-        : "Brak kursów. Wpisuje je admin — do tego czasu złotówki liczą się kursem zastępczym "+KURS.toFixed(2).replace(".",",")+"."}</div>`;
+        ? "Brak kursów. Dopisz choć jeden — bez niego panel nie przelicza na złote i pokazuje same dolary."
+        : "Brak kursów. Wpisuje je admin — do tego czasu panel nie przelicza na złote i pokazuje same dolary."}</div>`;
   const nota=document.getElementById("kursNote");
   nota.textContent=moge?"":"Kursy są wspólne dla wszystkich — wpisuje je admin.";
   nota.hidden=moge;
@@ -1301,11 +1307,11 @@ document.getElementById("txForm").addEventListener("submit",e=>{
     const suma=Object.values(px).reduce((a,b)=>a+b,0);
     if(suma-rec.k>0.5){alert("Rozbicie na walory jest większe niż wartość konta.");return}
     if(Object.keys(px).length)rec.px=px;
-    /* Kurs podany przy stanie konta zapisuje sie jako OSOBNY wpis z ta sama data -
-       dzieki temu dziala tak samo, jak gdyby go wpisac recznie. */
-    const kr=parseFloat(document.getElementById("txKurs").value);
-    if(kr>0&&mozeKursy())dodajKurs(rec.d,kr);
   }
+  /* Kurs podany przy wpisie zapisuje sie jako OSOBNY wpis z ta sama data -
+     dzieki temu dziala tak samo, jak gdyby go wpisac recznie. */
+  const kr=parseFloat(document.getElementById("txKurs").value);
+  if(kr>0&&mozeKursy())dodajKurs(rec.d,kr);
   dodajTX(rec);
   e.target.reset();
   document.getElementById("txDate").value=new Date().toISOString().slice(0,10);
