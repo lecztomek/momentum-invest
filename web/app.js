@@ -772,14 +772,20 @@ function renderActions(){
   if(BRAK)return;
   if(!Object.keys(HOLDINGS).length){
     document.getElementById("actions").innerHTML=BRAK_SKLADU;return}
-  const rows=[...new Set([...Object.keys(T25.out),...Object.keys(HOLDINGS)])].filter(t=>t!=="GOTOWKA")
-    .map(t=>({t,want:T25.out[t]||0,d:(T25.out[t]||0)-(HOLDINGS[t]||0)*(1-CAPITAL.split10)}))
+  const R=nastepnyRebalans();
+  const pierwsza=String(SIGNALS[0].tranche)===String(R.tranche);
+  const T=pierwsza?T10:T25,udzial=pierwsza?CAPITAL.split10:1-CAPITAL.split10;
+  const rows=[...new Set([...Object.keys(T.out),...Object.keys(HOLDINGS)])].filter(t=>t!=="GOTOWKA")
+    .map(t=>({t,want:T.out[t]||0,d:(T.out[t]||0)-(HOLDINGS[t]||0)*udzial}))
     .filter(r=>Math.abs(r.d)>=TOTAL*.02).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d));
-  document.getElementById("actions").innerHTML=rows.length?rows.map(r=>
+  const nota=`<div class="actnote">Dotyczy transzy ${R.tranche}-tego, czyli ${pc(udzial)} kapitału.
+    Reszta czeka na swoją datę. Udział transzy w każdej pozycji jest szacowany proporcjonalnie –
+    panel nie wie, która sztuka należy do której transzy.</div>`;
+  document.getElementById("actions").innerHTML=nota+(rows.length?rows.map(r=>
     `<div class="act ${r.d>0?"buy":"sell"}"><i class="w"></i><div><div class="t">${r.d>0?"Kup":"Sprzedaj"} ${r.t}</div>
      <div class="sub">${ROLE[r.t]||""}</div></div><div class="q"><b>${kw(Math.abs(r.d))}</b>
      <span class="sub">cel ${kw(r.want)}</span></div></div>`).join("")
-    :'<div class="act hold"><i class="w"></i><div><div class="t">Bez zmian</div></div></div>'}
+    :'<div class="act hold"><i class="w"></i><div><div class="t">Bez zmian</div></div></div>')}
 /* Pasek skladu: segment na kazdy walor, podpis w srodku jesli sie miesci.
    To ma byc PIERWSZA rzecz widoczna na ekranie - odpowiedz na "co trzymac",
    a nie slowo RISK powtorzone cztery razy. */
