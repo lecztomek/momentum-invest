@@ -1,0 +1,7 @@
+{
+ "strategy_spec": "strategy_spec.json",
+ "test_spec": "test_spec.json",
+ "acceptance_spec": "acceptance_spec.json",
+ "mode": "final",
+ "notes": "Eksperyment: breadth GPM (>=6/10 dodatnich) jako warunek trzymania XLK. Patrz hypothesis w strategy_spec.json - wynik obiecujacy, ale nie udowodniony."
+}
