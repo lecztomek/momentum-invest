@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-22T11:21:50Z",
+ "generated": "2026-11-23T13:43:02Z",
  "source": "engine_v2 / strategies_v2/gpm_uk_best17_a_day10 + strategies_v2/gpm_uk_best17_a_day25",
  "config_hash": "cb573945",
  "universe": [
@@ -46,12 +46,12 @@
    "best17": {
     "mode": "RISK",
     "picks": [
-     "IUIT",
-     "CMOD"
+     "CMOD",
+     "CSPX"
     ],
     "weights": {
-     "CMOD": 0.2,
-     "IUIT": 0.8
+     "CMOD": 0.8,
+     "CSPX": 0.2
     }
    },
    "gpm": {
@@ -71,12 +71,12 @@
    "best17": {
     "mode": "RISK",
     "picks": [
-     "IUIT",
-     "CMOD"
+     "CMOD",
+     "CSPX"
     ],
     "weights": {
-     "CMOD": 0.2,
-     "IUIT": 0.8
+     "CMOD": 0.8,
+     "CSPX": 0.2
     }
    },
    "gpm": {
@@ -89,20 +89,10 @@
  ],
  "awaiting": [
   {
-   "tranche": 10,
-   "period": "2026-12-01",
-   "reason": "miesiac nie ma jeszcze zadnego notowania"
-  },
-  {
    "tranche": 25,
    "period": "2026-11-01",
    "last": "2026-11-20",
    "reason": "brak sesji 25-tego lub pozniej - dane koncza sie na 2026-11-20"
-  },
-  {
-   "tranche": 25,
-   "period": "2026-12-01",
-   "reason": "miesiac nie ma jeszcze zadnego notowania"
   }
  ],
  "history": [
@@ -110,17 +100,17 @@
    "2026-11-10",
    10,
    "RISK",
-   "IUIT / CMOD",
+   "CMOD / CSPX",
    "RISK",
-   "+ CSPX, IUES"
+   "+ CSPX, IUES · − IUIT"
   ],
   [
    "2026-10-26",
    25,
    "RISK",
-   "IUIT / CMOD",
+   "CMOD / CSPX",
    "RISK",
-   "− CNDX, IUES"
+   "+ CSPX · − CNDX, IUES, IUIT"
   ],
   [
    "2026-10-12",
@@ -175,37 +165,100 @@
   "10": {
    "ranking": [
     {
-     "t": "XLK",
-     "exec": "IUIT",
-     "score": 10.67,
-     "gate": "ok",
-     "weight": 0.8
+     "t": "XLE",
+     "exec": "XLE",
+     "score": 9.93,
+     "gate": "no",
+     "weight": 0.0
     },
     {
      "t": "DBC",
      "exec": "CMOD",
-     "score": 10.45,
+     "score": 9.64,
      "gate": "ok",
-     "weight": 0.2
+     "weight": 0.8
+    },
+    {
+     "t": "XLK",
+     "exec": "IUIT",
+     "score": 9.57,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "QQQ",
+     "exec": "QQQ",
+     "score": 6.81,
+     "gate": "no",
+     "weight": 0.0
     },
     {
      "t": "IVV",
      "exec": "CSPX",
-     "score": 6.0,
+     "score": 5.96,
      "gate": "ok",
+     "weight": 0.2
+    },
+    {
+     "t": "SPY",
+     "exec": "SPY",
+     "score": 5.93,
+     "gate": "no",
      "weight": 0.0
     },
     {
      "t": "VT",
      "exec": "VWRA",
-     "score": 5.91,
+     "score": 5.81,
      "gate": "canary",
+     "weight": 0.0
+    },
+    {
+     "t": "VWO",
+     "exec": "VWO",
+     "score": 4.59,
+     "gate": "no",
      "weight": 0.0
     },
     {
      "t": "IAU",
      "exec": "IGLN",
-     "score": 3.08,
+     "score": 3.14,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "GLD",
+     "exec": "GLD",
+     "score": 3.1,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "VNQ",
+     "exec": "VNQ",
+     "score": 2.86,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "HYG",
+     "exec": "HYG",
+     "score": 1.43,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "LQD",
+     "exec": "LQD",
+     "score": 0.14,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "TLT",
+     "exec": "TLT",
+     "score": -1.51,
      "gate": "no",
      "weight": 0.0
     }
@@ -240,70 +293,64 @@
      "2026-11"
     ],
     "vt": [
-     5.4,
-     4.62,
-     4.49,
-     4.1,
-     3.02,
+     5.47,
+     4.38,
+     4.45,
+     3.37,
+     1.49,
      2.36,
-     2.9,
-     3.89,
-     4.42,
-     5.01,
-     5.68,
-     6.1,
-     6.03,
-     5.82,
-     5.96,
+     3.39,
+     4.39,
+     4.92,
+     5.51,
+     5.54,
      6.01,
-     4.54,
-     5.11,
-     5.98,
-     6.05,
-     5.62,
-     5.62,
-     5.05,
-     4.17
+     6.11,
+     6.37,
+     6.46,
+     5.59,
+     5.08,
+     5.8,
+     5.46,
+     5.72,
+     5.94,
+     5.44,
+     5.04,
+     4.01
     ],
     "xlk": [
-     6.22,
-     5.9,
-     5.26,
-     4.21,
-     1.89,
-     0.76,
-     1.81,
-     4.08,
-     5.79,
-     6.35,
-     7.69,
-     9.21,
-     8.53,
-     7.81,
-     6.98,
-     5.49,
-     3.63,
-     5.8,
-     10.29,
-     11.88,
-     10.4,
-     10.16,
-     10.39,
-     8.31
+     6.57,
+     5.59,
+     5.34,
+     2.78,
+     -0.03,
+     1.15,
+     2.8,
+     4.82,
+     6.16,
+     6.96,
+     7.59,
+     8.63,
+     8.81,
+     8.18,
+     6.84,
+     5.38,
+     4.67,
+     8.32,
+     9.56,
+     10.66,
+     10.64,
+     9.9,
+     10.06,
+     6.85
     ]
    },
    "progi": [
     {
      "status": "ok",
-     "title": "XLK przed DBC",
+     "title": "DBC przed IVV",
      "sub": "przewaga w rankingu",
-     "value": "+0,22 pp"
-    },
-    {
-     "status": "ok",
-     "title": "DBC utrzymuje 2. miejsce",
-     "sub": "nad IVV, pierwszym poza podium",
-     "value": "+4,45 pp"
+     "value": "+3,68 pp"
     },
     {
      "status": "no",
@@ -320,14 +367,14 @@
     {
      "status": "nr",
      "title": "Kanarek VT",
-     "sub": "+4,17% wobec progu −2,00%",
-     "value": "+6,17 pp"
+     "sub": "+4,01% wobec progu −2,00%",
+     "value": "+6,01 pp"
     },
     {
      "status": "nr",
      "title": "Kanarek XLK",
-     "sub": "+8,31% wobec progu −2,00%",
-     "value": "+10,31 pp"
+     "sub": "+6,85% wobec progu −2,00%",
+     "value": "+8,85 pp"
     }
    ],
    "pending": [],
@@ -356,35 +403,98 @@
     {
      "t": "XLK",
      "exec": "IUIT",
-     "score": 12.09,
-     "gate": "ok",
-     "weight": 0.8
+     "score": 10.95,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "XLE",
+     "exec": "XLE",
+     "score": 10.88,
+     "gate": "no",
+     "weight": 0.0
     },
     {
      "t": "DBC",
      "exec": "CMOD",
-     "score": 9.88,
+     "score": 10.55,
      "gate": "ok",
-     "weight": 0.2
+     "weight": 0.8
     },
     {
-     "t": "VT",
-     "exec": "VWRA",
-     "score": 6.6,
-     "gate": "canary",
+     "t": "QQQ",
+     "exec": "QQQ",
+     "score": 7.59,
+     "gate": "no",
      "weight": 0.0
     },
     {
      "t": "IVV",
      "exec": "CSPX",
-     "score": 6.45,
+     "score": 6.21,
      "gate": "ok",
+     "weight": 0.2
+    },
+    {
+     "t": "SPY",
+     "exec": "SPY",
+     "score": 6.19,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "VT",
+     "exec": "VWRA",
+     "score": 6.1,
+     "gate": "canary",
+     "weight": 0.0
+    },
+    {
+     "t": "VWO",
+     "exec": "VWO",
+     "score": 4.75,
+     "gate": "no",
      "weight": 0.0
     },
     {
      "t": "IAU",
      "exec": "IGLN",
-     "score": 5.01,
+     "score": 4.04,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "GLD",
+     "exec": "GLD",
+     "score": 4.0,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "VNQ",
+     "exec": "VNQ",
+     "score": 2.6,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "HYG",
+     "exec": "HYG",
+     "score": 1.45,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "LQD",
+     "exec": "LQD",
+     "score": 0.24,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
+     "t": "TLT",
+     "exec": "TLT",
+     "score": -1.15,
      "gate": "no",
      "weight": 0.0
     }
@@ -419,70 +529,64 @@
      "2026-10"
     ],
     "vt": [
-     5.28,
-     5.4,
-     4.62,
-     4.49,
-     4.1,
-     3.02,
-     2.36,
-     2.9,
-     3.89,
-     4.42,
-     5.01,
-     5.68,
-     6.1,
-     6.03,
-     5.82,
-     5.96,
-     6.01,
+     5.46,
+     5.08,
+     4.7,
+     4.34,
+     3.68,
+     2.59,
+     3.07,
+     3.61,
      4.54,
-     5.11,
-     5.98,
-     6.05,
-     5.62,
-     5.62,
-     5.05
+     5.02,
+     5.42,
+     6.09,
+     5.76,
+     5.87,
+     6.03,
+     6.17,
+     4.72,
+     5.07,
+     5.85,
+     5.7,
+     5.26,
+     5.5,
+     5.26,
+     4.45
     ],
     "xlk": [
-     6.06,
-     6.22,
-     5.9,
-     5.26,
-     4.21,
-     1.89,
-     0.76,
-     1.81,
-     4.08,
-     5.79,
-     6.35,
-     7.69,
-     9.21,
-     8.53,
-     7.81,
-     6.98,
-     5.49,
-     3.63,
-     5.8,
-     10.29,
-     11.88,
-     10.4,
-     10.16,
-     10.39
+     6.51,
+     6.65,
+     5.34,
+     4.4,
+     2.87,
+     1.05,
+     1.9,
+     3.65,
+     5.34,
+     5.94,
+     7.09,
+     8.71,
+     7.85,
+     7.78,
+     7.25,
+     6.17,
+     4.46,
+     6.27,
+     9.73,
+     10.86,
+     9.72,
+     9.33,
+     10.07,
+     8.89
     ]
    },
    "progi": [
     {
      "status": "ok",
-     "title": "XLK przed DBC",
+     "title": "DBC przed IVV",
      "sub": "przewaga w rankingu",
-     "value": "+2,21 pp"
-    },
-    {
-     "status": "ok",
-     "title": "DBC utrzymuje 2. miejsce",
-     "sub": "nad IVV, pierwszym poza podium",
-     "value": "+3,43 pp"
+     "value": "+4,34 pp"
     },
     {
      "status": "no",
@@ -499,14 +603,14 @@
     {
      "status": "nr",
      "title": "Kanarek VT",
-     "sub": "+5,05% wobec progu −2,00%",
-     "value": "+7,05 pp"
+     "sub": "+4,45% wobec progu −2,00%",
+     "value": "+6,45 pp"
     },
     {
      "status": "nr",
      "title": "Kanarek XLK",
-     "sub": "+10,39% wobec progu −2,00%",
-     "value": "+12,39 pp"
+     "sub": "+8,89% wobec progu −2,00%",
+     "value": "+10,89 pp"
     }
    ],
    "pending": [],
@@ -650,7 +754,7 @@
    "period": "2026-03-01",
    "tranche": 25,
    "best17": {
-    "CSPX": 0.2,
+    "CMOD": 0.2,
     "IUIT": 0.8
    },
    "gpm": {
@@ -709,8 +813,8 @@
    "period": "2026-05-01",
    "tranche": 25,
    "best17": {
-    "CMOD": 0.8,
-    "IUIT": 0.2
+    "CMOD": 0.2,
+    "IUIT": 0.8
    },
    "gpm": {
     "CMOD": 0.2666666667,
@@ -856,8 +960,8 @@
    "period": "2026-10-01",
    "tranche": 25,
    "best17": {
-    "CMOD": 0.2,
-    "IUIT": 0.8
+    "CMOD": 0.8,
+    "CSPX": 0.2
    },
    "gpm": {
     "IBTA": 1.0
@@ -868,8 +972,8 @@
    "period": "2026-11-01",
    "tranche": 10,
    "best17": {
-    "CMOD": 0.2,
-    "IUIT": 0.8
+    "CMOD": 0.8,
+    "CSPX": 0.2
    },
    "gpm": {
     "CMOD": 0.0666666667,
