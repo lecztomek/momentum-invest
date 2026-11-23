@@ -301,12 +301,11 @@ chart("c-cmp",W=>{
    odpowiada na pytanie "ile zrobila strategia" - ta odpowiada.
    Start od dnia, w ktorym wszedl pierwszy kapital, jesli sa wpisy; bez nich od
    poczatku historii na okraglej kwocie, zeby bylo od czego liczyc procent. */
+const GROW_KWOTA=100000;
 function growBaza(){
   const d0=CMP.dates[0]||null;
-  if(!BRAK&&TRACK.length){
-    const kw=Math.round(TRACK[0].wpl||0);
-    if(kw>0)return{od:TRACK[0].d>d0?TRACK[0].d:d0,kwota:kw,wlasny:true}}
-  return{od:d0,kwota:100000,wlasny:false}}
+  if(!BRAK&&TRACK.length&&TRACK[0].d>d0)return{od:TRACK[0].d,kwota:GROW_KWOTA,wlasny:true};
+  return{od:d0,kwota:GROW_KWOTA,wlasny:false}}
 chart("c-grow",W=>{
   const glowa=document.getElementById("growHead"),nota=document.getElementById("growNote");
   const S=CMP.strategy||[],B0=growBaza();
@@ -342,8 +341,8 @@ chart("c-grow",W=>{
     <div class="gh2 ${zm>=0?"pos":"neg"}">${sg(zm*100)}%</div>
     <div class="gh3">${dLbl(daty[0])} ${daty[0].slice(0,4)} — ${dLbl(daty.at(-1))} ${daty.at(-1).slice(0,4)}</div>`;
   if(nota)nota.textContent=(B0.wlasny
-    ?`Liczone od dnia, w którym wszedł Twój pierwszy kapitał, i od jego kwoty. `
-    :`Nie masz wpisów, więc liczone od początku historii strategii i od okrągłych ${zl(B0.kwota)} USD. `)
+    ?`Liczone od dnia, w którym wszedł Twój pierwszy kapitał, na przyjętych ${zl(B0.kwota)} USD — to kwota umowna, nie Twoja. `
+    :`Nie masz wpisów, więc liczone od początku historii strategii, na przyjętych ${zl(B0.kwota)} USD. `)
     +`To jeden wkład na starcie i zero dopłat — czysty wynik strategii, po podatku 19% i kosztach. `
     +`Kończy się na ${dLbl(daty.at(-1))}, bo to ostatni ZAMKNIĘTY okres transzy; `
     +`trwający okres nie jest tu liczony, więc bieżącego miesiąca tu nie ma. `
