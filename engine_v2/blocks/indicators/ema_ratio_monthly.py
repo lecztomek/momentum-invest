@@ -16,6 +16,9 @@ kolumny=tickery).
 params:
     fast_span (int, wymagane) - rozpietosc szybszej EMA w miesiacach
     slow_span (int, wymagane) - rozpietosc wolniejszej EMA w miesiacach
+    execution_day_of_month (int, opcjonalne) - gdy podany, liczy na cenie z dnia wykonania
+                                tego samego miesiaca zamiast z konca poprzedniego (patrz
+                                `_month_end_common.py`); MUSI zgadzac sie z `data_loader`
 """
 
 from __future__ import annotations
@@ -23,7 +26,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from engine_v2.blocks.indicators import REGISTRY
-from engine_v2.blocks.indicators._month_end_common import month_end_prices, shift_to_next_month_start
+from engine_v2.blocks.indicators._month_end_common import anchored_prices, label_to_execution_month
 from engine_v2.registry import register
 from engine_v2.types import MarketData
 
@@ -38,9 +41,9 @@ def ema_ratio_monthly(market_data: MarketData, params: Dict[str, Any]):
     if fast_span < 1 or slow_span < 1:
         raise ValueError("ema_ratio_monthly: fast_span/slow_span musza byc >= 1.")
 
-    month_end = month_end_prices(market_data.prices)
-    ema_fast = month_end.ewm(span=fast_span, adjust=False).mean()
-    ema_slow = month_end.ewm(span=slow_span, adjust=False).mean()
+    anchored = anchored_prices(market_data.prices, params)
+    ema_fast = anchored.ewm(span=fast_span, adjust=False).mean()
+    ema_slow = anchored.ewm(span=slow_span, adjust=False).mean()
     ratio = ema_fast / ema_slow - 1.0
 
-    return shift_to_next_month_start(ratio)
+    return label_to_execution_month(ratio, params)

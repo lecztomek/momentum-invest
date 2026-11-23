@@ -19,6 +19,9 @@ kolumny=tickery).
 params:
     basket_assets (list[str], wymagane) - tickery skladajace sie na rownowazony koszyk odniesienia
     window (int, wymagane)              - dlugosc rocacego okna korelacji, w miesiacach
+    execution_day_of_month (int, opcjonalne) - gdy podany, liczy na cenie z dnia wykonania
+                                tego samego miesiaca zamiast z konca poprzedniego (patrz
+                                `_month_end_common.py`); MUSI zgadzac sie z `data_loader`
 """
 
 from __future__ import annotations
@@ -26,7 +29,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from engine_v2.blocks.indicators import REGISTRY
-from engine_v2.blocks.indicators._month_end_common import month_end_prices, shift_to_next_month_start
+from engine_v2.blocks.indicators._month_end_common import anchored_prices, label_to_execution_month
 from engine_v2.registry import register
 from engine_v2.types import MarketData
 
@@ -47,10 +50,10 @@ def corr_to_basket_month_end(market_data: MarketData, params: Dict[str, Any]):
     if missing:
         raise ValueError(f"corr_to_basket_month_end: brak tickerow koszyka {missing} w market_data.")
 
-    month_end = month_end_prices(market_data.prices)
-    monthly_returns = month_end.pct_change()
+    anchored = anchored_prices(market_data.prices, params)
+    monthly_returns = anchored.pct_change()
     basket_return = monthly_returns[basket_assets].mean(axis=1)
 
     corr = monthly_returns.rolling(window).corr(basket_return)
 
-    return shift_to_next_month_start(corr)
+    return label_to_execution_month(corr, params)
