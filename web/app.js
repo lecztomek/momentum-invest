@@ -296,6 +296,70 @@ chart("c-cmp",W=>{
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Strategia na tle rynku" data-hover='${HV({W,H,max:(W-L-R)/n,hit})}'>
     ${g}<line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>${paths}${xl}</svg>`});
 
+/* Ile zrobila strategia na konkretnej kwocie: JEDEN wklad na starcie i zero
+   doplat. Krzywa z wpisow (Pulpit) rosnie takze od samych wplat, wiec nie
+   odpowiada na pytanie "ile zrobila strategia" - ta odpowiada.
+   Start od dnia, w ktorym wszedl pierwszy kapital, jesli sa wpisy; bez nich od
+   poczatku historii na okraglej kwocie, zeby bylo od czego liczyc procent. */
+function growBaza(){
+  const d0=CMP.dates[0]||null;
+  if(!BRAK&&TRACK.length){
+    const kw=Math.round(TRACK[0].wpl||0);
+    if(kw>0)return{od:TRACK[0].d>d0?TRACK[0].d:d0,kwota:kw,wlasny:true}}
+  return{od:d0,kwota:100000,wlasny:false}}
+chart("c-grow",W=>{
+  const glowa=document.getElementById("growHead"),nota=document.getElementById("growNote");
+  const S=CMP.strategy||[],B0=growBaza();
+  if(!B0.od||S.length<2){if(glowa)glowa.innerHTML="";if(nota)nota.textContent="";return ""}
+  let i0=CMP.dates.findIndex(d=>d>=B0.od);if(i0<0)i0=0;
+  while(i0<S.length&&S[i0]==null)i0++;
+  const daty=CMP.dates.slice(i0),ser=S.slice(i0),baza=ser.find(v=>v!=null);
+  if(!baza||ser.filter(v=>v!=null).length<2){
+    if(glowa)glowa.innerHTML="";if(nota)nota.textContent="";return ""}
+  const kw=ser.map(v=>v==null?null:B0.kwota*v/baza);
+  const konc=kw.filter(v=>v!=null).at(-1),zm=konc/B0.kwota-1;
+  const nr=W<520,H=nr?200:240,T=16,B=28,L=nr?52:62,R=8;
+  const osLbl=v=>nr&&Math.abs(v)>=10000?zl(v/1000)+" tys.":zl(v);
+  const ts=x=>Date.parse(x),t0=ts(daty[0]),t1=Math.max(ts(daty.at(-1)),t0+1);
+  const X=i=>L+(W-L-R)*(ts(daty[i])-t0)/(t1-t0);
+  const wsz=kw.filter(v=>v!=null);
+  const lo=Math.min(...wsz),hi=Math.max(...wsz),pad=(hi-lo)*.12||Math.max(1,hi*.06);
+  const Y=v=>T+(H-T-B)*(1-(v-lo+pad)/(hi-lo+2*pad));
+  const col=zm>=0?CSS("--pos-soft2"):CSS("--neg");
+  const okragly=r=>{const p=Math.pow(10,Math.floor(Math.log10(r)))||1,m=r/p;
+    return (m<1.5?1:m<3?2:m<7?5:10)*p};
+  const st=okragly((hi-lo+2*pad)/4);
+  let g="";for(let v=Math.ceil((lo-pad)/st)*st;v<=hi+pad;v+=st)
+    g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="${CSS("--line")}"/>`
+      +`<text x="${L-7}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end" fill="${CSS("--faint")}" font-size="${FS(W)}">${osLbl(v)}</text>`;
+  let d="",otw=false;
+  kw.forEach((v,i)=>{if(v==null){otw=false;return}d+=(otw?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)+" ";otw=true});
+  const ost=kw.length-1;
+  const hit=daty.map((dd,i)=>({cx:X(i),html:kw[i]==null?`<div class="th">${dd}</div>`
+    :`<div class="th">${dd}</div><div class="tr">Wartość<span class="tv">${zl(kw[i])} USD</span></div>
+      <div class="tr">Zmiana<span class="tv">${sg((kw[i]/B0.kwota-1)*100)}%</span></div>`}));
+  if(glowa)glowa.innerHTML=`<div class="gh1">${zl(B0.kwota)} USD <i>→</i> ${zl(konc)} USD</div>
+    <div class="gh2 ${zm>=0?"pos":"neg"}">${sg(zm*100)}%</div>
+    <div class="gh3">${dLbl(daty[0])} ${daty[0].slice(0,4)} — ${dLbl(daty.at(-1))} ${daty.at(-1).slice(0,4)}</div>`;
+  if(nota)nota.textContent=(B0.wlasny
+    ?`Liczone od dnia, w którym wszedł Twój pierwszy kapitał, i od jego kwoty. `
+    :`Nie masz wpisów, więc liczone od początku historii strategii i od okrągłych ${zl(B0.kwota)} USD. `)
+    +`To jeden wkład na starcie i zero dopłat — czysty wynik strategii, po podatku 19% i kosztach. `
+    +`Kończy się na ${dLbl(daty.at(-1))}, bo to ostatni ZAMKNIĘTY okres transzy; `
+    +`trwający okres nie jest tu liczony, więc bieżącego miesiąca tu nie ma. `
+    +`Twój rachunek wygląda inaczej, bo dopłacałeś w trakcie; to pokazuje wykres na Pulpicie.`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Ile zrobila strategia na kwocie" data-hover='${HV({W,H,max:(W-L-R)/Math.max(daty.length,2),hit})}'>
+    <defs><linearGradient id="gg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+    ${g}<path d="${d} L${X(ost).toFixed(1)} ${H-B} L${X(0).toFixed(1)} ${H-B} Z" fill="url(#gg)"/>
+    <line x1="${L}" x2="${W-R}" y1="${Y(B0.kwota).toFixed(1)}" y2="${Y(B0.kwota).toFixed(1)}" stroke="${CSS("--line-strong")}" stroke-width="1.6" stroke-dasharray="5 5"/>
+    <path d="${d}" fill="none" stroke="${col}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${X(ost).toFixed(1)}" cy="${Y(kw[ost]).toFixed(1)}" r="5" fill="${col}" stroke="${CSS("--bg")}" stroke-width="2.2"/>
+    <line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>
+    <text x="${L}" y="${H-7}" fill="${CSS("--faint")}" font-size="${nr?11:12}">${daty[0].slice(0,7)}</text>
+    <text x="${W-R}" y="${H-7}" text-anchor="end" fill="${CSS("--faint")}" font-size="${nr?11:12}">${daty.at(-1).slice(0,7)}</text>
+  </svg>`});
+
 /* Obsuniecie liczone z DZIENNEJ krzywej kapitalu (silnik), probkowane tygodniowo -
    z miesiecznych zamkniec dolki wychodza plytsze, niz byly. */
 const DD=PERF.drawdown;
