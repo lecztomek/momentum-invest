@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-23T13:49:02Z",
+ "generated": "2026-11-23T15:23:30Z",
  "source": "engine_v2 / strategies_v2/gpm_uk_best17_a_day10 + strategies_v2/gpm_uk_best17_a_day25",
  "config_hash": "cb573945",
  "universe": [
@@ -162,13 +162,6 @@
   "10": {
    "ranking": [
     {
-     "t": "XLE",
-     "exec": "XLE",
-     "score": 9.93,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
      "t": "DBC",
      "exec": "CMOD",
      "score": 9.64,
@@ -183,25 +176,11 @@
      "weight": 0.0
     },
     {
-     "t": "QQQ",
-     "exec": "QQQ",
-     "score": 6.81,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
      "t": "IVV",
      "exec": "CSPX",
      "score": 5.96,
      "gate": "ok",
      "weight": 0.2
-    },
-    {
-     "t": "SPY",
-     "exec": "SPY",
-     "score": 5.93,
-     "gate": "no",
-     "weight": 0.0
     },
     {
      "t": "VT",
@@ -211,51 +190,9 @@
      "weight": 0.0
     },
     {
-     "t": "VWO",
-     "exec": "VWO",
-     "score": 4.59,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
      "t": "IAU",
      "exec": "IGLN",
      "score": 3.14,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
-     "t": "GLD",
-     "exec": "GLD",
-     "score": 3.1,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
-     "t": "VNQ",
-     "exec": "VNQ",
-     "score": 2.86,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
-     "t": "HYG",
-     "exec": "HYG",
-     "score": 1.43,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
-     "t": "LQD",
-     "exec": "LQD",
-     "score": 0.14,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
-     "t": "TLT",
-     "exec": "TLT",
-     "score": -1.51,
      "gate": "no",
      "weight": 0.0
     }
@@ -405,25 +342,11 @@
      "weight": 0.0
     },
     {
-     "t": "XLE",
-     "exec": "XLE",
-     "score": 10.88,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
      "t": "DBC",
      "exec": "CMOD",
      "score": 10.55,
      "gate": "ok",
      "weight": 0.8
-    },
-    {
-     "t": "QQQ",
-     "exec": "QQQ",
-     "score": 7.59,
-     "gate": "no",
-     "weight": 0.0
     },
     {
      "t": "IVV",
@@ -433,13 +356,6 @@
      "weight": 0.2
     },
     {
-     "t": "SPY",
-     "exec": "SPY",
-     "score": 6.19,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
      "t": "VT",
      "exec": "VWRA",
      "score": 6.1,
@@ -447,51 +363,9 @@
      "weight": 0.0
     },
     {
-     "t": "VWO",
-     "exec": "VWO",
-     "score": 4.75,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
      "t": "IAU",
      "exec": "IGLN",
      "score": 4.04,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
-     "t": "GLD",
-     "exec": "GLD",
-     "score": 4.0,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
-     "t": "VNQ",
-     "exec": "VNQ",
-     "score": 2.6,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
-     "t": "HYG",
-     "exec": "HYG",
-     "score": 1.45,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
-     "t": "LQD",
-     "exec": "LQD",
-     "score": 0.24,
-     "gate": "no",
-     "weight": 0.0
-    },
-    {
-     "t": "TLT",
-     "exec": "TLT",
-     "score": -1.15,
      "gate": "no",
      "weight": 0.0
     }
