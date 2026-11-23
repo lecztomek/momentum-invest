@@ -121,6 +121,11 @@ def diagnostyka_best17(spec: StrategySpec, data: str, wagi_exec: dict[str, float
               if k.endswith("_gate") and cfg["impl"] == "indicator_positive"
               and len(cfg.get("assets", [])) == 1}
     prog_bramki = next(iter(bramki.values()))["threshold"] * 100 if bramki else 1.0
+    # Tickery wpuszczone do uniwersum WYLACZNIE jako miernik (gauge breadth) - nigdy nie da sie
+    # ich kupic, wiec nie sa kandydatami i nie moga stac w rankingu. Kanarki zostaja: ich wiersz
+    # niesie informacje (gate "canary"), a user chce widziec, jak stoja.
+    tylko_miernik = {t for cfg in filtry.values() if cfg["impl"] == "never_eligible"
+                     for t in cfg.get("assets", []) if t not in kanarki}
 
     d = pd.Timestamp(data)
     klucz_score = next(iter(spec.base_params["asset_scoring"]["weights"]))
@@ -129,6 +134,8 @@ def diagnostyka_best17(spec: StrategySpec, data: str, wagi_exec: dict[str, float
 
     ranking = []
     for t in spec.universe:
+        if t in tylko_miernik:
+            continue
         v = score_wiersz.get(t)
         if v is None or v != v:
             continue
