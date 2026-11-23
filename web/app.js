@@ -830,19 +830,23 @@ const pp1=n=>n.toFixed(1).replace(".",",")+"%";
 const chip=(t,pp,klasa)=>`<span class="chip ${klasa}">
   <i style="background:${CSS(KOL[t]||"--s6")}"></i>${esc(t)}<b>${pp1(pp)}</b></span>`;
 const normHist=h=>Array.isArray(h)
-  ?{date:h[0],tranche:h[1],best17:h[2],picks:h[3],gpm:h[4],note:h[5],sold:[],bought:[],cash:0}
+  ?{date:h[0],tranche:h[1],best17:h[2],picks:h[3],gpm:h[4],note:h[5],cash:0}
   :h;
 function tabelaHist(){
   const wiersze=HIST.map(normHist).map(h=>{
-    const sp=h.sold?.length?h.sold.map(r=>chip(r.t,r.pp,"out")).join(""):'<span class="chip nic">—</span>';
-    const kp=h.bought?.length?h.bought.map(r=>chip(r.t,r.pp,"in")).join(""):'<span class="chip nic">—</span>';
+    const znane=Array.isArray(h.sold)&&Array.isArray(h.bought);
+    const nic=znane&&!h.sold.length&&!h.bought.length;
+    const sp=h.sold?.length?h.sold.map(r=>chip(r.t,r.pp,"out")).join(""):"";
+    const kp=h.bought?.length?h.bought.map(r=>chip(r.t,r.pp,"in")).join(""):"";
     const got=h.cash??0,poprz=h.cash_prev;
     const strzalka=poprz==null||Math.abs(got-poprz)<.05?""
       :`<em class="${got>poprz?"up":"dn"}">${got>poprz?"▲":"▼"}${pp1(Math.abs(got-poprz))}</em>`;
     return `<tr>
       <td class="kiedy"><b>${esc(h.date)}</b><span class="tr${h.tranche}">transza ${h.tranche}</span></td>
-      <td class="ruch" data-l="Sprzedane">${sp}</td>
-      <td class="ruch" data-l="Kupione">${kp}</td>
+      ${nic?'<td class="bezzmian" colspan="2">bez zmian · nic nie kupujesz ani nie sprzedajesz</td>'
+        :!znane?`<td class="bezzmian" colspan="2">${esc(h.note||"")}</td>`
+            :`<td class="ruch" data-l="Sprzedane">${sp||'<span class="nic">—</span>'}</td>
+              <td class="ruch" data-l="Kupione">${kp||'<span class="nic">—</span>'}</td>`}
       <td class="num got">${got>.05?`<b>${pp1(got)}</b>`:'<span class="nic">0%</span>'}${strzalka}</td></tr>`}).join("");
   return tbl(`<th>Kiedy</th><th>Sprzedane</th><th>Kupione</th><th class="num">Gotówka</th>`,wiersze)}
 /* Bez wpisow pokazujemy UDZIALY, nie kwoty - kolumna "Kwota" liczona z

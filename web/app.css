@@ -428,3 +428,4 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
   #histList .got b,#histList .got .nic{display:inline-block}
   #histList .got em{display:inline-block;margin-left:6px}
 }
+#histList .bezzmian{color:var(--faint);font-size:.82rem;font-style:italic}
