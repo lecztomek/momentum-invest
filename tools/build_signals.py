@@ -291,6 +291,42 @@ def sygnal(wpis: dict) -> dict:
     }
 
 
+def udzialy(wpis: dict) -> dict[str, float]:
+    """Sklad transzy w ulamku JEJ kapitalu. Kazda noga to polowa transzy, a wagi w nodze
+    nie musza sumowac sie do 1 - reszta tej nogi to gotowka."""
+    out: dict[str, float] = {}
+    for noga in ("best17", "gpm"):
+        for t, w in wpis[noga].items():
+            out[t] = out.get(t, 0.0) + 0.5 * float(w)
+    got = 1.0 - sum(out.values())
+    if got > 1e-9:
+        out["GOTOWKA"] = got
+    return out
+
+
+def ruchy(teraz: dict, poprz: dict | None) -> dict:
+    """Co doszlo i co wyszlo miedzy dwoma kolejnymi sygnalami TEJ SAMEJ transzy,
+    w punktach procentowych jej kapitalu. Gotowka nie jest 'kupowana' - idzie osobno."""
+    a, b = udzialy(teraz), udzialy(poprz) if poprz else {}
+    kupione, sprzedane = [], []
+    for t in sorted(set(a) | set(b)):
+        if t == "GOTOWKA":
+            continue
+        d = round((a.get(t, 0.0) - b.get(t, 0.0)) * 100, 1)
+        if d > 0.05:
+            kupione.append({"t": t, "pp": d})
+        elif d < -0.05:
+            sprzedane.append({"t": t, "pp": -d})
+    kupione.sort(key=lambda x: -x["pp"])
+    sprzedane.sort(key=lambda x: -x["pp"])
+    return {
+        "bought": kupione,
+        "sold": sprzedane,
+        "cash": round(a.get("GOTOWKA", 0.0) * 100, 1),
+        "cash_prev": round(b.get("GOTOWKA", 0.0) * 100, 1) if poprz else None,
+    }
+
+
 def opis_zmiany(teraz: dict, poprz: dict | None) -> str:
     if poprz is None:
         return "pierwszy okres"
@@ -323,9 +359,10 @@ def main() -> int:
         for i, w in enumerate(s):
             wszystkie.append((w, s[i - 1] if i else None))
     wszystkie.sort(key=lambda x: x[0]["date"], reverse=True)
-    historia = [[w["date"], w["tranche"], tryb(w, "best17"),
-                 " / ".join(sorted(w["best17"], key=lambda k: -w["best17"][k])) or "—",
-                 tryb(w, "gpm"), opis_zmiany(w, p)]
+    historia = [{"date": w["date"], "tranche": w["tranche"],
+                 "best17": tryb(w, "best17"), "gpm": tryb(w, "gpm"),
+                 "picks": " / ".join(sorted(w["best17"], key=lambda k: -w["best17"][k])) or "—",
+                 "note": opis_zmiany(w, p), **ruchy(w, p)}
                 for w, p in wszystkie[:8]]
 
     diagnostyka = {}
