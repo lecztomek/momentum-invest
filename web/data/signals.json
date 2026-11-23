@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-23T15:23:30Z",
+ "generated": "2026-11-23T15:56:54Z",
  "source": "engine_v2 / strategies_v2/gpm_uk_best17_a_day10 + strategies_v2/gpm_uk_best17_a_day25",
  "config_hash": "cb573945",
  "universe": [
@@ -93,70 +93,240 @@
   }
  ],
  "history": [
-  [
-   "2026-11-10",
-   10,
-   "RISK",
-   "CMOD / CSPX",
-   "RISK",
-   "+ CSPX · − IUIT"
-  ],
-  [
-   "2026-10-26",
-   25,
-   "RISK",
-   "CMOD / CSPX",
-   "RISK",
-   "+ CSPX · − CNDX, IUES, IUIT"
-  ],
-  [
-   "2026-10-12",
-   10,
-   "RISK",
-   "IUIT / CMOD",
-   "RISK",
-   "− CNDX, IUES"
-  ],
-  [
-   "2026-09-25",
-   25,
-   "RISK",
-   "IUIT / CMOD",
-   "RISK",
-   "zmiana wag"
-  ],
-  [
-   "2026-09-10",
-   10,
-   "RISK",
-   "IUIT / CMOD",
-   "RISK",
-   "+ CMOD · − CSPX"
-  ],
-  [
-   "2026-08-25",
-   25,
-   "RISK",
-   "IUIT / CMOD",
-   "RISK",
-   "+ CNDX · − CSPX, XRES"
-  ],
-  [
-   "2026-08-10",
-   10,
-   "RISK",
-   "IUIT / CSPX",
-   "RISK",
-   "bez zmian"
-  ],
-  [
-   "2026-07-27",
-   25,
-   "RISK",
-   "IUIT / CSPX",
-   "RISK",
-   "+ IBTA, XRES · − CBU0, CNDX"
-  ]
+  {
+   "date": "2026-11-10",
+   "tranche": 10,
+   "best17": "RISK",
+   "gpm": "RISK",
+   "picks": "CMOD / CSPX",
+   "note": "+ CSPX · − IUIT",
+   "bought": [
+    {
+     "t": "CMOD",
+     "pp": 30.0
+    },
+    {
+     "t": "CSPX",
+     "pp": 10.0
+    }
+   ],
+   "sold": [
+    {
+     "t": "IUIT",
+     "pp": 40.0
+    }
+   ],
+   "cash": 0.0,
+   "cash_prev": 0.0
+  },
+  {
+   "date": "2026-10-26",
+   "tranche": 25,
+   "best17": "RISK",
+   "gpm": "RISK",
+   "picks": "CMOD / CSPX",
+   "note": "+ CSPX · − CNDX, IUES, IUIT",
+   "bought": [
+    {
+     "t": "CMOD",
+     "pp": 23.3
+    },
+    {
+     "t": "IBTA",
+     "pp": 20.0
+    },
+    {
+     "t": "CSPX",
+     "pp": 10.0
+    }
+   ],
+   "sold": [
+    {
+     "t": "IUIT",
+     "pp": 40.0
+    },
+    {
+     "t": "CNDX",
+     "pp": 6.7
+    },
+    {
+     "t": "IUES",
+     "pp": 6.7
+    }
+   ],
+   "cash": 0.0,
+   "cash_prev": 0.0
+  },
+  {
+   "date": "2026-10-12",
+   "tranche": 10,
+   "best17": "RISK",
+   "gpm": "RISK",
+   "picks": "IUIT / CMOD",
+   "note": "− CNDX, IUES",
+   "bought": [
+    {
+     "t": "IBTA",
+     "pp": 30.0
+    }
+   ],
+   "sold": [
+    {
+     "t": "CMOD",
+     "pp": 10.0
+    },
+    {
+     "t": "CNDX",
+     "pp": 10.0
+    },
+    {
+     "t": "IUES",
+     "pp": 10.0
+    }
+   ],
+   "cash": 0.0,
+   "cash_prev": 0.0
+  },
+  {
+   "date": "2026-09-25",
+   "tranche": 25,
+   "best17": "RISK",
+   "gpm": "RISK",
+   "picks": "IUIT / CMOD",
+   "note": "zmiana wag",
+   "bought": [
+    {
+     "t": "IBTA",
+     "pp": 10.0
+    }
+   ],
+   "sold": [
+    {
+     "t": "CMOD",
+     "pp": 3.3
+    },
+    {
+     "t": "CNDX",
+     "pp": 3.3
+    },
+    {
+     "t": "IUES",
+     "pp": 3.3
+    }
+   ],
+   "cash": 0.0,
+   "cash_prev": 0.0
+  },
+  {
+   "date": "2026-09-10",
+   "tranche": 10,
+   "best17": "RISK",
+   "gpm": "RISK",
+   "picks": "IUIT / CMOD",
+   "note": "+ CMOD · − CSPX",
+   "bought": [
+    {
+     "t": "CMOD",
+     "pp": 20.0
+    }
+   ],
+   "sold": [
+    {
+     "t": "CSPX",
+     "pp": 20.0
+    }
+   ],
+   "cash": 0.0,
+   "cash_prev": 0.0
+  },
+  {
+   "date": "2026-08-25",
+   "tranche": 25,
+   "best17": "RISK",
+   "gpm": "RISK",
+   "picks": "IUIT / CMOD",
+   "note": "+ CNDX · − CSPX, XRES",
+   "bought": [
+    {
+     "t": "CMOD",
+     "pp": 13.3
+    },
+    {
+     "t": "CNDX",
+     "pp": 10.0
+    },
+    {
+     "t": "IUES",
+     "pp": 3.3
+    }
+   ],
+   "sold": [
+    {
+     "t": "CSPX",
+     "pp": 10.0
+    },
+    {
+     "t": "IBTA",
+     "pp": 10.0
+    },
+    {
+     "t": "XRES",
+     "pp": 6.7
+    }
+   ],
+   "cash": 0.0,
+   "cash_prev": 0.0
+  },
+  {
+   "date": "2026-08-10",
+   "tranche": 10,
+   "best17": "RISK",
+   "gpm": "RISK",
+   "picks": "IUIT / CSPX",
+   "note": "bez zmian",
+   "bought": [],
+   "sold": [],
+   "cash": 0.0,
+   "cash_prev": 0.0
+  },
+  {
+   "date": "2026-07-27",
+   "tranche": 25,
+   "best17": "RISK",
+   "gpm": "RISK",
+   "picks": "IUIT / CSPX",
+   "note": "+ IBTA, XRES · − CBU0, CNDX",
+   "bought": [
+    {
+     "t": "IBTA",
+     "pp": 30.0
+    },
+    {
+     "t": "XRES",
+     "pp": 6.7
+    }
+   ],
+   "sold": [
+    {
+     "t": "CNDX",
+     "pp": 13.3
+    },
+    {
+     "t": "CBU0",
+     "pp": 10.0
+    },
+    {
+     "t": "CMOD",
+     "pp": 6.7
+    },
+    {
+     "t": "IUES",
+     "pp": 6.7
+    }
+   ],
+   "cash": 0.0,
+   "cash_prev": 0.0
+  }
  ],
  "diagnostics": {
   "10": {
