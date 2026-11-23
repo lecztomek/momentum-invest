@@ -1,0 +1,7 @@
+{
+ "strategy_spec": "strategy_spec.json",
+ "test_spec": "test_spec.json",
+ "acceptance_spec": "acceptance_spec.json",
+ "mode": "final",
+ "notes": "Eksperyment dwustopniowego kanarka (patrz hypothesis w strategy_spec.json). Zmierzony jako gorszy od best17_a na kazdej metryce poza obrotem - zapis, nie kandydat."
+}
