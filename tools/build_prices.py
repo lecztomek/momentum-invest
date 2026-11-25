@@ -59,25 +59,23 @@ def sesja(d: dt.date) -> dt.date:
     return d
 
 
-def ostatnia_sesja(rok: int, mies: int) -> dt.date:
-    d = dt.date(rok + (mies == 12), (mies % 12) + 1, 1) - dt.timedelta(days=1)
-    while d.weekday() >= 5 or (d.month, d.day) in SWIETA:
-        d -= dt.timedelta(days=1)
-    return d
-
-
 def brakujace(ostatnia_w_danych: dt.date, dzis: dt.date) -> list[dict]:
-    """Dni, ktorych silnik potrzebuje, a ktorych nie ma w danych.
+    """Dni, ktorych SYGNAL potrzebuje, a ktorych nie ma w danych.
 
-    Trzy na miesiac: oba dni rebalansu i KONIEC MIESIACA. Ten ostatni nie jest
-    fanaberia - ranking (ema7_16) i kanarek (ema5_12) licza sie na cenach konca
-    miesiaca, wiec bez niego silnik bierze za koniec miesiaca 25-ty i wskazniki
-    sie przesuwaja (zmierzone: 6 z 24 okresow wychodzi wtedy z innym skladem)."""
+    Dwa na miesiac: oba dni rebalansu. Do 2026-11 bylo tu jeszcze trzecie
+    zadanie - koniec miesiaca - bo ranking (ema7_16) i kanarek (ema5_12) liczyly
+    sie wtedy na cenach konca miesiaca. Po przestawieniu CALEGO portfela na
+    kotwice dnia transzy (`execution_day_of_month` w kazdym wskazniku obu nog)
+    nic juz konca miesiaca nie czyta, wiec ta cena przestala byc potrzebna.
+
+    UWAGA: to lista dla SYGNALU, nie dla ekranu Wyniki. Krzywa kapitalu i
+    obsuniecie licza sie z DZIENNYCH notowan; wpisujac tylko te dni, dostaniesz
+    poprawny sklad, ale krzywa miedzy nimi bedzie prosta i MaxDD wyjdzie
+    plytsze, niz bylo naprawde. Do tego trzeba pelnego odswiezenia danych."""
     out, rok, mies = [], ostatnia_w_danych.year, ostatnia_w_danych.month
     while (rok, mies) <= (dzis.year, dzis.month):
         for po_co, d in ((f"rebalans {TRANSZE[0]}-tego", sesja(dt.date(rok, mies, TRANSZE[0]))),
-                         (f"rebalans {TRANSZE[1]}-tego", sesja(dt.date(rok, mies, TRANSZE[1]))),
-                         ("koniec miesiąca", ostatnia_sesja(rok, mies))):
+                         (f"rebalans {TRANSZE[1]}-tego", sesja(dt.date(rok, mies, TRANSZE[1])))):
             if ostatnia_w_danych < d <= dzis and all(x["date"] != d.strftime("%Y-%m-%d") for x in out):
                 out.append({"date": d.strftime("%Y-%m-%d"), "why": po_co})
         mies += 1
