@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-25T09:53:06Z",
+ "generated": "2026-11-25T12:56:03Z",
  "source": "engine_v2 / strategies_v2/gpm_uk_best17_a_day10 + strategies_v2/gpm_uk_best17_a_day25",
  "config_hash": "cb573945",
  "universe": [
@@ -46,12 +46,12 @@
    "best17": {
     "mode": "RISK",
     "picks": [
-     "CMOD",
-     "CSPX"
+     "IUIT",
+     "CMOD"
     ],
     "weights": {
-     "CMOD": 0.8,
-     "CSPX": 0.2
+     "CMOD": 0.2,
+     "IUIT": 0.8
     }
    },
    "gpm": {
@@ -68,12 +68,12 @@
    "best17": {
     "mode": "RISK",
     "picks": [
-     "CMOD",
-     "CSPX"
+     "IUIT",
+     "CMOD"
     ],
     "weights": {
-     "CMOD": 0.8,
-     "CSPX": 0.2
+     "CMOD": 0.2,
+     "IUIT": 0.8
     }
    },
    "gpm": {
@@ -98,44 +98,16 @@
    "tranche": 10,
    "best17": "RISK",
    "gpm": "RISK",
-   "picks": "CMOD / CSPX",
-   "note": "+ CSPX · − IUIT",
-   "bought": [
-    {
-     "t": "CMOD",
-     "pp": 30.0
-    },
-    {
-     "t": "CSPX",
-     "pp": 10.0
-    }
-   ],
-   "sold": [
-    {
-     "t": "IUIT",
-     "pp": 40.0
-    }
-   ],
+   "picks": "IUIT / CMOD",
+   "note": "bez zmian",
+   "bought": [],
+   "sold": [],
    "cash": 0.0,
    "cash_prev": 0.0,
    "legs": {
     "best17": {
-     "bought": [
-      {
-       "t": "CMOD",
-       "pp": 60.0
-      },
-      {
-       "t": "CSPX",
-       "pp": 20.0
-      }
-     ],
-     "sold": [
-      {
-       "t": "IUIT",
-       "pp": 80.0
-      }
-     ],
+     "bought": [],
+     "sold": [],
      "cash": 0.0
     },
     "gpm": {
@@ -150,26 +122,18 @@
    "tranche": 25,
    "best17": "RISK",
    "gpm": "RISK",
-   "picks": "CMOD / CSPX",
-   "note": "+ CSPX · − CNDX, IUES, IUIT",
+   "picks": "IUIT / CMOD",
+   "note": "− CNDX, IUES",
    "bought": [
-    {
-     "t": "CMOD",
-     "pp": 23.3
-    },
     {
      "t": "IBTA",
      "pp": 20.0
-    },
-    {
-     "t": "CSPX",
-     "pp": 10.0
     }
    ],
    "sold": [
     {
-     "t": "IUIT",
-     "pp": 40.0
+     "t": "CMOD",
+     "pp": 6.7
     },
     {
      "t": "CNDX",
@@ -184,22 +148,8 @@
    "cash_prev": 0.0,
    "legs": {
     "best17": {
-     "bought": [
-      {
-       "t": "CMOD",
-       "pp": 60.0
-      },
-      {
-       "t": "CSPX",
-       "pp": 20.0
-      }
-     ],
-     "sold": [
-      {
-       "t": "IUIT",
-       "pp": 80.0
-      }
-     ],
+     "bought": [],
+     "sold": [],
      "cash": 0.0
     },
     "gpm": {
@@ -592,21 +542,21 @@
      "exec": "CMOD",
      "score": 9.64,
      "gate": "ok",
-     "weight": 0.8
+     "weight": 0.2
     },
     {
      "t": "XLK",
      "exec": "IUIT",
      "score": 9.57,
-     "gate": "no",
-     "weight": 0.0
+     "gate": "ok",
+     "weight": 0.8
     },
     {
      "t": "IVV",
      "exec": "CSPX",
      "score": 5.96,
      "gate": "ok",
-     "weight": 0.2
+     "weight": 0.0
     },
     {
      "t": "VT",
@@ -708,9 +658,15 @@
    "progi": [
     {
      "status": "ok",
-     "title": "DBC przed IVV",
+     "title": "DBC przed XLK",
      "sub": "przewaga w rankingu",
-     "value": "+3,68 pp"
+     "value": "+0,07 pp"
+    },
+    {
+     "status": "ok",
+     "title": "XLK utrzymuje 2. miejsce",
+     "sub": "nad IVV, pierwszym poza podium",
+     "value": "+3,61 pp"
     },
     {
      "status": "no",
@@ -764,22 +720,22 @@
      "t": "XLK",
      "exec": "IUIT",
      "score": 10.95,
-     "gate": "no",
-     "weight": 0.0
+     "gate": "ok",
+     "weight": 0.8
     },
     {
      "t": "DBC",
      "exec": "CMOD",
      "score": 10.55,
      "gate": "ok",
-     "weight": 0.8
+     "weight": 0.2
     },
     {
      "t": "IVV",
      "exec": "CSPX",
      "score": 6.21,
      "gate": "ok",
-     "weight": 0.2
+     "weight": 0.0
     },
     {
      "t": "VT",
@@ -881,8 +837,14 @@
    "progi": [
     {
      "status": "ok",
-     "title": "DBC przed IVV",
+     "title": "XLK przed DBC",
      "sub": "przewaga w rankingu",
+     "value": "+0,40 pp"
+    },
+    {
+     "status": "ok",
+     "title": "DBC utrzymuje 2. miejsce",
+     "sub": "nad IVV, pierwszym poza podium",
      "value": "+4,34 pp"
     },
     {
@@ -1259,8 +1221,8 @@
    "period": "2026-10-01",
    "tranche": 25,
    "best17": {
-    "CMOD": 0.8,
-    "CSPX": 0.2
+    "CMOD": 0.2,
+    "IUIT": 0.8
    },
    "gpm": {
     "IBTA": 1.0
@@ -1271,8 +1233,8 @@
    "period": "2026-11-01",
    "tranche": 10,
    "best17": {
-    "CMOD": 0.8,
-    "CSPX": 0.2
+    "CMOD": 0.2,
+    "IUIT": 0.8
    },
    "gpm": {
     "IBTA": 1.0
