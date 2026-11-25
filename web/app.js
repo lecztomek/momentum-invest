@@ -36,6 +36,13 @@ const D=()=>SIG.diagnostics[DTAB];
    BRAK = nie ma ani jednego wpisu stanu konta, wiec kwot nie pokazujemy wcale,
    a sklad docelowy idzie w procentach. */
 let CAPITAL,HOLDINGS,MONTHS,VALUE,PAID,VUSD,PUSD,RETC,FXN,TRACK=[],BRAK=true,ZLOZONE=false,WPISY=false;
+/* Ktore nogi lezą na ktorym koncie. DEKLAROWANE przez usera, bo z samych
+   pozycji nie da sie tego odczytac: CMOD i CSPX naleza do obu nog naraz, wiec
+   odczyt rozdziela je po polowie i wychodzi, ze kazde konto ma trohe obu.
+   Brak deklaracji = stare zachowanie, czyli odczyt z pozycji. */
+const ROLE_OK=["wszystko","best17","gpm"];
+const ROLE_LBL={wszystko:"Wszystko",best17:"BEST17",gpm:"GPM"};
+let ROLE_KONT={};
 function ustawPortfel(P){
   PORT=P;BRAK=!P;
   if(P){
@@ -1282,6 +1289,21 @@ async function wczytajTXzBazy(){
     const z=await FB.wczytaj(USER.uid,"transactions");
     TX=z.map(r=>({id:r.id,d:r.d,a:r.a||"",t:r.t,k:r.k,px:r.px||null}));
   }catch(e){console.warn("nie udalo sie wczytac wpisow:",e.message)}
+  try{
+    ROLE_KONT={};
+    for(const r of await FB.wczytaj(USER.uid,"role_kont"))
+      if(r.konto&&ROLE_OK.includes(r.rola))ROLE_KONT[r.konto]=r.rola;
+  }catch(e){console.warn("nie udalo sie wczytac rol kont:",e.message)}
+  poWpisach();
+}
+async function ustawRoleKonta(konto,rola){
+  if(!ZAL()){alert("Zaloguj się, żeby ustawić układ kont.");return}
+  if(rola==="auto")delete ROLE_KONT[konto];else ROLE_KONT[konto]=rola;
+  const id=konto.replace(/[^\w-]+/g,"_");
+  if(FB)try{
+    if(rola==="auto")await FB.usun(USER.uid,"role_kont",id);
+    else await FB.zapisz(USER.uid,"role_kont",id,{konto,rola});
+  }catch(e){alert("Nie zapisano układu kont: "+e.message)}
   poWpisach();
 }
 async function dodajTX(r){
@@ -1446,6 +1468,14 @@ function liczPortfel(){
       const n=nogaWaloru(t);udzial.best17[k]+=v*n.best17;udzial.gpm[k]+=v*n.gpm}}
   const kurs=kursTeraz();   /* kurs "na teraz" - do kwot bez wlasnej daty */
   const konce=Object.fromEntries(konta.map(k=>[k,seria(k)]));
+  /* Deklaracja bije odczyt: jesli user powiedzial, ktore konto niesie ktora
+     noge, dzielimy noge miedzy konta, ktore ja deklaruja, wedle ich wartosci. */
+  if(konta.some(k=>ROLE_KONT[k])){
+    for(const k of konta){
+      const r=ROLE_KONT[k]||"wszystko",w=Math.max(0,konce[k].wart.at(-1)||0);
+      for(const l of ["best17","gpm"])udzial[l][k]=(r==="wszystko"||r===l)?w:0;
+    }
+  }
   const accounts=konta.map(k=>{
     const sum=l=>konta.reduce((a,x)=>a+udzial[l][x],0);
     const tk=trackDla(k);
@@ -1589,7 +1619,26 @@ function renderTX(){
   document.getElementById("depStats").innerHTML=ks.length
     ? ks.map(k=>`<div><span>${esc(k)}${acc[k].d?" · "+acc[k].d:""}</span><b>${acc[k].stan!=null?zl(acc[k].stan)+" USD":"—"}</b></div>`).join("")
       +`<div><span>Wpłacone razem</span><b style="color:var(--accent)">${zl(ks.reduce((s,k)=>s+acc[k].in,0))} USD</b></div>`
-    :'<div><span>Brak wpisów</span><b>—</b></div>'}
+    :'<div><span>Brak wpisów</span><b>—</b></div>';
+  rysujRoleKont(ks)}
+function rysujRoleKont(ks){
+  const box=document.getElementById("roleKont"),nota=document.getElementById("roleNota");
+  if(!box)return;
+  if(!ks.length){box.innerHTML="";nota.textContent="";return}
+  box.innerHTML=ks.map(k=>{
+    const r=ROLE_KONT[k]||"auto";
+    return `<div class="row rolaRow"><div class="ic" style="background:${CSS("--s6")}">${esc(k).slice(0,2).toUpperCase()}</div>
+      <div class="nm">${esc(k)}<em>${r==="auto"?"odczytane z pozycji":"zadeklarowane"}</em></div>
+      <div class="vl"><select data-rola="${esc(k)}" aria-label="Co leży na koncie ${esc(k)}">
+        <option value="auto"${r==="auto"?" selected":""}>Odczytaj z pozycji</option>
+        ${ROLE_OK.map(x=>`<option value="${x}"${r===x?" selected":""}>${ROLE_LBL[x]}</option>`).join("")}
+      </select></div></div>`}).join("");
+  nota.textContent="Powiedz, co leży na którym koncie. Panel sam tego nie wie: CMOD i CSPX "
+    +"należą do obu nóg naraz, więc odczytując ze stanu rozdziela je po połowie i każde konto "
+    +"wychodzi mu wymieszane. Przy jednym koncie wybierz Wszystko.";}
+document.getElementById("roleKont")?.addEventListener("change",e=>{
+  const s=e.target.closest("select[data-rola]");if(!s)return;
+  ustawRoleKonta(s.dataset.rola,s.value)});
 
 document.getElementById("txType").addEventListener("change",rysujRozbicie);
 
