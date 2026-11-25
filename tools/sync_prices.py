@@ -27,11 +27,6 @@ TRANSZE = (10, 25)              # musi zgadzac sie z tools/build_signals.py
 # panel operuje na skrotach, silnik na nazwach plikow
 TICKER = {
     "XLK": "xlk.us", "IVV": "ivv.us", "VT": "vt.us", "IAU": "iau.us", "DBC": "dbc.us",
-    # Gauge breadth: NIE sa kupowane (never_eligible), ale `gpm_breadth_gate` w best17
-    # liczy z nich, ile z dziesieciu ma dodatnie momentum - bez nich reczne ceny
-    # aktualizowalyby score i bramki, a breadth zostawalyby na starej dacie.
-    **{t: f"{t.lower()}.us" for t in
-       ["SPY", "QQQ", "VWO", "VNQ", "GLD", "HYG", "LQD", "TLT", "XLE"]},
     **{t: f"{t.lower()}.uk" for t in
        ["CSPX", "CNDX", "EIMI", "XRES", "CMOD", "IGLN", "IHYA", "LQDA", "DTLA", "IUES", "CBU0", "IBTA"]},
 }
