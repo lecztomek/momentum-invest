@@ -935,9 +935,13 @@ function viewAcc(){
     <a class="btn" href="#transakcje">Dopisz stan konta</a></div>`;
   const s=SETUPS[SETUP];let h=`<div class="seg setupSel"></div>`;
   for(const a of s.accounts){
-    const o=accComp(a),cap=accTarget(a);
-    h+=`<h2 class="psec">${esc(a.name)} <span class="sub" style="font-weight:400">· ${accLegs(a)} · ${kw(cap)}</span></h2>`
-      +tbl(`<th>ETF</th><th>${CURV==="usd"?"USD":"zł"}</th><th>Udział konta</th>`,Object.entries(o).map(([t,v])=>
+    const o=accComp(a),cap=accTarget(a),roz=a.value-cap;
+    h+=`<h2 class="psec">${esc(a.name)} <span class="sub" style="font-weight:400">· ${accLegs(a)}</span></h2>`
+      +`<p class="accsum">masz <b>${kw(a.value)}</b> · cel <b>${kw(cap)}</b>`
+      +(Math.abs(roz)<Math.max(cap*.02,1)?' · <em>zgadza się</em>'
+        :` · <em class="${roz>0?"nad":"pod"}">${roz>0?"nadwyżka":"niedobór"} ${kw(Math.abs(roz))}</em>`)
+      +`</p>`
+      +tbl(`<th>ETF</th><th>cel ${CURV==="usd"?"USD":"zł"}</th><th>Udział konta</th>`,Object.entries(o).map(([t,v])=>
         `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
          <td class="num">${zlk(v)}</td><td class="num">${pc(v/cap)}</td></tr>`).join(""))}
   return h}

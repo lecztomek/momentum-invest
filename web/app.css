@@ -441,3 +441,9 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
 .rolaRow .vl select{font:inherit;font-size:.85rem;padding:5px 8px;border-radius:7px;
   background:var(--surface2);color:var(--fg);border:1px solid var(--line)}
 .rolaRow .vl{display:flex;justify-content:flex-end}
+
+.accsum{margin:-4px 2px 8px;font-size:.88rem;color:var(--faint)}
+.accsum b{color:var(--fg);font-variant-numeric:tabular-nums}
+.accsum em{font-style:normal}
+.accsum em.nad{color:var(--warn)}
+.accsum em.pod{color:var(--cash)}
