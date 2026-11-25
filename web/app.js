@@ -991,6 +991,61 @@ function viewAcc(){
    i transz pokazuja paski w sekcji "Co trzymac" - powtarzanie go w tabelce
    tylko rozwadnialo ekran. */
 function renderSklad(){document.getElementById("skladBody").innerHTML=viewAcc();fillSel()}
+/* Instrukcja dnia transzy. Krokow jest wiecej dla admina, bo tylko on dokłada
+   ceny i odswieza dane - zwykly user dostaje sygnal juz policzony. */
+const KROKI_USER=[
+  ["Sprawdź, która transza","Na ekranie <b>Sygnał</b>, na samej górze, stoi najbliższy rebalans i ile dni zostało. "
+   +"Ruszasz tylko tę jedną transzę — druga czeka na swoją datę."],
+  ["Ustaw role kont (raz na zawsze)","<b>Wpisy → Konta</b>: przy każdym koncie wybierz, co na nim leży — "
+   +"Wszystko, BEST17 albo GPM. Bez tego panel zgaduje z pozycji i myli się, bo CMOD i CSPX należą do obu nóg naraz."],
+  ["Wpisz, co masz teraz","<b>Wpisy → Importuj stan konta</b> albo ręcznie: stan każdego konta "
+   +"<b>z rozbiciem na walory</b>. Bez rozbicia panel zna tylko wartość i nie policzy zleceń."],
+  ["Odczytaj zlecenia","<b>Sygnał → Do zrobienia</b> — kup/sprzedaj z kwotami. "
+   +"Dokładniej, per konto: <b>Sygnał → Na których kontach</b>, kolumna <b>różnica</b>. "
+   +"Plus to dokupienie, minus to sprzedaż."],
+  ["Złóż zlecenia u brokera","Giełda w Londynie handluje 9:00–17:30 naszego czasu. "
+   +"Jeśli nie zdążysz w dniu transzy, reguła brzmi „tego dnia <b>lub później</b>” — następna sesja też jest w porządku."],
+  ["Wpisz stan po transakcjach","Jeszcze raz stan każdego konta, już po ruchu. Nadpisze ten sprzed — "
+   +"i dobrze, bo na krzywej kapitału ma zostać stan faktyczny."],
+  ["Sprawdź, czy się zgadza","<b>Sygnał → Ostatnie sygnały</b>: przy kilku kontach ruchy są rozbite na konta. "
+   +"Powinny odpowiadać temu, co zrobiłeś."],
+];
+const KROKI_ADMIN=[
+  ["Poczekaj na zamknięcie","Sygnał liczy się z <b>ceny zamknięcia dnia transzy</b>. Noga GPM domyka się "
+   +"o 17:30 (Londyn), noga BEST17 o 22:00 (USA), bo jej wskaźniki liczą się na tickerach amerykańskich."],
+  ["Odśwież dane — droga główna","Paczka ze stooq, potem <code>tools/odswiez_dane.py &lt;paczka&gt; --zapisz</code> "
+   +"oraz to samo z <code>--cel data/uk</code>. Commit i push — workflow odpali się sam, ma trigger na <code>data/**</code>. "
+   +"To jedyna droga, która daje też pełne notowania dzienne, więc krzywa kapitału i obsunięcie na Wynikach są uczciwe."],
+  ["Albo ceny ręcznie — droga awaryjna","<b>Ceny → + Dopisz dzień</b>. Panel poprosi o <b>26 instrumentów</b>: "
+   +"pięć z BEST17, dziewięć mierników breadth i dwanaście z GPM. Dzień niekompletny jest w całości pomijany, "
+   +"bo sygnał z połowy cen byłby błędny. Prawdziwe zamknięcie z paczki później i tak wygra nad wpisem ręcznym."],
+  ["Sprawdź dane","<b>Ceny → Kontrola danych</b> plus lista dni do wpisania. Panel sam mówi, czego brakuje: "
+   +"dwa dni na miesiąc, po jednym na transzę."],
+  ["Dopisz kurs USD/PLN","<b>Wpisy → Kursy USD/PLN</b>, jeśli chcesz widzieć wartości w złotych. "
+   +"Bez kursu z danego dnia panel nie przelicza — woli pokazać kreskę niż zmyśloną złotówkę."],
+];
+function renderPomoc(){
+  const box=document.getElementById("pomocBody");if(!box)return;
+  const st=document.getElementById("pomocStamp");
+  const admin=!!ADMIN_BAZA;
+  if(st)st.textContent=admin?"widok administratora":ZAL()?"widok użytkownika":"nie jesteś zalogowany";
+  const lista=(kroki,od)=>`<ol class="kroki">`+kroki.map(([t,o],i)=>
+    `<li><span class="kn">${od+i}</span><b>${t}</b><p>${o}</p></li>`).join("")+`</ol>`;
+  let h="";
+  if(!ZAL())h+=`<div class="card pusto"><b>Większość tych kroków wymaga zalogowania.</b>
+    <p>Bez niego widzisz samą strategię — sygnał, wyniki i ceny. Portfel, stany kont i lista zleceń
+    to dane prywatne i leżą w bazie, nie w tej stronie.</p>
+    <button type="button" class="btn" data-login>Zaloguj się</button></div>`;
+  if(admin){
+    h+=`<h2 class="psec">Najpierw dane <span class="sub" style="font-weight:400">· tylko administrator</span></h2>`
+      +lista(KROKI_ADMIN,1)
+      +`<h2 class="psec">Potem portfel</h2>`+lista(KROKI_USER,KROKI_ADMIN.length+1);
+  }else{
+    h+=`<h2 class="psec">Krok po kroku</h2>`+lista(KROKI_USER,1)
+      +`<p class="note">Cen i danych nie musisz dotykać — sygnał dostajesz policzony.</p>`;
+  }
+  box.innerHTML=h;
+}
 function renderAccounts(){
   const s=SETUPS[SETUP];
   document.getElementById("accCards").innerHTML=s.accounts.map(a=>{
@@ -1586,7 +1641,7 @@ function poWpisach(){
   if(P&&P.accounts.length){SETUPS.moje={label:"Moje konta",accounts:P.accounts};SETUP="moje"}
   else{Object.assign(SETUPS,UKLADY_PRZYKLAD);SETUP="rozdzielnie"}
   ustawPortfel(P);
-  rysujPasek();rysujRozbicie();renderTX();renderPulpit();renderActions();renderHist();renderAccounts();renderAll();
+  rysujPasek();rysujRozbicie();renderTX();renderPulpit();renderActions();renderHist();renderAccounts();renderPomoc();renderAll();
   renderSklad();
 }
 
@@ -1980,7 +2035,7 @@ document.getElementById("btnImport").addEventListener("click",()=>{
 
 
 /* ============ nawigacja ============ */
-const VIEWS=["pulpit","sygnal","wyniki","transakcje","ceny","dlaczego"];
+const VIEWS=["pulpit","sygnal","wyniki","transakcje","ceny","dlaczego","pomoc"];
 function rysujNawigacje(){
   for(const v of TYLKO_ZALOGOWANY)
     document.querySelector(`#nav a[href="#${v}"]`).hidden=!ZAL();
@@ -1998,7 +2053,7 @@ addEventListener("hashchange",()=>show(location.hash.slice(1)));
 
 
 document.getElementById("txDate").value=new Date().toISOString().slice(0,10);
-rysujPasek();fillAccSelect();rysujRozbicie();renderTX();renderPulpit();renderMatrix();renderActions();renderHist();renderSklad();renderAccounts();renderWyniki();renderDiag();renderCeny();
+rysujPasek();fillAccSelect();rysujRozbicie();renderTX();renderPulpit();renderMatrix();renderActions();renderHist();renderSklad();renderAccounts();renderWyniki();renderDiag();renderCeny();renderPomoc();
 
 legend("l-mix",KLASY.map(k=>[k[0],CSS(k[1])]));
 legend("l-cmp",CMPK.map(k=>[k.label,CSS(k.col)]));

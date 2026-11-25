@@ -454,3 +454,13 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
 #histList .kchips{flex:1}
 .kontoL{flex:none;padding-top:5px;font-size:.68rem;letter-spacing:.05em;
   text-transform:uppercase;color:var(--faint);min-width:34px}
+
+.kroki{margin:0 0 18px;padding-left:0;list-style:none}
+.kroki li{position:relative;padding:0 0 16px 42px;margin:0}
+.kroki li .kn{position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;background:var(--surface2);
+  color:var(--accent);font-weight:700;font-size:.85rem;font-variant-numeric:tabular-nums}
+.kroki li>b{display:block;margin:4px 0 4px;font-size:1rem}
+.kroki li p b{color:var(--fg)}
+.kroki li p{margin:0;color:var(--faint);font-size:.9rem;line-height:1.5}
+.kroki li code{font-size:.84rem;background:var(--surface2);padding:1px 5px;border-radius:4px}
