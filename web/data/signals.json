@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-23T15:56:54Z",
+ "generated": "2026-11-25T09:53:06Z",
  "source": "engine_v2 / strategies_v2/gpm_uk_best17_a_day10 + strategies_v2/gpm_uk_best17_a_day25",
  "config_hash": "cb573945",
  "universe": [
@@ -117,7 +117,33 @@
     }
    ],
    "cash": 0.0,
-   "cash_prev": 0.0
+   "cash_prev": 0.0,
+   "legs": {
+    "best17": {
+     "bought": [
+      {
+       "t": "CMOD",
+       "pp": 60.0
+      },
+      {
+       "t": "CSPX",
+       "pp": 20.0
+      }
+     ],
+     "sold": [
+      {
+       "t": "IUIT",
+       "pp": 80.0
+      }
+     ],
+     "cash": 0.0
+    },
+    "gpm": {
+     "bought": [],
+     "sold": [],
+     "cash": 0.0
+    }
+   }
   },
   {
    "date": "2026-10-26",
@@ -155,7 +181,51 @@
     }
    ],
    "cash": 0.0,
-   "cash_prev": 0.0
+   "cash_prev": 0.0,
+   "legs": {
+    "best17": {
+     "bought": [
+      {
+       "t": "CMOD",
+       "pp": 60.0
+      },
+      {
+       "t": "CSPX",
+       "pp": 20.0
+      }
+     ],
+     "sold": [
+      {
+       "t": "IUIT",
+       "pp": 80.0
+      }
+     ],
+     "cash": 0.0
+    },
+    "gpm": {
+     "bought": [
+      {
+       "t": "IBTA",
+       "pp": 40.0
+      }
+     ],
+     "sold": [
+      {
+       "t": "CMOD",
+       "pp": 13.3
+      },
+      {
+       "t": "CNDX",
+       "pp": 13.3
+      },
+      {
+       "t": "IUES",
+       "pp": 13.3
+      }
+     ],
+     "cash": 0.0
+    }
+   }
   },
   {
    "date": "2026-10-12",
@@ -185,7 +255,37 @@
     }
    ],
    "cash": 0.0,
-   "cash_prev": 0.0
+   "cash_prev": 0.0,
+   "legs": {
+    "best17": {
+     "bought": [],
+     "sold": [],
+     "cash": 0.0
+    },
+    "gpm": {
+     "bought": [
+      {
+       "t": "IBTA",
+       "pp": 60.0
+      }
+     ],
+     "sold": [
+      {
+       "t": "CMOD",
+       "pp": 20.0
+      },
+      {
+       "t": "CNDX",
+       "pp": 20.0
+      },
+      {
+       "t": "IUES",
+       "pp": 20.0
+      }
+     ],
+     "cash": 0.0
+    }
+   }
   },
   {
    "date": "2026-09-25",
@@ -215,7 +315,37 @@
     }
    ],
    "cash": 0.0,
-   "cash_prev": 0.0
+   "cash_prev": 0.0,
+   "legs": {
+    "best17": {
+     "bought": [],
+     "sold": [],
+     "cash": 0.0
+    },
+    "gpm": {
+     "bought": [
+      {
+       "t": "IBTA",
+       "pp": 20.0
+      }
+     ],
+     "sold": [
+      {
+       "t": "CMOD",
+       "pp": 6.7
+      },
+      {
+       "t": "CNDX",
+       "pp": 6.7
+      },
+      {
+       "t": "IUES",
+       "pp": 6.7
+      }
+     ],
+     "cash": 0.0
+    }
+   }
   },
   {
    "date": "2026-09-10",
@@ -237,7 +367,39 @@
     }
    ],
    "cash": 0.0,
-   "cash_prev": 0.0
+   "cash_prev": 0.0,
+   "legs": {
+    "best17": {
+     "bought": [
+      {
+       "t": "CMOD",
+       "pp": 20.0
+      }
+     ],
+     "sold": [
+      {
+       "t": "CSPX",
+       "pp": 20.0
+      }
+     ],
+     "cash": 0.0
+    },
+    "gpm": {
+     "bought": [
+      {
+       "t": "CMOD",
+       "pp": 20.0
+      }
+     ],
+     "sold": [
+      {
+       "t": "CSPX",
+       "pp": 20.0
+      }
+     ],
+     "cash": 0.0
+    }
+   }
   },
   {
    "date": "2026-08-25",
@@ -275,7 +437,51 @@
     }
    ],
    "cash": 0.0,
-   "cash_prev": 0.0
+   "cash_prev": 0.0,
+   "legs": {
+    "best17": {
+     "bought": [
+      {
+       "t": "CMOD",
+       "pp": 20.0
+      }
+     ],
+     "sold": [
+      {
+       "t": "CSPX",
+       "pp": 20.0
+      }
+     ],
+     "cash": 0.0
+    },
+    "gpm": {
+     "bought": [
+      {
+       "t": "CNDX",
+       "pp": 20.0
+      },
+      {
+       "t": "CMOD",
+       "pp": 6.7
+      },
+      {
+       "t": "IUES",
+       "pp": 6.7
+      }
+     ],
+     "sold": [
+      {
+       "t": "IBTA",
+       "pp": 20.0
+      },
+      {
+       "t": "XRES",
+       "pp": 13.3
+      }
+     ],
+     "cash": 0.0
+    }
+   }
   },
   {
    "date": "2026-08-10",
@@ -287,7 +493,19 @@
    "bought": [],
    "sold": [],
    "cash": 0.0,
-   "cash_prev": 0.0
+   "cash_prev": 0.0,
+   "legs": {
+    "best17": {
+     "bought": [],
+     "sold": [],
+     "cash": 0.0
+    },
+    "gpm": {
+     "bought": [],
+     "sold": [],
+     "cash": 0.0
+    }
+   }
   },
   {
    "date": "2026-07-27",
@@ -325,7 +543,45 @@
     }
    ],
    "cash": 0.0,
-   "cash_prev": 0.0
+   "cash_prev": 0.0,
+   "legs": {
+    "best17": {
+     "bought": [],
+     "sold": [],
+     "cash": 0.0
+    },
+    "gpm": {
+     "bought": [
+      {
+       "t": "IBTA",
+       "pp": 60.0
+      },
+      {
+       "t": "XRES",
+       "pp": 13.3
+      }
+     ],
+     "sold": [
+      {
+       "t": "CNDX",
+       "pp": 26.7
+      },
+      {
+       "t": "CBU0",
+       "pp": 20.0
+      },
+      {
+       "t": "CMOD",
+       "pp": 13.3
+      },
+      {
+       "t": "IUES",
+       "pp": 13.3
+      }
+     ],
+     "cash": 0.0
+    }
+   }
   }
  ],
  "diagnostics": {
