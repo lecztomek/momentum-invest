@@ -447,3 +447,4 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
 .accsum em{font-style:normal}
 .accsum em.nad{color:var(--warn)}
 .accsum em.pod{color:var(--cash)}
+@media(max-width:620px){ #skladBody .udzkol{display:none} }

@@ -187,11 +187,21 @@ const UKLADY_PRZYKLAD={
     {name:"Broker B",alloc:{best17:.5,gpm:.5},value:98240,pln:3.12,usd:-1.93}]}};
 const SETUPS={...UKLADY_PRZYKLAD};
 let SETUP="rozdzielnie";
-const accComp=a=>{const o={};
-  for(const leg of["best17","gpm"]){const f=a.alloc[leg]||0;if(!f)continue;
-    for(const[t,v]of Object.entries(LEG[leg]))o[t]=(o[t]||0)+v*f}
+/* Cel konta liczy sie na JEGO WLASNYM stanie, nie na udziale w modelowym
+   50/50. Nogi siedza u roznych brokerow, wiec wyrownanie miedzy nimi
+   wymagaloby przelewu - a tego sie nie robi co transze. W obrebie konta
+   trzymamy proporcje nog, ktore ono niesie. Rozjazd wobec modelu pokazuje
+   osobno accIdeal, zeby bylo widac, ze nogi sie rozeszly. */
+const legProp=leg=>{const s=Object.values(LEG[leg]||{}).reduce((a,b)=>a+b,0);
+  return s?Object.fromEntries(Object.entries(LEG[leg]).map(([t,v])=>[t,v/s])):{}};
+const accComp=a=>{const o={},w={};let s=0;
+  for(const leg of["best17","gpm"]){const f=a.alloc[leg]||0;if(f>0){w[leg]=f;s+=f}}
+  if(!s)return{};
+  for(const[leg,f]of Object.entries(w))
+    for(const[t,p]of Object.entries(legProp(leg)))o[t]=(o[t]||0)+a.value*(f/s)*p;
   return Object.fromEntries(Object.entries(o).filter(([,v])=>v>.5).sort((x,y)=>y[1]-x[1]))};
-const accTarget=a=>(a.alloc.best17||0)*CAPITAL.best17+(a.alloc.gpm||0)*CAPITAL.gpm;
+const accTarget=a=>a.value;
+const accIdeal=a=>(a.alloc.best17||0)*CAPITAL.best17+(a.alloc.gpm||0)*CAPITAL.gpm;
 const accLegs=a=>["best17","gpm"].filter(l=>a.alloc[l]>0)
   .map(l=>(a.alloc[l]===1?"":Math.round(a.alloc[l]*100)+"% ")+(l==="best17"?"BEST17":"GPM")).join(" + ");
 const fillSel=()=>document.querySelectorAll(".setupSel").forEach(e=>e.innerHTML=
@@ -935,15 +945,24 @@ function viewAcc(){
     <a class="btn" href="#transakcje">Dopisz stan konta</a></div>`;
   const s=SETUPS[SETUP];let h=`<div class="seg setupSel"></div>`;
   for(const a of s.accounts){
-    const o=accComp(a),cap=accTarget(a),roz=a.value-cap;
+    const o=accComp(a),cap=accTarget(a),ideal=accIdeal(a),roz=a.value-ideal;
+    const mam=(PORT?.perKonto||{})[a.name]||{};
+    const jed=CURV==="usd"?"USD":"zł";
     h+=`<h2 class="psec">${esc(a.name)} <span class="sub" style="font-weight:400">· ${accLegs(a)}</span></h2>`
-      +`<p class="accsum">masz <b>${kw(a.value)}</b> · cel <b>${kw(cap)}</b>`
-      +(Math.abs(roz)<Math.max(cap*.02,1)?' · <em>zgadza się</em>'
-        :` · <em class="${roz>0?"nad":"pod"}">${roz>0?"nadwyżka":"niedobór"} ${kw(Math.abs(roz))}</em>`)
+      +`<p class="accsum">masz <b>${kw(a.value)}</b>`
+      +(Math.abs(roz)<Math.max(ideal*.02,1)?" · zgodnie z modelem 50/50"
+        :` · wg modelu 50/50 ${kw(ideal)}, czyli <em class="${roz>0?"nad":"pod"}">${
+            roz>0?"nadwyżka":"niedobór"} ${kw(Math.abs(roz))}</em>`)
       +`</p>`
-      +tbl(`<th>ETF</th><th>cel ${CURV==="usd"?"USD":"zł"}</th><th>Udział konta</th>`,Object.entries(o).map(([t,v])=>
-        `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
-         <td class="num">${zlk(v)}</td><td class="num">${pc(v/cap)}</td></tr>`).join(""))}
+      +tbl(`<th>ETF</th><th>masz ${jed}</th><th>cel ${jed}</th><th>różnica</th><th class="udzkol">Udział</th>`,
+        [...new Set([...Object.keys(o),...Object.keys(mam)])]
+          .sort((x,y)=>(o[y]||0)-(o[x]||0)||(mam[y]||0)-(mam[x]||0)).map(t=>{
+          const ma=mam[t]||0,ce=o[t]||0,d=ce-ma;
+          const kol=Math.abs(d)<Math.max(cap*.01,1)?"--faint":d>0?"--pos":"--neg";
+          return `<tr><td><span class="sw-in" style="background:${CSS(KOL[t]||"--s6")}"></span>${t==="GOTOWKA"?"Gotówka":t}</td>
+           <td class="num">${zlk(ma)}</td><td class="num">${zlk(ce)}</td>
+           <td class="num" style="color:var(${kol})">${Math.abs(d)<Math.max(cap*.01,1)?"—":(d>0?"+":"−")+zlk(Math.abs(d))}</td>
+           <td class="num udzkol">${cap?pc(ce/cap):"—"}</td></tr>`}).join(""))}
   return h}
 /* Jedyny widok, ktorego nie ma wyzej: podzial miedzy KONTA. Sklad calosci
    i transz pokazuja paski w sekcji "Co trzymac" - powtarzanie go w tabelce
@@ -1503,7 +1522,7 @@ function liczPortfel(){
   const pln=lancuch(wartPln,wplPln,new Set(stany.map(r=>mies(r.d))));
   return {
     owner:"wpisy", capital:{best17:kapital/2,gpm:kapital/2,split10:.5},
-    holdings:trzymam, accounts,
+    holdings:trzymam, perKonto, accounts,
     months:os,
     /* Wartosc w zlotych: kurs z konca danego miesiaca. Wplacone w zlotych:
        KAZDY przeplyw po swoim wlasnym kursie - tyle naprawde kosztowal. */
