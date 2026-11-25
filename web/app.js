@@ -912,12 +912,35 @@ const chip=(t,pp,klasa)=>`<span class="chip ${klasa}">
 const normHist=h=>Array.isArray(h)
   ?{date:h[0],tranche:h[1],best17:h[2],picks:h[3],gpm:h[4],note:h[5],cash:0}
   :h;
+/* Ktore nogi niesie konto i w jakiej proporcji - ta sama normalizacja co w
+   accComp, zeby ruch nogi przeliczyc na punkty procentowe KONTA. Konto niosace
+   cala noge dostaje jej procenty bez zmiany. */
+function kontaNog(){
+  return ((PORT&&PORT.accounts)||[]).map(a=>{
+    const w={};let s=0;
+    for(const l of["best17","gpm"]){const f=(a.alloc&&a.alloc[l])||0;if(f>0){w[l]=f;s+=f}}
+    if(!s)return null;
+    for(const l in w)w[l]/=s;
+    return{name:a.name,w}}).filter(Boolean)}
+const ruchKonta=(h,k,kier)=>{
+  const m={};
+  for(const[l,f]of Object.entries(k.w))
+    for(const r of (h.legs&&h.legs[l]&&h.legs[l][kier])||[])m[r.t]=(m[r.t]||0)+r.pp*f;
+  return Object.entries(m).filter(([,v])=>v>.05).sort((a,b)=>b[1]-a[1])};
 function tabelaHist(){
+  const K=kontaNog();
   const wiersze=HIST.map(normHist).map(h=>{
+    const rozbij=K.length>1&&h.legs;
+    const perKonto=(kier,klasa)=>{
+      return K.map(k=>{const r=ruchKonta(h,k,kier);return r.length
+        ?`<div class="kgr"><span class="kontoL">${esc(k.name)}</span><span class="kchips">${
+            r.map(([t,pp])=>chip(t,pp,klasa)).join("")}</span></div>`:""}).join("")};
     const znane=Array.isArray(h.sold)&&Array.isArray(h.bought);
     const nic=znane&&!h.sold.length&&!h.bought.length;
-    const sp=h.sold?.length?h.sold.map(r=>chip(r.t,r.pp,"out")).join(""):"";
-    const kp=h.bought?.length?h.bought.map(r=>chip(r.t,r.pp,"in")).join(""):"";
+    const sp=rozbij?perKonto("sold","out")
+      :(h.sold?.length?h.sold.map(r=>chip(r.t,r.pp,"out")).join(""):"");
+    const kp=rozbij?perKonto("bought","in")
+      :(h.bought?.length?h.bought.map(r=>chip(r.t,r.pp,"in")).join(""):"");
     const got=h.cash??0,poprz=h.cash_prev;
     const strzalka=poprz==null||Math.abs(got-poprz)<.05?""
       :`<em class="${got>poprz?"up":"dn"}">${got>poprz?"▲":"▼"}${pp1(Math.abs(got-poprz))}</em>`;

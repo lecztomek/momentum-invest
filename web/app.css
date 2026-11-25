@@ -448,3 +448,9 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
 .accsum em.nad{color:var(--warn)}
 .accsum em.pod{color:var(--cash)}
 @media(max-width:620px){ #skladBody .udzkol{display:none} }
+
+#histList .kgr{display:flex;align-items:flex-start;gap:6px;margin:2px 0 5px}
+#histList .kgr:last-child{margin-bottom:0}
+#histList .kchips{flex:1}
+.kontoL{flex:none;padding-top:5px;font-size:.68rem;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--faint);min-width:34px}

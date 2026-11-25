@@ -304,6 +304,26 @@ def udzialy(wpis: dict) -> dict[str, float]:
     return out
 
 
+def ruchy_nogi(teraz: dict, poprz: dict | None, noga: str) -> dict:
+    """To samo co `ruchy`, ale w obrebie JEDNEJ nogi i w punktach procentowych
+    TEJ nogi. Nogi leza na roznych kontach, wiec dopiero tak rozbite ruchy mowia,
+    co zrobic u ktorego brokera - a przy koncie niosacym cala noge te procenty sa
+    wprost procentami konta."""
+    a = dict(teraz.get(noga) or {})
+    b = dict((poprz.get(noga) if poprz else None) or {})
+    kupione, sprzedane = [], []
+    for t in sorted(set(a) | set(b)):
+        d = round((float(a.get(t, 0.0)) - float(b.get(t, 0.0))) * 100, 1)
+        if d > 0.05:
+            kupione.append({"t": t, "pp": d})
+        elif d < -0.05:
+            sprzedane.append({"t": t, "pp": -d})
+    kupione.sort(key=lambda x: -x["pp"])
+    sprzedane.sort(key=lambda x: -x["pp"])
+    return {"bought": kupione, "sold": sprzedane,
+            "cash": round(max(0.0, 1.0 - sum(float(v) for v in a.values())) * 100, 1)}
+
+
 def ruchy(teraz: dict, poprz: dict | None) -> dict:
     """Co doszlo i co wyszlo miedzy dwoma kolejnymi sygnalami TEJ SAMEJ transzy,
     w punktach procentowych jej kapitalu. Gotowka nie jest 'kupowana' - idzie osobno."""
@@ -362,7 +382,8 @@ def main() -> int:
     historia = [{"date": w["date"], "tranche": w["tranche"],
                  "best17": tryb(w, "best17"), "gpm": tryb(w, "gpm"),
                  "picks": " / ".join(sorted(w["best17"], key=lambda k: -w["best17"][k])) or "—",
-                 "note": opis_zmiany(w, p), **ruchy(w, p)}
+                 "note": opis_zmiany(w, p), **ruchy(w, p),
+                 "legs": {n: ruchy_nogi(w, p, n) for n in ("best17", "gpm")}}
                 for w, p in wszystkie[:8]]
 
     diagnostyka = {}
