@@ -594,6 +594,15 @@ function rebalansDla(s){
 function nastepnyRebalans(){
   const r=SIGNALS.map(rebalansDla).sort((a,b)=>a.dni-b.dni);
   return r.some(x=>x.dni>=0)?r.find(x=>x.dni>=0):r[0]}
+/* "Do zrobienia" dotyczy OSTATNIEGO policzonego sygnalu, nie najblizszego terminu.
+   Sygnalu na przyszla transze jeszcze nie ma - powstaje dopiero z kursu z jej dnia -
+   wiec ruch "na zapas" celowalby w target, ktory i tak zostanie przeliczony. Dopoki
+   nowy sygnal nie powstanie, jedyny ruch, ktory ma sens, to ten z ostatniej transzy:
+   albo zostal zrobiony i odchylenia sa zerowe, albo nie zostal i wlasnie o tym trzeba
+   przypomniec. Dzien po transzy panel ma pokazywac zaleglosc, nie nastepny termin. */
+function ostatniSygnal(){
+  const i=SIGNALS.length>1&&SIGNALS[1].date>SIGNALS[0].date?1:0;
+  return {i,s:SIGNALS[i]}}
 const cur=()=>CURV==="usd"
   ? {v:VUSD,p:PUSD,u:"USD",alt:{v:VALUE,u:"zł"},r:RETC.usd,twr:PORT?.twr.usd??0,k:x=>x}
   : {v:VALUE,p:PAID,u:"zł", alt:{v:VUSD, u:"USD"},r:RETC.pln,twr:PORT?.twr.pln??0,k:x=>x*FXN};
@@ -852,15 +861,16 @@ function renderActions(){
   if(BRAK)return;
   if(!Object.keys(HOLDINGS).length){
     document.getElementById("actions").innerHTML=BRAK_SKLADU;return}
-  const R=nastepnyRebalans();
-  const pierwsza=String(SIGNALS[0].tranche)===String(R.tranche);
-  const T=pierwsza?T10:T25,udzial=pierwsza?CAPITAL.split10:1-CAPITAL.split10;
+  const R=nastepnyRebalans(),{i:idx,s:SYG}=ostatniSygnal();
+  const T=idx===0?T10:T25,udzial=idx===0?CAPITAL.split10:1-CAPITAL.split10;
   const rows=[...new Set([...Object.keys(T.out),...Object.keys(HOLDINGS)])].filter(t=>t!=="GOTOWKA")
     .map(t=>({t,want:T.out[t]||0,d:(T.out[t]||0)-(HOLDINGS[t]||0)*udzial}))
     .filter(r=>Math.abs(r.d)>=TOTAL*.02).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d));
-  const nota=`<div class="actnote">Dotyczy transzy ${R.tranche}-tego, czyli ${pc(udzial)} kapitału.
-    Reszta czeka na swoją datę. Udział transzy w każdej pozycji jest szacowany proporcjonalnie –
-    panel nie wie, która sztuka należy do której transzy.</div>`;
+  const nota=`<div class="actnote">Dotyczy <b>ostatniej policzonej</b> transzy ${SYG.tranche}-tego
+    z ${SYG.date}, czyli ${pc(udzial)} kapitału. Druga połowa rusza ${R.opis}${R.dni>=0?` (${R.kiedy})`:""} –
+    sygnału na tamten dzień jeszcze nie ma, bo liczy się go z kursu zamknięcia z dnia transzy.
+    Udział transzy w każdej pozycji jest szacowany proporcjonalnie – panel nie wie, która sztuka
+    należy do której transzy.</div>`;
   document.getElementById("actions").innerHTML=nota+(rows.length?rows.map(r=>
     `<div class="act ${r.d>0?"buy":"sell"}"><i class="w"></i><div><div class="t">${r.d>0?"Kup":"Sprzedaj"} ${r.t}</div>
      <div class="sub">${ROLE[r.t]||""}</div></div><div class="q"><b>${kw(Math.abs(r.d))}</b>
@@ -994,8 +1004,9 @@ function renderSklad(){document.getElementById("skladBody").innerHTML=viewAcc();
 /* Instrukcja dnia transzy. Krokow jest wiecej dla admina, bo tylko on dokłada
    ceny i odswieza dane - zwykly user dostaje sygnal juz policzony. */
 const KROKI_USER=[
-  ["Sprawdź, która transza","Na ekranie <b>Sygnał</b>, na samej górze, stoi najbliższy rebalans i ile dni zostało. "
-   +"Ruszasz tylko tę jedną transzę — druga czeka na swoją datę."],
+  ["Sprawdź, która transza","Na ekranie <b>Sygnał</b>, na górze, stoi najbliższy rebalans i ile dni zostało. "
+   +"Ale <b>Do zrobienia</b> dotyczy <b>ostatniej policzonej</b> transzy, czyli tej, którą masz wykonać — "
+   +"sygnału na następną jeszcze nie ma. Ruszasz tylko tę jedną; druga czeka na swoją datę."],
   ["Ustaw role kont (raz na zawsze)","<b>Wpisy → Konta</b>: przy każdym koncie wybierz, co na nim leży — "
    +"Wszystko, BEST17 albo GPM. Bez tego panel zgaduje z pozycji i myli się, bo CMOD i CSPX należą do obu nóg naraz."],
   ["Wpisz, co masz teraz","<b>Wpisy → Importuj stan konta</b> albo ręcznie: stan każdego konta "
