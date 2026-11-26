@@ -1461,10 +1461,26 @@ async function ustawRoleKonta(konto,rola){
   }catch(e){alert("Nie zapisano układu kont: "+e.message)}
   poWpisach();
 }
+/* Stan konta to MIGAWKA, nie zdarzenie: dwa wpisy tego samego dnia na to samo konto
+   to nie dwie informacje, tylko poprawka tej samej. Id jest deterministyczne (tak samo
+   jak w ustawStan), wiec drugi wpis NADPISUJE pierwszy. Bez tego powstawal drugi
+   rekord z innym id, a kod wybierajacy "ostatni stan" sortuje po SAMEJ dacie - przy
+   remisie o zwyciezcy decydowala kolejnosc zwrocona przez baze, nie to, co user wpisal
+   pozniej. Dodatkowo stanTeraz() bierze TX.find, czyli PIERWSZY pasujacy, wiec
+   formularz podpowiadalby stara kwote. */
 async function dodajTX(r){
   if(!ZAL()){alert("Zaloguj się, żeby prowadzić portfel.");return}
-  r.id=r.id||(r.d+"_"+Date.now().toString(36));
-  TX.push(r);
+  if(r.t==="stan"){
+    r.id=`stan_${r.d}_${r.a.replace(/[^\w]+/g,"-")}`;
+    const i=TX.findIndex(x=>x.t==="stan"&&x.d===r.d&&x.a===r.a);
+    if(i>=0){
+      const stare=TX[i].id;TX[i]=r;
+      if(stare&&stare!==r.id&&FB&&USER)FB.usun(USER.uid,"transactions",stare).catch(()=>{});
+    }else TX.push(r);
+  }else{
+    r.id=r.id||(r.d+"_"+Date.now().toString(36));
+    TX.push(r);
+  }
   try{await FB.zapisz(USER.uid,"transactions",r.id,r)}catch(e){alert("Nie zapisano w bazie: "+e.message)}
   poWpisach();
 }
@@ -1477,6 +1493,11 @@ const TYP={stan:"Stan konta",wplata:"Wpłata",wyplata:"Wypłata"};
 const TXI={stan:["=","--accent"],wplata:["↓","--pos"],wyplata:["↑","--cash"]};
 
 /* ---- portfel policzony z wpisow ---- */
+/* Sama data nie wystarcza do uporzadkowania: przy dwoch wpisach z tego samego dnia
+   komparator remisuje i "ostatni" zalezy od kolejnosci zwroconej przez baze. Id jako
+   drugi klucz daje ten sam wynik przy kazdym odswiezeniu - liczy sie dla rekordow
+   sprzed poprawki w dodajTX, bo nowe duplikaty juz nie powstaja. */
+const poDacie=(a,b)=>a.d.localeCompare(b.d)||String(a.id||"").localeCompare(String(b.id||""));
 const mies=d=>d.slice(0,7);
 /* Kursy USD/PLN z konkretnych dni. To dane WSPOLNE - kurs z 10 marca jest taki
    sam dla kazdego - wiec wpisuje je admin, a reszta tylko czyta. Trzymamy kopie
@@ -1547,7 +1568,7 @@ function liczPortfel(){
     const moje=r=>!kt||r.a===kt;
     const wart=os.map(m=>{let sum=0;
       for(const k of (kt?[kt]:konta)){
-        const ost=stany.filter(r=>r.a===k&&mies(r.d)<=m).sort((a,b)=>a.d.localeCompare(b.d)).at(-1);
+        const ost=stany.filter(r=>r.a===k&&mies(r.d)<=m).sort(poDacie).at(-1);
         if(ost)sum+=ost.k}
       return Math.round(sum)});
     const wpl=os.map(m=>Math.round(TX.filter(r=>moje(r)&&mies(r.d)<=m&&liczone(r,m+"-31"))
@@ -1572,7 +1593,7 @@ function liczPortfel(){
     const pkt=daty.map(d=>{
       let w=0;
       for(const k of (kt?[kt]:konta)){
-        const o=stany.filter(r=>r.a===k&&r.d<=d).sort((a,b)=>a.d.localeCompare(b.d)).at(-1);
+        const o=stany.filter(r=>r.a===k&&r.d<=d).sort(poDacie).at(-1);
         if(o)w+=o.k}
       const ruchy=TX.filter(r=>moje(r)&&r.d<=d&&przeplyw(r)&&liczone(r,d));
       const kurs=kursNa(d),brak=ruchy.some(r=>kursNa(r.d)==null);
@@ -1603,7 +1624,7 @@ function liczPortfel(){
   /* Co trzymam: z ostatniego rozbicia kazdego konta, jesli user je podal. */
   const trzymam={},perKonto={};
   for(const k of konta){
-    const ost=stany.filter(r=>r.a===k&&r.px).sort((a,b)=>a.d.localeCompare(b.d)).at(-1);
+    const ost=stany.filter(r=>r.a===k&&r.px).sort(poDacie).at(-1);
     if(!ost)continue;
     let suma=0;perKonto[k]={};
     for(const[t,v]of Object.entries(ost.px))if(v>0){
