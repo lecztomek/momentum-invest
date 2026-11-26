@@ -1013,12 +1013,25 @@ const KROKI_USER=[
 const KROKI_ADMIN=[
   ["Poczekaj na zamknięcie","Sygnał liczy się z <b>ceny zamknięcia dnia transzy</b>. Noga GPM domyka się "
    +"o 17:30 (Londyn), noga BEST17 o 22:00 (USA), bo jej wskaźniki liczą się na tickerach amerykańskich."],
-  ["Odśwież dane — droga główna","Paczka ze stooq, potem <code>tools/odswiez_dane.py &lt;paczka&gt; --zapisz</code> "
-   +"oraz to samo z <code>--cel data/uk</code>. Commit i push — workflow odpali się sam, ma trigger na <code>data/**</code>. "
-   +"To jedyna droga, która daje też pełne notowania dzienne, więc krzywa kapitału i obsunięcie na Wynikach są uczciwe."],
-  ["Albo ceny ręcznie — droga awaryjna","<b>Ceny → + Dopisz dzień</b>. Panel poprosi o <b>26 instrumentów</b>: "
-   +"pięć z BEST17, dziewięć mierników breadth i dwanaście z GPM. Dzień niekompletny jest w całości pomijany, "
-   +"bo sygnał z połowy cen byłby błędny. Prawdziwe zamknięcie z paczki później i tak wygra nad wpisem ręcznym."],
+  ["Odśwież dane — droga główna","Paczki dzienne ze stooq (sekcja z bazą danych): <code>d_us_txt</code> i <code>d_uk_txt</code>. "
+   +"Rozpakuj obie, potem <b>z korzenia repo</b>:"
+   +"<span class='cmd'>python3 tools/odswiez_dane.py ~/pobrane/d_us_txt --cel data/us\n"
+   +"python3 tools/odswiez_dane.py ~/pobrane/d_uk_txt --cel data/uk</span>"
+   +"Tak uruchomione to <b>tylko podgląd</b> — skrypt wypisze, co by podmienił, i nic nie zapisze. "
+   +"Gdy lista się zgadza, powtórz oba z <code>--zapisz</code> na końcu. Podmienia wyłącznie pliki, które już są "
+   +"w <code>data/</code>, i tylko wtedy, gdy paczka ma nowsze notowania."],
+  ["Wypchnij zmiany","<span class='cmd'>git add data\ngit commit -m \"Dane: RRRR-MM-DD\"\ngit push</span>"
+   +"Workflow <b>Sygnał</b> ma trigger na <code>data/**</code> i odpali się sam — przeliczy sygnał, ceny wykonania "
+   +"i historię, po czym wrzuci je na stronę. Można go też odpalić ręcznie: <b>Actions → Sygnał → Run workflow</b>. "
+   +"Niezależnie od tego chodzi raz na dobę, o 7:23 UTC."],
+  ["Szybka droga — dociągnięcie z Yahoo","Gdy nie chcesz ściągać paczki: <code>python3 tools/fetch_prices.py</code> "
+   +"dokleja brakujące dni z Yahoo (bez <code>--zapisz</code> tylko sprawdza). Każdy ticker przechodzi trzy sita — "
+   +"zgodność dziennych zwrotów, stały kurs przeliczenia i komplet sesji — więc część symboli może zostać odrzucona. "
+   +"Dlatego po tym i tak zajrzyj w <b>Ceny → Kontrola danych</b>."],
+  ["Albo ceny ręcznie — droga awaryjna","<b>Ceny → + Dopisz dzień</b>. Panel poprosi o <b>17 instrumentów</b>: "
+   +"pięć z BEST17 i dwanaście z GPM. Dzień niekompletny jest w całości pomijany, "
+   +"bo sygnał z połowy cen byłby błędny. Prawdziwe zamknięcie z paczki później i tak wygra nad wpisem ręcznym. "
+   +"Ta droga nie daje notowań dziennych, więc krzywa kapitału i obsunięcie na Wynikach są z niej uboższe."],
   ["Sprawdź dane","<b>Ceny → Kontrola danych</b> plus lista dni do wpisania. Panel sam mówi, czego brakuje: "
    +"dwa dni na miesiąc, po jednym na transzę."],
   ["Dopisz kurs USD/PLN","<b>Wpisy → Kursy USD/PLN</b>, jeśli chcesz widzieć wartości w złotych. "
