@@ -111,9 +111,16 @@ def main() -> int:
         # Metryki (CAGR, MaxDD, Sharpe) licza sie z DZIENNEJ krzywej kapitalu, nie z
         # miesiecznych zwrotow - inaczej obsuniecie w srodku miesiaca znika i MaxDD
         # wychodzi plytsze niz bylo naprawde.
+        # Krzywa konczy sie na dniu rebalansu NASTEPUJACEGO po ostatnim publikowanym
+        # okresie - to jest koniec tego okresu, nie jego poczatek. Przyciecie do
+        # `daty[pelne[-1]]` gubilo caly ostatni zamkniety okres: jego zwrot byl w
+        # tabeli miesiecznej, ale nie w krzywej, z ktorej licza sie CAGR/MaxDD/Sharpe
+        # i wykres "Ty a strategia". Przy spadku pod koniec okna roznica jest widoczna
+        # golym okiem (listopad 2026: -7,68% na transzy 25, ktorego wykres nie pokazywal).
+        koniec = daty[kolejne[kolejne.index(pelne[-1]) + 1]]
         okno = pf[pf["date"].isin(pelne)]
         kr = daily_equity_curve(okno, dzienne, {"execution_day_of_month": dzien})
-        kr = kr[(kr["date"] >= daty[pelne[0]]) & (kr["date"] <= daty[pelne[-1]])]
+        kr = kr[(kr["date"] >= daty[pelne[0]]) & (kr["date"] <= koniec)]
         krzywe[dzien] = kr.set_index("date")["equity"]
         obroty[dzien] = okno.set_index("date")["turnover"]
         print(f"transza {dzien:2}: {len(pf)} okresow silnika -> {len(pelne)} publikowanych, "

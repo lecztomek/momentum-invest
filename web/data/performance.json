@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-26T08:39:15Z",
+ "generated": "2026-11-26T09:06:38Z",
  "source": "engine_v2 / gpm_uk_best17_a_day10 + gpm_uk_best17_a_day25",
  "currency": "waluta notowan",
  "net_of_costs": true,
@@ -137,32 +137,32 @@
  },
  "tax_rate": 0.19,
  "metrics": {
-  "cagr": 0.132906,
+  "cagr": 0.121973,
   "max_drawdown": -0.157995,
-  "sharpe": 1.037127,
-  "calmar": 0.841204,
+  "sharpe": 0.95649,
+  "calmar": 0.772006,
   "annual_turnover": 2.649782,
   "max_consecutive_negative_months": 4,
   "max_time_underwater_months": 7,
   "best_year_return": 0.225106,
   "worst_year_return": -0.050444,
-  "multiple": 2.843664,
+  "multiple": 2.646748,
   "from": "2018-06-11",
-  "to": "2026-10-26"
+  "to": "2026-11-25"
  },
  "metrics_pre_tax": {
-  "cagr": 0.158133,
+  "cagr": 0.146711,
   "max_drawdown": -0.157995,
-  "sharpe": 1.236754,
-  "calmar": 1.000871,
+  "sharpe": 1.150696,
+  "calmar": 0.92858,
   "annual_turnover": 2.649782,
   "max_consecutive_negative_months": 4,
   "max_time_underwater_months": 7,
   "best_year_return": 0.277909,
   "worst_year_return": -0.050444,
-  "multiple": 3.419647,
+  "multiple": 3.182845,
   "from": "2018-06-11",
-  "to": "2026-10-26"
+  "to": "2026-11-25"
  },
  "positive_months": 70.3,
  "drawdown": {
@@ -604,7 +604,11 @@
    "2026-10-11",
    "2026-10-18",
    "2026-10-25",
-   "2026-11-01"
+   "2026-11-01",
+   "2026-11-08",
+   "2026-11-15",
+   "2026-11-22",
+   "2026-11-29"
   ],
   "dd": [
    -0.27,
@@ -1042,9 +1046,13 @@
    -0.24,
    -0.95,
    -0.56,
-   -2.11,
-   -2.35,
-   -1.69
+   -3.2,
+   -3.54,
+   -3.75,
+   -7.87,
+   -6.92,
+   -9.3,
+   -8.5
   ]
  },
  "benchmarks": [
@@ -1054,35 +1062,35 @@
    "label": "S&P 500",
    "note": "CSPX, Acc",
    "from": "2018-06-11",
-   "to": "2026-10-26",
+   "to": "2026-11-25",
    "pelne_okno": true,
    "metrics": {
-    "cagr": 0.124847,
+    "cagr": 0.112613,
     "max_drawdown": -0.285535,
-    "sharpe": 0.86417,
-    "calmar": 0.437238,
+    "sharpe": 0.786164,
+    "calmar": 0.394391,
     "annual_turnover": 0.0,
     "max_consecutive_negative_months": 3,
     "max_time_underwater_months": 23,
     "best_year_return": 0.251303,
     "worst_year_return": -0.165708,
-    "multiple": 2.678625,
+    "multiple": 2.465705,
     "from": "2018-06-11",
-    "to": "2026-10-26"
+    "to": "2026-11-25"
    },
    "metrics_pre_tax": {
-    "cagr": 0.143419,
+    "cagr": 0.129918,
     "max_drawdown": -0.33905,
-    "sharpe": 0.857108,
-    "calmar": 0.423002,
+    "sharpe": 0.785431,
+    "calmar": 0.383184,
     "annual_turnover": 0.0,
     "max_consecutive_negative_months": 3,
     "max_time_underwater_months": 23,
     "best_year_return": 0.305535,
     "worst_year_return": -0.187224,
-    "multiple": 3.072377,
+    "multiple": 2.809512,
     "from": "2018-06-11",
-    "to": "2026-10-26"
+    "to": "2026-11-25"
    }
   },
   {
@@ -1091,35 +1099,35 @@
    "label": "Świat",
    "note": "VWRA, Acc",
    "from": "2019-07-26",
-   "to": "2026-10-26",
+   "to": "2026-11-25",
    "pelne_okno": false,
    "metrics": {
-    "cagr": 0.108673,
+    "cagr": 0.095566,
     "max_drawdown": -0.277404,
-    "sharpe": 0.783606,
-    "calmar": 0.391751,
+    "sharpe": 0.6972,
+    "calmar": 0.3445,
     "annual_turnover": 0.0,
     "max_consecutive_negative_months": 3,
     "max_time_underwater_months": 23,
     "best_year_return": 0.197824,
     "worst_year_return": -0.156281,
-    "multiple": 2.1132,
+    "multiple": 1.953152,
     "from": "2019-07-26",
-    "to": "2026-10-26"
+    "to": "2026-11-25"
    },
    "metrics_pre_tax": {
-    "cagr": 0.126627,
+    "cagr": 0.111874,
     "max_drawdown": -0.336152,
-    "sharpe": 0.775717,
-    "calmar": 0.376696,
+    "sharpe": 0.696236,
+    "calmar": 0.332808,
     "annual_turnover": 0.0,
     "max_consecutive_negative_months": 3,
     "max_time_underwater_months": 23,
     "best_year_return": 0.224487,
     "worst_year_return": -0.181096,
-    "multiple": 2.374321,
+    "multiple": 2.176731,
     "from": "2019-07-26",
-    "to": "2026-10-26"
+    "to": "2026-11-25"
    }
   }
  ],
@@ -1562,7 +1570,11 @@
    "2026-10-11",
    "2026-10-18",
    "2026-10-25",
-   "2026-11-01"
+   "2026-11-01",
+   "2026-11-08",
+   "2026-11-15",
+   "2026-11-22",
+   "2026-11-29"
   ],
   "strategy": [
    0.9987,
@@ -2000,9 +2012,13 @@
    2.8491,
    2.8684,
    2.8848,
-   2.8317,
-   2.8361,
-   2.8437
+   2.8002,
+   2.8062,
+   2.7842,
+   2.6803,
+   2.6964,
+   2.6237,
+   2.6467
   ],
   "cspx": [
    0.9956,
@@ -2442,7 +2458,11 @@
    2.7161,
    2.6912,
    2.6715,
-   2.6786
+   2.6527,
+   2.5988,
+   2.6324,
+   2.4793,
+   2.4657
   ],
   "vwra": [
    null,
@@ -2882,7 +2902,11 @@
    2.3989,
    2.3783,
    2.3549,
-   2.3605
+   2.3429,
+   2.3026,
+   2.3304,
+   2.1894,
+   2.1817
   ]
  },
  "classes": [
