@@ -200,6 +200,18 @@ const accComp=a=>{const o={},w={};let s=0;
   for(const[leg,f]of Object.entries(w))
     for(const[t,p]of Object.entries(legProp(leg)))o[t]=(o[t]||0)+a.value*(f/s)*p;
   return Object.fromEntries(Object.entries(o).filter(([,v])=>v>.5).sort((x,y)=>y[1]-x[1]))};
+/* Cel KONTA dla JEDNEJ transzy: te same proporcje nog co accComp, ale liczone na
+   skladzie tej transzy i przeskalowane jej udzialem w kapitale. Bez tego "Do
+   zrobienia" mowi "sprzedaj CMOD 14 169", a CMOD lezy na dwoch kontach naraz i
+   nie wiadomo, ile sprzedac gdzie. */
+const accCompT=(a,T,udzial)=>{const o={},w={};let s=0;
+  for(const leg of["best17","gpm"]){const f=a.alloc[leg]||0;if(f>0){w[leg]=f;s+=f}}
+  if(!s)return{};
+  for(const[leg,f]of Object.entries(w)){
+    const m=T[leg]||{},sm=Object.values(m).reduce((x,y)=>x+y,0);
+    if(!sm)continue;
+    for(const[t,v]of Object.entries(m))o[t]=(o[t]||0)+a.value*udzial*(f/s)*(v/sm)}
+  return o};
 const accTarget=a=>a.value;
 const accIdeal=a=>(a.alloc.best17||0)*CAPITAL.best17+(a.alloc.gpm||0)*CAPITAL.gpm;
 const accLegs=a=>["best17","gpm"].filter(l=>a.alloc[l]>0)
@@ -863,19 +875,34 @@ function renderActions(){
     document.getElementById("actions").innerHTML=BRAK_SKLADU;return}
   const R=nastepnyRebalans(),{i:idx,s:SYG}=ostatniSygnal();
   const T=idx===0?T10:T25,udzial=idx===0?CAPITAL.split10:1-CAPITAL.split10;
-  const rows=[...new Set([...Object.keys(T.out),...Object.keys(HOLDINGS)])].filter(t=>t!=="GOTOWKA")
-    .map(t=>({t,want:T.out[t]||0,d:(T.out[t]||0)-(HOLDINGS[t]||0)*udzial}))
-    .filter(r=>Math.abs(r.d)>=TOTAL*.02).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d));
   const nota=`<div class="actnote">Dotyczy <b>ostatniej policzonej</b> transzy ${SYG.tranche}-tego
     z ${SYG.date}, czyli ${pc(udzial)} kapitału. Druga połowa rusza ${R.opis}${R.dni>=0?` (${R.kiedy})`:""} –
     sygnału na tamten dzień jeszcze nie ma, bo liczy się go z kursu zamknięcia z dnia transzy.
     Udział transzy w każdej pozycji jest szacowany proporcjonalnie – panel nie wie, która sztuka
     należy do której transzy.</div>`;
-  document.getElementById("actions").innerHTML=nota+(rows.length?rows.map(r=>
+  const karta=r=>
     `<div class="act ${r.d>0?"buy":"sell"}"><i class="w"></i><div><div class="t">${r.d>0?"Kup":"Sprzedaj"} ${r.t}</div>
      <div class="sub">${ROLE[r.t]||""}</div></div><div class="q"><b>${kw(Math.abs(r.d))}</b>
-     <span class="sub">cel ${kw(r.want)}</span></div></div>`).join("")
-    :'<div class="act hold"><i class="w"></i><div><div class="t">Bez zmian</div></div></div>')}
+     <span class="sub">cel ${kw(r.want)}</span></div></div>`;
+  const bez='<div class="act hold"><i class="w"></i><div><div class="t">Bez zmian</div></div></div>';
+  const lista=(cel,mam,prog)=>[...new Set([...Object.keys(cel),...Object.keys(mam)])]
+    .filter(t=>t!=="GOTOWKA")
+    .map(t=>({t,want:cel[t]||0,d:(cel[t]||0)-(mam[t]||0)*udzial}))
+    .filter(r=>Math.abs(r.d)>=prog).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d));
+  /* Zlecenia sklada sie U BROKERA, a nie w portfelu lacznym - a walor potrafi lezec
+     na dwoch kontach naraz (CMOD jest i w BEST17, i w GPM). Lista laczna mowi wtedy
+     "sprzedaj CMOD 14 169" i nie da sie tego wykonac. Przy kilku kontach rozbijamy
+     ruch po kontach, tak samo jak "Na ktorych kontach". */
+  const konta=(SETUPS[SETUP]?.accounts||[]).filter(a=>a.value>0);
+  const perK=PORT?.perKonto||{};
+  const rozbij=konta.length>1&&konta.every(a=>perK[a.name]);
+  document.getElementById("actions").innerHTML=nota+(rozbij
+    ? konta.map(a=>{
+        const rows=lista(accCompT(a,T,udzial),perK[a.name],Math.max(a.value*udzial*.02,1));
+        return `<div class="actkonto">${esc(a.name)}<span>${accLegs(a)}</span></div>`
+          +(rows.length?rows.map(karta).join(""):bez)}).join("")
+    : (()=>{const rows=lista(T.out,HOLDINGS,TOTAL*.02);
+        return rows.length?rows.map(karta).join(""):bez})())}
 /* Pasek skladu: segment na kazdy walor, podpis w srodku jesli sie miesci.
    To ma byc PIERWSZA rzecz widoczna na ekranie - odpowiedz na "co trzymac",
    a nie slowo RISK powtorzone cztery razy. */
