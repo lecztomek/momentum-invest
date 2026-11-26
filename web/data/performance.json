@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-25T12:56:06Z",
+ "generated": "2026-11-26T08:39:15Z",
  "source": "engine_v2 / gpm_uk_best17_a_day10 + gpm_uk_best17_a_day25",
  "currency": "waluta notowan",
  "net_of_costs": true,
@@ -130,39 +130,39 @@
    2.16,
    2.39,
    0.96,
-   -6.26,
+   -6.97,
    null,
    null
   ]
  },
  "tax_rate": 0.19,
  "metrics": {
-  "cagr": 0.134319,
+  "cagr": 0.132906,
   "max_drawdown": -0.157995,
-  "sharpe": 1.046052,
-  "calmar": 0.850146,
-  "annual_turnover": 2.655782,
+  "sharpe": 1.037127,
+  "calmar": 0.841204,
+  "annual_turnover": 2.649782,
   "max_consecutive_negative_months": 4,
   "max_time_underwater_months": 7,
   "best_year_return": 0.225106,
   "worst_year_return": -0.050444,
-  "multiple": 2.859654,
+  "multiple": 2.843664,
   "from": "2018-06-11",
-  "to": "2026-10-12"
+  "to": "2026-10-26"
  },
  "metrics_pre_tax": {
-  "cagr": 0.159694,
+  "cagr": 0.158133,
   "max_drawdown": -0.157995,
-  "sharpe": 1.246649,
-  "calmar": 1.010756,
-  "annual_turnover": 2.655782,
+  "sharpe": 1.236754,
+  "calmar": 1.000871,
+  "annual_turnover": 2.649782,
   "max_consecutive_negative_months": 4,
   "max_time_underwater_months": 7,
   "best_year_return": 0.277909,
   "worst_year_return": -0.050444,
-  "multiple": 3.438875,
+  "multiple": 3.419647,
   "from": "2018-06-11",
-  "to": "2026-10-12"
+  "to": "2026-10-26"
  },
  "positive_months": 70.3,
  "drawdown": {
@@ -602,7 +602,9 @@
    "2026-09-27",
    "2026-10-04",
    "2026-10-11",
-   "2026-10-18"
+   "2026-10-18",
+   "2026-10-25",
+   "2026-11-01"
   ],
   "dd": [
    -0.27,
@@ -1038,9 +1040,11 @@
    -1.87,
    -2.39,
    -0.24,
-   -0.5,
-   -0.25,
-   -0.36
+   -0.95,
+   -0.56,
+   -2.11,
+   -2.35,
+   -1.69
   ]
  },
  "benchmarks": [
@@ -1050,35 +1054,35 @@
    "label": "S&P 500",
    "note": "CSPX, Acc",
    "from": "2018-06-11",
-   "to": "2026-10-12",
+   "to": "2026-10-26",
    "pelne_okno": true,
    "metrics": {
-    "cagr": 0.127513,
+    "cagr": 0.124847,
     "max_drawdown": -0.285535,
-    "sharpe": 0.878776,
-    "calmar": 0.446577,
+    "sharpe": 0.86417,
+    "calmar": 0.437238,
     "annual_turnover": 0.0,
     "max_consecutive_negative_months": 3,
     "max_time_underwater_months": 23,
     "best_year_return": 0.251303,
     "worst_year_return": -0.165708,
-    "multiple": 2.719732,
+    "multiple": 2.678625,
     "from": "2018-06-11",
-    "to": "2026-10-12"
+    "to": "2026-10-26"
    },
    "metrics_pre_tax": {
-    "cagr": 0.146374,
+    "cagr": 0.143419,
     "max_drawdown": -0.33905,
-    "sharpe": 0.870671,
-    "calmar": 0.431719,
+    "sharpe": 0.857108,
+    "calmar": 0.423002,
     "annual_turnover": 0.0,
     "max_consecutive_negative_months": 3,
     "max_time_underwater_months": 23,
     "best_year_return": 0.305535,
     "worst_year_return": -0.187224,
-    "multiple": 3.123127,
+    "multiple": 3.072377,
     "from": "2018-06-11",
-    "to": "2026-10-12"
+    "to": "2026-10-26"
    }
   },
   {
@@ -1087,35 +1091,35 @@
    "label": "Świat",
    "note": "VWRA, Acc",
    "from": "2019-07-26",
-   "to": "2026-10-12",
+   "to": "2026-10-26",
    "pelne_okno": false,
    "metrics": {
-    "cagr": 0.111926,
+    "cagr": 0.108673,
     "max_drawdown": -0.277404,
-    "sharpe": 0.802677,
-    "calmar": 0.403477,
+    "sharpe": 0.783606,
+    "calmar": 0.391751,
     "annual_turnover": 0.0,
     "max_consecutive_negative_months": 3,
     "max_time_underwater_months": 23,
     "best_year_return": 0.197824,
     "worst_year_return": -0.156281,
-    "multiple": 2.149823,
+    "multiple": 2.1132,
     "from": "2019-07-26",
-    "to": "2026-10-12"
+    "to": "2026-10-26"
    },
    "metrics_pre_tax": {
-    "cagr": 0.130293,
+    "cagr": 0.126627,
     "max_drawdown": -0.336152,
-    "sharpe": 0.793367,
-    "calmar": 0.3876,
+    "sharpe": 0.775717,
+    "calmar": 0.376696,
     "annual_turnover": 0.0,
     "max_consecutive_negative_months": 3,
     "max_time_underwater_months": 23,
     "best_year_return": 0.224487,
     "worst_year_return": -0.181096,
-    "multiple": 2.419534,
+    "multiple": 2.374321,
     "from": "2019-07-26",
-    "to": "2026-10-12"
+    "to": "2026-10-26"
    }
   }
  ],
@@ -1556,7 +1560,9 @@
    "2026-09-27",
    "2026-10-04",
    "2026-10-11",
-   "2026-10-18"
+   "2026-10-18",
+   "2026-10-25",
+   "2026-11-01"
   ],
   "strategy": [
    0.9987,
@@ -1992,9 +1998,11 @@
    2.8038,
    2.812,
    2.8491,
-   2.8578,
-   2.8667,
-   2.8597
+   2.8684,
+   2.8848,
+   2.8317,
+   2.8361,
+   2.8437
   ],
   "cspx": [
    0.9956,
@@ -2432,7 +2440,9 @@
    2.6908,
    2.6912,
    2.7161,
-   2.7197
+   2.6912,
+   2.6715,
+   2.6786
   ],
   "vwra": [
    null,
@@ -2870,7 +2880,9 @@
    2.3991,
    2.3903,
    2.3989,
-   2.4014
+   2.3783,
+   2.3549,
+   2.3605
   ]
  },
  "classes": [
@@ -2900,7 +2912,6 @@
   ]
  ],
  "mix_months": [
-  "2024-10",
   "2024-11",
   "2024-12",
   "2025-01",
@@ -2923,17 +2934,10 @@
   "2026-06",
   "2026-07",
   "2026-08",
-  "2026-09"
+  "2026-09",
+  "2026-10"
  ],
  "mix": [
-  [
-   42,
-   22,
-   0,
-   36,
-   0,
-   0
-  ],
   [
    38,
    19,
@@ -3116,6 +3120,14 @@
    18,
    0,
    25,
+   0
+  ],
+  [
+   40,
+   0,
+   10,
+   0,
+   50,
    0
   ]
  ]
