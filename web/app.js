@@ -1466,7 +1466,7 @@ async function ustawRoleKonta(konto,rola){
    zapisu), zeby "ktory jest aktualny" bylo rozstrzygniete przez to, co wpisano
    pozniej, a nie przez kolejnosc zwrocona przez baze - sortowanie po samej dacie
    przy dwoch wpisach z jednego dnia remisuje. Wczesniejszy wpis zostaje w historii
-   i jest w liscie oznaczony jako zastapiony. */
+   i jest w liscie oznaczony jako wczesniejszy z tego dnia. */
 async function dodajTX(r){
   if(!ZAL()){alert("Zaloguj się, żeby prowadzić portfel.");return}
   r.ts=Date.now();
@@ -1490,10 +1490,13 @@ const TXI={stan:["=","--accent"],wplata:["↓","--pos"],wyplata:["↑","--cash"]
    `ts` nie maja go wcale; wtedy rozstrzyga id, zeby wynik byl chocby powtarzalny. */
 const poDacie=(a,b)=>a.d.localeCompare(b.d)||(a.ts||0)-(b.ts||0)
   ||String(a.id||"").localeCompare(String(b.id||""));
-/* Wpis zastapiony: ten sam dzien i to samo konto, a po nim jest nowszy. Zostaje w
-   historii, ale nie bierze udzialu w liczeniu - lista musi to pokazac, zeby nie
-   wygladalo, ze zniknal bez sladu. */
-const zastapiony=(r,lista)=>r.t==="stan"&&lista.some(x=>
+/* Wczesniejszy wpis z tego samego dnia na to samo konto. NIE jest bledny ani
+   zastapiony - to osobna, prawdziwa migawka (np. stan przed transakcjami i po).
+   Krzywa ma rozdzielczosc dzienna i bierze ostatnia wartosc z dnia, tak jak kazde
+   zamkniecie; na wyliczony wynik nie ma to wplywu, bo ogniwa TWR sie skracaja:
+   (V_B/V_A)*(V_C/V_B) = V_C/V_A. Lista ma to oznaczyc, zeby bylo wiadomo, ktory
+   wpis widac na wykresie - a nie po to, zeby sugerowac blad. */
+const wczesniejszy=(r,lista)=>r.t==="stan"&&lista.some(x=>
   x!==r&&x.t==="stan"&&x.d===r.d&&x.a===r.a&&poDacie(r,x)<0);
 const mies=d=>d.slice(0,7);
 /* Kursy USD/PLN z konkretnych dni. To dane WSPOLNE - kurs z 10 marca jest taki
@@ -1765,10 +1768,10 @@ function renderTX(){
   const lista=TX.map((r,i)=>[r,i]);
   document.getElementById("txList").innerHTML=lista.length?lista.map(([r,i])=>{
     const[sym,c]=TXI[r.t]||["?","--s6"];
-    const stary=zastapiony(r,TX);
+    const stary=wczesniejszy(r,TX);
     return `<div class="row${stary?" zast":""}"><div class="ic" style="background:${CSS(c)}">${sym}</div>
       <div class="nm">${TYP[r.t]||r.t}<em>${r.d} · ${esc(r.a)}${r.px?" · rozbite na walory":""}${
-        stary?" · <b>zastąpiony nowszym wpisem z tego dnia</b>":""}</em></div>
+        stary?" · <b>wcześniejszy tego dnia</b> — na wykresie widać ostatni":""}</em></div>
       <div class="vl" style="display:flex;align-items:center;gap:10px"><b>${zl(r.k)} USD</b>
         <button class="del" data-del="${i}" aria-label="Usuń wpis z ${r.d}">×</button></div></div>`}).join("")
     :'<div class="empty">Brak wpisów. Dopisz pierwszy stan konta powyżej — od tego momentu Pulpit liczy z Twoich liczb, nie z przykładu.</div>';
