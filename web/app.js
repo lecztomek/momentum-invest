@@ -1200,7 +1200,17 @@ function renderWyniki(){
     `Liczby <b>po podatku ${pod}%</b>, liczonym tak, jak robi to silnik: raz w roku, od wzrostu ponad
      poprzedni szczyt (rok stratny nie daje zwrotu, ale nie kasuje szczytu).
      Przed podatkiem byłoby ${sg2(B.cagr*100)}% rocznie i ×${B.multiple.toFixed(2).replace(".",",")}.`;
-  document.getElementById("mgridSub").textContent=PERF.monthly_pre_tax?"· przed podatkiem":"";
+  document.getElementById("mgridSub").textContent=
+    (PERF.monthly_pre_tax?"· przed podatkiem ":"")+"· okresy transz, nie miesiące kalendarzowe";
+  /* Wiersz podpisany miesiacem to OKRES TRANSZY, ktory w nim ruszyl - biegnie od dnia
+     transzy do dnia nastepnej, wiec "pazdziernik" konczy sie w polowie listopada.
+     Bez tego zdania user porownuje go z wlasnym miesiacem kalendarzowym z Pulpitu i
+     widzi roznice, ktorej nie ma gdzie szukac. */
+  document.getElementById("mgridNota").innerHTML=
+    `Wiersz podpisany miesiącem to <b>okres transzy, która w nim ruszyła</b> — biegnie od jej dnia
+     do dnia następnej, więc „październik” kończy się w połowie listopada. To są też wyniki
+     <b>strategii</b>, nie Twojego portfela: miesiące na Pulpicie liczą się z Twoich wpisów, po
+     miesiącach kalendarzowych, i obejmują to, co faktycznie trzymałeś.`;
   /* Liczby z silnika, nie przeliczone z miesiecznej siatki: MaxDD i Sharpe licza
      sie z DZIENNEJ krzywej kapitalu, wiec obsuniecie w srodku miesiaca nie znika.
      Z samych miesiecy MaxDD wychodzil dwa razy plytszy niz byl naprawde. */
