@@ -1442,7 +1442,7 @@ WPISY=true;   /* od tego miejsca wolno pytac o kursy z wpisow */
 async function wczytajTXzBazy(){
   try{
     const z=await FB.wczytaj(USER.uid,"transactions");
-    TX=z.map(r=>({id:r.id,d:r.d,a:r.a||"",t:r.t,k:r.k,px:r.px||null}));
+    TX=z.map(r=>({id:r.id,d:r.d,a:r.a||"",t:r.t,k:r.k,px:r.px||null,ts:r.ts||0}));
   }catch(e){console.warn("nie udalo sie wczytac wpisow:",e.message)}
   try{
     ROLE_KONT={};
@@ -1461,26 +1461,17 @@ async function ustawRoleKonta(konto,rola){
   }catch(e){alert("Nie zapisano układu kont: "+e.message)}
   poWpisach();
 }
-/* Stan konta to MIGAWKA, nie zdarzenie: dwa wpisy tego samego dnia na to samo konto
-   to nie dwie informacje, tylko poprawka tej samej. Id jest deterministyczne (tak samo
-   jak w ustawStan), wiec drugi wpis NADPISUJE pierwszy. Bez tego powstawal drugi
-   rekord z innym id, a kod wybierajacy "ostatni stan" sortuje po SAMEJ dacie - przy
-   remisie o zwyciezcy decydowala kolejnosc zwrocona przez baze, nie to, co user wpisal
-   pozniej. Dodatkowo stanTeraz() bierze TX.find, czyli PIERWSZY pasujacy, wiec
-   formularz podpowiadalby stara kwote. */
+/* Kolejny wpis NIE kasuje poprzedniego - rowniez tego samego dnia. User: "glupio ze
+   ginie stan konta, jak wtedy policzysz ile zarobilem". Zapisujemy `ts` (moment
+   zapisu), zeby "ktory jest aktualny" bylo rozstrzygniete przez to, co wpisano
+   pozniej, a nie przez kolejnosc zwrocona przez baze - sortowanie po samej dacie
+   przy dwoch wpisach z jednego dnia remisuje. Wczesniejszy wpis zostaje w historii
+   i jest w liscie oznaczony jako zastapiony. */
 async function dodajTX(r){
   if(!ZAL()){alert("Zaloguj się, żeby prowadzić portfel.");return}
-  if(r.t==="stan"){
-    r.id=`stan_${r.d}_${r.a.replace(/[^\w]+/g,"-")}`;
-    const i=TX.findIndex(x=>x.t==="stan"&&x.d===r.d&&x.a===r.a);
-    if(i>=0){
-      const stare=TX[i].id;TX[i]=r;
-      if(stare&&stare!==r.id&&FB&&USER)FB.usun(USER.uid,"transactions",stare).catch(()=>{});
-    }else TX.push(r);
-  }else{
-    r.id=r.id||(r.d+"_"+Date.now().toString(36));
-    TX.push(r);
-  }
+  r.ts=Date.now();
+  r.id=r.id||(r.d+"_"+r.ts.toString(36));
+  TX.push(r);
   try{await FB.zapisz(USER.uid,"transactions",r.id,r)}catch(e){alert("Nie zapisano w bazie: "+e.message)}
   poWpisach();
 }
@@ -1493,11 +1484,17 @@ const TYP={stan:"Stan konta",wplata:"Wpłata",wyplata:"Wypłata"};
 const TXI={stan:["=","--accent"],wplata:["↓","--pos"],wyplata:["↑","--cash"]};
 
 /* ---- portfel policzony z wpisow ---- */
-/* Sama data nie wystarcza do uporzadkowania: przy dwoch wpisach z tego samego dnia
-   komparator remisuje i "ostatni" zalezy od kolejnosci zwroconej przez baze. Id jako
-   drugi klucz daje ten sam wynik przy kazdym odswiezeniu - liczy sie dla rekordow
-   sprzed poprawki w dodajTX, bo nowe duplikaty juz nie powstaja. */
-const poDacie=(a,b)=>a.d.localeCompare(b.d)||String(a.id||"").localeCompare(String(b.id||""));
+/* Sama data nie wystarcza: przy dwoch wpisach z tego samego dnia komparator remisuje
+   i "ostatni" zalezy od kolejnosci zwroconej przez baze. Decyduje `ts` - moment
+   zapisu - wiec aktualny jest ten, ktory wpisano pozniej. Rekordy sprzed wprowadzenia
+   `ts` nie maja go wcale; wtedy rozstrzyga id, zeby wynik byl chocby powtarzalny. */
+const poDacie=(a,b)=>a.d.localeCompare(b.d)||(a.ts||0)-(b.ts||0)
+  ||String(a.id||"").localeCompare(String(b.id||""));
+/* Wpis zastapiony: ten sam dzien i to samo konto, a po nim jest nowszy. Zostaje w
+   historii, ale nie bierze udzialu w liczeniu - lista musi to pokazac, zeby nie
+   wygladalo, ze zniknal bez sladu. */
+const zastapiony=(r,lista)=>r.t==="stan"&&lista.some(x=>
+  x!==r&&x.t==="stan"&&x.d===r.d&&x.a===r.a&&poDacie(r,x)<0);
 const mies=d=>d.slice(0,7);
 /* Kursy USD/PLN z konkretnych dni. To dane WSPOLNE - kurs z 10 marca jest taki
    sam dla kazdego - wiec wpisuje je admin, a reszta tylko czyta. Trzymamy kopie
@@ -1768,8 +1765,10 @@ function renderTX(){
   const lista=TX.map((r,i)=>[r,i]);
   document.getElementById("txList").innerHTML=lista.length?lista.map(([r,i])=>{
     const[sym,c]=TXI[r.t]||["?","--s6"];
-    return `<div class="row"><div class="ic" style="background:${CSS(c)}">${sym}</div>
-      <div class="nm">${TYP[r.t]||r.t}<em>${r.d} · ${esc(r.a)}${r.px?" · rozbite na walory":""}</em></div>
+    const stary=zastapiony(r,TX);
+    return `<div class="row${stary?" zast":""}"><div class="ic" style="background:${CSS(c)}">${sym}</div>
+      <div class="nm">${TYP[r.t]||r.t}<em>${r.d} · ${esc(r.a)}${r.px?" · rozbite na walory":""}${
+        stary?" · <b>zastąpiony nowszym wpisem z tego dnia</b>":""}</em></div>
       <div class="vl" style="display:flex;align-items:center;gap:10px"><b>${zl(r.k)} USD</b>
         <button class="del" data-del="${i}" aria-label="Usuń wpis z ${r.d}">×</button></div></div>`}).join("")
     :'<div class="empty">Brak wpisów. Dopisz pierwszy stan konta powyżej — od tego momentu Pulpit liczy z Twoich liczb, nie z przykładu.</div>';
@@ -1965,11 +1964,11 @@ async function ustawStan(d,a,k){
   const i=TX.findIndex(x=>x.t==="stan"&&x.d===d&&x.a===a);
   if(i>=0){
     if(Math.abs(TX[i].k-k)<0.005)return false;
-    TX[i].k=k;
+    TX[i].k=k;TX[i].ts=Date.now();
     if(FB&&USER)await FB.zapisz(USER.uid,"transactions",TX[i].id,TX[i]);
     return true;
   }
-  const r={id:`stan_${d}_${a.replace(/[^\w]+/g,"-")}`,d,a,t:"stan",k,px:null};
+  const r={id:`stan_${d}_${a.replace(/[^\w]+/g,"-")}`,d,a,t:"stan",k,px:null,ts:Date.now()};
   TX.push(r);
   if(FB&&USER)await FB.zapisz(USER.uid,"transactions",r.id,r);
   return true;

@@ -304,6 +304,8 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
 .row .udz i{display:block;height:100%;border-radius:999px}
 @media(max-width:559px){.row .udz{width:54px}}
 .row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding:14px 0}
+.row.zast{opacity:.5}
+.row.zast .nm em b{font-weight:600;color:var(--warn)}
 .row+.row{border-top:1px solid var(--line)}
 .row .ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:.72rem;font-weight:700;color:#0A1014}
 .row .nm{font-size:1rem;font-weight:600;min-width:0}
