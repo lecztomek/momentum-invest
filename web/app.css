@@ -472,3 +472,8 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
 .kroki li .cmd{display:block;margin:9px 0;padding:10px 12px;border-radius:7px;background:var(--surface2);
   font-family:var(--f-mono);font-size:.8rem;line-height:1.75;color:var(--fg);
   white-space:pre-wrap;overflow-wrap:anywhere}
+
+.legbal{margin:4px 0 16px;padding:12px 14px;background:var(--surface2);border-radius:9px}
+.legbal .t{font-weight:700;font-size:.95rem;margin-bottom:2px}
+.legbal .row{padding:10px 0}
+.legbal .note{margin:6px 0 0;font-size:.82rem;line-height:1.45;color:var(--faint)}

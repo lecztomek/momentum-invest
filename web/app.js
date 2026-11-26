@@ -200,20 +200,33 @@ const accComp=a=>{const o={},w={};let s=0;
   for(const[leg,f]of Object.entries(w))
     for(const[t,p]of Object.entries(legProp(leg)))o[t]=(o[t]||0)+a.value*(f/s)*p;
   return Object.fromEntries(Object.entries(o).filter(([,v])=>v>.5).sort((x,y)=>y[1]-x[1]))};
-/* Cel KONTA dla JEDNEJ transzy: te same proporcje nog co accComp, ale liczone na
-   skladzie tej transzy i przeskalowane jej udzialem w kapitale. Bez tego "Do
-   zrobienia" mowi "sprzedaj CMOD 14 169", a CMOD lezy na dwoch kontach naraz i
-   nie wiadomo, ile sprzedac gdzie. */
-const accCompT=(a,T,udzial)=>{const o={},w={};let s=0;
-  for(const leg of["best17","gpm"]){const f=a.alloc[leg]||0;if(f>0){w[leg]=f;s+=f}}
-  if(!s)return{};
-  for(const[leg,f]of Object.entries(w)){
-    const m=T[leg]||{},sm=Object.values(m).reduce((x,y)=>x+y,0);
-    if(!sm)continue;
-    for(const[t,v]of Object.entries(m))o[t]=(o[t]||0)+a.value*udzial*(f/s)*(v/sm)}
-  return o};
 const accTarget=a=>a.value;
 const accIdeal=a=>(a.alloc.best17||0)*CAPITAL.best17+(a.alloc.gpm||0)*CAPITAL.gpm;
+/* Cel OSIAGALNY: suma celow poszczegolnych kont, liczonych na ICH wartosciach.
+   COMBINED to cel modelowy 50/50 na calym kapitale - gdy konta rozjechaly sie
+   wartoscia, roznicy wobec niego NIE da sie zamknac kupnem ani sprzedaza, bo
+   wymagalaby przelewu miedzy brokerami. Pokazywanie jej jako "odchylenie waloru"
+   mowilo "IUIT -1,9 pp" o portfelu, ktory jest co do grosza na celu. Sam rozjazd
+   kont jest realny i wazny - ale to osobna wielkosc, patrz bilansNog(). */
+const celOsiagalny=()=>{
+  const k=(SETUPS[SETUP]?.accounts||[]).filter(a=>a.value>0);
+  if(!PORT||!k.length)return{cel:COMBINED,suma:TOTAL};
+  const o={};let s=0;
+  for(const a of k)for(const[t,v]of Object.entries(accComp(a))){o[t]=(o[t]||0)+v;s+=v}
+  return s>0?{cel:o,suma:s}:{cel:COMBINED,suma:TOTAL}};
+/* O ile nogi rozjechaly sie wartoscia wobec 50/50. To JEST realne odchylenie i
+   jedyne, ktorego nie zamknie zadne zlecenie - wyrownuje sie je kierunkiem wplaty. */
+const bilansNog=()=>{
+  const k=(SETUPS[SETUP]?.accounts||[]).filter(a=>a.value>0);
+  if(!PORT||k.length<2)return null;
+  const w={best17:0,gpm:0};let s=0;
+  for(const a of k){
+    const su=(a.alloc.best17||0)+(a.alloc.gpm||0);
+    if(!su)continue;
+    for(const l of["best17","gpm"])w[l]+=a.value*((a.alloc[l]||0)/su);
+    s+=a.value}
+  return s>0?["best17","gpm"].map(l=>({nazwa:l==="best17"?"BEST17":"GPM",
+    ma:w[l],cel:s/2,d:w[l]-s/2,pp:(w[l]/s-.5)*100})):null};
 const accLegs=a=>["best17","gpm"].filter(l=>a.alloc[l]>0)
   .map(l=>(a.alloc[l]===1?"":Math.round(a.alloc[l]*100)+"% ")+(l==="best17"?"BEST17":"GPM")).join(" + ");
 const fillSel=()=>document.querySelectorAll(".setupSel").forEach(e=>e.innerHTML=
@@ -448,9 +461,10 @@ const BRAK_SKLADU='<div class="empty">Nie wiem, co trzymasz. Przy stanie konta m
 chart("c-drift",W=>{
   const tot=Object.values(HOLDINGS).reduce((a,b)=>a+b,0);
   if(!tot)return BRAK_SKLADU;
-  const rows=[...new Set([...Object.keys(COMBINED),...Object.keys(HOLDINGS)])]
+  const {cel:CEL,suma:SUMA}=celOsiagalny();
+  const rows=[...new Set([...Object.keys(CEL),...Object.keys(HOLDINGS)])]
     .sort((a,b)=>(a==="GOTOWKA")-(b==="GOTOWKA")||ORDER.indexOf(a)-ORDER.indexOf(b))
-    .map(t=>({t,pp:((HOLDINGS[t]||0)/tot-(COMBINED[t]||0)/TOTAL)*100,have:HOLDINGS[t]||0,want:COMBINED[t]||0}));
+    .map(t=>({t,pp:((HOLDINGS[t]||0)/tot-(CEL[t]||0)/SUMA)*100,have:HOLDINGS[t]||0,want:CEL[t]||0}));
   const bh=34,H=rows.length*bh+30,L=78,R=12,C=(L+W-R)/2,f=FS(W);
   const mx=Math.max(3,...rows.map(r=>Math.abs(r.pp)))*1.18,SX=p=>C+(W-R-C)*p/mx;
   let out=`<line x1="${C}" x2="${C}" y1="6" y2="${rows.length*bh+6}" stroke="${CSS("--line-strong")}"/>`;const hit=[];
@@ -873,13 +887,13 @@ function renderActions(){
   if(BRAK)return;
   if(!Object.keys(HOLDINGS).length){
     document.getElementById("actions").innerHTML=BRAK_SKLADU;return}
-  const R=nastepnyRebalans(),{i:idx,s:SYG}=ostatniSygnal();
-  const T=idx===0?T10:T25,udzial=idx===0?CAPITAL.split10:1-CAPITAL.split10;
-  const nota=`<div class="actnote">Dotyczy <b>ostatniej policzonej</b> transzy ${SYG.tranche}-tego
-    z ${SYG.date}, czyli ${pc(udzial)} kapitału. Druga połowa rusza ${R.opis}${R.dni>=0?` (${R.kiedy})`:""} –
-    sygnału na tamten dzień jeszcze nie ma, bo liczy się go z kursu zamknięcia z dnia transzy.
-    Udział transzy w każdej pozycji jest szacowany proporcjonalnie – panel nie wie, która sztuka
-    należy do której transzy.</div>`;
+  const R=nastepnyRebalans(),{s:SYG}=ostatniSygnal();
+  const nota=`<div class="actnote">Odległość od celu <b>obu transz łącznie</b>, liczona na wartości
+    każdego konta — te same liczby co w „Na których kontach”. Po dniu transzy ta odległość JEST jej
+    ruchem, bo cel łączony zmienia się dokładnie o to, co zmieniła ta transza.
+    Ostatni policzony sygnał: transza ${SYG.tranche}-tego z ${SYG.date}. Druga połowa rusza
+    ${R.opis}${R.dni>=0?` (${R.kiedy})`:""} – sygnału na tamten dzień jeszcze nie ma, bo liczy się
+    go z kursu zamknięcia z dnia transzy.</div>`;
   const karta=r=>
     `<div class="act ${r.d>0?"buy":"sell"}"><i class="w"></i><div><div class="t">${r.d>0?"Kup":"Sprzedaj"} ${r.t}</div>
      <div class="sub">${ROLE[r.t]||""}</div></div><div class="q"><b>${kw(Math.abs(r.d))}</b>
@@ -887,21 +901,27 @@ function renderActions(){
   const bez='<div class="act hold"><i class="w"></i><div><div class="t">Bez zmian</div></div></div>';
   const lista=(cel,mam,prog)=>[...new Set([...Object.keys(cel),...Object.keys(mam)])]
     .filter(t=>t!=="GOTOWKA")
-    .map(t=>({t,want:cel[t]||0,d:(cel[t]||0)-(mam[t]||0)*udzial}))
+    .map(t=>({t,want:cel[t]||0,d:(cel[t]||0)-(mam[t]||0)}))
     .filter(r=>Math.abs(r.d)>=prog).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d));
-  /* Zlecenia sklada sie U BROKERA, a nie w portfelu lacznym - a walor potrafi lezec
-     na dwoch kontach naraz (CMOD jest i w BEST17, i w GPM). Lista laczna mowi wtedy
-     "sprzedaj CMOD 14 169" i nie da sie tego wykonac. Przy kilku kontach rozbijamy
-     ruch po kontach, tak samo jak "Na ktorych kontach". */
+  /* Zlecenia sklada sie U BROKERA, nie w portfelu lacznym - a walor potrafi lezec na
+     dwoch kontach naraz (CMOD jest i w BEST17, i w GPM), wiec lista laczna mowilaby
+     "sprzedaj CMOD 14 169" i nie dalo by sie tego wykonac.
+     Porownujemy z celem LACZONYM obu transz, nie z celem jednej transzy wobec
+     proporcjonalnie przypisanego stanu. Tamto zalozenie - ze kazda transza trzyma ten
+     sam miks - jest falszywe dokladnie wtedy, gdy transze roznia sie skladem, czyli w
+     jedynym ciekawym przypadku: po ruchu CMOD->CSPX portfel stal na celu, a box
+     kazal sprzedac CMOD za 4 235 i dokupic CSPX za 4 080. Prog i cel sa teraz takie
+     same jak w viewAcc, wiec oba widoki nie moga sie rozjechac. */
   const konta=(SETUPS[SETUP]?.accounts||[]).filter(a=>a.value>0);
   const perK=PORT?.perKonto||{};
   const rozbij=konta.length>1&&konta.every(a=>perK[a.name]);
   document.getElementById("actions").innerHTML=nota+(rozbij
     ? konta.map(a=>{
-        const rows=lista(accCompT(a,T,udzial),perK[a.name],Math.max(a.value*udzial*.02,1));
+        const rows=lista(accComp(a),perK[a.name],Math.max(a.value*.01,1));
         return `<div class="actkonto">${esc(a.name)}<span>${accLegs(a)}</span></div>`
           +(rows.length?rows.map(karta).join(""):bez)}).join("")
-    : (()=>{const rows=lista(T.out,HOLDINGS,TOTAL*.02);
+    : (()=>{const{cel,suma}=celOsiagalny();
+        const rows=lista(cel,HOLDINGS,Math.max(suma*.01,1));
         return rows.length?rows.map(karta).join(""):bez})())}
 /* Pasek skladu: segment na kazdy walor, podpis w srodku jesli sie miesci.
    To ma byc PIERWSZA rzecz widoczna na ekranie - odpowiedz na "co trzymac",
@@ -1114,8 +1134,18 @@ function renderAccounts(){
     ?"Jedno konto: obie nogi w jednej liście, pozycje wspólne w jednym zleceniu."
     :"Różnicę wobec celu wyrównujesz przy wpłacie, nie przelewem między brokerami.";
   const tot=Object.values(HOLDINGS).reduce((x,y)=>x+y,0);
-  document.getElementById("driftList").innerHTML=!tot?BRAK_SKLADU:[...new Set([...Object.keys(COMBINED),...Object.keys(HOLDINGS)])]
-    .map(t=>{const hh=HOLDINGS[t]||0,w=COMBINED[t]||0;return {t,h:hh,w,d:hh-w,pp:(hh/tot-w/TOTAL)*100}})
+  const bil=bilansNog();
+  document.getElementById("legBal").innerHTML=!bil?"":
+    `<div class="legbal"><div class="t">Rozjazd nóg wobec 50/50</div>`
+    +bil.map(r=>{const c=Math.abs(r.pp)<1?"--faint":r.pp>0?"--warn":"--cash";
+      return `<div class="row"><div class="ic" style="background:${CSS(r.nazwa==="BEST17"?"--s1":"--s4")}">${r.nazwa.slice(0,2)}</div>
+        <div class="nm">${r.nazwa}<em>masz ${kw(r.ma)} · połowa kapitału ${kw(r.cel)}</em></div>
+        <div class="vl"><b style="color:var(${c})">${r.d>=0?"+":"−"}${kw(Math.abs(r.d))}</b><span>${sg(r.pp)} pp</span></div></div>`}).join("")
+    +`<p class="note">Tego nie zamkniesz zleceniem — nogi leżą u różnych brokerów. Wyrównujesz kierunkiem
+      następnej wpłaty, nie przelewem między nimi.</p></div>`;
+  const {cel:CEL,suma:SUMA}=celOsiagalny();
+  document.getElementById("driftList").innerHTML=!tot?BRAK_SKLADU:[...new Set([...Object.keys(CEL),...Object.keys(HOLDINGS)])]
+    .map(t=>{const hh=HOLDINGS[t]||0,w=CEL[t]||0;return {t,h:hh,w,d:hh-w,pp:(hh/tot-w/SUMA)*100}})
     .sort((a,b)=>Math.abs(b.pp)-Math.abs(a.pp)).map(r=>{
       const nm=r.t==="GOTOWKA"?"Gotówka":r.t,c=Math.abs(r.pp)<1?"--faint":r.pp>0?"--warn":"--cash";
       return `<div class="row"><div class="ic" style="background:${CSS(KOL[r.t]||"--s6")}">${nm.slice(0,2).toUpperCase()}</div>
