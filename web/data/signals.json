@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-25T12:56:03Z",
+ "generated": "2026-11-26T08:39:10Z",
  "source": "engine_v2 / strategies_v2/gpm_uk_best17_a_day10 + strategies_v2/gpm_uk_best17_a_day25",
  "config_hash": "cb573945",
  "universe": [
@@ -62,17 +62,17 @@
    }
   },
   {
-   "date": "2026-10-26",
-   "period": "2026-10-01",
+   "date": "2026-11-25",
+   "period": "2026-11-01",
    "tranche": 25,
    "best17": {
     "mode": "RISK",
     "picks": [
      "IUIT",
-     "CMOD"
+     "CSPX"
     ],
     "weights": {
-     "CMOD": 0.2,
+     "CSPX": 0.2,
      "IUIT": 0.8
     }
    },
@@ -84,15 +84,52 @@
    }
   }
  ],
- "awaiting": [
-  {
-   "tranche": 25,
-   "period": "2026-11-01",
-   "last": "2026-11-20",
-   "reason": "brak sesji 25-tego lub pozniej - dane koncza sie na 2026-11-20"
-  }
- ],
+ "awaiting": [],
  "history": [
+  {
+   "date": "2026-11-25",
+   "tranche": 25,
+   "best17": "RISK",
+   "gpm": "RISK",
+   "picks": "IUIT / CSPX",
+   "note": "+ CSPX · − CMOD",
+   "bought": [
+    {
+     "t": "CSPX",
+     "pp": 10.0
+    }
+   ],
+   "sold": [
+    {
+     "t": "CMOD",
+     "pp": 10.0
+    }
+   ],
+   "cash": 0.0,
+   "cash_prev": 0.0,
+   "legs": {
+    "best17": {
+     "bought": [
+      {
+       "t": "CSPX",
+       "pp": 20.0
+      }
+     ],
+     "sold": [
+      {
+       "t": "CMOD",
+       "pp": 20.0
+      }
+     ],
+     "cash": 0.0
+    },
+    "gpm": {
+     "bought": [],
+     "sold": [],
+     "cash": 0.0
+    }
+   }
+  },
   {
    "date": "2026-11-10",
    "tranche": 10,
@@ -456,82 +493,6 @@
      "cash": 0.0
     }
    }
-  },
-  {
-   "date": "2026-07-27",
-   "tranche": 25,
-   "best17": "RISK",
-   "gpm": "RISK",
-   "picks": "IUIT / CSPX",
-   "note": "+ IBTA, XRES · − CBU0, CNDX",
-   "bought": [
-    {
-     "t": "IBTA",
-     "pp": 30.0
-    },
-    {
-     "t": "XRES",
-     "pp": 6.7
-    }
-   ],
-   "sold": [
-    {
-     "t": "CNDX",
-     "pp": 13.3
-    },
-    {
-     "t": "CBU0",
-     "pp": 10.0
-    },
-    {
-     "t": "CMOD",
-     "pp": 6.7
-    },
-    {
-     "t": "IUES",
-     "pp": 6.7
-    }
-   ],
-   "cash": 0.0,
-   "cash_prev": 0.0,
-   "legs": {
-    "best17": {
-     "bought": [],
-     "sold": [],
-     "cash": 0.0
-    },
-    "gpm": {
-     "bought": [
-      {
-       "t": "IBTA",
-       "pp": 60.0
-      },
-      {
-       "t": "XRES",
-       "pp": 13.3
-      }
-     ],
-     "sold": [
-      {
-       "t": "CNDX",
-       "pp": 26.7
-      },
-      {
-       "t": "CBU0",
-       "pp": 20.0
-      },
-      {
-       "t": "CMOD",
-       "pp": 13.3
-      },
-      {
-       "t": "IUES",
-       "pp": 13.3
-      }
-     ],
-     "cash": 0.0
-    }
-   }
   }
  ],
  "diagnostics": {
@@ -717,37 +678,37 @@
   "25": {
    "ranking": [
     {
+     "t": "DBC",
+     "exec": "CMOD",
+     "score": 8.7,
+     "gate": "no",
+     "weight": 0.0
+    },
+    {
      "t": "XLK",
      "exec": "IUIT",
-     "score": 10.95,
+     "score": 7.83,
      "gate": "ok",
      "weight": 0.8
     },
     {
-     "t": "DBC",
-     "exec": "CMOD",
-     "score": 10.55,
+     "t": "IVV",
+     "exec": "CSPX",
+     "score": 4.96,
      "gate": "ok",
      "weight": 0.2
     },
     {
-     "t": "IVV",
-     "exec": "CSPX",
-     "score": 6.21,
-     "gate": "ok",
-     "weight": 0.0
-    },
-    {
      "t": "VT",
      "exec": "VWRA",
-     "score": 6.1,
+     "score": 4.73,
      "gate": "canary",
      "weight": 0.0
     },
     {
      "t": "IAU",
      "exec": "IGLN",
-     "score": 4.04,
+     "score": 1.3,
      "gate": "no",
      "weight": 0.0
     }
@@ -756,7 +717,6 @@
    "canary": {
     "threshold": -2.0,
     "months": [
-     "2024-11",
      "2024-12",
      "2025-01",
      "2025-02",
@@ -779,10 +739,10 @@
      "2026-07",
      "2026-08",
      "2026-09",
-     "2026-10"
+     "2026-10",
+     "2026-11"
     ],
     "vt": [
-     5.46,
      5.08,
      4.7,
      4.34,
@@ -805,10 +765,10 @@
      5.26,
      5.5,
      5.26,
-     4.45
+     4.45,
+     2.71
     ],
     "xlk": [
-     6.51,
      6.65,
      5.34,
      4.4,
@@ -831,56 +791,51 @@
      9.72,
      9.33,
      10.07,
-     8.89
+     8.89,
+     4.68
     ]
    },
    "progi": [
     {
      "status": "ok",
-     "title": "XLK przed DBC",
+     "title": "XLK przed IVV",
      "sub": "przewaga w rankingu",
-     "value": "+0,40 pp"
-    },
-    {
-     "status": "ok",
-     "title": "DBC utrzymuje 2. miejsce",
-     "sub": "nad IVV, pierwszym poza podium",
-     "value": "+4,34 pp"
+     "value": "+2,87 pp"
     },
     {
      "status": "no",
      "title": "IAU pod bramką 3m",
-     "sub": "momentum −1,77% wobec progu +1,00%",
-     "value": "−2,77 pp"
+     "sub": "momentum −23,47% wobec progu +1,00%",
+     "value": "−24,47 pp"
     },
     {
-     "status": "ok",
-     "title": "DBC nad bramką 3m",
-     "sub": "momentum +16,44% wobec progu +1,00%",
-     "value": "+15,44 pp"
+     "status": "no",
+     "title": "DBC pod bramką 3m",
+     "sub": "momentum −3,81% wobec progu +1,00%",
+     "value": "−4,81 pp"
     },
     {
      "status": "nr",
      "title": "Kanarek VT",
-     "sub": "+4,45% wobec progu −2,00%",
-     "value": "+6,45 pp"
+     "sub": "+2,71% wobec progu −2,00%",
+     "value": "+4,71 pp"
     },
     {
      "status": "nr",
      "title": "Kanarek XLK",
-     "sub": "+8,89% wobec progu −2,00%",
-     "value": "+10,89 pp"
+     "sub": "+4,68% wobec progu −2,00%",
+     "value": "+6,68 pp"
     }
    ],
    "pending": [],
    "gpm_info": [
     [
      "Ryzykowne w top 3",
-     "IUES · CMOD · CNDX"
+     "IUES · XRES · CMOD"
     ],
     [
      "Przeszło filtr trendu",
-     "5 z 10"
+     "2 z 10"
     ],
     [
      "Mianownik",
@@ -891,25 +846,10 @@
      "100% · IBTA"
     ]
    ],
-   "date": "2026-10-26"
+   "date": "2026-11-25"
   }
  },
  "composition": [
-  {
-   "date": "2025-11-25",
-   "period": "2025-11-01",
-   "tranche": 25,
-   "best17": {
-    "IGLN": 0.8,
-    "IUIT": 0.2
-   },
-   "gpm": {
-    "CNDX": 0.2666666667,
-    "CSPX": 0.2666666667,
-    "IBTA": 0.2,
-    "IGLN": 0.2666666667
-   }
-  },
   {
    "date": "2025-12-10",
    "period": "2025-12-01",
@@ -1234,6 +1174,18 @@
    "tranche": 10,
    "best17": {
     "CMOD": 0.2,
+    "IUIT": 0.8
+   },
+   "gpm": {
+    "IBTA": 1.0
+   }
+  },
+  {
+   "date": "2026-11-25",
+   "period": "2026-11-01",
+   "tranche": 25,
+   "best17": {
+    "CSPX": 0.2,
     "IUIT": 0.8
    },
    "gpm": {
