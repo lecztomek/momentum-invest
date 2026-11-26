@@ -477,3 +477,10 @@ h2.psec{font-size:1.05rem;font-weight:700;letter-spacing:-.02em;margin:34px 0 12
 .legbal .t{font-weight:700;font-size:.95rem;margin-bottom:2px}
 .legbal .row{padding:10px 0}
 .legbal .note{margin:6px 0 0;font-size:.82rem;line-height:1.45;color:var(--faint)}
+
+.addacc{display:flex;gap:8px;margin:2px 0 10px}
+.addacc input{flex:1;min-width:0;padding:10px 12px;border-radius:8px;border:1px solid var(--line);
+  background:var(--surface2);color:var(--fg);font-size:.92rem}
+.addacc .btn{flex:none;white-space:nowrap}
+.rolaRow .vl{display:flex;align-items:center;gap:8px}
+@media(max-width:520px){.addacc{flex-wrap:wrap}.addacc .btn{width:100%}}

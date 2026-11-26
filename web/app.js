@@ -40,8 +40,8 @@ let CAPITAL,HOLDINGS,MONTHS,VALUE,PAID,VUSD,PUSD,RETC,FXN,TRACK=[],BRAK=true,ZLO
    pozycji nie da sie tego odczytac: CMOD i CSPX naleza do obu nog naraz, wiec
    odczyt rozdziela je po polowie i wychodzi, ze kazde konto ma trohe obu.
    Brak deklaracji = stare zachowanie, czyli odczyt z pozycji. */
-const ROLE_OK=["wszystko","best17","gpm"];
-const ROLE_LBL={wszystko:"Wszystko",best17:"BEST17",gpm:"GPM"};
+const ROLE_OK=["wszystko","best17","gpm","brak"];
+const ROLE_LBL={wszystko:"Wszystko",best17:"BEST17",gpm:"GPM",brak:"Nie używam"};
 let ROLE_KONT={};
 function ustawPortfel(P){
   PORT=P;BRAK=!P;
@@ -1565,10 +1565,14 @@ function lancuch(wart,wpl,obs){
   return {zwr,twr:+twr.toFixed(2)};
 }
 let OSTATNIA_OS=[];
+/* Konto z rola "brak" jest POZA ta strategia: nie wchodzi do kapitalu, do krzywej,
+   do TWR, do skladu ani do zlecen - i panel nie prosi o jego stan. Wpisy zostaja w
+   bazie, wiec przelaczenie roli z powrotem przywraca je bez straty. */
 function liczPortfel(){
-  const stany=TX.filter(r=>r.t==="stan"&&r.k>0);
+  const poza=k=>ROLE_KONT[k]==="brak";
+  const stany=TX.filter(r=>r.t==="stan"&&r.k>0&&!poza(r.a));
   if(!stany.length)return null;
-  const konta=[...new Set(TX.map(r=>r.a))].filter(Boolean);
+  const konta=[...new Set(TX.map(r=>r.a))].filter(Boolean).filter(k=>!poza(k));
 
   /* Os czasu zaczyna sie przy PIERWSZYM STANIE KONTA, nie przy pierwszej wplacie:
      przed nim nie wiadomo, ile konto bylo warte, a zero na wykresie wygladaloby
@@ -1595,7 +1599,7 @@ function liczPortfel(){
   }
   const liczone=(r,d)=>odKiedy[r.a]!=null&&odKiedy[r.a]<=d;
   const seria=kt=>{
-    const moje=r=>!kt||r.a===kt;
+    const moje=r=>(!kt||r.a===kt)&&!poza(r.a);
     const wart=os.map(m=>{let sum=0;
       for(const k of (kt?[kt]:konta)){
         const ost=stany.filter(r=>r.a===k&&mies(r.d)<=m).sort(poDacie).at(-1);
@@ -1618,7 +1622,7 @@ function liczPortfel(){
      tam, gdzie nic nie wpisales - a to wlasnie te punkty sa jedynym, co
      o koncie naprawde wiadomo. */
   const trackDla=kt=>{
-    const moje=r=>!kt||r.a===kt;
+    const moje=r=>(!kt||r.a===kt)&&!poza(r.a);
     const daty=[...new Set(stany.filter(moje).map(r=>r.d))].sort();
     const pkt=daty.map(d=>{
       let w=0;
@@ -1832,18 +1836,35 @@ function renderTX(){
 function rysujRoleKont(ks){
   const box=document.getElementById("roleKont"),nota=document.getElementById("roleNota");
   if(!box)return;
-  if(!ks.length){box.innerHTML="";nota.textContent="";return}
-  box.innerHTML=ks.map(k=>{
-    const r=ROLE_KONT[k]||"auto";
-    return `<div class="row rolaRow"><div class="ic" style="background:${CSS("--s6")}">${esc(k).slice(0,2).toUpperCase()}</div>
-      <div class="nm">${esc(k)}<em>${r==="auto"?"odczytane z pozycji":"zadeklarowane"}</em></div>
+  /* Lista kont to zadeklarowane (role_kont) PLUS te, ktore wystepuja we wpisach -
+     dzieki temu konto mozna zalozyc, zanim cokolwiek sie na nim wpisze, i dzieki temu
+     stare wpisy nie znikaja z konfiguracji. Nic nie jest "na sztywno". */
+  const zWpisow=new Set(ks);
+  const lista=[...new Set([...ks,...Object.keys(ROLE_KONT)])].sort((a,b)=>a.localeCompare(b,"pl"));
+  box.innerHTML=lista.length?lista.map(k=>{
+    const r=ROLE_KONT[k]||"auto",pusty=!zWpisow.has(k);
+    const opis=r==="brak"?"poza strategią":pusty?"bez wpisów":r==="auto"?"odczytane z pozycji":"zadeklarowane";
+    return `<div class="row rolaRow${r==="brak"?" zast":""}"><div class="ic" style="background:${CSS("--s6")}">${esc(k).slice(0,2).toUpperCase()}</div>
+      <div class="nm">${esc(k)}<em>${opis}</em></div>
       <div class="vl"><select data-rola="${esc(k)}" aria-label="Co leży na koncie ${esc(k)}">
         <option value="auto"${r==="auto"?" selected":""}>Odczytaj z pozycji</option>
         ${ROLE_OK.map(x=>`<option value="${x}"${r===x?" selected":""}>${ROLE_LBL[x]}</option>`).join("")}
-      </select></div></div>`}).join("");
+      </select>${pusty?`<button class="del" data-rmkonto="${esc(k)}" aria-label="Usuń konto ${esc(k)}">×</button>`:""}</div></div>`}).join("")
+    :'<div class="empty">Nie masz jeszcze żadnego konta. Dodaj pierwsze powyżej — tyle, ile naprawdę masz u brokerów.</div>';
   nota.textContent="Powiedz, co leży na którym koncie. Panel sam tego nie wie: CMOD i CSPX "
     +"należą do obu nóg naraz, więc odczytując ze stanu rozdziela je po połowie i każde konto "
-    +"wychodzi mu wymieszane. Przy jednym koncie wybierz Wszystko.";}
+    +"wychodzi mu wymieszane. Przy jednym koncie wybierz Wszystko. Konto z rolą „Nie używam” "
+    +"wypada ze strategii w całości — nie liczy się do kapitału ani do wyniku i panel nie prosi "
+    +"o jego stan; wpisy zostają w bazie, więc zmiana roli z powrotem nic nie traci.";}
+document.getElementById("noweKonto")?.addEventListener("submit",e=>{
+  e.preventDefault();
+  const pole=document.getElementById("noweKontoNazwa"),n=pole.value.trim();
+  if(!n)return;
+  if(ROLE_KONT[n]!==undefined||TX.some(r=>r.a===n)){alert("Takie konto już jest na liście.");return}
+  pole.value="";ustawRoleKonta(n,"wszystko")});
+document.getElementById("roleKont")?.addEventListener("click",e=>{
+  const b=e.target.closest("[data-rmkonto]");if(!b)return;
+  ustawRoleKonta(b.dataset.rmkonto,"auto")});
 document.getElementById("roleKont")?.addEventListener("change",e=>{
   const s=e.target.closest("select[data-rola]");if(!s)return;
   ustawRoleKonta(s.dataset.rola,s.value)});
