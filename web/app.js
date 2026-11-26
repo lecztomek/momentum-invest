@@ -1019,7 +1019,10 @@ const KROKI_ADMIN=[
    +"python3 tools/odswiez_dane.py ~/pobrane/d_uk_txt --cel data/uk</span>"
    +"Tak uruchomione to <b>tylko podgląd</b> — skrypt wypisze, co by podmienił, i nic nie zapisze. "
    +"Gdy lista się zgadza, powtórz oba z <code>--zapisz</code> na końcu. Podmienia wyłącznie pliki, które już są "
-   +"w <code>data/</code>, i tylko wtedy, gdy paczka ma nowsze notowania."],
+   +"w <code>data/</code>, i tylko wtedy, gdy paczka ma nowsze notowania. "
+   +"<b>Ścieżkę ze spacją w nazwie bierz w cudzysłów</b> — inaczej powłoka rozbije ją na dwa argumenty "
+   +"i dostaniesz <code>unrecognized arguments</code>. Można też wskazać <code>--cel data</code> (cały katalog) "
+   +"i przelecieć obie nogi jednym uruchomieniem, jeśli paczki są rozpakowane obok siebie."],
   ["Wypchnij zmiany","<span class='cmd'>git add data\ngit commit -m \"Dane: RRRR-MM-DD\"\ngit push</span>"
    +"Workflow <b>Sygnał</b> ma trigger na <code>data/**</code> i odpali się sam — przeliczy sygnał, ceny wykonania "
    +"i historię, po czym wrzuci je na stronę. Można go też odpalić ręcznie: <b>Actions → Sygnał → Run workflow</b>. "
