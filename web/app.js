@@ -717,6 +717,72 @@ chart("c-zysk",W=>{
     <text x="${W-R}" y="${H-7}" text-anchor="end" fill="${CSS("--faint")}" font-size="${nr?11:12}">${dLbl(pkt.at(-1).d)}</text>
   </svg>`});
 
+/* Kilka linii na jednej osi czasu. linia = [nazwa, punkty, kolor, grubosc],
+   punkt = {d, i}. `baza` to poziom odniesienia rysowany kreska: 1 dla wzrostu,
+   0 dla obsuniecia. Os bierzemy z pierwszej linii - wszystkie przychodza z tej
+   samej siatki tygodniowej. */
+function linieNaOsi(W,linie,{legendaId,baza=1,fmt=v=>sg2((v-1)*100)+"%",opis=""}={}){
+  const L0=linie.filter(x=>x[1]&&x[1].length>1);
+  if(!L0.length){if(legendaId)document.getElementById(legendaId).innerHTML="";return ""}
+  const wsz=L0.flatMap(x=>x[1]);
+  const nr=W<520,H=nr?185:220,T=16,B=26,L=6,R=6;
+  const t0=Math.min(...wsz.map(p=>Date.parse(p.d))),t1=Math.max(t0+1,...wsz.map(p=>Date.parse(p.d)));
+  const lo=Math.min(baza,...wsz.map(p=>p.i)),hi=Math.max(baza,...wsz.map(p=>p.i));
+  const pad=(hi-lo)*.12||.02;
+  const X=d=>L+(W-L-R)*(Date.parse(d)-t0)/(t1-t0);
+  const Y=v=>T+(H-T-B)*(1-(v-lo+pad)/(hi-lo+2*pad));
+  const pa=s=>s.map((p,i)=>(i?"L":"M")+X(p.d).toFixed(1)+" "+Y(p.i).toFixed(1)).join(" ");
+  const naDzien=(s,d)=>s.filter(p=>p.d<=d).at(-1);
+  const os=L0[0][1];
+  const hit=os.map(p=>({cx:X(p.d),html:`<div class="th">${p.d}</div>`
+    +L0.map(([n,s])=>{const q=naDzien(s,p.d);return q?`<div class="tr">${n}<span class="tv">${fmt(q.i)}</span></div>`:""}).join("")}));
+  if(legendaId)legend(legendaId,L0.map(([n,,c])=>[n,c]));
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opis}" data-hover='${HV({W,H,max:(W-L-R)/Math.max(os.length,2),hit})}'>
+    <line x1="${L}" x2="${W-R}" y1="${Y(baza).toFixed(1)}" y2="${Y(baza).toFixed(1)}" stroke="${CSS("--line")}" stroke-dasharray="4 4"/>
+    ${L0.map(([,s,c,gr])=>`<path d="${pa(s)}" fill="none" stroke="${c}" stroke-width="${gr||2}" stroke-linejoin="round" stroke-linecap="round"/>`).join("")}
+    ${L0.map(([,s,c])=>`<circle cx="${X(s.at(-1).d).toFixed(1)}" cy="${Y(s.at(-1).i).toFixed(1)}" r="4" fill="${c}" stroke="${CSS("--bg")}" stroke-width="2"/>`).join("")}
+    <line class="xh" x1="0" x2="0" y1="${T}" y2="${H-B}" stroke="${CSS("--line-strong")}" style="opacity:0"/>
+    <text x="${L}" y="${H-7}" fill="${CSS("--faint")}" font-size="${nr?11:12}">${dLbl(os[0].d)}</text>
+    <text x="${W-R}" y="${H-7}" text-anchor="end" fill="${CSS("--faint")}" font-size="${nr?11:12}">${dLbl(os.at(-1).d)}</text>
+  </svg>`;
+}
+/* Nogi osobno. Kazda ma wlasny, pelny pipeline na wlasnych danych i stale 50% kapitalu,
+   wiec to nie jest przyblizenie - tak wlasnie wchodzi do portfela. Wszystko PRZED
+   podatkiem, lacznie z linia portfela, zeby bylo porownywalne. */
+const NOGI_KOL={best17:"--s1",gpm:"--s4",portfel:"--accent"};
+const NOGI_ORD=["best17","gpm","portfel"];
+const serieNog=pole=>{
+  const LG=PERF.legs||{},dat=(PERF.compare||{}).dates||[];
+  return NOGI_ORD.filter(k=>LG[k]).map(k=>{
+    const L=LG[k];
+    const s=pole==="growth"
+      ? dat.map((d,i)=>({d,i:L.growth[i]})).filter(p=>p.i!=null)
+      : (L.drawdown.dates||[]).map((d,i)=>({d,i:L.drawdown.dd[i]}));
+    return [L.label,s,CSS(NOGI_KOL[k]),k==="portfel"?2.8:2];
+  });
+};
+chart("c-legs",W=>linieNaOsi(W,serieNog("growth"),
+  {legendaId:"l-legs",baza:1,opis:"Wzrost nóg osobno"}));
+chart("c-legsdd",W=>linieNaOsi(W,serieNog("dd"),
+  {legendaId:"l-legsdd",baza:0,fmt:v=>v.toFixed(1).replace(".",",")+"%",opis:"Obsunięcie nóg osobno"}));
+/* Konta osobno - to juz nie strategia, tylko TWR policzony z Twoich wpisow. Kazde
+   konto startuje od swojego pierwszego wpisu, wiec linie nie zaczynaja sie razem. */
+const KOL_KONT=["--s1","--s4","--s2","--s5","--s3","--s6"];
+const kontaDoWykresu=()=>{
+  if(BRAK||!PORT)return [];
+  const pole=CURV==="usd"?"idx":"idxPln",TK=PORT.trackKonta||{};
+  return Object.keys(TK).filter(k=>(TK[k]||[]).filter(p=>p[pole]>0).length>1)};
+chart("c-acc",W=>{
+  const naz=kontaDoWykresu();
+  const pole=CURV==="usd"?"idx":"idxPln",TK=PORT?.trackKonta||{};
+  if(naz.length<2){document.getElementById("l-acc").innerHTML="";return ""}
+  const linie=naz.map((k,i)=>{
+    const pkt=TK[k].filter(p=>p[pole]>0),b=pkt[0][pole];
+    return [k,pkt.map(p=>({d:p.d,i:p[pole]/b})),CSS(KOL_KONT[i%KOL_KONT.length]),2]});
+  const caly=(TRACK||[]).filter(p=>p[pole]>0);
+  if(caly.length>1)linie.push(["Razem",caly.map(p=>({d:p.d,i:p[pole]/caly[0][pole]})),CSS("--accent"),2.8]);
+  return linieNaOsi(W,linie,{legendaId:"l-acc",baza:1,opis:"Konta osobno"})});
+
 /* Twoj wynik obok wyniku strategii. Obie linie licza sie metoda TWR - wplaty
    i wyplaty nie ruszaja wyniku, wiec da sie je zestawic. Punktem wspolnym jest
    dzien Twojego pierwszego wpisu: tam obie startuja ze 100. */
@@ -1200,6 +1266,27 @@ function renderWyniki(){
     `Liczby <b>po podatku ${pod}%</b>, liczonym tak, jak robi to silnik: raz w roku, od wzrostu ponad
      poprzedni szczyt (rok stratny nie daje zwrotu, ale nie kasuje szczytu).
      Przed podatkiem byłoby ${sg2(B.cagr*100)}% rocznie i ×${B.multiple.toFixed(2).replace(".",",")}.`;
+  const LG=PERF.legs||{};
+  document.getElementById("legTab").innerHTML=!Object.keys(LG).length?"":
+    tbl(`<th>Co</th><th>CAGR</th><th>MaxDD</th><th>Calmar</th><th>Sharpe</th><th>Mnożnik</th>`,
+      NOGI_ORD.filter(k=>LG[k]).map(k=>{const m=LG[k].metrics;
+        return `<tr><td><span class="sw-in" style="background:${CSS(NOGI_KOL[k])}"></span>${LG[k].label}</td>
+          <td class="num">${sg2(m.cagr*100)}%</td>
+          <td class="num" style="color:var(--neg)">${(m.max_drawdown*100).toFixed(1).replace(".",",")}%</td>
+          <td class="num">${m.calmar.toFixed(2).replace(".",",")}</td>
+          <td class="num">${m.sharpe.toFixed(2).replace(".",",")}</td>
+          <td class="num">×${m.multiple.toFixed(2).replace(".",",")}</td></tr>`}).join(""));
+  document.getElementById("legNota").innerHTML=!Object.keys(LG).length?"":
+    `Wszystko tu <b>przed podatkiem</b>, łącznie z linią portfela — podatek pobiera się od całości i nie
+     da się go uczciwie rozdzielić na nogi (kafelki na górze strony są po podatku). To nie jest szacunek:
+     każda noga ma własny, pełny pipeline na własnych danych i stałe 50% kapitału, więc dokładnie tak
+     wchodzi do portfela. Zwróć uwagę, że <b>portfel ma lepszy Calmar i Sharpe niż którakolwiek noga
+     osobno</b> — to jest cała korzyść z łączenia ich.`;
+  document.getElementById("kontaOsobno").hidden=kontaDoWykresu().length<2;
+  document.getElementById("accWynNota").innerHTML=
+    `To już nie strategia, tylko <b>Twoje konta</b> — TWR policzony z Twoich wpisów, więc wpłaty i wypłaty
+     nie ruszają wyniku. Każde konto startuje od swojego pierwszego wpisu, więc linie nie zaczynają się
+     w tym samym dniu.`;
   document.getElementById("mgridSub").textContent=
     (PERF.monthly_pre_tax?"· przed podatkiem ":"")+"· okresy transz, nie miesiące kalendarzowe";
   /* Wiersz podpisany miesiacem to OKRES TRANSZY, ktory w nim ruszyl - biegnie od dnia
@@ -1696,9 +1783,11 @@ function liczPortfel(){
       for(const l of ["best17","gpm"])udzial[l][k]=(r==="wszystko"||r===l)?w:0;
     }
   }
+  const trackKonta={};
   const accounts=konta.map(k=>{
     const sum=l=>konta.reduce((a,x)=>a+udzial[l][x],0);
     const tk=trackDla(k);
+    trackKonta[k]=tk.pkt.map(p=>({d:p.d,idx:p.idx,idxPln:p.idxPln}));
     const a={name:k,value:Math.round(konce[k].wart.at(-1)),
              pln:tk.twrPln,usd:tk.twr,
              alloc:{best17:sum("best17")?udzial.best17[k]/sum("best17"):0,
@@ -1732,7 +1821,7 @@ function liczPortfel(){
     /* TWR z osi wpisow, nie z miesiecznej - liczy KAZDY wpis, takze drugi
        w tym samym miesiacu. */
     twr:{usd:CALY.twr,pln:CALY.twrPln??pln.twr},
-    track,
+    track,trackKonta,
     /* Konta, ktorych pieniadze nie sa (albo nie byly) widziane przez panel -
        user ma o tym wiedziec, bo to jego wplaty. */
     spoznione:konta.filter(k=>odKiedy[k]&&TX.some(r=>r.a===k&&przeplyw(r)&&r.d<odKiedy[k]))

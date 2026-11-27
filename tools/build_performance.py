@@ -37,7 +37,7 @@ from engine_v2.combined_pipeline import (find_combined_valid_window_start,
                                           load_combined_daily_prices, run_combined_pipeline)
 from engine_v2.combined_spec import CombinedSpec
 from engine_v2.metrics import compute_metrics
-from engine_v2.pipeline import _lookup
+from engine_v2.pipeline import _lookup, run_strategy_pipeline
 from engine_v2.spec import StrategySpec
 from engine_v2.period_anchor import nth_trading_day_dates
 from wspolne import zapisz_jesli_zmiana
@@ -245,6 +245,67 @@ def main() -> int:
         skala = float(kapital_po.asof(kr.index[0]))
         porownanie[b["key"]] = [None if pd.isna(v) else round(float(v) * skala, 4) for v in kr_w]
 
+    # --- nogi osobno -----------------------------------------------------
+    # Combiner trzyma stale 50/50 kapitalu, a KAZDA noga ma w `run_combined_pipeline`
+    # wlasny, pelny solo pipeline na WLASNYCH danych (best17_a na data/us, gpm_uk na
+    # data/uk) - zaden mapping miedzy nimi nie zachodzi. Noge liczymy wiec dokladnie
+    # tak, jak wchodzi do portfela: jej wlasny spec, jej wlasne ceny dzienne, obie
+    # transze po polowie. Okno przycinamy do okna portfela, zeby liczby dalo sie
+    # zestawiac. PRZED PODATKIEM - podatek pobiera sie od calosci portfela i nie da
+    # sie go uczciwie rozdzielic na nogi, wiec zmyslanie podzialu byloby gorsze niz
+    # podpisanie, ze to brutto.
+    nogi = {}
+    for klucz, etykieta, katalog in (("best17", "BEST17", "best17_a"), ("gpm", "GPM", "gpm_uk")):
+        kr_n = {}
+        for dzien in TRANSZE:
+            sp = StrategySpec.load(baza / f"{katalog}_day{dzien}" / "strategy_spec.json")
+            pf_n = run_strategy_pipeline(sp)
+            dp = dict(sp.base_params.get("data_loader", {}))
+            dp["frequency"] = "daily"
+            dz_n = _lookup("data_loader", sp.blocks["data_loader"])(sp.universe, dp).prices
+            k = daily_equity_curve(pf_n, dz_n, {"execution_day_of_month": dzien}).set_index("date")["equity"]
+            kr_n[dzien] = k / k.iloc[0]
+        dni_n = sorted(set().union(*(k.index for k in kr_n.values())))
+        kn = sum(k.reindex(dni_n).ffill().bfill() for k in kr_n.values()) / len(kr_n)
+        kn = kn[(kn.index >= kapital.index[0]) & (kn.index <= kapital.index[-1])]
+        if kn.empty:
+            continue
+        kn = kn / kn.iloc[0]
+        pusty_n = pd.DataFrame({"date": kn.index, "turnover": 0.0})
+        obs_n = (kn / kn.cummax() - 1) * 100
+        tyg_n = obs_n.resample("W").min().dropna()
+        w_n = kn.reindex(kn.index.union(os_tyg.index)).ffill().reindex(os_tyg.index)
+        lata_n = {}
+        for rok, s in kn.groupby(kn.index.year):
+            if len(s) > 4:
+                lata_n[str(rok)] = round(float(s.iloc[-1] / s.iloc[0] - 1) * 100, 2)
+        nogi[klucz] = {
+            "label": etykieta,
+            "metrics": metryki_z(kn, pusty_n),
+            "growth": [None if pd.isna(v) else round(float(v), 4) for v in w_n],
+            "drawdown": {"dates": [x.strftime("%Y-%m-%d") for x in tyg_n.index],
+                         "dd": [round(float(v), 2) for v in tyg_n]},
+            "years": lata_n,
+        }
+        mn = nogi[klucz]["metrics"]
+        print(f"noga {etykieta:7}: CAGR {mn['cagr']*100:5.2f}%, MaxDD {mn['max_drawdown']*100:6.2f}%, "
+              f"Calmar {mn['calmar']:.2f}, mnoznik x{mn['multiple']:.2f} (przed podatkiem)")
+
+    # Portfel na tej samej, przedpodatkowej podstawie - inaczej wykres zestawialby
+    # nogi brutto z portfelem netto i roznica wygladalaby jak efekt laczenia nog.
+    w_p = kapital.reindex(kapital.index.union(os_tyg.index)).ffill().reindex(os_tyg.index)
+    obs_p = (kapital / kapital.cummax() - 1) * 100
+    tyg_p = obs_p.resample("W").min().dropna()
+    nogi["portfel"] = {
+        "label": "Portfel",
+        "metrics": metryki_brutto,
+        "growth": [None if pd.isna(v) else round(float(v), 4) for v in w_p],
+        "drawdown": {"dates": [x.strftime("%Y-%m-%d") for x in tyg_p.index],
+                     "dd": [round(float(v), 2) for v in tyg_p]},
+        "years": {str(r): round(float(s.iloc[-1] / s.iloc[0] - 1) * 100, 2)
+                  for r, s in kapital.groupby(kapital.index.year) if len(s) > 4},
+    }
+
     laczny = float((seria + 1).prod())
     lat = len(seria) / 12
     wynik = {
@@ -269,6 +330,8 @@ def main() -> int:
                      "dd": [round(float(v), 2) for v in tyg]},
         "benchmarks": benchmarki,
         "compare": porownanie,
+        "legs": nogi,
+        "legs_pre_tax": True,
         "classes": KLASY,
         "mix_months": [x.strftime("%Y-%m") for x in mies_miksu],
         "mix": miks,
