@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-27T09:16:47Z",
+ "generated": "2026-11-27T09:20:50Z",
  "source": "engine_v2 / gpm_uk_best17_a_day10 + gpm_uk_best17_a_day25",
  "currency": "waluta notowan",
  "net_of_costs": true,
@@ -5635,7 +5635,7 @@
    }
   },
   "portfel": {
-   "label": "Portfel",
+   "label": "Obie nogi",
    "metrics": {
     "cagr": 0.146711,
     "max_drawdown": -0.157995,

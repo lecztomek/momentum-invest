@@ -1196,6 +1196,12 @@ function renderAccounts(){
       <div class="d">TWR <span style="color:var(${a.usd>=0?"--pos":"--neg"})">${sg(a.usd)}% USD</span>${a.pln==null?"":` · <span style="color:var(${a.pln>=0?"--pos":"--neg"})">${sg(a.pln)}% PLN</span>`}</div>
       <div class="bar">${Object.entries(o).map(([t,v])=>{const pr=v/capo*100;
         return `<span style="flex:${pr};background:${CSS(KOL[t]||"--s6")}" title="${t} ${pc(v/capo)}">${pr>13?(t==="GOTOWKA"?"GOT.":t):""}</span>`}).join("")}</div></div>`}).join("");
+  /* Konta to TWOJE pieniadze, wiec wykres siedzi na Pulpicie, przy kartach kont -
+     Wyniki sa o samej strategii i portfela usera nie dotykaja. */
+  document.getElementById("kontaOsobno").hidden=kontaDoWykresu().length<2;
+  document.getElementById("kontaOsobnoNota").innerHTML=
+    `TWR policzony z Twoich wpisów, więc wpłaty i wypłaty nie ruszają wyniku. Każde konto startuje od
+     swojego pierwszego wpisu, więc linie nie zaczynają się w tym samym dniu.`;
   document.getElementById("accNote").textContent=s.accounts.length===1
     ?"Jedno konto: obie nogi w jednej liście, pozycje wspólne w jednym zleceniu."
     :"Różnicę wobec celu wyrównujesz przy wpłacie, nie przelewem między brokerami.";
@@ -1282,11 +1288,6 @@ function renderWyniki(){
      każda noga ma własny, pełny pipeline na własnych danych i stałe 50% kapitału, więc dokładnie tak
      wchodzi do portfela. Zwróć uwagę, że <b>portfel ma lepszy Calmar i Sharpe niż którakolwiek noga
      osobno</b> — to jest cała korzyść z łączenia ich.`;
-  document.getElementById("kontaOsobno").hidden=kontaDoWykresu().length<2;
-  document.getElementById("accWynNota").innerHTML=
-    `To już nie strategia, tylko <b>Twoje konta</b> — TWR policzony z Twoich wpisów, więc wpłaty i wypłaty
-     nie ruszają wyniku. Każde konto startuje od swojego pierwszego wpisu, więc linie nie zaczynają się
-     w tym samym dniu.`;
   document.getElementById("mgridSub").textContent=
     (PERF.monthly_pre_tax?"· przed podatkiem ":"")+"· okresy transz, nie miesiące kalendarzowe";
   /* Wiersz podpisany miesiacem to OKRES TRANSZY, ktory w nim ruszyl - biegnie od dnia

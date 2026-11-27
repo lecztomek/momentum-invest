@@ -6,6 +6,9 @@
 <title>Panel BEST17 + GPM</title>
 <meta name="description" content="Panel strategii BEST17 + GPM UK: sygnal, sklad, portfel, wyniki i ceny zrodlowe.">
 <meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0C1014">
+<link rel="icon" type="image/svg+xml" href="web/favicon.svg">
+<link rel="apple-touch-icon" href="web/icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap">
@@ -81,6 +84,10 @@
     <div class="seg setupSel"></div>
     <div class="legs" id="accCards"></div>
     <p class="note" id="accNote"></p>
+    <div id="kontaOsobno" hidden>
+      <div class="card"><div class="chart" id="c-acc"></div><div class="legend" id="l-acc"></div></div>
+      <p class="note" id="kontaOsobnoNota"></p>
+    </div>
 
     <h2 class="psec">Co trzymam</h2>
     <div class="list" id="holdList"></div>
@@ -199,11 +206,6 @@
   <p class="note" id="legNota"></p>
   <div class="card"><div class="chart" id="c-legsdd"></div><div class="legend" id="l-legsdd"></div></div>
 
-  <div id="kontaOsobno" hidden>
-    <h2 class="psec">Konta osobno</h2>
-    <div class="card"><div class="chart" id="c-acc"></div><div class="legend" id="l-acc"></div></div>
-    <p class="note" id="accWynNota"></p>
-  </div>
 
   <h2 class="psec">Obsunięcie od szczytu</h2>
   <div class="card"><div class="chart" id="c-dd"></div></div>

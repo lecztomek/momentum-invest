@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Panel BEST17 + GPM">
+  <rect width="64" height="64" rx="14" fill="#0C1014"/>
+  <rect x="3" y="3" width="58" height="58" rx="12" fill="none" stroke="#1C242C" stroke-width="2"/>
+  <rect x="12" y="34" width="8" height="18" rx="2.5" fill="#C98500"/>
+  <rect x="24" y="26" width="8" height="26" rx="2.5" fill="#3987E5"/>
+  <rect x="36" y="16" width="8" height="36" rx="2.5" fill="#4FC3B6"/>
+  <path d="M12 26 L24 18 L34 22 L50 9" fill="none" stroke="#4FC3B6" stroke-width="3.6"
+        stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>
+  <circle cx="50" cy="9" r="4" fill="#4FC3B6"/>
+</svg>

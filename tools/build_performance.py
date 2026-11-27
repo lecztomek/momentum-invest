@@ -297,7 +297,7 @@ def main() -> int:
     obs_p = (kapital / kapital.cummax() - 1) * 100
     tyg_p = obs_p.resample("W").min().dropna()
     nogi["portfel"] = {
-        "label": "Portfel",
+        "label": "Obie nogi",
         "metrics": metryki_brutto,
         "growth": [None if pd.isna(v) else round(float(v), 4) for v in w_p],
         "drawdown": {"dates": [x.strftime("%Y-%m-%d") for x in tyg_p.index],
