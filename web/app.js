@@ -985,12 +985,18 @@ function renderActions(){
      same jak w viewAcc, wiec oba widoki nie moga sie rozjechac. */
   const konta=(SETUPS[SETUP]?.accounts||[]).filter(a=>a.value>0);
   const perK=PORT?.perKonto||{};
-  const rozbij=konta.length>1&&konta.every(a=>perK[a.name]);
+  const bezS=Object.fromEntries((PORT?.bezSkladu||[]).map(x=>[x.konto,x]));
+  const nieWiem=x=>`<div class="act hold"><i class="w"></i><div><div class="t">Nie wiem, co tu leży</div>
+    <div class="sub">wpis z ${x.wpis} był bez rozbicia na walory${
+      x.sklad?`, ostatnie rozbicie z ${x.sklad}`:""} — dopisz kwoty na walory, to policzę zlecenia</div>
+    </div></div>`;
+  const rozbij=konta.length>1&&konta.every(a=>perK[a.name]||bezS[a.name]);
   document.getElementById("actions").innerHTML=nota+(rozbij
     ? konta.map(a=>{
+        const glowa=`<div class="actkonto">${esc(a.name)}<span>${accLegs(a)}</span></div>`;
+        if(bezS[a.name])return glowa+nieWiem(bezS[a.name]);
         const rows=lista(accComp(a),perK[a.name],Math.max(a.value*.01,1));
-        return `<div class="actkonto">${esc(a.name)}<span>${accLegs(a)}</span></div>`
-          +(rows.length?rows.map(karta).join(""):bez)}).join("")
+        return glowa+(rows.length?rows.map(karta).join(""):bez)}).join("")
     : (()=>{const{cel,suma}=celOsiagalny();
         const rows=lista(cel,HOLDINGS,Math.max(suma*.01,1));
         return rows.length?rows.map(karta).join(""):bez})())}
@@ -1098,7 +1104,19 @@ function viewAcc(){
   for(const a of s.accounts){
     const o=accComp(a),cap=accTarget(a),ideal=accIdeal(a),roz=a.value-ideal;
     const mam=(PORT?.perKonto||{})[a.name]||{};
+    const bezS=(PORT?.bezSkladu||[]).find(x=>x.konto===a.name);
     const jed=CURV==="usd"?"USD":"zł";
+    if(bezS){
+      h+=`<h2 class="psec">${esc(a.name)} <span class="sub" style="font-weight:400">· ${accLegs(a)}</span></h2>`
+        +`<p class="accsum">masz <b>${kw(a.value)}</b></p>`
+        +`<div class="pusto"><b>Nie wiem, co na tym koncie leży.</b>
+          <p>Wpis z ${bezS.wpis} był bez rozbicia na walory${
+            bezS.sklad?`, a ostatnie rozbicie jest z ${bezS.sklad}`:""}. Zestawienie dzisiejszej wartości
+          ze starym składem dałoby zlecenia z powietrza — różnicę robiłby sam ruch cen, nie Twój portfel.
+          Dopisz stan konta <b>z kwotami na walory</b>, a policzę cel i zlecenia.</p>
+          <a class="btn" href="#transakcje">Dopisz stan konta</a></div>`;
+      continue;
+    }
     h+=`<h2 class="psec">${esc(a.name)} <span class="sub" style="font-weight:400">· ${accLegs(a)}</span></h2>`
       +`<p class="accsum">masz <b>${kw(a.value)}</b>`
       +(Math.abs(roz)<Math.max(ideal*.02,1)?" · zgodnie z modelem 50/50"
@@ -1769,11 +1787,21 @@ function liczPortfel(){
   const CALY=trackDla(null),track=CALY.pkt;
   const idx=1+CALY.twr/100,idxPln=1+(CALY.twrPln??0)/100;
 
-  /* Co trzymam: z ostatniego rozbicia kazdego konta, jesli user je podal. */
-  const trzymam={},perKonto={};
+  /* Co trzymam: z NAJNOWSZEGO wpisu konta - nie z najnowszego, ktory ma rozbicie.
+     Mieszanie dzisiejszej WARTOSCI ze starym SKLADEM produkuje zlecenia z powietrza:
+     cel skaluje sie do nowej wartosci, a pozycje zostaja stare, wiec roznica wyglada
+     jak niedowazenie, choc to tylko ruch cen (user: "dopisalem stan konta bez
+     tickerow, a on jakies kup dodal"). Gdy najnowszy wpis nie ma rozbicia, konto
+     trafia do `bezSkladu` i panel MOWI, ze nie wie - zamiast zgadywac. */
+  const trzymam={},perKonto={},bezSkladu=[];
   for(const k of konta){
-    const ost=stany.filter(r=>r.a===k&&r.px).sort(poDacie).at(-1);
+    const ost=stany.filter(r=>r.a===k).sort(poDacie).at(-1);
     if(!ost)continue;
+    if(!ost.px){
+      const star=stany.filter(r=>r.a===k&&r.px).sort(poDacie).at(-1);
+      bezSkladu.push({konto:k,wpis:ost.d,sklad:star?star.d:null});
+      continue;
+    }
     let suma=0;perKonto[k]={};
     for(const[t,v]of Object.entries(ost.px))if(v>0){
       trzymam[t]=(trzymam[t]||0)+v;perKonto[k][t]=v;suma+=v}
@@ -1838,7 +1866,7 @@ function liczPortfel(){
     /* TWR z osi wpisow, nie z miesiecznej - liczy KAZDY wpis, takze drugi
        w tym samym miesiacu. */
     twr:{usd:CALY.twr,pln:CALY.twrPln??pln.twr},
-    track,trackKonta,
+    track,trackKonta,bezSkladu,
     /* Konta, ktorych pieniadze nie sa (albo nie byly) widziane przez panel -
        user ma o tym wiedziec, bo to jego wplaty. */
     spoznione:konta.filter(k=>odKiedy[k]&&TX.some(r=>r.a===k&&przeplyw(r)&&r.d<odKiedy[k]))
