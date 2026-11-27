@@ -1273,21 +1273,29 @@ function renderWyniki(){
      poprzedni szczyt (rok stratny nie daje zwrotu, ale nie kasuje szczytu).
      Przed podatkiem byłoby ${sg2(B.cagr*100)}% rocznie i ×${B.multiple.toFixed(2).replace(".",",")}.`;
   const LG=PERF.legs||{};
+  /* Ostatni wiersz to TEN SAM portfel, tylko po podatku - czyli liczby z kafelkow na
+     gorze strony. Bez niego czytelnik widzi dwie tabelki o tym samym i rozne liczby,
+     a wyjasnienie lezy pod wykresem, dwa ekrany dalej. */
+  const wierszNogi=(etyk,m,kol,slabo)=>
+    `<tr${slabo?' style="opacity:.72"':""}><td>${kol?`<span class="sw-in" style="background:${kol}"></span>`:
+      '<span class="sw-in" style="background:transparent"></span>'}${etyk}</td>
+      <td class="num">${sg2(m.cagr*100)}%</td>
+      <td class="num" style="color:var(--neg)">${(m.max_drawdown*100).toFixed(1).replace(".",",")}%</td>
+      <td class="num">${m.calmar.toFixed(2).replace(".",",")}</td>
+      <td class="num">${m.sharpe.toFixed(2).replace(".",",")}</td>
+      <td class="num">×${m.multiple.toFixed(2).replace(".",",")}</td></tr>`;
   document.getElementById("legTab").innerHTML=!Object.keys(LG).length?"":
     tbl(`<th>Co</th><th>CAGR</th><th>MaxDD</th><th>Calmar</th><th>Sharpe</th><th>Mnożnik</th>`,
-      NOGI_ORD.filter(k=>LG[k]).map(k=>{const m=LG[k].metrics;
-        return `<tr><td><span class="sw-in" style="background:${CSS(NOGI_KOL[k])}"></span>${LG[k].label}</td>
-          <td class="num">${sg2(m.cagr*100)}%</td>
-          <td class="num" style="color:var(--neg)">${(m.max_drawdown*100).toFixed(1).replace(".",",")}%</td>
-          <td class="num">${m.calmar.toFixed(2).replace(".",",")}</td>
-          <td class="num">${m.sharpe.toFixed(2).replace(".",",")}</td>
-          <td class="num">×${m.multiple.toFixed(2).replace(".",",")}</td></tr>`}).join(""));
+      NOGI_ORD.filter(k=>LG[k]).map(k=>wierszNogi(LG[k].label,LG[k].metrics,CSS(NOGI_KOL[k]))).join("")
+      +wierszNogi("Obie nogi, po podatku",PERF.metrics,null,true))
+    +`<p class="note">Pierwsze trzy wiersze są <b>przed podatkiem</b> — podatek pobiera się od całości
+      portfela i nie da się go uczciwie rozdzielić na nogi. Ostatni wiersz to ten sam portfel
+      <b>po podatku ${Math.round((PERF.tax_rate||0)*100)}%</b>, czyli liczby z kafelków na górze strony.
+      MaxDD jest w obu taki sam — podatek zabiera zwrot, nie pogłębia obsunięcia.</p>`;
   document.getElementById("legNota").innerHTML=!Object.keys(LG).length?"":
-    `Wszystko tu <b>przed podatkiem</b>, łącznie z linią portfela — podatek pobiera się od całości i nie
-     da się go uczciwie rozdzielić na nogi (kafelki na górze strony są po podatku). To nie jest szacunek:
-     każda noga ma własny, pełny pipeline na własnych danych i stałe 50% kapitału, więc dokładnie tak
-     wchodzi do portfela. Zwróć uwagę, że <b>portfel ma lepszy Calmar i Sharpe niż którakolwiek noga
-     osobno</b> — to jest cała korzyść z łączenia ich.`;
+    `To nie jest szacunek: każda noga ma własny, pełny pipeline na własnych danych i stałe 50%
+     kapitału, więc dokładnie tak wchodzi do portfela. Zwróć uwagę, że <b>obie nogi razem mają lepszy
+     Calmar i Sharpe niż którakolwiek z nich osobno</b> — to jest cała korzyść z łączenia ich.`;
   document.getElementById("mgridSub").textContent=
     (PERF.monthly_pre_tax?"· przed podatkiem ":"")+"· okresy transz, nie miesiące kalendarzowe";
   /* Wiersz podpisany miesiacem to OKRES TRANSZY, ktory w nim ruszyl - biegnie od dnia
