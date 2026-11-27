@@ -15,8 +15,13 @@ const TYLKO_ZALOGOWANY=["pulpit","transakcje"];
 
 let SIG,PERF,PRC,PORT=null;
 try{
+  /* cache:"no-cache" = zawsze odpytaj serwer o swiezosc (304, gdy bez zmian), a nie
+     "nie cachuj". Bez tego przegladarka potrafi podac NOWY app.js ze STARYM
+     performance.json - kod pyta wtedy o pole, ktorego w pliku jeszcze nie ma, i
+     sekcja wychodzi pusta. Pliki sa male, a 304 kosztuje tyle co nic. */
   [SIG,PERF,PRC]=await Promise.all(["signals","performance","prices"]
-    .map(f=>fetch(`web/data/${f}.json`).then(r=>{if(!r.ok)throw new Error(f+".json: HTTP "+r.status);return r.json()})));
+    .map(f=>fetch(`web/data/${f}.json`,{cache:"no-cache"})
+      .then(r=>{if(!r.ok)throw new Error(f+".json: HTTP "+r.status);return r.json()})));
 }catch(err){
   document.body.innerHTML='<div class="fatal"><b>Nie udalo sie wczytac danych.</b>'
     +'<p>'+String(err.message||err)+'</p><p>Strona czyta pliki przez fetch, wiec musi byc '
@@ -1273,6 +1278,9 @@ function renderWyniki(){
      poprzedni szczyt (rok stratny nie daje zwrotu, ale nie kasuje szczytu).
      Przed podatkiem byłoby ${sg2(B.cagr*100)}% rocznie i ×${B.multiple.toFixed(2).replace(".",",")}.`;
   const LG=PERF.legs||{};
+  /* Caly blok chowa sie, gdy danych nog nie ma - inaczej starszy performance.json
+     (np. z cache przegladarki) zostawia sam naglowek i dwie puste karty. */
+  document.getElementById("nogiOsobno").hidden=!Object.keys(LG).length;
   /* Ostatni wiersz to TEN SAM portfel, tylko po podatku - czyli liczby z kafelkow na
      gorze strony. Bez niego czytelnik widzi dwie tabelki o tym samym i rozne liczby,
      a wyjasnienie lezy pod wykresem, dwa ekrany dalej. */
